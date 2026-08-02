@@ -115,6 +115,13 @@ def render_logo() -> bytes:
     return output.getvalue()
 
 
+def _png_pixel_identity(png_bytes: bytes) -> tuple[str, tuple[int, int], bytes]:
+    """Return mode, size, and raw pixels so checks ignore PNG encoder variance."""
+    with Image.open(BytesIO(png_bytes)) as image:
+        rgb = image.convert("RGB")
+        return rgb.mode, rgb.size, rgb.tobytes()
+
+
 def check_or_write_logo(*, check: bool) -> bool:
     """Return whether the logo is stale, writing canonical bytes when requested."""
     expected = render_logo()
@@ -122,7 +129,7 @@ def check_or_write_logo(*, check: bool) -> bool:
         current = OUTPUT_PATH.read_bytes()
     except OSError:
         current = b""
-    stale = current != expected
+    stale = (not current) or (_png_pixel_identity(current) != _png_pixel_identity(expected))
     if stale and not check:
         OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
         write_atomic(OUTPUT_PATH, expected)

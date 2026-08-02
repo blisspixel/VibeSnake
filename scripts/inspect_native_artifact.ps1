@@ -183,16 +183,19 @@ if ($PlatformId -eq "macos-universal") {
     }
 
     $macPaths = @($containerEntries | ForEach-Object { [string]$_.path })
+    # Godot names the .app from config/name ("Vibe Snake"), while assemblies keep
+    # the VibeSnake.* project identifiers.
     $requiredMacPatterns = @(
-        "\.app/Contents/MacOS/VibeSnake$",
-        "\.app/Contents/Resources/VibeSnake\.pck$",
+        "\.app/Contents/MacOS/[^/]+$",
+        "\.app/Contents/Resources/[^/]+\.pck$",
         "VibeSnake\.Game\.dll$",
         "VibeSnake\.Persistence\.dll$",
         "VibeSnake\.Rules\.dll$"
     )
     foreach ($pattern in $requiredMacPatterns) {
         if (-not ($macPaths | Where-Object { $_ -match $pattern })) {
-            throw "macOS archive is missing a required path matching $pattern."
+            $preview = ($macPaths | Select-Object -First 40) -join "; "
+            throw "macOS archive is missing a required path matching $pattern. Entries: $preview"
         }
     }
 }

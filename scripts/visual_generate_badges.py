@@ -223,18 +223,29 @@ def _draw_style(image: Image.Image, station: dict[str, Any]) -> None:
         raise ValueError(f"unknown station badge style: {style}")
 
 
-def render_station_badge(station: dict[str, Any]) -> bytes:
-    """Render one station definition to canonical PNG bytes."""
+def render_station_badge_image(station: dict[str, Any]) -> Image.Image:
+    """Render one station definition to a canonical RGB image."""
     image = Image.new("RGB", BADGE_SIZE, hex_to_rgb(station["colors"]["bg"]))
     _draw_style(image, station)
     draw = ImageDraw.Draw(image)
     draw.rectangle((5, 5, image.width - 6, image.height - 6), outline=hex_to_rgb(station["colors"]["text"]), width=3)
     _draw_centered_text(image, station["name"], image.height // 4, station["colors"]["text"], 4)
     _draw_centered_text(image, station["tagline"], 3 * image.height // 4, station["colors"]["text"], 3)
+    return image
 
+
+def render_station_badge(station: dict[str, Any]) -> bytes:
+    """Render one station definition to canonical PNG bytes."""
     output = BytesIO()
-    image.save(output, format="PNG", optimize=False, compress_level=9)
+    render_station_badge_image(station).save(output, format="PNG", optimize=False, compress_level=9)
     return output.getvalue()
+
+
+def _png_pixel_identity(png_bytes: bytes) -> tuple[str, tuple[int, int], bytes]:
+    """Return mode, size, and raw pixels so checks ignore PNG encoder variance."""
+    with Image.open(BytesIO(png_bytes)) as image:
+        rgb = image.convert("RGB")
+        return rgb.mode, rgb.size, rgb.tobytes()
 
 
 def check_or_write_badges(*, check: bool) -> list[Path]:
@@ -253,17 +264,20 @@ def check_or_write_badges(*, check: bool) -> list[Path]:
 
     for station in STATIONS:
         output_path = OUTPUT_DIRECTORY / f"{station['key']}_badge.png"
-        expected = render_station_badge(station)
+        expected_image = render_station_badge_image(station)
+        expected_identity = (expected_image.mode, expected_image.size, expected_image.tobytes())
         if check:
             try:
                 actual = output_path.read_bytes()
             except OSError:
                 stale_paths.append(output_path)
                 continue
-            if actual != expected:
+            if _png_pixel_identity(actual) != expected_identity:
                 stale_paths.append(output_path)
         else:
-            write_atomic(output_path, expected)
+            output = BytesIO()
+            expected_image.save(output, format="PNG", optimize=False, compress_level=9)
+            write_atomic(output_path, output.getvalue())
     return stale_paths
 
 
