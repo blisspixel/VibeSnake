@@ -1,39 +1,25 @@
 version: 2
-# Keep dependency noise low: monthly batches, few open PRs, grouped updates.
+# Version-update PRs disabled (open-pull-requests-limit: 0) so the public
+# repo stays a single clean main branch. Security updates still apply when
+# GitHub reports vulnerable deps. Re-enable monthly groups when ready to batch.
 updates:
   - package-ecosystem: pip
     directory: "/"
     schedule:
       interval: monthly
-    open-pull-requests-limit: 1
-    groups:
-      python-tooling:
-        patterns:
-          - "*"
+    open-pull-requests-limit: 0
   - package-ecosystem: nuget
     directory: "/native"
     schedule:
       interval: monthly
-    open-pull-requests-limit: 1
-    groups:
-      native-nuget:
-        patterns:
-          - "*"
+    open-pull-requests-limit: 0
   - package-ecosystem: nuget
     directory: "/game"
     schedule:
       interval: monthly
-    open-pull-requests-limit: 1
-    groups:
-      game-nuget:
-        patterns:
-          - "*"
+    open-pull-requests-limit: 0
   - package-ecosystem: github-actions
     directory: "/"
     schedule:
       interval: monthly
-    open-pull-requests-limit: 1
-    groups:
-      github-actions:
-        patterns:
-          - "*"
+    open-pull-requests-limit: 0
