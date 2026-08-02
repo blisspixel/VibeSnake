@@ -75,8 +75,6 @@ review record, and pack credit before it enters the repository or a player build
 A filename, generator log, or verbal assumption is not enough evidence for a
 third-party asset.
 
-The checked-in station badges use Pillow 12.3's embedded reduced subset of
-Aileron Regular by Sora Sagano. Pillow's implementation names the font and links
-its official source; that source states "No Rights Reserved." The generator
-checks the font family and style before rendering, and [NOTICE](../../NOTICE)
-retains the provenance alongside the project attribution.
+The checked-in station badges use project-owned 5x7 pixel glyphs so PNG bytes
+match across platforms. [NOTICE](../../NOTICE) retains the project attribution
+for generated artwork.

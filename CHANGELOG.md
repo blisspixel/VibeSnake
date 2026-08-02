@@ -56,7 +56,7 @@ Notable player-facing and engineering changes are recorded here. The project is 
 - Native import limits for grid dimensions, total cells, canonical state, body and queue counts, replay size, step count, commands, and checkpoints.
 - Deterministic README captures for the main menu, Vibe run, and AI spectator
   mode, plus exact source-fingerprint and PNG verification in local hooks and CI.
-- Eight deterministic station badges generated with Pillow's embedded reduced Aileron Regular subset and
+- Eight deterministic station badges generated with project-owned pixel glyphs and
   checked byte for byte in CI.
 - Original deterministic Vibe Snake logo generated entirely from project-owned
   pixel geometry and checked byte for byte in CI.

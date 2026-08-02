@@ -29,9 +29,8 @@ These entry points are kept at `scripts/` root because README, CI, and release d
 ## Visual production
 
 `visual_generate_badges.py` and `visual_generate_logo.py` are deterministic and
-enforced by CI. Badges require Pillow 12.3's embedded reduced Aileron Regular
-subset, whose provenance is recorded in `NOTICE`; the logo uses only
-project-owned pixel geometry. Neither depends on a host font.
+enforced by CI. Both use project-owned pixel geometry so PNG bytes match across
+platforms without host fonts.
 `capture_readme_screenshots.py` renders documented game states from isolated
 player and audio directories and checks exact current bytes.
 

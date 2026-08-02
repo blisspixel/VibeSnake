@@ -9,13 +9,39 @@ from pathlib import Path
 import random
 from typing import Any, Sequence
 
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw
 
 from _generated_assets import write_atomic
 
 
 BADGE_SIZE = (300, 300)
 OUTPUT_DIRECTORY = Path(__file__).resolve().parents[1] / "assets" / "images" / "radio_badges"
+# Project-owned 5x7 glyphs keep badge bytes identical across Windows and Linux CI.
+GLYPHS = {
+    " ": ("00000", "00000", "00000", "00000", "00000", "00000", "00000"),
+    "A": ("01110", "10001", "10001", "11111", "10001", "10001", "10001"),
+    "B": ("11110", "10001", "10001", "11110", "10001", "10001", "11110"),
+    "C": ("01111", "10000", "10000", "10000", "10000", "10000", "01111"),
+    "D": ("11110", "10001", "10001", "10001", "10001", "10001", "11110"),
+    "E": ("11111", "10000", "10000", "11110", "10000", "10000", "11111"),
+    "F": ("11111", "10000", "10000", "11110", "10000", "10000", "10000"),
+    "G": ("01111", "10000", "10000", "10111", "10001", "10001", "01111"),
+    "H": ("10001", "10001", "10001", "11111", "10001", "10001", "10001"),
+    "I": ("11111", "00100", "00100", "00100", "00100", "00100", "11111"),
+    "K": ("10001", "10010", "10100", "11000", "10100", "10010", "10001"),
+    "L": ("10000", "10000", "10000", "10000", "10000", "10000", "11111"),
+    "M": ("10001", "11011", "10101", "10001", "10001", "10001", "10001"),
+    "N": ("10001", "11001", "11001", "10101", "10011", "10011", "10001"),
+    "O": ("01110", "10001", "10001", "10001", "10001", "10001", "01110"),
+    "P": ("11110", "10001", "10001", "11110", "10000", "10000", "10000"),
+    "R": ("11110", "10001", "10001", "11110", "10100", "10010", "10001"),
+    "S": ("01111", "10000", "10000", "01110", "00001", "00001", "11110"),
+    "T": ("11111", "00100", "00100", "00100", "00100", "00100", "00100"),
+    "U": ("10001", "10001", "10001", "10001", "10001", "10001", "01110"),
+    "V": ("10001", "10001", "10001", "10001", "10001", "01010", "00100"),
+    "W": ("10001", "10001", "10001", "10001", "10101", "11011", "10001"),
+    "Y": ("10001", "10001", "01010", "00100", "00100", "00100", "00100"),
+}
 STATIONS: tuple[dict[str, Any], ...] = (
     {
         "key": "flow_signal",
@@ -96,20 +122,26 @@ def _gradient(image: Image.Image, color1: str, color2: str) -> None:
 
 
 def _pixel_text_surface(text: str, color: tuple[int, int, int], preferred_scale: int, max_width: int) -> Image.Image:
-    """Render text from Pillow 12.3's embedded Aileron Regular subset."""
-    font = ImageFont.load_default()
-    if not isinstance(font, ImageFont.FreeTypeFont) or font.getname() != (
-        "Aileron",
-        "Regular",
-    ):
-        raise RuntimeError("Pillow did not provide the attributed Aileron Regular font")
-    left, top, right, bottom = font.getbbox(text)
-    width = max(1, right - left)
-    height = max(1, bottom - top)
-    scale = min(preferred_scale, max(1, max_width // width))
-    glyph = Image.new("RGBA", (width, height), (0, 0, 0, 0))
-    ImageDraw.Draw(glyph).text((-left, -top), text, font=font, fill=(*color, 255))
-    return glyph.resize((width * scale, height * scale), Image.Resampling.NEAREST)
+    """Render uppercase text with project-owned 5x7 glyphs for cross-platform identity."""
+    normalized = text.upper()
+    missing = sorted({character for character in normalized if character not in GLYPHS})
+    if missing:
+        raise ValueError(f"badge text contains unsupported characters: {missing!r}")
+
+    character_width = 5
+    spacing = 1
+    unit_width = len(normalized) * character_width + max(0, len(normalized) - 1) * spacing
+    unit_height = 7
+    scale = min(preferred_scale, max(1, max_width // max(1, unit_width)))
+    glyph = Image.new("RGBA", (unit_width, unit_height), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(glyph)
+    for character_index, character in enumerate(normalized):
+        left = character_index * (character_width + spacing)
+        for row_index, row in enumerate(GLYPHS[character]):
+            for column_index, pixel in enumerate(row):
+                if pixel == "1":
+                    draw.point((left + column_index, row_index), fill=(*color, 255))
+    return glyph.resize((unit_width * scale, unit_height * scale), Image.Resampling.NEAREST)
 
 
 def _draw_centered_text(image: Image.Image, text: str, y: int, color: str, preferred_scale: int) -> None:

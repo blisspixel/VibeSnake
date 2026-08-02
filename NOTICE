@@ -13,6 +13,5 @@ review remains open.
 Third-party dependencies and tools retain their own licenses. Generated player
 artifacts must include the applicable dependency and content-pack notices.
 
-The radio-station badges rasterize text from the reduced Aileron Regular subset
-embedded in Pillow 12.3. Aileron Regular was designed by Sora Sagano. Its official
-source at https://dotcolon.net/fonts/aileron states "No Rights Reserved."
+The radio-station badges and project logo rasterize text from project-owned 5x7
+pixel glyphs so generated PNG bytes stay identical across platforms.
