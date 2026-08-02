@@ -42,6 +42,17 @@ def _sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
+# Text inputs are fingerprinted with LF newlines so Windows checkouts match CI.
+_TEXT_FINGERPRINT_SUFFIXES = frozenset({".py", ".json", ".toml", ".txt", ".cfg", ".md", ".yml", ".yaml"})
+
+
+def _fingerprint_payload(path: Path) -> bytes:
+    data = path.read_bytes()
+    if path.suffix.lower() in _TEXT_FINGERPRINT_SUFFIXES:
+        return data.replace(b"\r\n", b"\n").replace(b"\r", b"\n")
+    return data
+
+
 def _source_paths() -> tuple[Path, ...]:
     paths = {Path(__file__).resolve()}
     paths.update((REPOSITORY_ROOT / "src" / "vibesnake").rglob("*.py"))
@@ -56,9 +67,7 @@ def _source_fingerprint() -> str:
         relative_path = path.relative_to(REPOSITORY_ROOT).as_posix()
         digest.update(relative_path.encode("utf-8"))
         digest.update(b"\0")
-        with path.open("rb") as source:
-            for chunk in iter(lambda: source.read(1024 * 1024), b""):
-                digest.update(chunk)
+        digest.update(_fingerprint_payload(path))
         digest.update(b"\0")
     return digest.hexdigest()
 

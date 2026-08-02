@@ -58,6 +58,19 @@ try {
     }
 
     . (Join-Path $PSScriptRoot "native_artifact_policy.ps1")
+    $allowedLauncher = Assert-NativeArtifactPath -RelativePath "VibeSnake.sh"
+    if ($allowedLauncher -cne "VibeSnake.sh") {
+        throw "Linux product launcher shell must remain allowlisted: $allowedLauncher"
+    }
+    try {
+        Assert-NativeArtifactPath -RelativePath "tools/setup.sh" | Out-Null
+        throw "Artifact policy accepted a non-product shell script: tools/setup.sh"
+    } catch {
+        if ($_.Exception.Message -notlike "Artifact contains prohibited content:*") {
+            throw
+        }
+    }
+
     $prohibitedPaths = @(
         "python314.dll",
         "libpython3.14.so.1.0",
@@ -107,7 +120,7 @@ try {
         throw "Relative XDG data paths must resolve to the absolute platform fallback."
     }
 
-    $caseCount = 2 + $prohibitedPaths.Count + $invalidPaths.Count
+    $caseCount = 4 + $prohibitedPaths.Count + $invalidPaths.Count
     Write-Output "PowerShell qualification regression checks passed: cases=$caseCount."
 } finally {
     if (Test-Path -LiteralPath $temporaryRoot) {

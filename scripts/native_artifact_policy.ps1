@@ -17,6 +17,12 @@ function Assert-NativeArtifactPath {
         throw "Artifact contains an invalid path: $RelativePath"
     }
 
+    # Godot Linux exports ship a product launcher shell beside the binary.
+    $allowedProductLaunchers = @("VibeSnake.sh")
+    if ($allowedProductLaunchers -contains $normalized) {
+        return $normalized
+    }
+
     $prohibitedPathPatterns = @(
         "(^|/)(?:__pycache__|qa_reports|archive|tests?)(?:/|$)",
         "(^|/)(?:\.env[^/]*|packages(?:\.[^/]+)?\.lock\.json)$",
