@@ -21,17 +21,17 @@ Next milestone: 0.3.0, a measured Godot and C# vertical slice with step-level pa
 <table>
   <tr>
     <th>Main menu</th>
-    <th>Vibe run</th>
-    <th>AI Lets Play</th>
+    <th>Customization</th>
+    <th>Powers active</th>
   </tr>
   <tr>
-    <td><img src="docs/images/screenshots/main-menu.png" alt="Vibe Snake alpha main menu with play, customization, progression, AI, settings, and help choices"></td>
-    <td><img src="docs/images/screenshots/vibe-run.png" alt="Vibe Snake alpha gameplay showing the board, combo HUD, tactical power, obstacle cells, and station identity"></td>
-    <td><img src="docs/images/screenshots/ai-lets-play.png" alt="Vibe Snake alpha AI Lets Play mode showing an AI personality piloting the same game board"></td>
+    <td><img src="docs/images/screenshots/main-menu.png" alt="Vibe Snake alpha main menu with the preferred brand logo and play, customization, progression, AI, settings, and help choices"></td>
+    <td><img src="docs/images/screenshots/customization.png" alt="Vibe Snake alpha customization screen with live snake preview and unlockable appearance options"></td>
+    <td><img src="docs/images/screenshots/powers-run.png" alt="Vibe Snake alpha gameplay with combo HUD, shield and tempo powers active, board obstacles, and station identity"></td>
   </tr>
 </table>
 
-These fixed staged 1280 by 720 captures come from the current Python alpha renderer, not concept art. Their committed hashes, dimensions, README references, and presentation-source fingerprint are enforced by the [capture manifest](docs/images/screenshots/manifest.json). Regeneration currently uses host font fallback, so cross-platform byte identity is not claimed.
+These fixed staged 1280 by 720 captures come from the current Python alpha renderer, not concept art. They show the main menu with the preferred brand logo, the customization screen, and an in-run board with multiple powers active. Committed hashes, dimensions, README references, and presentation-source fingerprint are enforced by the [capture manifest](docs/images/screenshots/manifest.json). Regeneration currently uses host font fallback, so cross-platform byte identity is not claimed.
 
 ## Play from source
 

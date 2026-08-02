@@ -6,26 +6,26 @@
       "file": "main-menu.png",
       "height": 720,
       "label": "Main menu",
-      "sha256": "0f283eda2116d456c58b64a8db9d3bb465613ad3e1a88dc1634d11b3a649bf8c",
+      "sha256": "16f42aad14bc14bc508b4518b68ff097906d4b136de3c642b6e91b87ea65c3f3",
       "state": "MENU",
       "width": 1280
     },
     {
-      "file": "vibe-run.png",
+      "file": "customization.png",
       "height": 720,
-      "label": "Vibe run",
-      "sha256": "73c7b82f7d84e63ac24e9e1a300a5032419bcacd5eea34263cefc4b89a5ac063",
-      "state": "RUNNING",
+      "label": "Customization",
+      "sha256": "4e4f474fe6b538e46ac744564dc55cb5bc34aa5d5099e1cb3a86e30e625854f5",
+      "state": "CUSTOMIZE",
       "width": 1280
     },
     {
-      "file": "ai-lets-play.png",
+      "file": "powers-run.png",
       "height": 720,
-      "label": "AI Lets Play",
-      "sha256": "cffdec893d64b1bc9a4974a441b0075e12ffa22dcebde0a93eb890a671b82972",
-      "state": "LETS_PLAY",
+      "label": "Powers active",
+      "sha256": "7c90243f6c6ec3a832f65bf1e55d265e7e6a3b07d465f3af57de27c26ab61b66",
+      "state": "RUNNING",
       "width": 1280
     }
   ],
-  "sourceSha256": "090dc94ffaa8cf874b8abb8ea83dc9af333482be57c20c4ff42a10dab276d10b"
+  "sourceSha256": "77a4a656cf8fcc9d1775b393ebf47b88dff5ee0359601afc221af02b2ac954e2"
 }

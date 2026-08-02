@@ -26,10 +26,9 @@ Capture state is fixed, but visible text still uses host font fallback. The gate
 verifies committed bytes and source freshness; it does not claim that independent
 regeneration on different operating systems produces byte-identical PNGs.
 
-The project logo is original deterministic pixel geometry. Regenerate or verify
-its canonical PNG with:
+The project logo is the preferred handcrafted 1024 by 1024 brand mark. Verify it
+with:
 
 ```powershell
-python scripts/visual_generate_logo.py
 python scripts/visual_generate_logo.py --check
 ```

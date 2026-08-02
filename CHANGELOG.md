@@ -58,8 +58,8 @@ Notable player-facing and engineering changes are recorded here. The project is 
   mode, plus exact source-fingerprint and PNG verification in local hooks and CI.
 - Eight deterministic station badges generated with project-owned pixel glyphs and
   checked byte for byte in CI.
-- Original deterministic Vibe Snake logo generated entirely from project-owned
-  pixel geometry and checked byte for byte in CI.
+- Preferred handcrafted Vibe Snake brand logo retained from the Snakev2 mark and
+  hash-checked in CI.
 - Strict audits for both hash-locked Python graphs, with no known vulnerabilities
   in the final CI or player-runtime dependency sets.
 

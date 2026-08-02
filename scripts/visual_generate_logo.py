@@ -1,154 +1,72 @@
-"""Generate the deterministic, project-authored Vibe Snake logo."""
+"""Verify the handcrafted Vibe Snake brand logo committed under assets/images."""
 
 from __future__ import annotations
 
 import argparse
-from io import BytesIO
+import hashlib
 from pathlib import Path
+import struct
 from typing import Sequence
 
-from PIL import Image, ImageDraw
 
-from _generated_assets import write_atomic
-
-
-CANVAS_SIZE = 1024
 OUTPUT_PATH = Path(__file__).resolve().parents[1] / "assets" / "images" / "logo.png"
-GLYPHS = {
-    "A": ("01110", "10001", "10001", "11111", "10001", "10001", "10001"),
-    "B": ("11110", "10001", "10001", "11110", "10001", "10001", "11110"),
-    "E": ("11111", "10000", "10000", "11110", "10000", "10000", "11111"),
-    "I": ("11111", "00100", "00100", "00100", "00100", "00100", "11111"),
-    "K": ("10001", "10010", "10100", "11000", "10100", "10010", "10001"),
-    "N": ("10001", "11001", "11001", "10101", "10011", "10011", "10001"),
-    "S": ("01111", "10000", "10000", "01110", "00001", "00001", "11110"),
-    "V": ("10001", "10001", "10001", "10001", "10001", "01010", "00100"),
-}
+# Preferred Snakev2 brand mark (1024x1024 pixel-art snake on gold).
+EXPECTED_WIDTH = 1024
+EXPECTED_HEIGHT = 1024
+EXPECTED_SHA256 = "2ca74991f5b6e83a6da178ff6a63673884425610844a55b29ba35bc89b4a901c"
+_PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
 
 
-def _draw_pixel_text(
-    draw: ImageDraw.ImageDraw,
-    text: str,
-    *,
-    center_x: int,
-    top: int,
-    scale: int,
-    color: tuple[int, int, int],
-    shadow: tuple[int, int, int],
-) -> None:
-    character_width = 5 * scale
-    spacing = scale
-    total_width = len(text) * character_width + (len(text) - 1) * spacing
-    left = center_x - total_width // 2
-
-    for offset_x, offset_y, fill in ((scale // 3, scale // 3, shadow), (0, 0, color)):
-        for character_index, character in enumerate(text):
-            glyph = GLYPHS[character]
-            glyph_left = left + character_index * (character_width + spacing) + offset_x
-            for row_index, row in enumerate(glyph):
-                for column_index, pixel in enumerate(row):
-                    if pixel == "1":
-                        x0 = glyph_left + column_index * scale
-                        y0 = top + row_index * scale + offset_y
-                        draw.rectangle((x0, y0, x0 + scale - 2, y0 + scale - 2), fill=fill)
+def _sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as source:
+        for chunk in iter(lambda: source.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
 
 
-def render_logo() -> bytes:
-    """Render canonical 1024-pixel logo bytes without external fonts or assets."""
-    image = Image.new("RGB", (CANVAS_SIZE, CANVAS_SIZE), (5, 13, 28))
-    draw = ImageDraw.Draw(image)
-
-    for coordinate in range(0, CANVAS_SIZE, 32):
-        grid_color = (11, 31, 52) if coordinate % 128 else (14, 42, 67)
-        draw.line((coordinate, 0, coordinate, CANVAS_SIZE), fill=grid_color, width=1)
-        draw.line((0, coordinate, CANVAS_SIZE, coordinate), fill=grid_color, width=1)
-
-    draw.rectangle((24, 24, 999, 999), outline=(34, 247, 199), width=4)
-    draw.rectangle((35, 35, 988, 988), outline=(255, 55, 196), width=2)
-
-    for radius, color in ((170, (31, 9, 62)), (120, (49, 12, 75)), (70, (69, 17, 86))):
-        draw.ellipse((800 - radius, 260 - radius, 800 + radius, 260 + radius), outline=color, width=12)
-
-    snake_path = ((160, 480), (160, 195), (390, 195), (390, 455), (690, 455), (690, 285), (785, 285))
-    draw.line(snake_path, fill=(1, 6, 16), width=112, joint="curve")
-    draw.line(snake_path, fill=(22, 157, 91), width=78, joint="curve")
-    draw.line(snake_path, fill=(70, 237, 91), width=54, joint="curve")
-
-    for x, y in snake_path[:-1]:
-        draw.rectangle((x - 8, y - 39, x + 8, y + 39), fill=(112, 255, 111))
-
-    draw.rounded_rectangle((660, 190, 920, 380), radius=36, fill=(1, 6, 16))
-    draw.rounded_rectangle((676, 206, 904, 364), radius=26, fill=(53, 218, 90))
-    draw.rectangle((676, 314, 904, 348), fill=(22, 157, 91))
-    draw.rectangle((828, 228, 858, 258), fill=(5, 13, 28))
-    draw.rectangle((835, 231, 850, 246), fill=(255, 240, 112))
-    draw.polygon(((904, 316), (955, 333), (904, 350)), fill=(255, 55, 196))
-
-    draw.rectangle((820, 430, 878, 488), fill=(1, 6, 16))
-    draw.rectangle((832, 442, 866, 476), fill=(255, 149, 58))
-    draw.rectangle((842, 452, 856, 466), fill=(255, 240, 112))
-
-    _draw_pixel_text(
-        draw,
-        "VIBE",
-        center_x=CANVAS_SIZE // 2,
-        top=590,
-        scale=24,
-        color=(255, 240, 112),
-        shadow=(255, 55, 196),
-    )
-    _draw_pixel_text(
-        draw,
-        "SNAKE",
-        center_x=CANVAS_SIZE // 2,
-        top=785,
-        scale=20,
-        color=(34, 247, 199),
-        shadow=(13, 84, 78),
-    )
-
-    for y in range(48, 976, 8):
-        draw.line((48, y, 976, y), fill=(4, 11, 24), width=1)
-
-    output = BytesIO()
-    image.save(output, format="PNG", optimize=False, compress_level=9)
-    return output.getvalue()
+def _png_dimensions(path: Path) -> tuple[int, int]:
+    with path.open("rb") as source:
+        header = source.read(24)
+    if len(header) != 24 or header[:8] != _PNG_SIGNATURE or header[12:16] != b"IHDR":
+        raise ValueError(f"not a supported PNG logo: {path}")
+    return struct.unpack(">II", header[16:24])
 
 
-def _png_pixel_identity(png_bytes: bytes) -> tuple[str, tuple[int, int], bytes]:
-    """Return mode, size, and raw pixels so checks ignore PNG encoder variance."""
-    with Image.open(BytesIO(png_bytes)) as image:
-        rgb = image.convert("RGB")
-        return rgb.mode, rgb.size, rgb.tobytes()
-
-
-def check_or_write_logo(*, check: bool) -> bool:
-    """Return whether the logo is stale, writing canonical bytes when requested."""
-    expected = render_logo()
-    try:
-        current = OUTPUT_PATH.read_bytes()
-    except OSError:
-        current = b""
-    stale = (not current) or (_png_pixel_identity(current) != _png_pixel_identity(expected))
-    if stale and not check:
-        OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
-        write_atomic(OUTPUT_PATH, expected)
-    return stale
+def verify_logo() -> None:
+    """Require the committed brand logo to match the preferred mark contract."""
+    if not OUTPUT_PATH.is_file():
+        raise FileNotFoundError(f"logo is missing: {OUTPUT_PATH}")
+    width, height = _png_dimensions(OUTPUT_PATH)
+    if (width, height) != (EXPECTED_WIDTH, EXPECTED_HEIGHT):
+        raise ValueError(f"logo dimensions must be {EXPECTED_WIDTH}x{EXPECTED_HEIGHT}, got {width}x{height}")
+    digest = _sha256(OUTPUT_PATH)
+    if digest != EXPECTED_SHA256:
+        raise ValueError(
+            "logo bytes do not match the preferred brand mark; "
+            "restore assets/images/logo.png from the approved Snakev2 mark"
+        )
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    """Generate the logo or verify that the committed bytes are current."""
+    """Verify the committed logo (no procedural regeneration)."""
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--check", action="store_true", help="fail when the logo is missing or stale")
+    parser.add_argument(
+        "--check",
+        action="store_true",
+        help="fail when the committed logo is missing, resized, or not the preferred brand mark",
+    )
+    # Accept bare invocation as verify for CI/docs compatibility with older generators.
     arguments = parser.parse_args(argv)
-    stale = check_or_write_logo(check=arguments.check)
-    if arguments.check and stale:
-        print(f"Deterministic logo is missing or stale: {OUTPUT_PATH}")
+    try:
+        verify_logo()
+    except (OSError, ValueError) as error:
+        print(f"Deterministic logo is missing or stale: {error}")
         return 1
-    if not arguments.check:
-        print(f"Deterministic logo written: {OUTPUT_PATH}")
-    else:
+    if arguments.check:
         print("Deterministic logo check passed.")
+    else:
+        print(f"Preferred brand logo verified: {OUTPUT_PATH}")
     return 0
 
 

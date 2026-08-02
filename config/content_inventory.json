@@ -2,9 +2,9 @@
   "schemaVersion": 1,
   "assetRoot": "assets",
   "policyPath": "config/content_policy.json",
-  "policySha256": "755174b9e3d8e1a3189f8be2751526381c0a69db86f943aa031a981a005832f4",
+  "policySha256": "f3ba341c98574a0e03077b15be6a00e11af42182b1673f4d301e47340c038d42",
   "fileCount": 18,
-  "totalBytes": 71182,
+  "totalBytes": 1785415,
   "summary": {
     "byIntegrityStatus": {
       "valid": 18
@@ -227,8 +227,8 @@
       "id": "asset:images/logo.png",
       "path": "images/logo.png",
       "mediaType": "image/png",
-      "bytes": 17800,
-      "sha256": "60c0337de866a3a34ea3e37dc83174653c042e4670b53059b359efc64296b1f3",
+      "bytes": 1732033,
+      "sha256": "2ca74991f5b6e83a6da178ff6a63673884425610844a55b29ba35bc89b4a901c",
       "integrityStatus": "valid",
       "integrityDetail": "PNG container, palette, compressed scanlines, and chunk CRCs are valid",
       "role": "reference-runtime-image",
@@ -238,10 +238,10 @@
       "exportEligible": false,
       "rights": {
         "status": "cleared",
-        "source": "Deterministic project artwork generated from original pixel geometry in scripts/visual_generate_logo.py and released by blisspixel",
+        "source": "Preferred handcrafted Vibe Snake brand mark retained from the Snakev2 asset lineage and released by blisspixel",
         "license": "Apache-2.0",
         "attribution": "Copyright 2025-2026 blisspixel contributors",
-        "reviewNote": "Canonical bytes have a deterministic local freshness gate; final brand, accessibility, and release-pack review remain required"
+        "reviewNote": "Canonical 1024x1024 PNG bytes are hash-gated by scripts/visual_generate_logo.py; final brand, accessibility, and release-pack review remain required"
       },
       "policyRule": "reference-logo",
       "duplicateOf": null

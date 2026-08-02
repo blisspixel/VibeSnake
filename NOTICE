@@ -13,5 +13,7 @@ review remains open.
 Third-party dependencies and tools retain their own licenses. Generated player
 artifacts must include the applicable dependency and content-pack notices.
 
-The radio-station badges and project logo rasterize text from project-owned 5x7
-pixel glyphs so generated PNG bytes stay identical across platforms.
+The radio-station badges rasterize text from project-owned 5x7 pixel glyphs so
+generated PNG bytes stay identical across platforms. The project logo is the
+preferred handcrafted 1024x1024 brand mark retained from the Snakev2 asset
+lineage.

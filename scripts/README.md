@@ -11,7 +11,7 @@ This directory contains explicit command-line tools. Runtime code belongs under 
 | `check_docs.py` | Canonical documentation discovery and relative-link validation |
 | `capture_readme_screenshots.py` | Isolated current-build README screenshot capture and freshness verification |
 | `visual_generate_badges.py` | Deterministic radio-station badge generation and byte verification |
-| `visual_generate_logo.py` | Deterministic project-owned logo generation and byte verification |
+| `visual_generate_logo.py` | Preferred brand-logo hash and dimension verification |
 | `content_inventory.py` | Deterministic source-content inventory and release blocker report |
 | `content_packs.py` | Core and optional pack manifest qualification |
 | `assert_godot_toolchain.ps1` | SHA-512 archive, extracted editor SHA-256, and exact build identity verification |
@@ -28,9 +28,9 @@ These entry points are kept at `scripts/` root because README, CI, and release d
 
 ## Visual production
 
-`visual_generate_badges.py` and `visual_generate_logo.py` are deterministic and
-enforced by CI. Both use project-owned pixel geometry so PNG bytes match across
-platforms without host fonts.
+`visual_generate_badges.py` is deterministic and enforced by CI using project-owned
+pixel glyphs. `visual_generate_logo.py` hash-checks the preferred handcrafted brand
+mark under `assets/images/logo.png`.
 `capture_readme_screenshots.py` renders documented game states from isolated
 player and audio directories and checks exact current bytes.
 

@@ -24,8 +24,8 @@ MANIFEST_PATH = SCREENSHOT_DIRECTORY / "manifest.json"
 README_PATH = REPOSITORY_ROOT / "README.md"
 SCREENSHOT_SPECS = (
     ("main-menu.png", "Main menu", "MENU"),
-    ("vibe-run.png", "Vibe run", "RUNNING"),
-    ("ai-lets-play.png", "AI Lets Play", "LETS_PLAY"),
+    ("customization.png", "Customization", "CUSTOMIZE"),
+    ("powers-run.png", "Powers active", "RUNNING"),
 )
 _PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
 
@@ -147,58 +147,84 @@ def verify_screenshots() -> None:
             raise ScreenshotEvidenceError(f"README does not reference {relative_path}")
 
 
-def _stage_gameplay(game: Any, *, ai_mode: bool) -> None:
+def _stage_powers_run(game: Any) -> None:
+    """Stage a lively in-run board with active powers and readable HUD state."""
     from vibesnake.core.enums import Direction, GameState
+    from vibesnake.powerups.boost import BoostPowerUp
+    from vibesnake.powerups.gluttony import GluttonyPowerUp
     from vibesnake.powerups.magnet import MagnetPowerUp
     from vibesnake.powerups.shield import ShieldPowerUp
+    from vibesnake.powerups.slowmo import SlowMoPowerUp
 
     body = deque(
         [
-            (22, 21),
-            (23, 21),
-            (24, 21),
-            (25, 21),
-            (26, 21),
-            (27, 21),
+            (18, 22),
+            (19, 22),
+            (20, 22),
+            (21, 22),
+            (22, 22),
+            (23, 22),
+            (24, 22),
+            (25, 22),
+            (26, 22),
+            (27, 22),
+            (28, 22),
             (28, 21),
-            (29, 21),
-            (30, 21),
-            (31, 21),
+            (28, 20),
+            (29, 20),
+            (30, 20),
             (31, 20),
-            (31, 19),
-            (32, 19),
-            (33, 19),
-            (34, 19),
-            (35, 19),
-            (36, 19),
+            (32, 20),
+            (33, 20),
+            (34, 20),
+            (35, 20),
         ]
     )
     game.snake.body = body
     game.snake.positions_set = set(body)
     game.snake.direction = Direction.RIGHT
-    game.snake.animation_time = 2.4
-    game.snake.hue_shift = 12
-    game.food.position = (48, 13)
-    game.score_manager.base_score = 2840 if not ai_mode else 1960
-    game.score_manager.combo_count = 7 if not ai_mode else 5
-    game.score_manager.time_since_last_food = 0.7
-    game.starvation_timer = 18.5
-    game.session_food_eaten = 24
-    game.session_wraps = 6
-    game.detached_segments = [(44, 18), (44, 19), (44, 20)]
-    game.detached_segments_timer = 6.2
+    game.snake.animation_time = 2.8
+    game.snake.hue_shift = 18
+    game.food.position = (50, 12)
+    game.score_manager.base_score = 4120
+    game.score_manager.combo_count = 9
+    game.score_manager.time_since_last_food = 0.55
+    game.starvation_timer = 16.0
+    game.session_food_eaten = 31
+    game.session_wraps = 8
+    game.detached_segments = [(42, 16), (42, 17), (42, 18), (43, 18)]
+    game.detached_segments_timer = 5.4
 
     shield = ShieldPowerUp((0, 0))
     shield.activate(game)
-    shield.timer = 1.4
-    magnet = MagnetPowerUp((45, 13))
-    magnet.visible_timer = 1.7
-    game.powerups.active_powerups = [shield, magnet]
-    game.visual_effects.add_score_popup(760, 315, "+180 CLEAN LINE", (120, 255, 220))
+    shield.timer = 2.1
+    boost = BoostPowerUp((0, 0))
+    boost.activate(game)
+    boost.timer = 1.8
+    slowmo = SlowMoPowerUp((0, 0))
+    slowmo.activate(game)
+    slowmo.timer = 1.2
+    magnet = MagnetPowerUp((46, 12))
+    magnet.visible_timer = 2.4
+    gluttony = GluttonyPowerUp((38, 26))
+    gluttony.visible_timer = 1.9
+    game.powerups.active_powerups = [shield, boost, slowmo, magnet, gluttony]
+    game.visual_effects.add_score_popup(740, 300, "+240 POWER CHAIN", (120, 255, 220))
+    game.visual_effects.add_score_popup(820, 360, "SHIELD UP", (180, 255, 140))
     if game.radio is not None:
-        game.radio.current_station_index = 0 if ai_mode else 7
+        game.radio.current_station_index = 3
         game.radio.is_playing = True
-    game.state = GameState.LETS_PLAY if ai_mode else GameState.RUNNING
+    game.state = GameState.RUNNING
+
+
+def _stage_customization(game: Any) -> None:
+    """Open the customization menu on a distinctive option for capture."""
+    from vibesnake.core.enums import GameState
+
+    game.state = GameState.CUSTOMIZE
+    game.customization_category = 0
+    game.customization_option = 2
+    game.customization_notification = None
 
 
 def capture_screenshots() -> None:
@@ -241,15 +267,14 @@ def capture_screenshots() -> None:
         game.draw()
         pygame.image.save(game.screen, SCREENSHOT_DIRECTORY / "main-menu.png")
 
-        game.reset()
-        _stage_gameplay(game, ai_mode=False)
+        _stage_customization(game)
         game.draw()
-        pygame.image.save(game.screen, SCREENSHOT_DIRECTORY / "vibe-run.png")
+        pygame.image.save(game.screen, SCREENSHOT_DIRECTORY / "customization.png")
 
-        game.start_lets_play_mode("power_hunter")
-        _stage_gameplay(game, ai_mode=True)
+        game.reset()
+        _stage_powers_run(game)
         game.draw()
-        pygame.image.save(game.screen, SCREENSHOT_DIRECTORY / "ai-lets-play.png")
+        pygame.image.save(game.screen, SCREENSHOT_DIRECTORY / "powers-run.png")
         if game.radio is not None:
             game.radio.stop()
         pygame.quit()
