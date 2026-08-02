@@ -1,0 +1,48 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="coverlet.collector" Version="6.0.4">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="coverlet.msbuild" Version="6.0.4">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\VibeSnake.Persistence\VibeSnake.Persistence.csproj" />
+    <ProjectReference Include="..\..\src\VibeSnake.Rules\VibeSnake.Rules.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\..\..\tests\fixtures\shared\core_movement_v2.json"
+          Link="Fixtures\core_movement_v2.json"
+          CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\..\tests\fixtures\shared\core_rules_v4.json"
+          Link="Fixtures\core_rules_v4.json"
+          CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\..\tests\fixtures\shared\shield_rules_v1.json"
+          Link="Fixtures\shield_rules_v1.json"
+          CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

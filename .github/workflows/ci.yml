@@ -1,0 +1,252 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12", "3.13", "3.14"]
+
+    env:
+      PIP_DISABLE_PIP_VERSION_CHECK: "1"
+      PYGAME_HIDE_SUPPORT_PROMPT: "1"
+      PYTHONPATH: src
+      SDL_VIDEODRIVER: dummy
+      SDL_AUDIODRIVER: dummy
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+
+      - name: Set up Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+          cache-dependency-path: requirements-ci.lock
+
+      - name: Install hash-locked project and development tools
+        run: |
+          python -m pip install --require-hashes --only-binary=:all: -r requirements-ci.lock
+          python -m pip install --no-deps --no-build-isolation .
+
+      - name: Verify dependency lock freshness
+        run: |
+          python scripts/lock_python_dependencies.py
+          python scripts/lock_python_dependencies.py --profile runtime
+
+      - name: Lint
+        run: python -m ruff check src tests scripts
+
+      - name: Check formatting
+        run: python -m ruff format --check src tests scripts
+
+      - name: Enforce source policy
+        run: python scripts/check_source_policy.py
+
+      - name: Audit Python dependencies
+        if: matrix.python-version == '3.14'
+        run: python -m pip_audit --strict --disable-pip --require-hashes --requirement requirements-ci.lock
+
+      - name: Audit player runtime dependencies
+        if: matrix.python-version == '3.14'
+        run: python -m pip_audit --strict --disable-pip --require-hashes --requirement requirements-runtime.lock
+
+      - name: Check documentation links
+        run: python scripts/check_docs.py
+
+      - name: Verify current README screenshots
+        run: python scripts/capture_readme_screenshots.py --check
+
+      - name: Verify deterministic station badges
+        if: matrix.python-version == '3.14'
+        run: python scripts/visual_generate_badges.py --check
+
+      - name: Verify deterministic project logo
+        if: matrix.python-version == '3.14'
+        run: python scripts/visual_generate_logo.py --check
+
+      - name: Verify deterministic content inventory
+        if: matrix.python-version == '3.14'
+        run: python scripts/content_inventory.py --check
+
+      - name: Verify shared Python-to-C# traces
+        run: |
+          python -m vibesnake.qa.shared_traces --check
+          python -m vibesnake.qa.shared_rule_traces --check
+          python -m vibesnake.qa.shared_power_traces --check
+
+      - name: Test with coverage
+        run: python -m pytest --cov=vibesnake --cov-report=term-missing --cov-report=xml
+
+      - name: Run seeded gameplay QA campaign
+        if: matrix.python-version == '3.14'
+        run: python -m vibesnake.qa --seeds 0 1 2 3 4 --steps 500 --compact --output qa_reports/core.json
+
+      - name: Upload Python QA evidence
+        if: matrix.python-version == '3.14'
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
+        with:
+          name: python-qa-evidence
+          path: |
+            coverage.xml
+            qa_reports/core.json
+          if-no-files-found: error
+          retention-days: 14
+
+  native-rules:
+    name: Native rules on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+
+    env:
+      DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+      DOTNET_NOLOGO: "1"
+      VIBESNAKE_DIVERGENCE_DIR: TestResults/native/divergence
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5
+        with:
+          dotnet-version: 10.0.302
+          cache: true
+          cache-dependency-path: |
+            game/packages.lock.json
+            native/src/VibeSnake.Persistence/packages.lock.json
+            native/src/VibeSnake.Rules/packages.lock.json
+            native/tests/VibeSnake.Rules.Tests/packages.lock.json
+
+      - name: Restore locked dependencies
+        run: dotnet restore native/VibeSnake.slnx --locked-mode
+
+      - name: Build native solution
+        run: dotnet build native/VibeSnake.slnx --configuration Release --no-restore
+
+      - name: Check C# formatting and analyzers
+        run: dotnet format native/VibeSnake.slnx --verify-no-changes --no-restore
+
+      - name: Test native rules with coverage floor
+        run: >-
+          dotnet test native/tests/VibeSnake.Rules.Tests/VibeSnake.Rules.Tests.csproj
+          --configuration Release --no-build --no-restore
+          -p:CollectCoverage=true
+          -p:CoverletOutput=../../../TestResults/native/
+          -p:CoverletOutputFormat=cobertura
+          -p:Threshold=80
+          -p:ThresholdType=line
+          -p:ExcludeByFile=**/Properties/AssemblyInfo.cs
+
+      - name: Upload native parity divergence evidence
+        if: failure()
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
+        with:
+          name: native-parity-divergence-${{ matrix.os }}
+          path: TestResults/native/divergence
+          if-no-files-found: ignore
+          retention-days: 14
+
+  godot-smoke:
+    name: Native player smoke on ${{ matrix.os }}
+    needs: native-rules
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            platform_id: linux-x64
+            template_path: ~/.local/share/godot/export_templates
+          - os: macos-latest
+            platform_id: macos-universal
+            template_path: ~/Library/Application Support/Godot/export_templates
+          - os: windows-latest
+            platform_id: windows-x64
+            template_path: ~/AppData/Roaming/Godot/export_templates
+
+    env:
+      DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+      DOTNET_NOLOGO: "1"
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+
+      - name: Cache verified Godot editor archive
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5
+        with:
+          path: .tools/godot/downloads
+          key: godot-editor-${{ matrix.platform_id }}-${{ hashFiles('native/toolchain.json') }}
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5
+        with:
+          dotnet-version: 10.0.302
+
+      - name: Install verified Godot build
+        id: godot
+        shell: pwsh
+        run: ./scripts/install_godot.ps1
+
+      - name: Qualify native build and Godot scene
+        shell: pwsh
+        run: ./scripts/test_native.ps1 -GodotExecutable "${{ steps.godot.outputs.godot-path }}"
+
+      - name: Cache selected Godot export templates
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5
+        with:
+          path: ${{ matrix.template_path }}
+          key: godot-templates-${{ matrix.platform_id }}-${{ hashFiles('native/toolchain.json') }}
+
+      - name: Install verified native export templates
+        shell: pwsh
+        run: ./scripts/install_godot_templates.ps1 -PlatformId "${{ matrix.platform_id }}"
+
+      - name: Export and smoke native player outside checkout
+        id: player
+        shell: pwsh
+        run: |
+          $outputDirectory = Join-Path $env:RUNNER_TEMP "vibesnake-${{ matrix.platform_id }}"
+          ./scripts/test_native_export.ps1 `
+            -GodotExecutable "${{ steps.godot.outputs.godot-path }}" `
+            -OutputDirectory $outputDirectory `
+            -SkipTemplateInstall
+
+      - name: Upload native qualification manifest
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
+        with:
+          name: vibesnake-${{ matrix.platform_id }}-manifest
+          path: ${{ steps.player.outputs.artifact-root }}/artifact-manifest.json
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload qualified native player for explicit release qualification
+        if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/')
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
+        with:
+          name: vibesnake-${{ matrix.platform_id }}-debug
+          path: ${{ steps.player.outputs.artifact-root }}
+          if-no-files-found: error
+          retention-days: 1
+          compression-level: 0

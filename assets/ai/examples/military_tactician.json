@@ -1,0 +1,11 @@
+{
+  "name": "Military Tactician",
+  "description": "DoD-grade strategic planning. Calculates 3 moves ahead, prioritizes survival over points.",
+  "aggression": 0.4,
+  "risk_tolerance": 0.2,
+  "patience": 0.95,
+  "greed": 0.3,
+  "chaos": 0.0,
+  "power_up_priority": 0.7,
+  "color": [50, 100, 150]
+}

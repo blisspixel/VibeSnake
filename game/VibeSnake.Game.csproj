@@ -1,0 +1,13 @@
+<Project Sdk="Godot.NET.Sdk/4.7.1">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <EnableDynamicLoading>true</EnableDynamicLoading>
+    <RootNamespace>VibeSnake.Game</RootNamespace>
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\native\src\VibeSnake.Persistence\VibeSnake.Persistence.csproj" />
+    <ProjectReference Include="..\native\src\VibeSnake.Rules\VibeSnake.Rules.csproj" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,449 @@
+{
+  "sound_effects": {
+    "powerups": [
+      {
+        "name": "shield_activate",
+        "filename": "shield_activate.mp3",
+        "description": "Shield power-up activation",
+        "duration": 1.0,
+        "prompt": "Futuristic shield activation with bright energy surge and metallic resonance",
+        "variations": [
+          "Futuristic shield activation with bright energy surge",
+          "Electronic force field powering up with digital sparkles",
+          "Energy barrier materializing with sci-fi hum",
+          "Protective shield deploying with metallic resonance",
+          "Force field activating with crystalline shimmer",
+          "Defensive energy wall rising with power-up sound",
+          "Holographic shield emerging with tech ambience",
+          "Barrier shield engaging with electric pulse"
+        ]
+      },
+      {
+        "name": "slowmo_activate",
+        "filename": "slowmo_activate.mp3",
+        "description": "Slow-Mo power-up activation",
+        "duration": 1.2,
+        "prompt": "Time slowing down with deep pitch-shifted whoosh and dramatic bass drop",
+        "variations": [
+          "Time slowing down with deep pitch-shifted whoosh",
+          "Reality warping with bass drop and stretched audio",
+          "Chronological slowdown with heavy reverb",
+          "Temporal distortion with dragging sound effect",
+          "Time dilation activating with descending pitch",
+          "Slow motion engaging with deep resonance",
+          "Bullet time effect with dramatic bass",
+          "Time freeze initiating with low frequency pulse"
+        ]
+      },
+      {
+        "name": "magnet_activate",
+        "filename": "magnet_activate.mp3",
+        "description": "Magnet power-up activation",
+        "duration": 1.0,
+        "prompt": "Magnetic field activating with electronic hum and subtle spark crackles",
+        "variations": [
+          "Magnetic field activating with electronic hum",
+          "Electromagnetic pulse with metallic attraction sound",
+          "Gravity well engaging with deep pull effect",
+          "Magnetic force field with crackling energy",
+          "Attraction beam activating with sci-fi hum",
+          "Iron filings being pulled with magnetic whoosh",
+          "Tractor beam engaging with resonant tone",
+          "Magnetic vortex swirling with electric crackle"
+        ]
+      },
+      {
+        "name": "boost_activate",
+        "filename": "boost_activate.mp3",
+        "description": "Boost power-up activation",
+        "duration": 0.8,
+        "prompt": "Explosive rocket boost with instant attack under 10ms, powerful 2-5kHz punch, fast ascending whoosh, high-energy acceleration burst",
+        "variations": [
+          "Rocket engine ignition with powerful thrust whoosh",
+          "Nitro boost activating with explosive acceleration",
+          "Turbo charge engaging with fast ascending pitch",
+          "Speed burst ignition with engine roar",
+          "Afterburner kick-in with jet propulsion sound",
+          "Velocity surge with supersonic whoosh",
+          "High-speed takeoff with wind tunnel effect",
+          "Momentum blast with racing car acceleration"
+        ]
+      },
+      {
+        "name": "phaseshift_activate",
+        "filename": "phaseshift_activate.mp3",
+        "description": "Phase Shift power-up activation",
+        "duration": 1.0,
+        "prompt": "Ethereal ghost phase transition with spectral shimmer and mystical chime",
+        "variations": [
+          "Ethereal ghost phase with spectral shimmer",
+          "Reality bending with mystical chime",
+          "Dimension shift with cosmic whoosh",
+          "Incorporeal transition with haunting echo",
+          "Spirit form activating with phantom whisper",
+          "Astral projection with otherworldly resonance",
+          "Phasing through matter with quantum hum",
+          "Ghostly transformation with eerie ambience"
+        ]
+      },
+      {
+        "name": "gluttony_activate",
+        "filename": "gluttony_activate.mp3",
+        "description": "Gluttony power-up activation (stonks mode)",
+        "duration": 0.8,
+        "prompt": "Loud cash register cha-ching, bright 2-6kHz bell, instant attack under 10ms, satisfying money sound, phone speaker optimized",
+        "variations": [
+          "Cash register cha-ching with coin drop",
+          "Money counting machine with bill flutter",
+          "Coin jackpot payout with metallic clinks",
+          "ATM dispensing cash with mechanical sounds",
+          "Vintage cash register bell with drawer pop",
+          "Digital payment success with coin sound effect",
+          "Slot machine win with cascading coins",
+          "Treasure chest opening with gold clinking"
+        ]
+      },
+      {
+        "name": "bait_activate",
+        "filename": "bait_activate.mp3",
+        "description": "Bait power-up activation",
+        "duration": 0.5,
+        "prompt": "Sharp tactical lock-on beep, bright 3-7kHz range, instant attack under 15ms, clean crisp tone, phone speaker optimized confirmation sound",
+        "variations": [
+          "Tactical targeting beep with crosshair lock-on",
+          "Sonar ping with target acquisition",
+          "Missile lock confirmation with alert tone",
+          "Sniper scope focusing with targeting sound",
+          "Radar lock with electronic beep",
+          "Precision aim activating with digital chirp",
+          "Scope zoom with mechanical click",
+          "Target marker placement with confirmation blip"
+        ]
+      },
+      {
+        "name": "laststand_activate",
+        "filename": "laststand_activate.mp3",
+        "description": "Last Stand power-up activation",
+        "duration": 1.5,
+        "prompt": "Phoenix rising with dramatic fire whoosh and triumphant brass stab",
+        "variations": [
+          "Phoenix rising with dramatic fire whoosh and brass stab",
+          "Resurrection with angelic choir and flame burst",
+          "Revival flame igniting with heroic fanfare",
+          "Rebirth explosion with orchestral swell",
+          "Rising from ashes with triumphant horns",
+          "Regeneration pulse with powerful impact",
+          "Second wind activating with epic percussion",
+          "Comeback moment with cinematic braam"
+        ]
+      },
+      {
+        "name": "segmentdetach_activate",
+        "filename": "segmentdetach_activate.mp3",
+        "description": "Segment Detach power-up activation",
+        "duration": 1.0,
+        "prompt": "Sharp chain break, bright 3-6kHz metallic snap, instant attack 5ms, loud satisfying crack, clean separation sound, phone optimized",
+        "variations": [
+          "Chain breaking with metallic snap",
+          "Links shattering with falling pieces",
+          "Metal chain snapping with tension release",
+          "Segments detaching with mechanical clunk",
+          "Heavy chain breaking under stress",
+          "Metal links popping apart",
+          "Chain exploding with segment scatter",
+          "Rope snapping with whipcrack sound"
+        ]
+      },
+      {
+        "name": "powerup_spawn",
+        "filename": "powerup_spawn.mp3",
+        "description": "Power-up spawning on grid",
+        "duration": 0.7,
+        "prompt": "Magical item materialization with sparkle and soft chime",
+        "variations": [
+          "Magical item materialization with sparkle",
+          "Power-up appearing with twinkling stars",
+          "Item spawning with glittering particles",
+          "Collectible manifesting with soft glow",
+          "Power-up teleporting in with shimmer",
+          "Item dropping from sky with sparkle",
+          "Power-up phasing in with energy ripple",
+          "Magical appearance with fairy dust sound"
+        ]
+      },
+      {
+        "name": "powerup_collect",
+        "filename": "powerup_collect.mp3",
+        "description": "Collecting a power-up",
+        "duration": 0.5,
+        "prompt": "Ultra short power-up grab under 200ms, instant 5ms attack, bright 3-7kHz spike, loud satisfying pop, phone optimized, energetic burst",
+        "variations": [
+          "Satisfying pickup with bright pop",
+          "Item collection with success chime",
+          "Power-up grab with crisp snap",
+          "Collectible acquired with pleasant tone",
+          "Item obtained with reward sound",
+          "Power-up absorbed with energy whoosh",
+          "Collection confirmed with happy beep",
+          "Item secured with satisfaction sound"
+        ]
+      }
+    ],
+    "gameplay": [
+      {
+        "name": "food_collect",
+        "filename": "eat.wav",
+        "description": "Snake eating food",
+        "duration": 0.5,
+        "existing": true,
+        "prompt": "Juicy fruit bite with crisp crunch and satisfying chomp"
+      },
+      {
+        "name": "collision_death",
+        "filename": "lost.mp3",
+        "description": "Snake collision death",
+        "duration": 1.5,
+        "existing": true,
+        "prompt": "Game over crash with descending tone and sad trombone finish"
+      },
+      {
+        "name": "magnet_collect",
+        "filename": "magnet.mp3",
+        "description": "Magnet power-up sound",
+        "duration": 1.0,
+        "existing": true,
+        "prompt": "Magnetic attraction sound"
+      },
+      {
+        "name": "shield_break",
+        "filename": "shield_break.mp3",
+        "description": "Shield breaking on impact",
+        "duration": 0.8,
+        "prompt": "Energy shield shattering like glass with electric discharge",
+        "variations": [
+          "Energy shield shattering like glass",
+          "Force field breaking with electric spark",
+          "Barrier collapsing with glass shatter",
+          "Shield depleting with energy discharge",
+          "Protection breaking with crystal crack",
+          "Defense shattering with electric pop",
+          "Shield failure with energy release",
+          "Barrier rupture with sparking sound"
+        ]
+      },
+      {
+        "name": "phase_through",
+        "filename": "phase_through.mp3",
+        "description": "Phasing through own body",
+        "duration": 0.5,
+        "prompt": "Quick ghost pass-through with spectral whisper",
+        "variations": [
+          "Quick ghost pass-through",
+          "Spectral whisper whoosh",
+          "Ethereal phase sound",
+          "Ghost movement effect",
+          "Incorporeal pass with shimmer",
+          "Phantom slide through",
+          "Spirit movement sound",
+          "Ghostly transition effect"
+        ]
+      },
+      {
+        "name": "segment_drop",
+        "filename": "segment_drop.mp3",
+        "description": "Detached segments hitting ground",
+        "duration": 0.7,
+        "prompt": "Heavy metal segments clanging onto ground",
+        "variations": [
+          "Heavy metal segments clanging",
+          "Iron pieces dropping with impact",
+          "Metal chunks hitting floor",
+          "Segments falling with metallic clatter",
+          "Heavy pieces dropping with thud",
+          "Metal debris landing",
+          "Segments crashing down",
+          "Heavy metal impact"
+        ]
+      }
+    ],
+    "scoring": [
+      {
+        "name": "combo_tier_1",
+        "filename": "combo_tier_1.mp3",
+        "description": "Combo tier 1 (2x multiplier)",
+        "duration": 0.5,
+        "prompt": "Small combo achievement with ascending ding",
+        "variations": [
+          "Small combo with ascending ding",
+          "2x multiplier with pleasant chime",
+          "First combo tier with success tone",
+          "Small streak with reward sound",
+          "Combo start with happy ding",
+          "Multiplier active with bright bell",
+          "Chain beginning with cheerful note",
+          "Streak initiated with success chime"
+        ]
+      },
+      {
+        "name": "combo_tier_2",
+        "filename": "combo_tier_2.mp3",
+        "description": "Combo tier 2 (3x multiplier)",
+        "duration": 0.5,
+        "prompt": "Bright combo chime, 2-5kHz range (avoid harsh 3-5k), instant attack, loud satisfying tone, clean no reverb, phone optimized",
+        "variations": [
+          "Medium combo with brighter chime",
+          "3x multiplier with ascending tones",
+          "Growing streak with energetic sound",
+          "Combo building with excited chime",
+          "Chain extending with positive bells",
+          "Multiplier rising with celebration",
+          "Streak growing with happy sequence",
+          "Combo advancing with reward tones"
+        ]
+      },
+      {
+        "name": "combo_tier_3",
+        "filename": "combo_tier_3.mp3",
+        "description": "Combo tier 3 (5x multiplier)",
+        "duration": 0.7,
+        "prompt": "Large combo achievement with triumphant bell cascade",
+        "variations": [
+          "Large combo with triumphant bells",
+          "5x multiplier with cascading chimes",
+          "Major streak with victory tones",
+          "Big combo with celebratory sound",
+          "Impressive chain with fanfare",
+          "High multiplier with triumph",
+          "Strong streak with powerful bells",
+          "Major achievement with glory sound"
+        ]
+      },
+      {
+        "name": "combo_max",
+        "filename": "combo_max.mp3",
+        "description": "Max combo (10x multiplier)",
+        "duration": 1.0,
+        "prompt": "Epic combo achievement with orchestral stab and victory fanfare",
+        "variations": [
+          "Epic combo with orchestral stab",
+          "Legendary achievement with massive brass",
+          "God-tier combo with cinematic percussion",
+          "Ultimate multiplier with triumphant choir",
+          "Max level with powerful braam",
+          "Perfect combo with intense climax",
+          "Supreme achievement with dramatic timpani",
+          "Flawless streak with heroic fanfare"
+        ]
+      },
+      {
+        "name": "combo_break",
+        "filename": "combo_break.mp3",
+        "description": "Combo breaking",
+        "duration": 0.6,
+        "prompt": "Combo lost with descending disappointed tone",
+        "variations": [
+          "Combo lost with descending tone",
+          "Streak broken with sad trombone",
+          "Multiplier reset with failure sound",
+          "Chain ended with deflating whoosh",
+          "Combo dropped with negative chime",
+          "Streak shattered with disappointed sound",
+          "Multiplier collapsed with descending pitch",
+          "Achievement lost with regretful tone"
+        ]
+      },
+      {
+        "name": "milestone_reached",
+        "filename": "milestone_reached.mp3",
+        "description": "Score milestone reached",
+        "duration": 1.2,
+        "prompt": "Loud celebratory fanfare, bright 2-5kHz (avoid harsh 3-5k), instant attack, triumphant brass-style tone, phone optimized, satisfying achievement",
+        "variations": [
+          "Achievement unlocked with fanfare",
+          "Milestone reached with celebration",
+          "Goal achieved with victory sound",
+          "Landmark reached with triumphant music",
+          "Level up with success fanfare",
+          "Milestone with orchestral swell",
+          "Achievement with happy fanfare",
+          "Goal unlocked with celebration music"
+        ]
+      }
+    ],
+    "ui": [
+      {
+        "name": "menu_select",
+        "filename": "menu_select.mp3",
+        "description": "Menu selection",
+        "duration": 0.5,
+        "prompt": "Extremely short sharp click under 150ms total, instant attack 5ms, bright 4-6kHz spike, zero reverb, clean cutoff, no tail noise",
+        "variations": [
+          "Clean button click with snap",
+          "Mechanical switch click",
+          "Digital button press with blip",
+          "Menu selection with crisp tap",
+          "Interface click with feedback",
+          "Confirmation beep with press",
+          "Modern UI click",
+          "Precise button with pop"
+        ]
+      },
+      {
+        "name": "menu_hover",
+        "filename": "menu_hover.mp3",
+        "description": "Menu hover",
+        "duration": 0.5,
+        "prompt": "Very short subtle UI hover, bright 4-7kHz, quiet gentle tone, ultra fast decay, minimal tail, audible on phone speakers",
+        "variations": [
+          "Subtle hover with soft beep",
+          "Gentle UI highlight sound",
+          "Quiet menu focus tone",
+          "Delicate hover notification",
+          "Soft interface highlight",
+          "Gentle selection preview",
+          "Quiet UI feedback",
+          "Subtle focus indicator"
+        ]
+      },
+      {
+        "name": "pause",
+        "filename": "pause.mp3",
+        "description": "Game pause",
+        "duration": 0.5,
+        "prompt": "Game pause with time freeze effect",
+        "variations": [
+          "Game pause with time freeze",
+          "Pause button with stop effect",
+          "Game stopping with whoosh",
+          "Pause with frozen time sound",
+          "Game halt with crystal effect",
+          "Pause activation with stop tone",
+          "Time freeze with pause sound",
+          "Game suspension with effect"
+        ]
+      },
+      {
+        "name": "unpause",
+        "filename": "unpause.mp3",
+        "description": "Game unpause",
+        "duration": 0.5,
+        "prompt": "Game unpause with time resume effect",
+        "variations": [
+          "Game unpause with time resume",
+          "Resume with startup effect",
+          "Game continuing with whoosh",
+          "Unpause with time restart",
+          "Game resuming with energy",
+          "Continue with activation tone",
+          "Time restart with unpause",
+          "Game continuation effect"
+        ]
+      }
+    ]
+  },
+  "notes": {
+    "duration_guidelines": "Keep sounds short for responsiveness. UI: 0.15-0.3s, Gameplay: 0.3-0.8s, Power-ups: 0.8-1.5s, Scoring: 0.4-1.2s",
+    "existing_sounds": "Sounds marked with 'existing': true already exist in assets/audio/ and won't be regenerated unless --redo-all is used",
+    "music": "music.mp3 is never touched by this tool"
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "name": "Speed Demon",
+  "description": "GOTTA GO FAST! Chases food aggressively, no time for safety.",
+  "aggression": 0.95,
+  "risk_tolerance": 0.8,
+  "patience": 0.2,
+  "greed": 0.9,
+  "chaos": 0.3,
+  "power_up_priority": 0.4,
+  "color": [
+    255,
+    50,
+    50
+  ]
+}

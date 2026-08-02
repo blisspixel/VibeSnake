@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 1,
+  "dotnetSdk": {
+    "version": "10.0.302",
+    "channel": "10.0",
+    "support": "LTS"
+  },
+  "godot": {
+    "version": "4.7.1",
+    "flavor": "dotnet",
+    "commit": "a13da4feb",
+    "releaseBaseUrl": "https://github.com/godotengine/godot/releases/download/4.7.1-stable",
+    "exportTemplates": {
+      "versionDirectory": "4.7.1.stable.mono",
+      "file": "Godot_v4.7.1-stable_mono_export_templates.tpz",
+      "sha512": "8bbc4caed6f095f4a2dee27b59254077797f3a4288b55e9f9eec7fe47c69deb2e3f8853644b37e8bec0c2910c596aa1a6ecc0a7f4b7502d4c685cf9d853be0d1"
+    },
+    "archives": {
+      "windows-x64": {
+        "file": "Godot_v4.7.1-stable_mono_win64.zip",
+        "sha512": "aa04876c7932c2e6807233e6908da4045e904781a83dc3c793c34ba71c9f66292eb4da82aa55a6b8694fccf856f8c244c7709cfba20405066445daf9c2749b71",
+        "sha256": "764a089809fb1a6f745686ce9f6d3ca83adce8fb60fb9a4e2324b63baaebaa45"
+      },
+      "linux-x64": {
+        "file": "Godot_v4.7.1-stable_mono_linux_x86_64.zip",
+        "sha512": "0dd41f159a358b3cf23898a8d6aa3b346bd91a574b22991bbd3bc812cd414ad1b1d7701de7124bd9818f0d52b3734a885f0edaeab9cb4b2cd1d5049171e304b8"
+      },
+      "macos-universal": {
+        "file": "Godot_v4.7.1-stable_mono_macos.universal.zip",
+        "sha512": "7708863cb3ed22000cda423a3b067c7b882f1434c7854242e2fab6cead45ae321b5004075adc76c32a73411ccc96b4fa655158d72cbbbb5ba58651c2a7c3763e"
+      }
+    }
+  },
+  "runtime": {
+    "renderer": "gl_compatibility",
+    "logicalViewport": {
+      "width": 1280,
+      "height": 720
+    },
+    "rulesTickMilliseconds": 50
+  }
+}

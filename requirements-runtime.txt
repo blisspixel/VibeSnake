@@ -1,0 +1,6 @@
+# Reproducible source-player installation graph.
+-r requirements.txt
+
+# Build backend required by the no-build-isolation editable install.
+setuptools>=83,<84
+wheel>=0.45,<1

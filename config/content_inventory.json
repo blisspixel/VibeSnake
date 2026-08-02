@@ -1,0 +1,457 @@
+{
+  "schemaVersion": 1,
+  "assetRoot": "assets",
+  "policyPath": "config/content_policy.json",
+  "policySha256": "f7831440c10686e20699782c12010cc826256f55cec466258ea1d5880ba49a8f",
+  "fileCount": 18,
+  "totalBytes": 95377,
+  "summary": {
+    "byIntegrityStatus": {
+      "valid": 18
+    },
+    "byMediaType": {
+      "application/json": 7,
+      "image/png": 9,
+      "text/markdown": 2
+    },
+    "byPackId": {
+      "development-only": 7,
+      "radio-pack-unassigned": 8,
+      "reference-core": 3
+    },
+    "byRightsStatus": {
+      "cleared": 18
+    },
+    "byRole": {
+      "development-reference": 6,
+      "production-metadata": 1,
+      "reference-runtime-config": 1,
+      "reference-runtime-data": 1,
+      "reference-runtime-image": 9
+    },
+    "byShipStatus": {
+      "blocked": 11,
+      "excluded": 7
+    },
+    "duplicateFileCount": 1,
+    "duplicateGroupCount": 1,
+    "exportEligibleBytes": 0,
+    "exportEligibleFileCount": 0
+  },
+  "assets": [
+    {
+      "id": "asset:ai/custom/military_tactician.json",
+      "path": "ai/custom/military_tactician.json",
+      "mediaType": "application/json",
+      "bytes": 309,
+      "sha256": "8a3a3d8405163fc8d9ac61aa36c6c69e5df8663413d15519db5650416939f6f9",
+      "integrityStatus": "valid",
+      "integrityDetail": "basic structure check passed",
+      "role": "reference-runtime-data",
+      "packId": "reference-core",
+      "runtimeUse": "optional",
+      "shipStatus": "blocked",
+      "exportEligible": false,
+      "rights": {
+        "status": "cleared",
+        "source": "Vibe Snake AI personality data authored by project contributors",
+        "license": "Apache-2.0",
+        "attribution": "Copyright 2025-2026 blisspixel contributors",
+        "reviewNote": "Project-wide Apache-2.0 release intent confirmed by the project owner on 2026-08-01; native schema and final personality selection remain required"
+      },
+      "policyRule": "reference-custom-ai",
+      "duplicateOf": null
+    },
+    {
+      "id": "asset:ai/examples/berserker.json",
+      "path": "ai/examples/berserker.json",
+      "mediaType": "application/json",
+      "bytes": 278,
+      "sha256": "d73a37f00693b7cd41dbd5270764262d2b8b926fd0ad345a817a84520f05bc10",
+      "integrityStatus": "valid",
+      "integrityDetail": "basic structure check passed",
+      "role": "development-reference",
+      "packId": "development-only",
+      "runtimeUse": "none",
+      "shipStatus": "excluded",
+      "exportEligible": false,
+      "rights": {
+        "status": "cleared",
+        "source": "Vibe Snake example personality data authored by project contributors",
+        "license": "Apache-2.0",
+        "attribution": "Copyright 2025-2026 blisspixel contributors",
+        "reviewNote": "Open-source examples remain outside player content packs because they are development material"
+      },
+      "policyRule": "development-ai-examples",
+      "duplicateOf": null
+    },
+    {
+      "id": "asset:ai/examples/economist.json",
+      "path": "ai/examples/economist.json",
+      "mediaType": "application/json",
+      "bytes": 302,
+      "sha256": "ff63291974f6a9d7763465ab0ed7c91dcdce97b95f35cd215bfbca76a9efe5fd",
+      "integrityStatus": "valid",
+      "integrityDetail": "basic structure check passed",
+      "role": "development-reference",
+      "packId": "development-only",
+      "runtimeUse": "none",
+      "shipStatus": "excluded",
+      "exportEligible": false,
+      "rights": {
+        "status": "cleared",
+        "source": "Vibe Snake example personality data authored by project contributors",
+        "license": "Apache-2.0",
+        "attribution": "Copyright 2025-2026 blisspixel contributors",
+        "reviewNote": "Open-source examples remain outside player content packs because they are development material"
+      },
+      "policyRule": "development-ai-examples",
+      "duplicateOf": null
+    },
+    {
+      "id": "asset:ai/examples/military_tactician.json",
+      "path": "ai/examples/military_tactician.json",
+      "mediaType": "application/json",
+      "bytes": 309,
+      "sha256": "8a3a3d8405163fc8d9ac61aa36c6c69e5df8663413d15519db5650416939f6f9",
+      "integrityStatus": "valid",
+      "integrityDetail": "basic structure check passed",
+      "role": "development-reference",
+      "packId": "development-only",
+      "runtimeUse": "none",
+      "shipStatus": "excluded",
+      "exportEligible": false,
+      "rights": {
+        "status": "cleared",
+        "source": "Vibe Snake example personality data authored by project contributors",
+        "license": "Apache-2.0",
+        "attribution": "Copyright 2025-2026 blisspixel contributors",
+        "reviewNote": "Open-source examples remain outside player content packs because they are development material"
+      },
+      "policyRule": "development-ai-examples",
+      "duplicateOf": "asset:ai/custom/military_tactician.json"
+    },
+    {
+      "id": "asset:ai/examples/speed_demon_export.json",
+      "path": "ai/examples/speed_demon_export.json",
+      "mediaType": "application/json",
+      "bytes": 290,
+      "sha256": "0d6275da2a29dcade78a4dc6f67681302a242eb0c6529e944454fe4c6bfd595c",
+      "integrityStatus": "valid",
+      "integrityDetail": "basic structure check passed",
+      "role": "development-reference",
+      "packId": "development-only",
+      "runtimeUse": "none",
+      "shipStatus": "excluded",
+      "exportEligible": false,
+      "rights": {
+        "status": "cleared",
+        "source": "Vibe Snake example personality data authored by project contributors",
+        "license": "Apache-2.0",
+        "attribution": "Copyright 2025-2026 blisspixel contributors",
+        "reviewNote": "Open-source examples remain outside player content packs because they are development material"
+      },
+      "policyRule": "development-ai-examples",
+      "duplicateOf": null
+    },
+    {
+      "id": "asset:ai/README.md",
+      "path": "ai/README.md",
+      "mediaType": "text/markdown",
+      "bytes": 936,
+      "sha256": "88cd5176d5056b1c34781807716e49a06253d4fef0b3fe980bba2d9bb650f3c3",
+      "integrityStatus": "valid",
+      "integrityDetail": "basic structure check passed",
+      "role": "development-reference",
+      "packId": "development-only",
+      "runtimeUse": "none",
+      "shipStatus": "excluded",
+      "exportEligible": false,
+      "rights": {
+        "status": "cleared",
+        "source": "Vibe Snake example personality data authored by project contributors",
+        "license": "Apache-2.0",
+        "attribution": "Copyright 2025-2026 blisspixel contributors",
+        "reviewNote": "Open-source examples remain outside player content packs because they are development material"
+      },
+      "policyRule": "development-ai-examples",
+      "duplicateOf": null
+    },
+    {
+      "id": "asset:audio/sound_effects.json",
+      "path": "audio/sound_effects.json",
+      "mediaType": "application/json",
+      "bytes": 18004,
+      "sha256": "f33f90239ffa804ff6fb0fdb2e426412d09d832ba33740a44e1127f9370806a3",
+      "integrityStatus": "valid",
+      "integrityDetail": "basic structure check passed",
+      "role": "production-metadata",
+      "packId": "development-only",
+      "runtimeUse": "none",
+      "shipStatus": "excluded",
+      "exportEligible": false,
+      "rights": {
+        "status": "cleared",
+        "source": "Vibe Snake audio production metadata authored by blisspixel",
+        "license": "Apache-2.0",
+        "attribution": "Copyright 2025-2026 blisspixel contributors",
+        "reviewNote": "Open-source prompts and production plans stay outside player artifacts"
+      },
+      "policyRule": "audio-production-metadata",
+      "duplicateOf": null
+    },
+    {
+      "id": "asset:config/config.json",
+      "path": "config/config.json",
+      "mediaType": "application/json",
+      "bytes": 866,
+      "sha256": "5f0be6503c9e6ab62c024266240b6c3c69f2745b9594b1cc828f984370e20c6f",
+      "integrityStatus": "valid",
+      "integrityDetail": "basic structure check passed",
+      "role": "reference-runtime-config",
+      "packId": "reference-core",
+      "runtimeUse": "required",
+      "shipStatus": "blocked",
+      "exportEligible": false,
+      "rights": {
+        "status": "cleared",
+        "source": "Vibe Snake runtime configuration authored by project contributors",
+        "license": "Apache-2.0",
+        "attribution": "Copyright 2025-2026 blisspixel contributors",
+        "reviewNote": "Project-wide Apache-2.0 release intent confirmed by the project owner on 2026-08-01; native schema and pack review remain required"
+      },
+      "policyRule": "reference-runtime-config",
+      "duplicateOf": null
+    },
+    {
+      "id": "asset:images/logo.png",
+      "path": "images/logo.png",
+      "mediaType": "image/png",
+      "bytes": 17800,
+      "sha256": "60c0337de866a3a34ea3e37dc83174653c042e4670b53059b359efc64296b1f3",
+      "integrityStatus": "valid",
+      "integrityDetail": "PNG container, palette, compressed scanlines, and chunk CRCs are valid",
+      "role": "reference-runtime-image",
+      "packId": "reference-core",
+      "runtimeUse": "required",
+      "shipStatus": "blocked",
+      "exportEligible": false,
+      "rights": {
+        "status": "cleared",
+        "source": "Deterministic project artwork generated from original pixel geometry in scripts/visual_generate_logo.py and released by blisspixel",
+        "license": "Apache-2.0",
+        "attribution": "Copyright 2025-2026 blisspixel contributors",
+        "reviewNote": "Canonical bytes have a deterministic local freshness gate; final brand, accessibility, and release-pack review remain required"
+      },
+      "policyRule": "reference-logo",
+      "duplicateOf": null
+    },
+    {
+      "id": "asset:images/radio_badges/chaos_theory_badge.png",
+      "path": "images/radio_badges/chaos_theory_badge.png",
+      "mediaType": "image/png",
+      "bytes": 5811,
+      "sha256": "7ab217a2933b5bea921d9d609d9d8440bb0eba22bdc28f402224272e2657846e",
+      "integrityStatus": "valid",
+      "integrityDetail": "PNG container, palette, compressed scanlines, and chunk CRCs are valid",
+      "role": "reference-runtime-image",
+      "packId": "radio-pack-unassigned",
+      "runtimeUse": "optional",
+      "shipStatus": "blocked",
+      "exportEligible": false,
+      "rights": {
+        "status": "cleared",
+        "source": "Programmatic station artwork generated by scripts/visual_generate_badges.py and released by blisspixel; text rasterized from Pillow 12.3's embedded reduced Aileron Regular subset by Sora Sagano",
+        "license": "Apache-2.0",
+        "attribution": "Copyright 2025-2026 blisspixel contributors; Aileron Regular by Sora Sagano, No Rights Reserved",
+        "reviewNote": "Project-wide Apache-2.0 release intent confirmed by the owner on 2026-08-01; repository generation requires Pillow 12.3's embedded reduced Aileron Regular subset and a byte-for-byte freshness gate; Aileron's official source states No Rights Reserved; station identity, visual accessibility, and pack review remain required"
+      },
+      "policyRule": "reference-radio-badges",
+      "duplicateOf": null
+    },
+    {
+      "id": "asset:images/radio_badges/flow_signal_badge.png",
+      "path": "images/radio_badges/flow_signal_badge.png",
+      "mediaType": "image/png",
+      "bytes": 10511,
+      "sha256": "046f90af26dd6dd2e303d6501ba7fc083f5e578815f86d4bc368d4d1829cccad",
+      "integrityStatus": "valid",
+      "integrityDetail": "PNG container, palette, compressed scanlines, and chunk CRCs are valid",
+      "role": "reference-runtime-image",
+      "packId": "radio-pack-unassigned",
+      "runtimeUse": "optional",
+      "shipStatus": "blocked",
+      "exportEligible": false,
+      "rights": {
+        "status": "cleared",
+        "source": "Programmatic station artwork generated by scripts/visual_generate_badges.py and released by blisspixel; text rasterized from Pillow 12.3's embedded reduced Aileron Regular subset by Sora Sagano",
+        "license": "Apache-2.0",
+        "attribution": "Copyright 2025-2026 blisspixel contributors; Aileron Regular by Sora Sagano, No Rights Reserved",
+        "reviewNote": "Project-wide Apache-2.0 release intent confirmed by the owner on 2026-08-01; repository generation requires Pillow 12.3's embedded reduced Aileron Regular subset and a byte-for-byte freshness gate; Aileron's official source states No Rights Reserved; station identity, visual accessibility, and pack review remain required"
+      },
+      "policyRule": "reference-radio-badges",
+      "duplicateOf": null
+    },
+    {
+      "id": "asset:images/radio_badges/global_coil_badge.png",
+      "path": "images/radio_badges/global_coil_badge.png",
+      "mediaType": "image/png",
+      "bytes": 5035,
+      "sha256": "01ed3acd091d69871b81167c315b24391b90c24362a6eb6a1effdca21210d9e3",
+      "integrityStatus": "valid",
+      "integrityDetail": "PNG container, palette, compressed scanlines, and chunk CRCs are valid",
+      "role": "reference-runtime-image",
+      "packId": "radio-pack-unassigned",
+      "runtimeUse": "optional",
+      "shipStatus": "blocked",
+      "exportEligible": false,
+      "rights": {
+        "status": "cleared",
+        "source": "Programmatic station artwork generated by scripts/visual_generate_badges.py and released by blisspixel; text rasterized from Pillow 12.3's embedded reduced Aileron Regular subset by Sora Sagano",
+        "license": "Apache-2.0",
+        "attribution": "Copyright 2025-2026 blisspixel contributors; Aileron Regular by Sora Sagano, No Rights Reserved",
+        "reviewNote": "Project-wide Apache-2.0 release intent confirmed by the owner on 2026-08-01; repository generation requires Pillow 12.3's embedded reduced Aileron Regular subset and a byte-for-byte freshness gate; Aileron's official source states No Rights Reserved; station identity, visual accessibility, and pack review remain required"
+      },
+      "policyRule": "reference-radio-badges",
+      "duplicateOf": null
+    },
+    {
+      "id": "asset:images/radio_badges/ourotron_badge.png",
+      "path": "images/radio_badges/ourotron_badge.png",
+      "mediaType": "image/png",
+      "bytes": 12770,
+      "sha256": "b086be500e49e3ddee42a51b2cfde60b0682459201d227f2de5fd41d6c6bbd6e",
+      "integrityStatus": "valid",
+      "integrityDetail": "PNG container, palette, compressed scanlines, and chunk CRCs are valid",
+      "role": "reference-runtime-image",
+      "packId": "radio-pack-unassigned",
+      "runtimeUse": "optional",
+      "shipStatus": "blocked",
+      "exportEligible": false,
+      "rights": {
+        "status": "cleared",
+        "source": "Programmatic station artwork generated by scripts/visual_generate_badges.py and released by blisspixel; text rasterized from Pillow 12.3's embedded reduced Aileron Regular subset by Sora Sagano",
+        "license": "Apache-2.0",
+        "attribution": "Copyright 2025-2026 blisspixel contributors; Aileron Regular by Sora Sagano, No Rights Reserved",
+        "reviewNote": "Project-wide Apache-2.0 release intent confirmed by the owner on 2026-08-01; repository generation requires Pillow 12.3's embedded reduced Aileron Regular subset and a byte-for-byte freshness gate; Aileron's official source states No Rights Reserved; station identity, visual accessibility, and pack review remain required"
+      },
+      "policyRule": "reference-radio-badges",
+      "duplicateOf": null
+    },
+    {
+      "id": "asset:images/radio_badges/the_bureau_badge.png",
+      "path": "images/radio_badges/the_bureau_badge.png",
+      "mediaType": "image/png",
+      "bytes": 4402,
+      "sha256": "5e4beadc9cf4651bdd52140db963bd06b662fad57b43d5d64a3ff2ccf8463fe3",
+      "integrityStatus": "valid",
+      "integrityDetail": "PNG container, palette, compressed scanlines, and chunk CRCs are valid",
+      "role": "reference-runtime-image",
+      "packId": "radio-pack-unassigned",
+      "runtimeUse": "optional",
+      "shipStatus": "blocked",
+      "exportEligible": false,
+      "rights": {
+        "status": "cleared",
+        "source": "Programmatic station artwork generated by scripts/visual_generate_badges.py and released by blisspixel; text rasterized from Pillow 12.3's embedded reduced Aileron Regular subset by Sora Sagano",
+        "license": "Apache-2.0",
+        "attribution": "Copyright 2025-2026 blisspixel contributors; Aileron Regular by Sora Sagano, No Rights Reserved",
+        "reviewNote": "Project-wide Apache-2.0 release intent confirmed by the owner on 2026-08-01; repository generation requires Pillow 12.3's embedded reduced Aileron Regular subset and a byte-for-byte freshness gate; Aileron's official source states No Rights Reserved; station identity, visual accessibility, and pack review remain required"
+      },
+      "policyRule": "reference-radio-badges",
+      "duplicateOf": null
+    },
+    {
+      "id": "asset:images/radio_badges/the_pit_badge.png",
+      "path": "images/radio_badges/the_pit_badge.png",
+      "mediaType": "image/png",
+      "bytes": 2979,
+      "sha256": "b7f63edcd1a0556daece7a436192ad1211fa042a5c098716a115592fe85afe6b",
+      "integrityStatus": "valid",
+      "integrityDetail": "PNG container, palette, compressed scanlines, and chunk CRCs are valid",
+      "role": "reference-runtime-image",
+      "packId": "radio-pack-unassigned",
+      "runtimeUse": "optional",
+      "shipStatus": "blocked",
+      "exportEligible": false,
+      "rights": {
+        "status": "cleared",
+        "source": "Programmatic station artwork generated by scripts/visual_generate_badges.py and released by blisspixel; text rasterized from Pillow 12.3's embedded reduced Aileron Regular subset by Sora Sagano",
+        "license": "Apache-2.0",
+        "attribution": "Copyright 2025-2026 blisspixel contributors; Aileron Regular by Sora Sagano, No Rights Reserved",
+        "reviewNote": "Project-wide Apache-2.0 release intent confirmed by the owner on 2026-08-01; repository generation requires Pillow 12.3's embedded reduced Aileron Regular subset and a byte-for-byte freshness gate; Aileron's official source states No Rights Reserved; station identity, visual accessibility, and pack review remain required"
+      },
+      "policyRule": "reference-radio-badges",
+      "duplicateOf": null
+    },
+    {
+      "id": "asset:images/radio_badges/the_strike_badge.png",
+      "path": "images/radio_badges/the_strike_badge.png",
+      "mediaType": "image/png",
+      "bytes": 5299,
+      "sha256": "c3c8793a53541be35633e3a14a77adcd38aee360f70349ec856258a50a7749fa",
+      "integrityStatus": "valid",
+      "integrityDetail": "PNG container, palette, compressed scanlines, and chunk CRCs are valid",
+      "role": "reference-runtime-image",
+      "packId": "radio-pack-unassigned",
+      "runtimeUse": "optional",
+      "shipStatus": "blocked",
+      "exportEligible": false,
+      "rights": {
+        "status": "cleared",
+        "source": "Programmatic station artwork generated by scripts/visual_generate_badges.py and released by blisspixel; text rasterized from Pillow 12.3's embedded reduced Aileron Regular subset by Sora Sagano",
+        "license": "Apache-2.0",
+        "attribution": "Copyright 2025-2026 blisspixel contributors; Aileron Regular by Sora Sagano, No Rights Reserved",
+        "reviewNote": "Project-wide Apache-2.0 release intent confirmed by the owner on 2026-08-01; repository generation requires Pillow 12.3's embedded reduced Aileron Regular subset and a byte-for-byte freshness gate; Aileron's official source states No Rights Reserved; station identity, visual accessibility, and pack review remain required"
+      },
+      "policyRule": "reference-radio-badges",
+      "duplicateOf": null
+    },
+    {
+      "id": "asset:images/radio_badges/underground_scales_badge.png",
+      "path": "images/radio_badges/underground_scales_badge.png",
+      "mediaType": "image/png",
+      "bytes": 8362,
+      "sha256": "758bf65063a2b72a47e8d28e1e548e636f79d5bc8531f2da4ad532cfbd29887b",
+      "integrityStatus": "valid",
+      "integrityDetail": "PNG container, palette, compressed scanlines, and chunk CRCs are valid",
+      "role": "reference-runtime-image",
+      "packId": "radio-pack-unassigned",
+      "runtimeUse": "optional",
+      "shipStatus": "blocked",
+      "exportEligible": false,
+      "rights": {
+        "status": "cleared",
+        "source": "Programmatic station artwork generated by scripts/visual_generate_badges.py and released by blisspixel; text rasterized from Pillow 12.3's embedded reduced Aileron Regular subset by Sora Sagano",
+        "license": "Apache-2.0",
+        "attribution": "Copyright 2025-2026 blisspixel contributors; Aileron Regular by Sora Sagano, No Rights Reserved",
+        "reviewNote": "Project-wide Apache-2.0 release intent confirmed by the owner on 2026-08-01; repository generation requires Pillow 12.3's embedded reduced Aileron Regular subset and a byte-for-byte freshness gate; Aileron's official source states No Rights Reserved; station identity, visual accessibility, and pack review remain required"
+      },
+      "policyRule": "reference-radio-badges",
+      "duplicateOf": null
+    },
+    {
+      "id": "asset:README.md",
+      "path": "README.md",
+      "mediaType": "text/markdown",
+      "bytes": 1114,
+      "sha256": "2c1381c32c0b38d27477c3709307ce3d5098f59b6206330f60c5544559f197fc",
+      "integrityStatus": "valid",
+      "integrityDetail": "basic structure check passed",
+      "role": "development-reference",
+      "packId": "development-only",
+      "runtimeUse": "none",
+      "shipStatus": "excluded",
+      "exportEligible": false,
+      "rights": {
+        "status": "cleared",
+        "source": "Vibe Snake repository documentation authored by project contributors",
+        "license": "Apache-2.0",
+        "attribution": "Copyright 2025-2026 blisspixel contributors",
+        "reviewNote": "Open-source repository navigation is excluded from player content packs because it is not runtime content"
+      },
+      "policyRule": "asset-tree-documentation",
+      "duplicateOf": null
+    }
+  ]
+}

@@ -1,0 +1,31 @@
+{
+  "generator": "scripts/capture_readme_screenshots.py",
+  "schemaVersion": 1,
+  "screenshots": [
+    {
+      "file": "main-menu.png",
+      "height": 720,
+      "label": "Main menu",
+      "sha256": "0f283eda2116d456c58b64a8db9d3bb465613ad3e1a88dc1634d11b3a649bf8c",
+      "state": "MENU",
+      "width": 1280
+    },
+    {
+      "file": "vibe-run.png",
+      "height": 720,
+      "label": "Vibe run",
+      "sha256": "73c7b82f7d84e63ac24e9e1a300a5032419bcacd5eea34263cefc4b89a5ac063",
+      "state": "RUNNING",
+      "width": 1280
+    },
+    {
+      "file": "ai-lets-play.png",
+      "height": 720,
+      "label": "AI Lets Play",
+      "sha256": "cffdec893d64b1bc9a4974a441b0075e12ffa22dcebde0a93eb890a671b82972",
+      "state": "LETS_PLAY",
+      "width": 1280
+    }
+  ],
+  "sourceSha256": "5fe16317a11aae1c35f3eeb685598c2c3a5bd3596e8e4615b8f226bc1da302c7"
+}

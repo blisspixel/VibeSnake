@@ -1,0 +1,18 @@
+Vibe Snake
+Copyright 2025-2026 blisspixel contributors
+
+Source code, project-authored documentation, and assets explicitly marked with
+cleared rights in config/content_inventory.json are part of the Work.
+
+Audio candidates whose production records identify external generation services
+remain blocked from public distribution until the applicable account tier,
+feature status, generation date, terms, and attribution requirements are bound
+to each candidate. They are not represented as Apache-2.0 content while that
+review remains open.
+
+Third-party dependencies and tools retain their own licenses. Generated player
+artifacts must include the applicable dependency and content-pack notices.
+
+The radio-station badges rasterize text from the reduced Aileron Regular subset
+embedded in Pillow 12.3. Aileron Regular was designed by Sora Sagano. Its official
+source at https://dotcolon.net/fonts/aileron states "No Rights Reserved."

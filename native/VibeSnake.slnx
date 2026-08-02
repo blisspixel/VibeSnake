@@ -1,0 +1,14 @@
+<Solution>
+  <Folder Name="/game/">
+    <Project Path="../game/VibeSnake.Game.csproj">
+      <BuildType Project="Debug" />
+    </Project>
+  </Folder>
+  <Folder Name="/src/">
+    <Project Path="src/VibeSnake.Persistence/VibeSnake.Persistence.csproj" />
+    <Project Path="src/VibeSnake.Rules/VibeSnake.Rules.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/VibeSnake.Rules.Tests/VibeSnake.Rules.Tests.csproj" />
+  </Folder>
+</Solution>

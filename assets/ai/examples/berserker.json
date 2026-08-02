@@ -1,0 +1,11 @@
+{
+  "name": "Berserker",
+  "description": "MAXIMUM AGGRESSION. Red team adversarial simulation - takes every risk.",
+  "aggression": 1.0,
+  "risk_tolerance": 1.0,
+  "patience": 0.0,
+  "greed": 1.0,
+  "chaos": 0.5,
+  "power_up_priority": 0.9,
+  "color": [200, 0, 0]
+}

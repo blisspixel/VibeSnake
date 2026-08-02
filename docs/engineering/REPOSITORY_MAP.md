@@ -1,0 +1,139 @@
+# Repository Map
+
+## Top level
+
+| Path | Ownership |
+| --- | --- |
+| [README.md](../../README.md) | Concise product entry point and document links |
+| [CONTRIBUTING.md](../../CONTRIBUTING.md) | Contribution workflow and definition of done |
+| [pyproject.toml](../../pyproject.toml) | Package metadata, `vibesnake` console command, build backend, pytest, coverage, and Ruff policy |
+| [requirements.txt](../../requirements.txt) | Runtime dependencies |
+| [requirements-dev.txt](../../requirements-dev.txt) | Human-edited development dependency constraints |
+| [requirements-ci.lock](../../requirements-ci.lock) | Universal Python 3.11 through 3.14 graph with exact versions and SHA-256 hashes |
+| [requirements-runtime.lock](../../requirements-runtime.lock) | Minimal hash-locked player graph for Python 3.11 through 3.14 |
+| [requirements-runtime.txt](../../requirements-runtime.txt) | Human-edited player and local build constraints used to generate the runtime lock |
+| [.pre-commit-config.yaml](../../.pre-commit-config.yaml) | Repository-owned local quality hooks with no mutable remote hook dependencies |
+| [global.json](../../global.json) | Stable .NET 10 SDK selection and local-tool lookup policy |
+| [Directory.Build.props](../../Directory.Build.props) | Shared C# warnings, nullability, language, and deterministic-build policy |
+| [LICENSE](../../LICENSE) | Apache License 2.0 terms |
+| [NOTICE](../../NOTICE) | Project and original-content attribution |
+| [config/content_policy.json](../../config/content_policy.json) | Human-reviewed source asset classification, rights status, and shipping policy |
+| [config/content_inventory.json](../../config/content_inventory.json) | Generated deterministic file hashes, sizes, integrity results, and export eligibility |
+
+## Runtime package
+
+```text
+src/vibesnake/
+|-- __main__.py             Process entry point
+|-- ai/player.py            Personality schema, loading, and decisions
+|-- audio/                  SFX and radio management
+|-- core/                   Game coordinator and core models
+|-- data/                   Config, settings, and data-path resolution
+|-- input/                  Keyboard, mouse, and gamepad routing
+|-- powerups/               Base class, manager, and nine types
+|-- content/                Asset inventory, pack validation, compatibility, and release blockers
+|-- qa/                     Simulation, invariants, reports, dependency lock, source policy, and CLI
+|-- rendering/              HUD, menus, backgrounds, and effects
+`-- utils/                  Logging setup
+```
+
+High-change files and their reason:
+
+- [core/game_state.py](../../src/vibesnake/core/game_state.py): composition root and main loop.
+- [rendering/menus.py](../../src/vibesnake/rendering/menus.py): all non-gameplay screens.
+- [core/snake.py](../../src/vibesnake/core/snake.py): movement plus cosmetic rendering.
+- [rendering/visual_effects.py](../../src/vibesnake/rendering/visual_effects.py): feedback and procedural environments.
+
+Read [ARCHITECTURE.md](ARCHITECTURE.md) before restructuring these files.
+
+## Native qualification foundation
+
+```text
+game/
+|-- project.godot             Godot 4.7.1 project and fixed presentation settings
+|-- export_presets.cfg        Windows x64, Linux x64, and macOS Universal presets
+|-- VibeSnake.Game.sln        Application solution required by Godot .NET export
+|-- VibeSnake.Game.csproj     Godot C# shell, rules, and persistence references
+|-- scenes/Main.tscn          Qualification entry scene
+|-- scripts/GameActions.cs    Logical keyboard, controller, and replay defaults
+|-- scripts/AudioFallback.cs  Finite PCM fallback cues and explicit resource lifecycle
+|-- scripts/StepFeedback.cs   Typed event-to-cue and persistent-caption priority
+`-- scripts/Main.cs           Action routing, replay integration, drawing, lifecycle, and headless smoke adapter
+
+native/
+|-- VibeSnake.slnx            Native solution
+|-- toolchain.json            Exact SDK, engine, editor and template hashes, renderer, and cadence pins
+|-- src/VibeSnake.Rules/      Engine-independent rules, canonical state, and restore boundary
+|-- src/VibeSnake.Persistence/  Bounded replay import and atomic user-data storage
+`-- tests/VibeSnake.Rules.Tests/  xUnit parity, restore, replay, storage, and generated state-machine contracts
+
+scripts/
+|-- check_source_policy.py    Enforce executable anti-slop rules
+|-- content_inventory.py        Generate or verify the source asset inventory
+|-- content_packs.py            Qualify canonical core and optional pack manifests
+|-- lock_python_dependencies.py Verify or regenerate the hash-locked Python graph
+|-- assert_godot_toolchain.ps1  Checksum-bound pinned editor-build gate
+|-- native_artifact_policy.ps1  Shared prohibited native-bundle path rules
+|-- platform_path_policy.ps1    Absolute environment-path policy for tooling
+|-- test_powershell_gates.ps1   Toolchain and artifact-policy regressions
+|-- install_godot.ps1             Checksum-verified editor bootstrap
+|-- install_godot_templates.ps1   Selective checksum-verified export-template bootstrap
+|-- test_native.ps1               Rules, coverage, formatting, import, and scene smoke
+|-- test_native_export.ps1        Outside-checkout packaged-player smoke
+`-- inspect_native_artifact.ps1   Payload, portability, and SHA-256 manifest gate
+```
+
+The native paths are an active 0.3 qualification slice, not yet the default playable game. The Python package remains the behavior reference until the roadmap parity and artifact gates pass.
+
+Persistence and configuration boundaries:
+
+- [core/player_profile.py](../../src/vibesnake/core/player_profile.py): lifetime statistics and achievement state.
+- [core/customization.py](../../src/vibesnake/core/customization.py): active appearance and loadouts.
+- [core/high_scores.py](../../src/vibesnake/core/high_scores.py): canonical top-ten leaderboard and legacy import.
+- [core/user_settings.py](../../src/vibesnake/core/user_settings.py): audio and fullscreen preferences.
+- [data/json_store.py](../../src/vibesnake/data/json_store.py): atomic JSON writes and corrupt-file backups.
+- [data/paths.py](../../src/vibesnake/data/paths.py): user-data location and checkout-save migration.
+- [data/config.py](../../src/vibesnake/data/config.py): schema-versioned runtime configuration loading and validation.
+
+## Assets
+
+```text
+assets/
+|-- ai/                     Built-in support files, custom definitions, examples
+|-- audio/                  Rights-cleared production metadata; no audio binaries
+|-- config/config.json      Runtime configuration overlay
+`-- images/                 Logo and deterministic radio badges
+```
+
+Runtime code directly depends on `assets/`, which is why installed builds are not yet self-contained. [CONTENT_PIPELINE.md](../content/CONTENT_PIPELINE.md) documents the generated inventory, rights gate, and measured source debt. [CONTENT_PACKS.md](../content/CONTENT_PACKS.md) defines the implemented manifest, allowlist, compatibility, and optional-failure contract for the native boundary.
+
+## Tests
+
+```text
+tests/
+|-- audio/                  Radio discovery and playback orchestration
+|-- core/                   Models, scoring, persistence, achievements, snake rendering
+|-- input/                  Input mapping and device routing
+|-- integration/            Game initialization, rendering, HUD, and gameplay flows
+|-- powerups/               Deterministic class-level power-up behavior
+|-- qa/                     Property, invariant, policy, simulation, report, and CLI tests
+|-- fixtures/shared/        Python-generated JSON consumed by native parity tests
+|-- rendering/              Menus, particles, and backgrounds
+`-- test_*.py               Cross-cutting and legacy deterministic tests
+```
+
+All files collected under `tests/` are deterministic automated checks. Manual and perceptual tools live under `scripts/manual/`; broken duplicate validators and import-time external-service runners have been removed.
+
+## Tools and production data
+
+- `scripts/`: deterministic quality, content, screenshot, badge, toolchain, and native-artifact utilities.
+- `config/radio_network_plan.json`: production plan for radio content.
+- `data/`: legacy source-checkout saves and generation history. Normal player saves now live in the operating system's user-data directory and should never be committed.
+- `archive/`: ignored, recoverable local audio candidates, retired production
+  tooling, raw research, superseded documentation, and private production
+  history. It is not public project documentation or release tooling.
+- `docs/research/`: durable source pointers and research-handling policy.
+
+## Generated local artifacts
+
+`.coverage*`, `coverage*.xml`, `coverage*.json`, `TestResults/`, `.pytest_cache/`, `.ruff_cache/`, `.dotnet/`, `.tools/`, `.godot/`, `bin/`, `obj/`, build outputs, logs, virtual environments, and Python bytecode are generated. They are not source documentation and should remain ignored.

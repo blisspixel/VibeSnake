@@ -1,0 +1,1060 @@
+{
+  "serpentine_broadcast_network": {
+    "total_tracks": 64,
+    "stations": 8,
+    "tracks_per_station": 8,
+    "generation_strategy": "simple_prompts",
+    "best_practices": {
+      "prompt_style": "simple, evocative keywords (per ElevenLabs docs)",
+      "prompt_max_length": 2000,
+      "duration_range_ms": [150000, 360000],
+      "force_instrumental": false,
+      "include_musical_details": "BPM, key, instrumentation, arrangement, and vocal function",
+      "identity_policy": "Describe musical attributes without naming artists, brands, or living performers",
+      "language_policy": "Do not generate release lyrics in a language or dialect until an approved lyric sheet has been authored or reviewed by a fluent cultural reviewer",
+      "release_policy": "Every vocal track requires lyric transcription, meaning review, performer or generator provenance, content rating, and station-context approval"
+    },
+    "stations": {
+      "flow_signal": {
+        "id": "flow_signal",
+        "name": "The Flow Signal",
+        "tagline": "For snakes who groove, not chase",
+        "genre": "Chill / Focus / Study",
+        "target_energy": 4,
+        "duration_range_ms": [180000, 300000],
+        "tracks": [
+          {
+            "track_number": 1,
+            "name": "thermal_drift",
+            "prompt": "Liquid drum and bass with smooth female vocals, 170 BPM in D minor, rolling bassline and jazzy chords, hypnotic and flowing",
+            "duration_ms": 240000,
+            "expected_style": "liquid DnB",
+            "vocals": "female, smooth, soulful"
+          },
+          {
+            "track_number": 2,
+            "name": "ambient_coil",
+            "prompt": "Downtempo chillout with atmospheric pads, 90 BPM in A minor, gentle beats and dreamy vocals, relaxed and spacious",
+            "duration_ms": 270000,
+            "expected_style": "downtempo",
+            "vocals": "ethereal, dreamy, breathy"
+          },
+          {
+            "track_number": 3,
+            "name": "future_scales",
+            "prompt": "Future garage with shuffled beats, 130 BPM in E major, warm bass and ethereal vocal chops, uk garage groove",
+            "duration_ms": 210000,
+            "expected_style": "future garage",
+            "vocals": "chopped, processed, ambient"
+          },
+          {
+            "track_number": 4,
+            "name": "velvet_pulse",
+            "prompt": "Melodic dubstep with emotional buildup, 140 BPM in C major, lush synths and heartfelt singing, euphoric and uplifting",
+            "duration_ms": 255000,
+            "expected_style": "melodic dubstep",
+            "vocals": "emotional, soaring, powerful"
+          },
+          {
+            "track_number": 5,
+            "name": "slow_molt",
+            "prompt": "Chillstep with relaxed tempo, 70 BPM in G minor, organic sounds and soothing voice, meditative and warm",
+            "duration_ms": 285000,
+            "expected_style": "chillstep",
+            "vocals": "soft, comforting, intimate"
+          },
+          {
+            "track_number": 6,
+            "name": "serpent_hop",
+            "prompt": "Trip-hop with jazzy samples, 85 BPM in F major, head-nodding groove and sultry vocals, moody and sophisticated",
+            "duration_ms": 225000,
+            "expected_style": "trip-hop",
+            "vocals": "sultry, jazzy, laid-back"
+          },
+          {
+            "track_number": 7,
+            "name": "neural_flow",
+            "prompt": "Ambient breaks with flowing rhythms, 120 BPM in B minor, spacey textures and whispered lyrics, otherworldly and hypnotic",
+            "duration_ms": 300000,
+            "expected_style": "ambient breaks",
+            "vocals": "whispered, atmospheric, distant"
+          },
+          {
+            "track_number": 8,
+            "name": "vinyl_venom",
+            "prompt": "Lo-fi house with warm vinyl crackle, 115 BPM in E minor, jazzy keys and gentle vocal samples, nostalgic and groovy",
+            "duration_ms": 195000,
+            "expected_style": "lo-fi house",
+            "vocals": "sampled, lo-fi, jazzy"
+          },
+          {
+            "track_number": 9,
+            "name": "crystalline_frequency",
+            "prompt": "Ambient liquid DnB, 165 BPM in F major, crystalline melodies, soft female harmonies and warm sub-bass, transcendent and flowing",
+            "duration_ms": 265000,
+            "expected_style": "liquid DnB",
+            "vocals": "soft, harmonized, angelic"
+          },
+          {
+            "track_number": 10,
+            "name": "twilight_lattice",
+            "prompt": "Future garage with deep sub-bass, 125 BPM in C sharp minor, atmospheric textures and whispered vocal fragments, hypnotic UK sound",
+            "duration_ms": 245000,
+            "expected_style": "future garage",
+            "vocals": "whispered fragments, intimate, processed"
+          },
+          {
+            "track_number": 11,
+            "name": "gentle_venom",
+            "prompt": "Chillstep with organic percussion, 75 BPM in B flat major, nature sounds and peaceful vocal meditation, healing and warm",
+            "duration_ms": 290000,
+            "expected_style": "chillstep",
+            "vocals": "meditative, peaceful, breathy"
+          },
+          {
+            "track_number": 12,
+            "name": "downtempo_shedding",
+            "prompt": "Downtempo electronica, 95 BPM in D major, jazz guitar samples and soulful female voice, sophisticated cafe atmosphere",
+            "duration_ms": 255000,
+            "expected_style": "downtempo",
+            "vocals": "soulful, jazzy, smooth"
+          },
+          {
+            "track_number": 13,
+            "name": "moonlit_basking",
+            "prompt": "Trip-hop with vinyl warmth, 80 BPM in E flat minor, Rhodes piano and breathy sensual vocals, late-night intimate vibe",
+            "duration_ms": 230000,
+            "expected_style": "trip-hop",
+            "vocals": "breathy, sensual, mysterious"
+          },
+          {
+            "track_number": 14,
+            "name": "echo_chamber_molt",
+            "prompt": "Melodic dubstep with ethereal breakdown, 145 BPM in A flat major, orchestral elements and powerful vocal climax, epic and emotional",
+            "duration_ms": 280000,
+            "expected_style": "melodic dubstep",
+            "vocals": "powerful, climactic, ethereal"
+          },
+          {
+            "track_number": 15,
+            "name": "horizon_frequency",
+            "prompt": "Ambient breaks with sunrise energy, 110 BPM in G major, warm pads and hopeful female vocals, peaceful and uplifting",
+            "duration_ms": 300000,
+            "expected_style": "ambient breaks",
+            "vocals": "hopeful, warm, uplifting"
+          }
+        ]
+      },
+      "chaos_theory": {
+        "id": "chaos_theory",
+        "name": "Chaos Theory",
+        "tagline": "All hiss. No miss.",
+        "genre": "Jazz / Bossa / Fusion",
+        "target_energy": 5,
+        "duration_range_ms": [210000, 330000],
+        "tracks": [
+          {
+            "track_number": 1,
+            "name": "bossa_venom",
+            "prompt": "Brazilian bossa nova with nylon guitar, 120 BPM in F major, swinging rhythm and playful Portuguese vocals, sunny and sophisticated",
+            "duration_ms": 240000,
+            "expected_style": "bossa nova",
+            "vocals": "Portuguese, playful, smooth"
+          },
+          {
+            "track_number": 2,
+            "name": "bebop_strike",
+            "prompt": "Bebop jazz with fast improvisation, 240 BPM in B flat major, walking bass and scat singing, virtuosic and energetic",
+            "duration_ms": 225000,
+            "expected_style": "bebop",
+            "vocals": "scat, improvised, fast"
+          },
+          {
+            "track_number": 3,
+            "name": "cool_scales",
+            "prompt": "Cool jazz with brushed drums, 90 BPM in D minor, muted trumpet and smooth crooning, intimate late-night vibe",
+            "duration_ms": 270000,
+            "expected_style": "cool jazz",
+            "vocals": "crooning, smooth, sophisticated"
+          },
+          {
+            "track_number": 4,
+            "name": "nu_serpent",
+            "prompt": "Nu-jazz with electronic beats, 110 BPM in A minor, Rhodes piano and sultry female vocals, modern and groovy",
+            "duration_ms": 255000,
+            "expected_style": "nu-jazz",
+            "vocals": "sultry, electronic, modern"
+          },
+          {
+            "track_number": 5,
+            "name": "acid_molt",
+            "prompt": "Acid jazz with funky breakbeats, 125 BPM in G major, Hammond organ and energetic singing, groovy and danceable",
+            "duration_ms": 285000,
+            "expected_style": "acid jazz",
+            "vocals": "energetic, funky, soulful"
+          },
+          {
+            "track_number": 6,
+            "name": "fusion_fang",
+            "prompt": "Jazz fusion with electric guitar, 145 BPM in E minor, complex rhythms and instrumental virtuosity, progressive and dynamic",
+            "duration_ms": 315000,
+            "expected_style": "jazz fusion",
+            "vocals": "minimal or instrumental"
+          },
+          {
+            "track_number": 7,
+            "name": "modal_viper",
+            "prompt": "Modal jazz with hypnotic groove, 100 BPM in D dorian mode, saxophone and wordless vocal improvisation, meditative and deep",
+            "duration_ms": 300000,
+            "expected_style": "modal jazz",
+            "vocals": "wordless, improvised, atmospheric"
+          },
+          {
+            "track_number": 8,
+            "name": "manouche_coil",
+            "prompt": "Jazz manouche with acoustic swing, 180 BPM in D minor, violin and two interlocking acoustic guitars, lively and romantic; reserve space for separately approved French lyrics",
+            "duration_ms": 210000,
+            "expected_style": "jazz manouche",
+            "vocals": "blocked until a fluent reviewer approves the French lyric sheet"
+          },
+          {
+            "track_number": 9,
+            "name": "samba_strike",
+            "prompt": "Brazilian samba with syncopated percussion, 130 BPM in A major, cavaquinho, layered surdo patterns, and space for separately approved Portuguese lyrics",
+            "duration_ms": 255000,
+            "expected_style": "samba",
+            "vocals": "blocked until a fluent reviewer approves the Portuguese lyric sheet"
+          },
+          {
+            "track_number": 10,
+            "name": "latin_viper",
+            "prompt": "Afro-Cuban jazz, 140 BPM in E minor, interlocking conga and timbale patterns, brass improvisation, and a tense montuno-driven arrangement",
+            "duration_ms": 270000,
+            "expected_style": "latin jazz",
+            "vocals": "instrumental arrangement; any Spanish lyric requires fluent review"
+          },
+          {
+            "track_number": 11,
+            "name": "hard_bop_coil",
+            "prompt": "Hard bop with driving swing, 200 BPM in F major, bluesy piano and soulful vocal riffs, intense and groovy",
+            "duration_ms": 240000,
+            "expected_style": "hard bop",
+            "vocals": "soulful riffs, bluesy, intense"
+          },
+          {
+            "track_number": 12,
+            "name": "smooth_serpent",
+            "prompt": "Smooth jazz with silky saxophone, 85 BPM in B flat major, electric piano and romantic crooning, sophisticated lounge atmosphere",
+            "duration_ms": 285000,
+            "expected_style": "smooth jazz",
+            "vocals": "romantic, crooning, silky"
+          },
+          {
+            "track_number": 13,
+            "name": "fusion_serpent",
+            "prompt": "Jazz fusion, 135 BPM in E minor, electric guitar and saxophone trading asymmetrical phrases, agile scat vocals, elastic funk bass, and sophisticated harmonic motion",
+            "duration_ms": 315000,
+            "expected_style": "jazz fusion",
+            "vocals": "scat, funky, sophisticated"
+          },
+          {
+            "track_number": 14,
+            "name": "afro_jazz_molt",
+            "prompt": "Afro-jazz fusion with layered cross-rhythms, 125 BPM in C major, hand percussion, bright horn counterpoint, and antiphonal wordless vocals",
+            "duration_ms": 300000,
+            "expected_style": "afro-jazz",
+            "vocals": "wordless antiphonal ensemble"
+          },
+          {
+            "track_number": 15,
+            "name": "chamber_bossa",
+            "prompt": "Chamber jazz and bossa nova, 105 BPM in G major, string quartet, nylon guitar, restrained percussion, and space for separately approved Portuguese lyrics",
+            "duration_ms": 270000,
+            "expected_style": "chamber bossa",
+            "vocals": "blocked until a fluent reviewer approves the Portuguese lyric sheet"
+          }
+        ]
+      },
+      "global_coil": {
+        "id": "global_coil",
+        "name": "The Global Coil",
+        "tagline": "One scale, one rhythm",
+        "genre": "World / Afrobeat / Reggaeton",
+        "target_energy": 6,
+        "duration_range_ms": [240000, 360000],
+        "tracks": [
+          {
+            "track_number": 1,
+            "name": "afro_serpent",
+            "prompt": "Afrobeat with driving polyrhythmic percussion, 115 BPM in C major, interlocking guitars, horn calls, and space for an approved Yoruba call-and-response lyric",
+            "duration_ms": 300000,
+            "expected_style": "Afrobeat",
+            "vocals": "blocked until a fluent reviewer approves the Yoruba lyric sheet"
+          },
+          {
+            "track_number": 2,
+            "name": "dembow_scales",
+            "prompt": "Reggaeton with dembow rhythm, 95 BPM in A minor, syncopated bass, a catchy melodic hook, and space for separately approved Spanish rap",
+            "duration_ms": 270000,
+            "expected_style": "reggaeton",
+            "vocals": "blocked until a fluent reviewer approves the Spanish lyric sheet"
+          },
+          {
+            "track_number": 3,
+            "name": "cumbia_venom",
+            "prompt": "Cumbia with accordion, 100 BPM in G major, guiro, warm bass, and space for separately approved Spanish-language lyrics",
+            "duration_ms": 285000,
+            "expected_style": "cumbia",
+            "vocals": "blocked until a fluent reviewer approves the Spanish lyric sheet"
+          },
+          {
+            "track_number": 4,
+            "name": "tropic_molt",
+            "prompt": "Tropicália with Brazilian psychedelia, 110 BPM in D major, acoustic guitar, tape-treated orchestration, and space for separately approved Portuguese lyrics",
+            "duration_ms": 315000,
+            "expected_style": "tropicália",
+            "vocals": "blocked until a fluent reviewer approves the Portuguese lyric sheet"
+          },
+          {
+            "track_number": 5,
+            "name": "dancehall_fang",
+            "prompt": "Dancehall with a sparse digital riddim, 90 BPM in E minor, syncopated bass, clipped percussion, and space for a separately authored toasted vocal",
+            "duration_ms": 255000,
+            "expected_style": "dancehall",
+            "vocals": "blocked until a fluent Jamaican Patois reviewer approves the lyric and delivery"
+          },
+          {
+            "track_number": 6,
+            "name": "soukous_strike",
+            "prompt": "Soukous with layered rumba guitar figures, 125 BPM in F major, bright percussion, melodic bass, and wordless ensemble responses",
+            "duration_ms": 330000,
+            "expected_style": "soukous",
+            "vocals": "wordless ensemble responses until a specific language and reviewer are assigned"
+          },
+          {
+            "track_number": 7,
+            "name": "highlife_coil",
+            "prompt": "Highlife with palm-wine guitar, 120 BPM in B flat major, horns and West African harmonies, uplifting and melodic",
+            "duration_ms": 300000,
+            "expected_style": "highlife",
+            "vocals": "wordless harmonized ensemble until a specific language and reviewer are assigned"
+          },
+          {
+            "track_number": 8,
+            "name": "baile_viper",
+            "prompt": "Baile funk with heavy bass, 130 BPM in G minor, fast syncopated percussion, clipped samples, and space for separately approved Brazilian Portuguese rap",
+            "duration_ms": 240000,
+            "expected_style": "baile funk",
+            "vocals": "blocked until a fluent reviewer approves the Brazilian Portuguese lyric sheet"
+          },
+          {
+            "track_number": 9,
+            "name": "kuduro_scales",
+            "prompt": "Kuduro with angular electronic percussion, 135 BPM in C minor, terse synth calls, and space for separately approved Angolan Portuguese lyrics",
+            "duration_ms": 270000,
+            "expected_style": "kuduro",
+            "vocals": "blocked until a fluent reviewer approves the Angolan Portuguese lyric and delivery"
+          },
+          {
+            "track_number": 10,
+            "name": "mbalax_serpent",
+            "prompt": "Mbalax with interlocking sabar patterns, 120 BPM in F major, bright guitar, melodic bass, and space for an approved Wolof call-and-response lyric",
+            "duration_ms": 315000,
+            "expected_style": "mbalax",
+            "vocals": "blocked until a fluent reviewer approves the Wolof lyric sheet"
+          },
+          {
+            "track_number": 11,
+            "name": "moombahton_venom",
+            "prompt": "Moombahton with reggaeton influence, 108 BPM in A minor, syncopated percussion, spacious bass drops, and space for separately approved Spanish rap",
+            "duration_ms": 255000,
+            "expected_style": "moombahton",
+            "vocals": "blocked until a fluent reviewer approves the Spanish lyric sheet"
+          },
+          {
+            "track_number": 12,
+            "name": "revolution_fang",
+            "prompt": "Afrobeat, 125 BPM in E minor, extended polyrhythmic jam, interlocking guitars, forceful horn calls, and space for separately approved political spoken word",
+            "duration_ms": 360000,
+            "expected_style": "Afrobeat",
+            "vocals": "blocked until a fluent Nigerian Pidgin reviewer approves the lyric and delivery"
+          },
+          {
+            "track_number": 13,
+            "name": "soca_strike",
+            "prompt": "Soca, 130 BPM in D major, layered hand percussion, bright melodic steelpan, elastic bass, and joyful wordless call-and-response",
+            "duration_ms": 285000,
+            "expected_style": "soca",
+            "vocals": "wordless call-and-response until a specific language and reviewer are assigned"
+          },
+          {
+            "track_number": 14,
+            "name": "azonto_coil",
+            "prompt": "Azonto with Ghanaian highlife guitar, 115 BPM in G major, syncopated electronic percussion, and space for separately approved Twi rap",
+            "duration_ms": 300000,
+            "expected_style": "azonto",
+            "vocals": "blocked until a fluent reviewer approves the Twi lyric and delivery"
+          },
+          {
+            "track_number": 15,
+            "name": "zouk_viper",
+            "prompt": "Zouk, 95 BPM in B flat major, smooth bass, layered guitar, restrained percussion, and space for a separately approved Creole-language vocal",
+            "duration_ms": 330000,
+            "expected_style": "zouk",
+            "vocals": "blocked until the specific Creole language and fluent reviewer are recorded"
+          }
+        ]
+      },
+      "ourotron": {
+        "id": "ourotron",
+        "name": "Ourotron",
+        "tagline": "Where the future sheds its past",
+        "genre": "Synthwave / Outrun / Retro",
+        "target_energy": 6,
+        "duration_range_ms": [240000, 360000],
+        "tracks": [
+          {
+            "track_number": 1,
+            "name": "neon_molt",
+            "prompt": "80s synthwave with pulsing arpeggios, 120 BPM in C minor, vocoder vocals and neon highway energy, nostalgic and driving",
+            "duration_ms": 300000,
+            "expected_style": "synthwave",
+            "vocals": "vocoder, robotic, 80s style"
+          },
+          {
+            "track_number": 2,
+            "name": "dark_sync",
+            "prompt": "Darksynth with aggressive saw waves, 135 BPM in D minor, dystopian atmosphere and distorted robotic voice, menacing and powerful",
+            "duration_ms": 270000,
+            "expected_style": "darksynth",
+            "vocals": "distorted, robotic, aggressive"
+          },
+          {
+            "track_number": 3,
+            "name": "dream_scales",
+            "prompt": "Dreamwave with lush pads, 95 BPM in A major, nostalgic melodies and ethereal female vocals, wistful and cinematic",
+            "duration_ms": 330000,
+            "expected_style": "dreamwave",
+            "vocals": "ethereal, dreamy, nostalgic"
+          },
+          {
+            "track_number": 4,
+            "name": "vapor_venom",
+            "prompt": "Vaporwave with chopped samples, 70 BPM in F sharp minor, slowed tempo and pitch-shifted vintage vocals, surreal and lo-fi",
+            "duration_ms": 285000,
+            "expected_style": "vaporwave",
+            "vocals": "pitch-shifted, sampled, vintage"
+          },
+          {
+            "track_number": 5,
+            "name": "electro_fang",
+            "prompt": "Electro-funk with talk box, 110 BPM in G major, slap bass and retro-futuristic robot rap, funky and robotic",
+            "duration_ms": 255000,
+            "expected_style": "electro-funk",
+            "vocals": "talk box, robotic rap, funky"
+          },
+          {
+            "track_number": 6,
+            "name": "italo_serpent",
+            "prompt": "Italo disco with drum machines, 125 BPM in E minor, catchy hooks and dramatic European vocals, euphoric and danceable",
+            "duration_ms": 315000,
+            "expected_style": "italo disco",
+            "vocals": "dramatic, European, passionate"
+          },
+          {
+            "track_number": 7,
+            "name": "retro_coil",
+            "prompt": "Retrowave with FM synths, 115 BPM in B minor, gated reverb and power ballad style singing, emotional and anthemic",
+            "duration_ms": 300000,
+            "expected_style": "retrowave",
+            "vocals": "power ballad, emotional, 80s"
+          },
+          {
+            "track_number": 8,
+            "name": "outrun_strike",
+            "prompt": "Outrun with driving sequences, 140 BPM in D major, cinematic strings and action movie vocal energy, heroic and intense",
+            "duration_ms": 240000,
+            "expected_style": "outrun",
+            "vocals": "cinematic, powerful, heroic"
+          },
+          {
+            "track_number": 9,
+            "name": "cyber_scales",
+            "prompt": "Cyberpunk synthwave, 128 BPM in E minor, glitchy synths, neon atmosphere and processed robotic vocals, dystopian future sound",
+            "duration_ms": 285000,
+            "expected_style": "cyberpunk synthwave",
+            "vocals": "robotic, processed, dystopian"
+          },
+          {
+            "track_number": 10,
+            "name": "chillwave_molt",
+            "prompt": "Chillwave with lo-fi synths, 90 BPM in A major, dreamy pads and nostalgic pitched vocals, summery and wistful",
+            "duration_ms": 315000,
+            "expected_style": "chillwave",
+            "vocals": "pitched, nostalgic, dreamy"
+          },
+          {
+            "track_number": 11,
+            "name": "miami_serpent",
+            "prompt": "Miami bass meets synthwave, 115 BPM in C sharp minor, 808 drums and vocoder hooks, tropical neon energy",
+            "duration_ms": 270000,
+            "expected_style": "miami synthwave",
+            "vocals": "vocoder, tropical, energetic"
+          },
+          {
+            "track_number": 12,
+            "name": "spacewave_coil",
+            "prompt": "Spacewave with cosmic atmosphere, 105 BPM in F major, ambient synths and ethereal distant vocals, interstellar and vast",
+            "duration_ms": 330000,
+            "expected_style": "spacewave",
+            "vocals": "ethereal, distant, cosmic"
+          },
+          {
+            "track_number": 13,
+            "name": "newretro_fang",
+            "prompt": "New retro wave, 125 BPM in B minor, punchy drums and passionate 80s style singing, anthemic and energetic",
+            "duration_ms": 300000,
+            "expected_style": "new retro wave",
+            "vocals": "passionate, 80s style, anthemic"
+          },
+          {
+            "track_number": 14,
+            "name": "synthpop_venom",
+            "prompt": "Synthpop with catchy melodies, 118 BPM in G major, bright synths and upbeat pop vocals, infectious and danceable",
+            "duration_ms": 255000,
+            "expected_style": "synthpop",
+            "vocals": "pop, upbeat, catchy"
+          },
+          {
+            "track_number": 15,
+            "name": "futuresynth_strike",
+            "prompt": "Futuresynth with modern production, 130 BPM in D minor, powerful bass and cinematic vocal hooks, epic and forward-looking",
+            "duration_ms": 315000,
+            "expected_style": "futuresynth",
+            "vocals": "cinematic, powerful, modern"
+          }
+        ]
+      },
+      "the_pit": {
+        "id": "the_pit",
+        "name": "The Pit",
+        "tagline": "Where the drop sheds its skin",
+        "genre": "Bass / DnB / Trap",
+        "target_energy": 8,
+        "duration_range_ms": [180000, 300000],
+        "tracks": [
+          {
+            "track_number": 1,
+            "name": "neuro_venom",
+            "prompt": "Neurofunk drum and bass, 174 BPM in F minor, aggressive reese bass, tight breaks and dark MC vocals, relentless and technical",
+            "duration_ms": 240000,
+            "expected_style": "neurofunk",
+            "vocals": "MC style, dark, aggressive"
+          },
+          {
+            "track_number": 2,
+            "name": "jump_strike",
+            "prompt": "Jump-up DnB, 172 BPM in A minor, bouncy basslines, energetic tempo and hyped vocal samples, party energy and rolling",
+            "duration_ms": 210000,
+            "expected_style": "jump-up",
+            "vocals": "sampled, hyped, energetic"
+          },
+          {
+            "track_number": 3,
+            "name": "trap_fang",
+            "prompt": "Trap with 808 kicks, 140 BPM in D minor, hi-hat rolls and aggressive rap vocals, hard-hitting and bass-heavy",
+            "duration_ms": 225000,
+            "expected_style": "trap",
+            "vocals": "aggressive rap, confident, menacing"
+          },
+          {
+            "track_number": 4,
+            "name": "dubstep_molt",
+            "prompt": "Dubstep with wobble bass, 140 BPM in G minor, half-time groove and menacing robotic voice, heavy drops and distortion",
+            "duration_ms": 255000,
+            "expected_style": "dubstep",
+            "vocals": "robotic, menacing, distorted"
+          },
+          {
+            "track_number": 5,
+            "name": "breakbeat_scales",
+            "prompt": "Breakbeat hardcore, 160 BPM in C minor, amen breaks, rave stabs and pitched-up vocals, 90s rave energy and chaos",
+            "duration_ms": 195000,
+            "expected_style": "breakbeat hardcore",
+            "vocals": "pitched-up, rave style, energetic"
+          },
+          {
+            "track_number": 6,
+            "name": "halftime_coil",
+            "prompt": "Halftime DnB, 85 BPM in E minor, heavy drums, deep sub-bass and minimal vocal chops, weighty and spacious",
+            "duration_ms": 270000,
+            "expected_style": "halftime",
+            "vocals": "minimal chops, processed, deep"
+          },
+          {
+            "track_number": 7,
+            "name": "techstep_viper",
+            "prompt": "Techstep, 175 BPM in B flat minor, industrial sounds, rolling breaks and sci-fi vocal effects, dark and futuristic",
+            "duration_ms": 285000,
+            "expected_style": "techstep",
+            "vocals": "sci-fi effects, processed, robotic"
+          },
+          {
+            "track_number": 8,
+            "name": "hardstep_venom",
+            "prompt": "Hardstep, 170 BPM in F sharp minor, punchy drums, distorted bass and aggressive shouted vocals, raw and intense",
+            "duration_ms": 180000,
+            "expected_style": "hardstep",
+            "vocals": "shouted, aggressive, raw"
+          },
+          {
+            "track_number": 9,
+            "name": "neurostep_scales",
+            "prompt": "Neurostep, 85 BPM in G minor, halftime drums, deep sub-bass, intricate swung bass articulation, processed vocal atmospherics, and precise dynamic contrast",
+            "duration_ms": 225000,
+            "expected_style": "neurostep",
+            "vocals": "processed, atmospheric, sophisticated"
+          },
+          {
+            "track_number": 10,
+            "name": "riddim_molt",
+            "prompt": "Riddim dubstep, 140 BPM in D minor, repetitive bass patterns and minimal aggressive vocal chops, headbang energy",
+            "duration_ms": 240000,
+            "expected_style": "riddim",
+            "vocals": "minimal chops, aggressive, repetitive"
+          },
+          {
+            "track_number": 11,
+            "name": "drill_viper",
+            "prompt": "Drill with 808 slides, 142 BPM in C minor, dark piano and menacing UK drill rap, cold and threatening",
+            "duration_ms": 210000,
+            "expected_style": "drill",
+            "vocals": "UK drill rap, menacing, cold"
+          },
+          {
+            "track_number": 12,
+            "name": "footwork_fang",
+            "prompt": "Chicago footwork, 160 BPM in F minor, chopped samples, rapid percussion and pitched vocal cuts, frenetic dance energy",
+            "duration_ms": 195000,
+            "expected_style": "footwork",
+            "vocals": "pitched cuts, chopped, rapid"
+          },
+          {
+            "track_number": 13,
+            "name": "melodic_riddim_coil",
+            "prompt": "Melodic riddim, 140 BPM in D minor, heavy syncopated bass supporting a memorable lead melody, prismatic vocal chops, and euphoric drops",
+            "duration_ms": 255000,
+            "expected_style": "melodic riddim",
+            "vocals": "vocal chops, euphoric, melodic"
+          },
+          {
+            "track_number": 14,
+            "name": "jungle_venom",
+            "prompt": "Jungle with amen breaks, 168 BPM in E minor, reggae bassline and ragga MC vocals, classic 90s rave energy",
+            "duration_ms": 270000,
+            "expected_style": "jungle",
+            "vocals": "ragga MC, energetic, classic"
+          },
+          {
+            "track_number": 15,
+            "name": "bass_house_strike",
+            "prompt": "Bass house, 128 BPM in A minor, groovy four-on-the-floor bass, punchy kicks, clipped synth stabs, catchy vocal hooks, and peak-hour club energy",
+            "duration_ms": 285000,
+            "expected_style": "bass house",
+            "vocals": "catchy hooks, club style, energetic"
+          }
+        ]
+      },
+      "the_bureau": {
+        "id": "the_bureau",
+        "name": "The Bureau",
+        "tagline": "All facts. No mammals.",
+        "genre": "News / Talk / Jazz",
+        "target_energy": 3,
+        "duration_range_ms": [150000, 270000],
+        "tracks": [
+          {
+            "track_number": 1,
+            "name": "news_flow",
+            "prompt": "Cool jazz background, 80 BPM in F major, spoken word samples about snake news, walking bassline and brushed drums, professional broadcast vibe",
+            "duration_ms": 210000,
+            "expected_style": "cool jazz + talk",
+            "vocals": "spoken word, news style, professional"
+          },
+          {
+            "track_number": 2,
+            "name": "smooth_report",
+            "prompt": "Smooth jazz with fictional talk-radio snippets, 90 BPM in B flat major, Rhodes piano, restrained brushed drums, and an earnest long-form interview cadence",
+            "duration_ms": 240000,
+            "expected_style": "smooth jazz + talk",
+            "vocals": "interview style, conversational, calm"
+          },
+          {
+            "track_number": 3,
+            "name": "bebop_bulletin",
+            "prompt": "Bebop underscore, 180 BPM in C major, news broadcast samples, upright bass and ride cymbal, lively news desk energy",
+            "duration_ms": 195000,
+            "expected_style": "bebop + news",
+            "vocals": "news broadcast, energetic, professional"
+          },
+          {
+            "track_number": 4,
+            "name": "weather_bossa",
+            "prompt": "Bossa nova background, 110 BPM in G major, weather report vocals, nylon guitar and gentle percussion, relaxed forecast vibes",
+            "duration_ms": 225000,
+            "expected_style": "bossa + weather",
+            "vocals": "weather report style, calm, informative"
+          },
+          {
+            "track_number": 5,
+            "name": "traffic_modal",
+            "prompt": "Modal jazz, 95 BPM in D dorian, traffic update samples, saxophone and contemplative mood, commute report atmosphere",
+            "duration_ms": 180000,
+            "expected_style": "modal jazz + traffic",
+            "vocals": "traffic report, steady, informative"
+          },
+          {
+            "track_number": 6,
+            "name": "interview_ballad",
+            "prompt": "Jazz ballad, 70 BPM in A minor, interview snippets, piano and intimate late-night vibe, in-depth conversation mood",
+            "duration_ms": 270000,
+            "expected_style": "jazz ballad + interview",
+            "vocals": "interview, intimate, thoughtful"
+          },
+          {
+            "track_number": 7,
+            "name": "west_coast_cast",
+            "prompt": "West Coast jazz, 115 BPM in E flat major, announcement samples, muted trumpet and relaxed swing, afternoon broadcast feel",
+            "duration_ms": 210000,
+            "expected_style": "west coast jazz + announcements",
+            "vocals": "announcements, relaxed, professional"
+          },
+          {
+            "track_number": 8,
+            "name": "chamber_doc",
+            "prompt": "Chamber jazz, 85 BPM in F minor, documentary narration, acoustic ensemble and intellectual tone, educational broadcast style",
+            "duration_ms": 255000,
+            "expected_style": "chamber jazz + documentary",
+            "vocals": "narration, documentary style, intellectual"
+          },
+          {
+            "track_number": 9,
+            "name": "finance_fusion",
+            "prompt": "Jazz fusion background, 120 BPM in C major, financial market reports, electric piano and business news vocals, Wall Street energy",
+            "duration_ms": 225000,
+            "expected_style": "jazz fusion + finance news",
+            "vocals": "business news, professional, analytical"
+          },
+          {
+            "track_number": 10,
+            "name": "science_samba",
+            "prompt": "Light samba groove, 105 BPM in G major, science reporting samples, nylon guitar and educational vocals, discovery channel vibe",
+            "duration_ms": 240000,
+            "expected_style": "samba + science",
+            "vocals": "science reporting, informative, curious"
+          },
+          {
+            "track_number": 11,
+            "name": "politics_cool",
+            "prompt": "Cool jazz underscore, 75 BPM in E minor, political analysis clips, double bass and thoughtful commentary, serious journalism tone",
+            "duration_ms": 270000,
+            "expected_style": "cool jazz + politics",
+            "vocals": "political analysis, serious, thoughtful"
+          },
+          {
+            "track_number": 12,
+            "name": "sports_swing",
+            "prompt": "Swing jazz, 140 BPM in B flat major, sports highlights and play-by-play, big band energy and excited announcer vocals",
+            "duration_ms": 210000,
+            "expected_style": "swing jazz + sports",
+            "vocals": "sports announcer, excited, energetic"
+          },
+          {
+            "track_number": 13,
+            "name": "culture_ballad",
+            "prompt": "Jazz ballad, 65 BPM in A flat major, arts and culture segments, piano and sophisticated narration, gallery opening atmosphere",
+            "duration_ms": 255000,
+            "expected_style": "jazz ballad + culture",
+            "vocals": "arts narration, sophisticated, cultured"
+          },
+          {
+            "track_number": 14,
+            "name": "morning_modal",
+            "prompt": "Modal jazz, 90 BPM in D dorian, morning show banter, saxophone and friendly host vocals, breakfast radio warmth",
+            "duration_ms": 225000,
+            "expected_style": "modal jazz + morning show",
+            "vocals": "morning host, friendly, conversational"
+          },
+          {
+            "track_number": 15,
+            "name": "tech_bebop",
+            "prompt": "Fast bebop, 220 BPM in F major, tech news and product reviews, rapid fire delivery and energetic discussion, Silicon Valley buzz",
+            "duration_ms": 195000,
+            "expected_style": "bebop + tech news",
+            "vocals": "tech news, rapid, enthusiastic"
+          }
+        ]
+      },
+      "the_strike": {
+        "id": "the_strike",
+        "name": "The Strike",
+        "tagline": "Fast. Loud. Venomous.",
+        "genre": "Rock / Metal / Alt",
+        "target_energy": 7,
+        "duration_range_ms": [180000, 300000],
+        "tracks": [
+          {
+            "track_number": 1,
+            "name": "garage_venom",
+            "prompt": "Garage rock, 140 BPM in E major, fuzzy guitars, pounding drums and raw passionate vocals, lo-fi punk energy",
+            "duration_ms": 210000,
+            "expected_style": "garage rock",
+            "vocals": "raw, passionate, shouted"
+          },
+          {
+            "track_number": 2,
+            "name": "postpunk_coil",
+            "prompt": "Post-punk, 120 BPM in A minor, angular guitars, driving bassline and dark baritone singing, cold and intense",
+            "duration_ms": 255000,
+            "expected_style": "post-punk",
+            "vocals": "baritone, dark, detached"
+          },
+          {
+            "track_number": 3,
+            "name": "grunge_strike",
+            "prompt": "Grunge, 95 BPM in D minor, distorted power chords, dynamic shifts and angsty alternative vocals, 90s Seattle energy",
+            "duration_ms": 270000,
+            "expected_style": "grunge",
+            "vocals": "angsty, raw, emotional"
+          },
+          {
+            "track_number": 4,
+            "name": "alt_scales",
+            "prompt": "Alt-rock, 130 BPM in G major, jangly guitars, steady rhythm and melodic indie rock singing, anthemic and energetic",
+            "duration_ms": 240000,
+            "expected_style": "alt-rock",
+            "vocals": "melodic, indie, earnest"
+          },
+          {
+            "track_number": 5,
+            "name": "indie_molt",
+            "prompt": "Indie rock, 115 BPM in C major, reverb-soaked guitars, energetic drums and earnest vocals, festival-ready and uplifting",
+            "duration_ms": 225000,
+            "expected_style": "indie rock",
+            "vocals": "earnest, youthful, emotional"
+          },
+          {
+            "track_number": 6,
+            "name": "punk_fang",
+            "prompt": "Punk rock, 180 BPM in A minor, fast power chords, aggressive drums and shouted rebellious lyrics, raw three-chord fury",
+            "duration_ms": 180000,
+            "expected_style": "punk rock",
+            "vocals": "shouted, rebellious, aggressive"
+          },
+          {
+            "track_number": 7,
+            "name": "garage_viper",
+            "prompt": "Desert garage rock, 140 BPM in F minor, dry down-tuned guitar riffs, driving tom-heavy rhythm, gritty vocals, and tense melodic hooks",
+            "duration_ms": 285000,
+            "expected_style": "garage rock",
+            "vocals": "gritty, melodic, powerful"
+          },
+          {
+            "track_number": 8,
+            "name": "shoegaze_drift",
+            "prompt": "Shoegaze, 100 BPM in E minor, layered guitars, dreamy atmosphere and buried ethereal vocals, wall of sound and reverb",
+            "duration_ms": 300000,
+            "expected_style": "shoegaze",
+            "vocals": "buried, ethereal, dreamy"
+          },
+          {
+            "track_number": 9,
+            "name": "metal_serpent",
+            "prompt": "Heavy metal, 160 BPM in E minor, galloping drums, dual guitar harmonies and powerful operatic vocals, classic metal energy",
+            "duration_ms": 240000,
+            "expected_style": "heavy metal",
+            "vocals": "operatic, powerful, soaring"
+          },
+          {
+            "track_number": 10,
+            "name": "stoner_coil",
+            "prompt": "Stoner rock, 70 BPM in C minor, heavy riffs, fuzzy bass and droning hypnotic vocals, desert doom groove",
+            "duration_ms": 315000,
+            "expected_style": "stoner rock",
+            "vocals": "droning, hypnotic, heavy"
+          },
+          {
+            "track_number": 11,
+            "name": "math_scales",
+            "prompt": "Math rock, 145 BPM in F sharp major, complex time signatures, tapping guitars and melodic emo vocals, intricate and energetic",
+            "duration_ms": 225000,
+            "expected_style": "math rock",
+            "vocals": "emo, melodic, earnest"
+          },
+          {
+            "track_number": 12,
+            "name": "surf_venom",
+            "prompt": "Surf rock, 165 BPM in A major, reverb-soaked guitar leads, driving drums and instrumental energy, retro California vibes",
+            "duration_ms": 195000,
+            "expected_style": "surf rock",
+            "vocals": "minimal or instrumental"
+          },
+          {
+            "track_number": 13,
+            "name": "skate_punk_fang",
+            "prompt": "Skate punk, 190 BPM in G minor, fast melodic guitars, tightly compressed driving drums, urgent gang vocals, and bittersweet sing-along hooks",
+            "duration_ms": 165000,
+            "expected_style": "skate punk",
+            "vocals": "energetic, sing-along, melodic"
+          },
+          {
+            "track_number": 14,
+            "name": "emo_molt",
+            "prompt": "Emo rock, 125 BPM in D major, melodic guitars, heartfelt drums and emotional confessional vocals, cathartic and vulnerable",
+            "duration_ms": 255000,
+            "expected_style": "emo",
+            "vocals": "emotional, confessional, vulnerable"
+          },
+          {
+            "track_number": 15,
+            "name": "psych_strike",
+            "prompt": "Psychedelic rock, 110 BPM in B flat major, swirling organs, trippy guitar effects and mind-expanding vocals, 60s acid trip",
+            "duration_ms": 285000,
+            "expected_style": "psych rock",
+            "vocals": "psychedelic, trippy, mystical"
+          }
+        ]
+      },
+      "underground_scales": {
+        "id": "underground_scales",
+        "name": "Underground Scales",
+        "tagline": "Bars. Beats. Biology.",
+        "genre": "Hip-Hop / EDM / Beats",
+        "target_energy": 6,
+        "duration_range_ms": [210000, 330000],
+        "tracks": [
+          {
+            "track_number": 1,
+            "name": "boom_scales",
+            "prompt": "Boom bap hip-hop, 90 BPM in G minor, jazzy samples, crisp drums and smooth rap flow about snake life, golden age New York energy",
+            "duration_ms": 240000,
+            "expected_style": "boom bap",
+            "vocals": "smooth rap, storytelling, confident"
+          },
+          {
+            "track_number": 2,
+            "name": "trap_molt",
+            "prompt": "Trap hip-hop, 145 BPM in A minor, 808s, hi-hats and aggressive rap about shedding skin and evolution, modern street energy",
+            "duration_ms": 225000,
+            "expected_style": "trap",
+            "vocals": "aggressive rap, confident, modern"
+          },
+          {
+            "track_number": 3,
+            "name": "lofi_serpent",
+            "prompt": "Lo-fi beats, 75 BPM in D major, vinyl crackle, mellow samples and laid-back rap about serpent wisdom, study vibe and chill",
+            "duration_ms": 285000,
+            "expected_style": "lo-fi hip-hop",
+            "vocals": "laid-back rap, philosophical, smooth"
+          },
+          {
+            "track_number": 4,
+            "name": "jazz_venom",
+            "prompt": "Jazz rap, 95 BPM in F major, upright bass, live drums and conscious lyrics about cold-blooded nature, thoughtful and groovy",
+            "duration_ms": 270000,
+            "expected_style": "jazz rap",
+            "vocals": "conscious rap, poetic, intelligent"
+          },
+          {
+            "track_number": 5,
+            "name": "conscious_coil",
+            "prompt": "Conscious hip-hop, 88 BPM in C minor, soulful samples, poetic rap about snake civilization, political and deep",
+            "duration_ms": 300000,
+            "expected_style": "conscious hip-hop",
+            "vocals": "poetic rap, political, thoughtful"
+          },
+          {
+            "track_number": 6,
+            "name": "progressive_strike",
+            "prompt": "Progressive hip-hop, 95 BPM in E minor, reharmonized jazz fragments, crisp boom-bap drums, warm bass, and poetic introspective rap with precise internal rhyme",
+            "duration_ms": 255000,
+            "expected_style": "progressive hip-hop",
+            "vocals": "poetic, introspective, sophisticated"
+          },
+          {
+            "track_number": 7,
+            "name": "grime_scales",
+            "prompt": "UK grime, 140 BPM in D minor, dark synths and fast-paced rap about underground scales, aggressive UK street energy",
+            "duration_ms": 210000,
+            "expected_style": "grime",
+            "vocals": "fast UK rap, aggressive, street"
+          },
+          {
+            "track_number": 8,
+            "name": "phonk_viper",
+            "prompt": "Phonk, 135 BPM in G sharp minor, Memphis samples, heavy bass and slowed vocals about reptilian aesthetics, dark southern energy",
+            "duration_ms": 315000,
+            "expected_style": "phonk",
+            "vocals": "slowed, pitched, Memphis style"
+          },
+          {
+            "track_number": 9,
+            "name": "jazzhop_venom",
+            "prompt": "Jazz-hop instrumental, 90 BPM in B minor, impressionistic lo-fi piano, warm vinyl texture, dusty drums, chamber accents, and a reflective nocturnal atmosphere",
+            "duration_ms": 285000,
+            "expected_style": "jazz-hop instrumental",
+            "vocals": "instrumental"
+          },
+          {
+            "track_number": 10,
+            "name": "cloud_scales",
+            "prompt": "Cloud rap, 70 BPM in E major, ethereal production, dreamy synths and laid-back melodic rap, hazy and atmospheric",
+            "duration_ms": 300000,
+            "expected_style": "cloud rap",
+            "vocals": "melodic rap, laid-back, dreamy"
+          },
+          {
+            "track_number": 11,
+            "name": "uk_garage_molt",
+            "prompt": "UK garage with skippy beats, 130 BPM in A minor, shuffled 2-step and UK MC vocals, underground London sound",
+            "duration_ms": 255000,
+            "expected_style": "UK garage",
+            "vocals": "UK MC, skippy flow, energetic"
+          },
+          {
+            "track_number": 12,
+            "name": "southern_serpent",
+            "prompt": "Southern hip-hop, 80 BPM in D minor, heavy 808s, trap snares and drawling Southern rap, trunk-rattling bass",
+            "duration_ms": 270000,
+            "expected_style": "southern hip-hop",
+            "vocals": "Southern rap, drawling, confident"
+          },
+          {
+            "track_number": 13,
+            "name": "drill_coil",
+            "prompt": "Chicago drill, 138 BPM in F sharp minor, ominous piano, sliding 808s and menacing street rap, cold city energy",
+            "duration_ms": 225000,
+            "expected_style": "Chicago drill",
+            "vocals": "street rap, menacing, dark"
+          },
+          {
+            "track_number": 14,
+            "name": "cyberpunk_fang",
+            "prompt": "Cyberpunk beats, 110 BPM in C sharp minor, dark granular synths, distorted 808 drums, spacious percussion, spectral vocal pads, and moody atmospheric rap",
+            "duration_ms": 255000,
+            "expected_style": "cyberpunk beats",
+            "vocals": "moody atmospheric rap, dark, cinematic"
+          },
+          {
+            "track_number": 15,
+            "name": "baile_beats",
+            "prompt": "Baile funk and hip-hop fusion, 125 BPM in G minor, clipped syncopated percussion, deep sub-bass, and space for separately approved Brazilian Portuguese-English rap",
+            "duration_ms": 240000,
+            "expected_style": "baile funk hip-hop",
+            "vocals": "blocked until fluent reviewers approve both language versions and delivery"
+          }
+        ]
+      }
+    }
+  }
+}

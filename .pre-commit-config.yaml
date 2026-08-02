@@ -1,0 +1,68 @@
+repos:
+  - repo: local
+    hooks:
+      - id: source-policy
+        name: source policy
+        entry: python scripts/check_source_policy.py
+        language: system
+        pass_filenames: false
+      - id: ruff
+        name: Ruff
+        entry: python -m ruff check src tests scripts
+        language: system
+        pass_filenames: false
+      - id: ruff-format
+        name: Ruff format
+        entry: python -m ruff format --check src tests scripts
+        language: system
+        pass_filenames: false
+      - id: dependency-lock
+        name: dependency lock freshness
+        entry: python scripts/lock_python_dependencies.py
+        language: system
+        pass_filenames: false
+      - id: runtime-dependency-lock
+        name: runtime dependency lock freshness
+        entry: python scripts/lock_python_dependencies.py --profile runtime
+        language: system
+        pass_filenames: false
+      - id: documentation
+        name: documentation links
+        entry: python scripts/check_docs.py
+        language: system
+        pass_filenames: false
+      - id: readme-screenshots
+        name: current README screenshots
+        entry: python scripts/capture_readme_screenshots.py --check
+        language: system
+        pass_filenames: false
+      - id: station-badges
+        name: deterministic station badges
+        entry: python scripts/visual_generate_badges.py --check
+        language: system
+        pass_filenames: false
+      - id: project-logo
+        name: deterministic project logo
+        entry: python scripts/visual_generate_logo.py --check
+        language: system
+        pass_filenames: false
+      - id: content-inventory
+        name: content inventory freshness
+        entry: python scripts/content_inventory.py --check
+        language: system
+        pass_filenames: false
+      - id: shared-traces
+        name: shared parity fixtures
+        entry: python -m vibesnake.qa.shared_traces --check
+        language: system
+        pass_filenames: false
+      - id: shared-rule-traces
+        name: shared rule fixtures
+        entry: python -m vibesnake.qa.shared_rule_traces --check
+        language: system
+        pass_filenames: false
+      - id: shared-power-traces
+        name: shared power fixtures
+        entry: python -m vibesnake.qa.shared_power_traces --check
+        language: system
+        pass_filenames: false

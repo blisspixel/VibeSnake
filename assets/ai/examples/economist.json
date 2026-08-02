@@ -1,0 +1,11 @@
+{
+  "name": "The Economist",
+  "description": "Pure utility maximization. Optimizes score per unit risk. Behavioral economics in action.",
+  "aggression": 0.5,
+  "risk_tolerance": 0.4,
+  "patience": 0.8,
+  "greed": 0.9,
+  "chaos": 0.0,
+  "power_up_priority": 0.6,
+  "color": [0, 150, 100]
+}

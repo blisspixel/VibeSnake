@@ -1,0 +1,110 @@
+{
+  "station_name": "Snake News Network (SNN)",
+  "station_key": "snake_news",
+  "tagline": "Constraining the truth, one segment at a time.",
+  "description": "Satirical in-world news segments over smooth jazz. Deadpan anchors deliver absurdist serpent-society news.",
+  "segments": [
+    {
+      "id": 1,
+      "name": "breaking_ladders_anti_snake",
+      "title": "Breaking: Ladders Anti-Snake",
+      "anchor_type": "Serious breaking news anchor",
+      "news_line": "Breaking news - scientists confirm 97 percent of ladders are anti-snake architecture. More at eleven.",
+      "jazz_style": "Soft piano comping, walking bass, brushed drums, subtle sax melody",
+      "key": "Bb",
+      "bpm": 90,
+      "mood": "Professional news desk, slightly urgent"
+    },
+    {
+      "id": 2,
+      "name": "economic_shedding_twice_yearly",
+      "title": "Economic: Shedding Twice Yearly",
+      "anchor_type": "Corporate business reporter",
+      "news_line": "In today's economy, shedding twice a year is a luxury. Analysts recommend budget molting. Back to you, Jim.",
+      "jazz_style": "Electric piano, soft bass, light drums",
+      "key": "F",
+      "bpm": 88,
+      "mood": "Corporate news, matter-of-fact"
+    },
+    {
+      "id": 3,
+      "name": "traffic_excessive_coiling",
+      "title": "Traffic: Excessive Coiling",
+      "anchor_type": "Upbeat traffic reporter",
+      "news_line": "Massive pile-up in the terrarium - reports of excessive coiling near the water dish. Expect delays.",
+      "jazz_style": "Bright piano, upright bass, ride cymbal",
+      "key": "C",
+      "bpm": 95,
+      "mood": "Traffic report energy, slightly rushed"
+    },
+    {
+      "id": 4,
+      "name": "weather_still_hot",
+      "title": "Weather: Still Hot",
+      "anchor_type": "Bored weather anchor",
+      "news_line": "And now the weather: Still hot. Always hot. Forever hot. Back to jazz.",
+      "jazz_style": "Mellow vibes, smooth pads, relaxed drums",
+      "key": "Eb",
+      "bpm": 92,
+      "mood": "Monotone, resigned acceptance",
+      "note": "This is the best one - perfect deadpan delivery"
+    },
+    {
+      "id": 5,
+      "name": "mongoose_futures_down",
+      "title": "Mongoose Futures Down",
+      "anchor_type": "Energetic financial reporter",
+      "news_line": "This just in - mongoose futures are down 30 percent. Snake investors celebrate. Details after smooth jazz.",
+      "jazz_style": "Energetic comping, walking bass, upbeat",
+      "key": "Gm",
+      "bpm": 100,
+      "mood": "Stock market excitement"
+    },
+    {
+      "id": 6,
+      "name": "constricting_the_truth",
+      "title": "Constricting The Truth",
+      "anchor_type": "Serious primetime anchor",
+      "news_line": "Snake News Network - constricting the truth, one segment at a time. Stay tuned for more reptile reality.",
+      "jazz_style": "Serious tone, minor key undertones, dramatic jazz sting",
+      "key": "Am",
+      "bpm": 86,
+      "mood": "Station ID, authoritative"
+    },
+    {
+      "id": 7,
+      "name": "wall_conspiracy",
+      "title": "Wall Conspiracy",
+      "anchor_type": "Investigative journalist / noir narrator",
+      "news_line": "Tonight - are walls real? Or are they just suggestions? An SNN special investigation.",
+      "jazz_style": "Rhodes piano, mysterious bass, soft drums, jazz noir vibes",
+      "key": "Dm",
+      "bpm": 94,
+      "mood": "Mysterious, conspiratorial"
+    },
+    {
+      "id": 8,
+      "name": "late_night_headlines",
+      "title": "Late Night Headlines",
+      "anchor_type": "Late show host, slightly warmer",
+      "news_line": "From snake news to snake views - you heard it here first. Good night, and good shedding.",
+      "jazz_style": "Soft vibes, lounge piano, warm outro",
+      "key": "G",
+      "bpm": 82,
+      "mood": "Sign-off, friendly but professional"
+    }
+  ],
+  "generation_config": {
+    "duration_ms": 180000,
+    "force_instrumental": false,
+    "candidates_per_track": 4,
+    "min_score_threshold": 75,
+    "structure": "15-30s jazz intro, then a 10-20s news segment, then smooth jazz instrumental"
+  },
+  "tone_guidelines": {
+    "delivery": "Deadpan, measured, intimate, and earnestly reptilian",
+    "humor": "Absurdist but internally logical",
+    "philosophy": "Snakes genuinely believe this is important news",
+    "reference": "Absurdist in-world satire delivered with a calm public-radio cadence"
+  }
+}

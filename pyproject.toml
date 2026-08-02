@@ -1,0 +1,62 @@
+[build-system]
+requires = ["setuptools>=83,<84", "wheel>=0.45,<1"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "vibe-snake"
+version = "0.2.0"
+description = "A modern arcade Snake game with tactical powers, an eight-station radio framework, progression, and AI spectators"
+readme = "README.md"
+requires-python = ">=3.11,<3.15"
+license = "Apache-2.0"
+license-files = ["LICENSE", "NOTICE"]
+authors = [{ name = "Vibe Snake contributors" }]
+dynamic = ["dependencies"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: End Users/Desktop",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Games/Entertainment :: Arcade",
+]
+
+[project.scripts]
+vibesnake = "vibesnake.__main__:main"
+
+[project.urls]
+Homepage = "https://github.com/blisspixel/VibeSnake"
+Documentation = "https://github.com/blisspixel/VibeSnake/tree/main/docs"
+Issues = "https://github.com/blisspixel/VibeSnake/issues"
+Repository = "https://github.com/blisspixel/VibeSnake.git"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.dynamic]
+dependencies = { file = ["requirements.txt"] }
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+addopts = ["-ra", "--strict-config", "--strict-markers"]
+
+[tool.coverage.run]
+branch = false
+source = ["vibesnake"]
+
+[tool.coverage.report]
+fail_under = 80
+show_missing = true
+skip_covered = true
+
+[tool.ruff]
+target-version = "py311"
+line-length = 120
+extend-exclude = ["archive"]
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F"]
