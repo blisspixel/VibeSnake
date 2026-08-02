@@ -6,7 +6,7 @@
       "file": "main-menu.png",
       "height": 720,
       "label": "Main menu",
-      "sha256": "16f42aad14bc14bc508b4518b68ff097906d4b136de3c642b6e91b87ea65c3f3",
+      "sha256": "adabfdb195962ffc7ed6aaa22b1a0f6bf621ef234765dde02864475e3c648595",
       "state": "MENU",
       "width": 1280
     },
@@ -14,7 +14,7 @@
       "file": "customization.png",
       "height": 720,
       "label": "Customization",
-      "sha256": "4e4f474fe6b538e46ac744564dc55cb5bc34aa5d5099e1cb3a86e30e625854f5",
+      "sha256": "c7408679c7edf42a3ea0af63ab710ad861db3066fa02f01233a4a1d4a49e5f46",
       "state": "CUSTOMIZE",
       "width": 1280
     },
@@ -22,10 +22,10 @@
       "file": "powers-run.png",
       "height": 720,
       "label": "Powers active",
-      "sha256": "7c90243f6c6ec3a832f65bf1e55d265e7e6a3b07d465f3af57de27c26ab61b66",
+      "sha256": "c3fbfd37ac8df36e8f53b48bf08012a9ac8d77d8e00913e67887b73225aae1b3",
       "state": "RUNNING",
       "width": 1280
     }
   ],
-  "sourceSha256": "77a4a656cf8fcc9d1775b393ebf47b88dff5ee0359601afc221af02b2ac954e2"
+  "sourceSha256": "a7a29a1f85a05e3d52821530ae79ee9e1a298cd1a4f3a654a789722a74f2d358"
 }

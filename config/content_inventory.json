@@ -4,7 +4,7 @@
   "policyPath": "config/content_policy.json",
   "policySha256": "f3ba341c98574a0e03077b15be6a00e11af42182b1673f4d301e47340c038d42",
   "fileCount": 18,
-  "totalBytes": 1785415,
+  "totalBytes": 1785566,
   "summary": {
     "byIntegrityStatus": {
       "valid": 18
@@ -204,8 +204,8 @@
       "id": "asset:config/config.json",
       "path": "config/config.json",
       "mediaType": "application/json",
-      "bytes": 839,
-      "sha256": "d12cc71ef01a324b0e55cf65c6389dca53f4f7437a5e208044abd60201304674",
+      "bytes": 990,
+      "sha256": "dbb7c42c6aaed732db291fbca5025a6a791979102b987ceec7c3eeee09314915",
       "integrityStatus": "valid",
       "integrityDetail": "basic structure check passed",
       "role": "reference-runtime-config",

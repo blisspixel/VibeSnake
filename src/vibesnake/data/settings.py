@@ -88,15 +88,14 @@ ORANGE = (255, 165, 0)  # Warning states
 
 
 def create_font(size: int, *, bold: bool = False) -> pygame.font.Font:
-    """Create a valid UI font for the current Pygame font-module lifetime."""
+    """Create a retro-readable UI font for the current Pygame font-module lifetime."""
     if size <= 0:
         raise ValueError("font size must be positive")
-    if not pygame.font.get_init():
-        pygame.font.init()
-    try:
-        return pygame.font.SysFont("Arial", size, bold=bold)
-    except (OSError, pygame.error):
-        return pygame.font.Font(None, size)
+    from vibesnake.rendering.theme import pixel_font
+
+    # Map legacy point sizes onto the pixel-font base so HUD and menus share one look.
+    base_px = max(10, min(48, int(size * 0.75)))
+    return pixel_font(base_px, bold=bold)
 
 
 # ============================================================================

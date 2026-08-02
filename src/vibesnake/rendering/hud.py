@@ -152,7 +152,7 @@ class HUD:
             try:
                 badge = pygame.image.load(str(badge_path))
                 # Scale to appropriate size (40x40 for HUD)
-                badge = pygame.transform.smoothscale(badge, (40, 40))
+                badge = pygame.transform.scale(badge, (40, 40))
                 self.badge_cache[station_key] = badge
                 return badge
             except (OSError, pygame.error, TypeError, ValueError) as error:
@@ -225,7 +225,7 @@ class HUD:
             # Hint text (smaller, below)
             hint_text = "R: Change"
             try:
-                small_font = pygame.font.SysFont("Arial", 12)
+                small_font = settings.create_font(12)
                 hint_shadow = small_font.render(hint_text, True, (0, 0, 0))
                 surface.blit(hint_shadow, (text_x + 1, 36))
                 hint_main = small_font.render(hint_text, True, (180, 180, 180))
@@ -271,7 +271,7 @@ class HUD:
 
             # Detail (smaller, bottom)
             try:
-                small_font = pygame.font.SysFont("Arial", 14)
+                small_font = settings.create_font(14)
                 detail_shadow = small_font.render(combo_detail, True, (0, 0, 0))
                 detail_width = small_font.size(combo_detail)[0]
                 surface.blit(detail_shadow, (settings.WIDTH - detail_width - 14, 33))
@@ -286,7 +286,7 @@ class HUD:
             powerup_x = 10
 
             try:
-                powerup_font = pygame.font.SysFont("Arial", 16, bold=True)
+                powerup_font = settings.create_font(16, bold=True)
 
                 for powerup in active_powerups:
                     if powerup.activated and powerup.active:
@@ -349,7 +349,6 @@ class HUD:
 
         surface.blit(msg, msg.get_rect(center=(settings.WIDTH // 2, settings.HEIGHT // 3)))
         surface.blit(prompt, prompt.get_rect(center=(settings.WIDTH // 2, settings.HEIGHT // 2)))
-        pygame.display.flip()
 
     def update_high_score(self, score: int, name: str = ""):
         """Add a new all-time best through the leaderboard repository."""

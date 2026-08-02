@@ -11,6 +11,7 @@ import random
 from typing import List, Tuple, Dict
 from dataclasses import dataclass
 
+from vibesnake.data import settings
 from vibesnake.utils.logger import get_logger
 
 
@@ -460,7 +461,7 @@ class VisualEffectsManager:
             alpha = max(0, min(255, alpha))
 
             try:
-                font = pygame.font.SysFont("Arial", 20, bold=True)
+                font = settings.create_font(20, bold=True)
                 text_surface = font.render(popup.text, True, popup.color)
 
                 # Add semi-transparent background for readability
@@ -505,7 +506,7 @@ class VisualEffectsManager:
 
             # Icon character
             try:
-                font = pygame.font.SysFont("Arial", 18, bold=True)
+                font = settings.create_font(18, bold=True)
                 icon_text = font.render(powerup["icon_char"], True, (255, 255, 255))
                 icon_text_rect = icon_text.get_rect(center=icon_center)
                 surface.blit(icon_text, icon_text_rect)

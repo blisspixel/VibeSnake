@@ -22,6 +22,7 @@ from vibesnake.powerups.cadence import clear_cadence_factors
 from vibesnake.powerups.boost import BoostPowerUp
 from vibesnake.powerups.laststand import LastStandPowerUp
 from vibesnake.powerups.shield import ShieldPowerUp
+from vibesnake.rendering.display import AdaptiveDisplay
 from vibesnake.rendering.menus import Menu
 from vibesnake.rendering.visual_effects import VisualEffectsManager, BackgroundRenderer
 from vibesnake.core.scoring import ScoreManager
@@ -66,15 +67,21 @@ class Game:
     """
 
     def __init__(self):
-        pygame.display.set_caption("Vibe Snake Game")
         self.user_settings = UserSettings(
             default_sound_enabled=settings.SOUND_ENABLED,
             default_volume=settings.SOUND_VOLUME,
         )
         self.fullscreen = self.user_settings.fullscreen
-        display_size = (0, 0) if self.fullscreen else (settings.WIDTH, settings.HEIGHT)
-        display_flags = pygame.FULLSCREEN if self.fullscreen else 0
-        self.screen = pygame.display.set_mode(display_size, display_flags)
+        # Logical canvas stays rule-stable; the OS window is adaptive (default 4:3 framing).
+        self.display = AdaptiveDisplay(
+            settings.WIDTH,
+            settings.HEIGHT,
+            fullscreen=self.fullscreen,
+            preferred_aspect=(4, 3),
+            integer_scale=True,
+            caption="Vibe Snake",
+        )
+        self.screen = self.display.canvas
         self.clock = pygame.time.Clock()
         self.menu = Menu(self.screen)
         self.high_score_table = HighScoreTable()
@@ -392,31 +399,17 @@ class Game:
         """
         Toggle between fullscreen and windowed display modes.
 
-        **Implementation:**
-        Switches pygame display mode using FULLSCREEN flag:
-            Windowed: Fixed resolution (settings.WIDTH × settings.HEIGHT)
-            Fullscreen: Native display resolution (0, 0 with FULLSCREEN flag)
-
-        **Side Effects:**
-            - Recreates pygame display surface (invalidates old screen reference)
-            - Updates menu.screen reference to new surface
-            - Background renderer maintains original size (scaled on draw)
-
-        **Complexity:** O(1) - constant time display mode switch
+        Drawing always targets the fixed logical canvas. The OS window is
+        recreated; letterboxing adapts the canvas to phone, square, wide, or
+        classic 4:3 frames without changing grid rules.
         """
         self.fullscreen = not self.fullscreen
         if self.fullscreen:
-            # Get current display info
             display_info = pygame.display.Info()
             print(f"[Display] Switching to fullscreen ({display_info.current_w}x{display_info.current_h})")
-            self.screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
         else:
-            print(f"[Display] Switching to windowed ({settings.WIDTH}x{settings.HEIGHT})")
-            self.screen = pygame.display.set_mode((settings.WIDTH, settings.HEIGHT))
-
-        # Update menu and background renderer with new screen
-        self.menu.screen = self.screen
-        # Background keeps its original size - will be drawn centered/scaled
+            print("[Display] Switching to adaptive windowed presentation (4:3 preferred)")
+        self.display.set_fullscreen(self.fullscreen)
         self.user_settings.fullscreen = self.fullscreen
         self.user_settings.save()
 
@@ -1081,6 +1074,10 @@ class Game:
             if event.type == pygame.QUIT:
                 pygame.quit()
                 exit()
+
+            if event.type == pygame.VIDEORESIZE and not self.fullscreen:
+                self.display.handle_resize(event.size)
+                continue
 
             # F11 to toggle fullscreen (works in any state)
             if event.type == pygame.KEYDOWN and event.key == pygame.K_F11:
@@ -1771,14 +1768,14 @@ class Game:
     def draw(self):
         if self.state == GameState.MENU:
             self.menu.draw_title_screen()
-            pygame.display.flip()
+            self.display.present()
         elif self.state == GameState.HELP:
             self.menu.draw_help_overlay()
-            pygame.display.flip()
+            self.display.present()
         elif self.state == GameState.CHANNEL_BROWSER:
             # Show channel browser for picking AI streamer
             self.menu.draw_channel_browser(self.channel_list, self.channel_browser_index)
-            pygame.display.flip()
+            self.display.present()
         elif self.state == GameState.CUSTOMIZE:
             # Show customization menu with player profile for unlock checking
             self.menu.draw_customization_menu(
@@ -1789,23 +1786,23 @@ class Game:
                 player_profile=self.player_profile,
                 notification=self.customization_notification,
             )
-            pygame.display.flip()
+            self.display.present()
         elif self.state == GameState.SETTINGS:
             # Show settings menu
             self.menu.draw_settings_menu(
                 selected_option=self.settings_selected_option, sound_on=self.sound_on, volume=self.volume
             )
-            pygame.display.flip()
+            self.display.present()
         elif self.state == GameState.HIGH_SCORES:
             # Show high scores screen
             self.menu.draw_high_scores(self.high_score_table)
-            pygame.display.flip()
+            self.display.present()
         elif self.state == GameState.ACHIEVEMENTS:
             # Show achievements menu
             self.menu.draw_achievements_menu(
                 achievements=self.achievement_manager.achievements, scroll_offset=self.achievements_scroll_offset
             )
-            pygame.display.flip()
+            self.display.present()
         elif self.state == GameState.LETS_PLAY:
             self._draw_game_elements(skip_hud=True)  # Skip HUD - overlay shows score
             # Show AI personality overlay (replaces HUD at top)
@@ -1817,11 +1814,11 @@ class Game:
                     self.score_manager.base_score,
                     self.score_manager.combo_count,
                 )
-            pygame.display.flip()
+            self.display.present()
         elif self.state == GameState.PAUSED:
             self._draw_game_elements()
             self.menu.draw_pause_overlay()
-            pygame.display.flip()
+            self.display.present()
         elif self.state == GameState.NAME_ENTRY:
             # Only draw game elements if coming from gameplay (high score entry)
             # On first launch, just show the name entry screen
@@ -1837,7 +1834,7 @@ class Game:
                 cursor_blink=self.cursor_visible,
             )
             # CRITICAL: Must call flip() to actually show the screen!
-            pygame.display.flip()
+            self.display.present()
         elif self.state == GameState.GAME_OVER:
             self._draw_game_elements()
             # Pass score, high score, and whether this is a new high score for epic celebration
@@ -1854,11 +1851,11 @@ class Game:
                 if self.ai_personality_key
                 else 0.0,
             )
-            pygame.display.flip()
+            self.display.present()
         else:
             # RUNNING state
             self._draw_game_elements()
-            pygame.display.flip()
+            self.display.present()
 
     def _draw_game_elements(self, skip_hud=False):
         # Draw procedural animated background instead of solid color

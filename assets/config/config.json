@@ -2,16 +2,21 @@
   "schema_version": 1,
   "resolution_preset": "hd",
   "resolutions": {
-    "hd": {"grid_width": 64, "grid_height": 33, "description": "1280x720 (16:9 HD)"},
-    "classic": {"grid_width": 40, "grid_height": 30, "description": "800x660 (4:3 Classic)"},
-    "fullhd": {"grid_width": 96, "grid_height": 51, "description": "1920x1080 (16:9 Full HD)"},
-    "ultrawide": {"grid_width": 106, "grid_height": 42, "description": "2120x900 (21:9 Ultrawide)"}
+    "hd": {"grid_width": 64, "grid_height": 33, "description": "1280x720 logical canvas; window prefers 4:3 letterbox"},
+    "classic": {"grid_width": 44, "grid_height": 30, "description": "880x660 true 4:3 classic cabinet frame"},
+    "fullhd": {"grid_width": 96, "grid_height": 51, "description": "1920x1080 logical canvas"},
+    "ultrawide": {"grid_width": 106, "grid_height": 42, "description": "2120x900 logical canvas"}
   },
   "grid_width": 64,
   "grid_height": 33,
   "cell_size": 20,
   "fps": 60,
   "logic_tick": 0.05,
+  "display": {
+    "preferred_aspect": [4, 3],
+    "integer_scale": true,
+    "letterbox": true
+  },
   "colors": {
     "background": [34, 139, 34],
     "snake": [50, 255, 50],

@@ -1,14 +1,17 @@
 """Render navigation screens and modal overlays.
 
-Menus use a consistent dark surface, text hierarchy, visible shortcut boxes,
-and state-specific accent colors. Color is never the only action label. Layout,
-contrast, focus, text scale, and reduced-motion behavior remain release gates and
-must be measured from rendered output rather than inferred from design intent.
+Menus use a retro-modern arcade language: hard-edged panels, pixel-scale type,
+and limited neon accents. Color is never the only action label. Layout, contrast,
+focus, text scale, and reduced-motion behavior remain release gates and must be
+measured from rendered output rather than inferred from design intent.
 """
 
-import pygame
-from vibesnake.data import settings
 import os
+
+import pygame
+
+from vibesnake.data import settings
+from vibesnake.rendering import theme
 
 
 class Menu:
@@ -22,7 +25,8 @@ class Menu:
         if os.path.exists(logo_path):
             try:
                 self.logo = pygame.image.load(logo_path).convert_alpha()
-                self.logo = pygame.transform.smoothscale(self.logo, (200, 200))
+                # Nearest-neighbor keeps the handcrafted mark crisp.
+                self.logo = pygame.transform.scale(self.logo, (192, 192))
             except Exception as e:
                 print(f"[Menu] Failed to load logo: {e}")
         else:
@@ -51,78 +55,79 @@ class Menu:
         return (int((r + m) * 255), int((g + m) * 255), int((b + m) * 255))
 
     def draw_title_screen(self):
-        """Draw enhanced main menu with better visual layout."""
-        # Much darker background for better text contrast
-        self.screen.fill((5, 5, 15))
+        """Draw the main menu as a retro-modern arcade title card."""
+        self.screen.fill(theme.PALETTE["void"])
+        theme.draw_pixel_grid(self.screen, step=20, color=(16, 12, 34))
 
-        # Remove grid pattern - it makes text harder to read
-        # grid_color = (30, 30, 50)
-        # for x in range(0, settings.WIDTH, 40):
-        #     pygame.draw.line(self.screen, grid_color, (x, 0), (x, settings.HEIGHT), 1)
-        # for y in range(0, settings.HEIGHT, 40):
-        #     pygame.draw.line(self.screen, grid_color, (0, y), (settings.WIDTH, y), 1)
+        # Outer cabinet frame
+        frame = pygame.Rect(24, 20, settings.WIDTH - 48, settings.HEIGHT - 40)
+        theme.draw_panel(
+            self.screen, frame, fill=theme.PALETTE["panel"], border=theme.PALETTE["accent"], border_width=3
+        )
 
-        y_offset = 60
+        center_x = settings.WIDTH // 2
+        y_offset = 48
 
-        # Logo (no need for duplicate title - it's in the logo!)
         if self.logo:
-            # Reasonable logo size
-            large_logo = pygame.transform.smoothscale(self.logo, (220, 220))
-            logo_rect = large_logo.get_rect(center=(settings.WIDTH // 2, y_offset + 110))
-            self.screen.blit(large_logo, logo_rect)
-            y_offset += 240
+            logo = pygame.transform.scale(self.logo, (200, 200))
+            logo_rect = logo.get_rect(center=(center_x, y_offset + 100))
+            # Pixel bezel around the brand mark
+            bezel = logo_rect.inflate(16, 16)
+            theme.draw_panel(
+                self.screen,
+                bezel,
+                fill=theme.PALETTE["ink"],
+                border=theme.PALETTE["accent_gold"],
+                border_width=3,
+                shadow=False,
+            )
+            self.screen.blit(logo, logo_rect)
+            y_offset += 230
+        else:
+            title = theme.render_pixel_text("VIBE SNAKE", color=theme.PALETTE["accent_gold"], scale=3, bold=True)
+            self.screen.blit(title, title.get_rect(center=(center_x, y_offset + 24)))
+            y_offset += 70
 
-        # Menu options - readable but fits on screen
-        menu_font = pygame.font.SysFont("Arial", 28, bold=True)
-        key_font = pygame.font.SysFont("Arial", 26, bold=True)
+        tag = theme.render_pixel_text("RETRO CORE  //  MODERN FLOW", color=theme.PALETTE["muted"], scale=2)
+        self.screen.blit(tag, tag.get_rect(center=(center_x, y_offset)))
+        y_offset += 36
 
         menu_items = [
-            ("ENTER", "Start Game", (100, 255, 100)),
-            ("C", "Customize Snake", (255, 220, 0)),
-            ("V", "View High Scores", (100, 200, 255)),
-            ("A", "Achievements", (255, 100, 255)),
-            ("L", "Watch AI Stream", (255, 100, 150)),
-            ("S", "Settings", (100, 255, 255)),
-            ("H", "Help", (220, 220, 220)),
-            ("Q", "Quit", (255, 80, 80)),
+            ("ENTER", "START RUN", theme.PALETTE["accent"]),
+            ("C", "CUSTOMIZE", theme.PALETTE["accent_gold"]),
+            ("V", "HIGH SCORES", theme.PALETTE["accent_sky"]),
+            ("A", "ACHIEVEMENTS", theme.PALETTE["accent_hot"]),
+            ("L", "AI CHANNELS", (255, 120, 170)),
+            ("S", "SETTINGS", theme.PALETTE["accent_sky"]),
+            ("H", "HELP", theme.PALETTE["text"]),
+            ("Q", "QUIT", theme.PALETTE["danger"]),
         ]
 
-        # Center the menu options with more space
-        menu_x = settings.WIDTH // 2 - 250
+        row_w = min(520, settings.WIDTH - 120)
+        menu_x = center_x - row_w // 2
+        row_h = 40
 
-        for key, label, color in menu_items:
-            # Draw key box with glow effect
-            key_surface = key_font.render(key, True, (255, 255, 255))
-            key_width = max(key_surface.get_width() + 24, 105)
-            key_rect = pygame.Rect(menu_x, y_offset, key_width, 36)
+        for key, label, accent in menu_items:
+            row = pygame.Rect(menu_x, y_offset, row_w, row_h)
+            theme.draw_panel(self.screen, row, fill=theme.PALETTE["panel_hi"], border=accent, border_width=2)
 
-            # Glow effect behind box
-            glow_rect = key_rect.inflate(4, 4)
-            pygame.draw.rect(self.screen, (color[0] // 4, color[1] // 4, color[2] // 4), glow_rect, border_radius=4)
+            key_box = pygame.Rect(row.x + 8, row.y + 6, 92, row_h - 12)
+            pygame.draw.rect(self.screen, theme.PALETTE["ink"], key_box)
+            pygame.draw.rect(self.screen, accent, key_box, 2)
+            key_surface = theme.render_pixel_text(key, color=theme.PALETTE["text"], scale=2, bold=True, base_px=11)
+            self.screen.blit(key_surface, key_surface.get_rect(center=key_box.center))
 
-            # Main box with bright background
-            pygame.draw.rect(self.screen, (30, 30, 45), key_rect, border_radius=4)
-            pygame.draw.rect(self.screen, color, key_rect, 3, border_radius=4)
+            label_surface = theme.render_pixel_text(label, color=theme.PALETTE["text"], scale=2, bold=True, base_px=12)
+            self.screen.blit(label_surface, (key_box.right + 18, row.y + (row_h - label_surface.get_height()) // 2))
+            y_offset += row_h + 8
 
-            # Key text centered in box
-            key_text_rect = key_surface.get_rect(center=key_rect.center)
-            self.screen.blit(key_surface, key_text_rect)
-
-            # Label text - BRIGHT WHITE, properly vertically aligned
-            label_surface = menu_font.render(label, True, (255, 255, 255))
-            self.screen.blit(label_surface, (menu_x + key_width + 25, y_offset + 4))
-
-            y_offset += 44
-
-        # Footer hint - positioned with more space from last menu item
-        footer_y = settings.HEIGHT - 35
-        footer_font = pygame.font.SysFont("Arial", 16)
-        footer = footer_font.render(
-            "Unleash your inner snake with 9 power-ups, 25 achievements, and endless vibes", True, (120, 120, 150)
+        footer = theme.render_pixel_text(
+            "9 POWERS  ·  25 ACHIEVEMENTS  ·  RESIZE WINDOW ANYTIME",
+            color=theme.PALETTE["dim"],
+            scale=1,
+            base_px=12,
         )
-        self.screen.blit(footer, footer.get_rect(center=(settings.WIDTH // 2, footer_y)))
-
-        # Don't call flip() here - let the main game loop handle it!
+        self.screen.blit(footer, footer.get_rect(center=(center_x, settings.HEIGHT - 42)))
 
     def draw_pause_overlay(self):
         overlay = pygame.Surface((settings.WIDTH, settings.HEIGHT), pygame.SRCALPHA)
@@ -134,7 +139,7 @@ class Menu:
 
         self.screen.blit(pause_msg, pause_msg.get_rect(center=(settings.WIDTH // 2, settings.HEIGHT // 3)))
         self.screen.blit(hint, hint.get_rect(center=(settings.WIDTH // 2, settings.HEIGHT // 2)))
-        pygame.display.flip()
+        # Presentation is owned by AdaptiveDisplay.present() in the game loop.
 
     def choose_game_over_message(self, score: int, high_score: int, is_new_high_score: bool) -> str:
         """
@@ -299,7 +304,7 @@ class Menu:
         else:
             # Regular game over - Enhanced visual presentation
             # Title with shadow effect
-            header_font = pygame.font.SysFont("Arial", 64, bold=True)
+            header_font = settings.create_font(64, bold=True)
             header_text = "GAME OVER"
 
             # Shadow
@@ -320,14 +325,14 @@ class Menu:
             pygame.draw.rect(self.screen, (150, 200, 255), score_box_rect, 3)
 
             # Score display
-            score_font = pygame.font.SysFont("Arial", 42, bold=True)
+            score_font = settings.create_font(42, bold=True)
             score_text = score_font.render(f"Score: {score}", True, (150, 255, 150))
             self.screen.blit(score_text, score_text.get_rect(center=(settings.WIDTH // 2, y_offset + 20)))
             y_offset += 80
 
             # High score reference (if not a new high score)
             if score < high_score:
-                high_score_font = pygame.font.SysFont("Arial", 22)
+                high_score_font = settings.create_font(22)
                 high_score_text = high_score_font.render(f"High Score: {high_score}", True, (200, 200, 200))
                 self.screen.blit(high_score_text, high_score_text.get_rect(center=(settings.WIDTH // 2, y_offset)))
                 y_offset += 40
@@ -335,7 +340,7 @@ class Menu:
             # Roast message (use provided message to avoid flashing)
             if not message:
                 message = "POV: You're not HIM"  # Fallback
-            roast_font = pygame.font.SysFont("Arial", 24, italic=True)
+            roast_font = settings.create_font(24)
             roast_text = roast_font.render(message, True, (255, 200, 100))
             self.screen.blit(roast_text, roast_text.get_rect(center=(settings.WIDTH // 2, y_offset)))
             y_offset += 60
@@ -346,7 +351,7 @@ class Menu:
 
         # AI auto-restart countdown (if AI mode)
         if is_ai_mode and ai_restart_time > 0:
-            countdown_font = pygame.font.SysFont("Arial", 28, bold=True)
+            countdown_font = settings.create_font(28, bold=True)
             countdown_text = f"Restarting in {ai_restart_time:.1f}s..."
             countdown_surface = countdown_font.render(countdown_text, True, (255, 200, 100))
             countdown_rect = countdown_surface.get_rect(center=(settings.WIDTH // 2, button_y - 50))
@@ -357,7 +362,7 @@ class Menu:
         pygame.draw.rect(self.screen, (40, 60, 40), retry_box)
         pygame.draw.rect(self.screen, (150, 255, 150), retry_box, 3)
 
-        retry_font = pygame.font.SysFont("Arial", 24, bold=True)
+        retry_font = settings.create_font(24, bold=True)
         retry_label = "C - Watch Again" if is_ai_mode else "C - Play Again"
         retry_text = retry_font.render(retry_label, True, (150, 255, 150))
         retry_rect = retry_text.get_rect(center=retry_box.center)
@@ -385,8 +390,8 @@ class Menu:
         y = 30
 
         # Smaller fonts for fitting more content
-        small_font = pygame.font.SysFont("Arial", 16)
-        section_font = pygame.font.SysFont("Arial", 18, bold=True)
+        small_font = settings.create_font(16)
+        section_font = settings.create_font(18, bold=True)
 
         # Title
         title = self.large_font.render("HELP & POWER-UPS", True, (100, 200, 255))
@@ -486,8 +491,6 @@ class Menu:
         footer = small_font.render("Press H or ESC to close | Press ENTER to start playing!", True, (150, 200, 255))
         self.screen.blit(footer, footer.get_rect(center=(settings.WIDTH // 2, y)))
 
-        pygame.display.flip()
-
     def draw_lets_play_overlay(self, ai_name: str, ai_description: str, score: int, combo: int):
         """
         Draw overlay showing AI streamer and stats during Let's Play mode.
@@ -514,7 +517,7 @@ class Menu:
         self.screen.blit(desc_text, desc_text.get_rect(center=(settings.WIDTH // 2, 68)))
 
         # Controls hint - bright white with black shadow for readability
-        hint_font = pygame.font.SysFont("Arial", 18, bold=True)
+        hint_font = settings.create_font(18, bold=True)
         hint_str = "ESC/L - Stop Watching | ENTER - New Streamer | R - Change Station"
 
         # Draw shadow first
@@ -759,7 +762,7 @@ class Menu:
         self.screen.fill((20, 20, 30))
 
         # Title
-        title_font = pygame.font.SysFont("Arial", 42, bold=True)
+        title_font = settings.create_font(42, bold=True)
         title = title_font.render("CUSTOMIZE YOUR SNAKE", True, (255, 215, 0))
         title_rect = title.get_rect(center=(settings.WIDTH // 2, 50))
         self.screen.blit(title, title_rect)
@@ -769,7 +772,7 @@ class Menu:
         category_x = 50
         category_y_start = 150
 
-        cat_font = pygame.font.SysFont("Arial", 24, bold=True)
+        cat_font = settings.create_font(24, bold=True)
         for i, category in enumerate(categories):
             y_pos = category_y_start + i * 60
             color = (255, 255, 255) if i == selected_category else (100, 100, 100)
@@ -820,7 +823,7 @@ class Menu:
 
                     # Show lock icon (use text "LOCK" instead of emoji for compatibility)
                     try:
-                        lock_font = pygame.font.SysFont("Arial", 16, bold=True)
+                        lock_font = settings.create_font(16, bold=True)
                         lock_text = lock_font.render("LOCK", True, (255, 255, 255))
                         lock_rect = lock_text.get_rect(center=swatch_rect.center)
                         self.screen.blit(lock_text, lock_rect)
@@ -921,7 +924,7 @@ class Menu:
         pygame.draw.rect(self.screen, (100, 100, 100), preview_bg, 2)
 
         # Preview label
-        preview_label = pygame.font.SysFont("Arial", 18).render("LIVE PREVIEW", True, (200, 200, 200))
+        preview_label = settings.create_font(18).render("LIVE PREVIEW", True, (200, 200, 200))
         self.screen.blit(preview_label, (preview_x + 50, preview_y - 35))
 
         # Animated preview using pygame.time
@@ -1190,7 +1193,7 @@ class Menu:
         ]
 
         inst_y = settings.HEIGHT - 80
-        inst_font = pygame.font.SysFont("Arial", 18)
+        inst_font = settings.create_font(18)
         for i, instruction in enumerate(instructions):
             inst_surface = inst_font.render(instruction, True, (150, 150, 150))
             inst_rect = inst_surface.get_rect(center=(settings.WIDTH // 2, inst_y + i * 25))
@@ -1198,7 +1201,7 @@ class Menu:
 
         # Draw notification if present (save/load confirmation)
         if notification:
-            notif_font = pygame.font.SysFont("Arial", 32, bold=True)
+            notif_font = settings.create_font(32, bold=True)
             notif_surface = notif_font.render(notification, True, (0, 255, 0))
             notif_rect = notif_surface.get_rect(center=(settings.WIDTH // 2, settings.HEIGHT // 2 - 100))
             # Add background for better visibility
@@ -1259,17 +1262,17 @@ class Menu:
         notif_surface.blit(icon_surface, (15, 25))
 
         # Draw "ACHIEVEMENT UNLOCKED" text
-        header_font = pygame.font.SysFont("Arial", 14, bold=True)
+        header_font = settings.create_font(14, bold=True)
         header_surface = header_font.render("ACHIEVEMENT UNLOCKED", True, border_color)
         notif_surface.blit(header_surface, (70, 15))
 
         # Draw achievement name
-        name_font = pygame.font.SysFont("Arial", 20, bold=True)
+        name_font = settings.create_font(20, bold=True)
         name_surface = name_font.render(achievement.name, True, (255, 255, 255))
         notif_surface.blit(name_surface, (70, 35))
 
         # Draw achievement description
-        desc_font = pygame.font.SysFont("Arial", 14)
+        desc_font = settings.create_font(14)
         desc_surface = desc_font.render(achievement.description, True, (180, 180, 180))
         notif_surface.blit(desc_surface, (70, 60))
 
@@ -1289,7 +1292,7 @@ class Menu:
         self.screen.fill((20, 20, 30))
 
         # Title
-        title_font = pygame.font.SysFont("Arial", 48, bold=True)
+        title_font = settings.create_font(48, bold=True)
         title_surface = title_font.render("SETTINGS", True, (150, 200, 255))
         title_rect = title_surface.get_rect(center=(settings.WIDTH // 2, 60))
         self.screen.blit(title_surface, title_rect)
@@ -1314,20 +1317,20 @@ class Menu:
                 pygame.draw.rect(self.screen, (100, 150, 255), highlight_rect, 3)
 
             # Draw label
-            label_font = pygame.font.SysFont("Arial", 28, bold=True)
+            label_font = settings.create_font(28, bold=True)
             label_surface = label_font.render(label, True, (255, 255, 255))
             self.screen.blit(label_surface, (220, y))
 
             # Draw value
             if value:
-                value_font = pygame.font.SysFont("Arial", 24)
+                value_font = settings.create_font(24)
                 value_surface = value_font.render(value, True, (150, 200, 255))
                 self.screen.blit(value_surface, (450, y + 2))
 
         # Instructions
         instructions = ["UP/DOWN: Navigate  |  LEFT/RIGHT: Adjust  |  ENTER: Select  |  ESC: Back"]
         inst_y = settings.HEIGHT - 60
-        inst_font = pygame.font.SysFont("Arial", 18)
+        inst_font = settings.create_font(18)
         for i, instruction in enumerate(instructions):
             inst_surface = inst_font.render(instruction, True, (150, 150, 150))
             inst_rect = inst_surface.get_rect(center=(settings.WIDTH // 2, inst_y + i * 25))
@@ -1351,7 +1354,7 @@ class Menu:
             pygame.draw.line(self.screen, grid_color, (0, y), (settings.WIDTH, y), 1)
 
         # Title
-        title_font = pygame.font.SysFont("Arial", 56, bold=True)
+        title_font = settings.create_font(56, bold=True)
         title_text = "HIGH SCORES"
 
         # Shadow
@@ -1366,7 +1369,7 @@ class Menu:
 
         # Header row
         header_y = 140
-        header_font = pygame.font.SysFont("Arial", 24, bold=True)
+        header_font = settings.create_font(24, bold=True)
         rank_header = header_font.render("RANK", True, (150, 200, 255))
         name_header = header_font.render("NAME", True, (150, 200, 255))
         score_header = header_font.render("SCORE", True, (150, 200, 255))
@@ -1385,12 +1388,12 @@ class Menu:
 
         if not top_scores:
             # No scores yet
-            no_scores_font = pygame.font.SysFont("Arial", 32)
+            no_scores_font = settings.create_font(32)
             no_scores_text = no_scores_font.render("No high scores yet!", True, (150, 150, 150))
             no_scores_rect = no_scores_text.get_rect(center=(settings.WIDTH // 2, 300))
             self.screen.blit(no_scores_text, no_scores_rect)
 
-            hint_font = pygame.font.SysFont("Arial", 20)
+            hint_font = settings.create_font(20)
             hint_text = hint_font.render("Play the game to set your first record!", True, (120, 120, 120))
             hint_rect = hint_text.get_rect(center=(settings.WIDTH // 2, 340))
             self.screen.blit(hint_text, hint_rect)
@@ -1398,9 +1401,9 @@ class Menu:
             # Draw scores
             entry_y_start = header_y + 50
             entry_height = 40
-            rank_font = pygame.font.SysFont("Arial", 28, bold=True)
-            entry_font = pygame.font.SysFont("Arial", 24)
-            date_font = pygame.font.SysFont("Arial", 18)
+            rank_font = settings.create_font(28, bold=True)
+            entry_font = settings.create_font(24)
+            date_font = settings.create_font(18)
 
             for i, entry in enumerate(top_scores):
                 y = entry_y_start + i * entry_height
@@ -1450,7 +1453,7 @@ class Menu:
 
         # Instructions at bottom
         inst_y = settings.HEIGHT - 50
-        inst_font = pygame.font.SysFont("Arial", 20)
+        inst_font = settings.create_font(20)
         inst_text = inst_font.render("Press ESC or ENTER to return to menu", True, (150, 150, 150))
         inst_rect = inst_text.get_rect(center=(settings.WIDTH // 2, inst_y))
         self.screen.blit(inst_text, inst_rect)
@@ -1467,7 +1470,7 @@ class Menu:
         self.screen.fill((20, 20, 30))
 
         # Title
-        title_font = pygame.font.SysFont("Arial", 48, bold=True)
+        title_font = settings.create_font(48, bold=True)
         title_surface = title_font.render("ACHIEVEMENTS", True, (255, 215, 0))
         title_rect = title_surface.get_rect(center=(settings.WIDTH // 2, 60))
         self.screen.blit(title_surface, title_rect)
@@ -1492,7 +1495,7 @@ class Menu:
         pygame.draw.rect(self.screen, (255, 255, 255), pygame.Rect(bar_x, bar_y, bar_width, bar_height), 2)
 
         # Progress text
-        progress_font = pygame.font.SysFont("Arial", 20)
+        progress_font = settings.create_font(20)
         progress_text = f"{unlocked_count}/{total_achievements} ({completion_pct:.0f}%)"
         progress_surface = progress_font.render(progress_text, True, (255, 255, 255))
         progress_rect = progress_surface.get_rect(center=(settings.WIDTH // 2, bar_y + bar_height // 2))
@@ -1537,19 +1540,19 @@ class Menu:
             self.screen.blit(icon_surface, (95, item_y + 15))
 
             # Achievement name
-            name_font = pygame.font.SysFont("Arial", 22, bold=True)
+            name_font = settings.create_font(22, bold=True)
             name_color = (255, 255, 255) if achievement.unlocked else (120, 120, 120)
             name_surface = name_font.render(achievement.name, True, name_color)
             self.screen.blit(name_surface, (160, item_y + 10))
 
             # Achievement description
-            desc_font = pygame.font.SysFont("Arial", 16)
+            desc_font = settings.create_font(16)
             desc_color = (180, 180, 180) if achievement.unlocked else (100, 100, 100)
             desc_surface = desc_font.render(achievement.description, True, desc_color)
             self.screen.blit(desc_surface, (160, item_y + 38))
 
             # Rarity badge
-            rarity_font = pygame.font.SysFont("Arial", 14, bold=True)
+            rarity_font = settings.create_font(14, bold=True)
             rarity_text = achievement.rarity.upper()
             rarity_surface = rarity_font.render(rarity_text, True, border_color)
             rarity_x = settings.WIDTH - 180
@@ -1564,7 +1567,7 @@ class Menu:
         # Instructions
         instructions = ["UP/DOWN: Scroll  |  ESC: Back to Menu"]
         inst_y = settings.HEIGHT - 60
-        inst_font = pygame.font.SysFont("Arial", 18)
+        inst_font = settings.create_font(18)
         for i, instruction in enumerate(instructions):
             inst_surface = inst_font.render(instruction, True, (150, 150, 150))
             inst_rect = inst_surface.get_rect(center=(settings.WIDTH // 2, inst_y + i * 25))
