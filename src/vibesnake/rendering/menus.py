@@ -66,13 +66,13 @@ class Menu:
         )
 
         center_x = settings.WIDTH // 2
-        y_offset = 48
+        y_offset = 36
 
         if self.logo:
-            logo = pygame.transform.scale(self.logo, (200, 200))
-            logo_rect = logo.get_rect(center=(center_x, y_offset + 100))
+            logo = pygame.transform.scale(self.logo, (168, 168))
+            logo_rect = logo.get_rect(center=(center_x, y_offset + 84))
             # Pixel bezel around the brand mark
-            bezel = logo_rect.inflate(16, 16)
+            bezel = logo_rect.inflate(12, 12)
             theme.draw_panel(
                 self.screen,
                 bezel,
@@ -82,15 +82,15 @@ class Menu:
                 shadow=False,
             )
             self.screen.blit(logo, logo_rect)
-            y_offset += 230
+            y_offset += 188
         else:
             title = theme.render_pixel_text("VIBE SNAKE", color=theme.PALETTE["accent_gold"], scale=3, bold=True)
             self.screen.blit(title, title.get_rect(center=(center_x, y_offset + 24)))
-            y_offset += 70
+            y_offset += 64
 
         tag = theme.render_pixel_text("RETRO CORE  //  MODERN FLOW", color=theme.PALETTE["muted"], scale=2)
         self.screen.blit(tag, tag.get_rect(center=(center_x, y_offset)))
-        y_offset += 36
+        y_offset += 28
 
         menu_items = [
             ("ENTER", "START RUN", theme.PALETTE["accent"]),
@@ -105,13 +105,19 @@ class Menu:
 
         row_w = min(520, settings.WIDTH - 120)
         menu_x = center_x - row_w // 2
-        row_h = 40
+        row_h = 38
+        footer_reserve = 56
+        available = max(200, settings.HEIGHT - y_offset - footer_reserve)
+        gap = 6
+        needed = len(menu_items) * row_h + (len(menu_items) - 1) * gap
+        if needed > available:
+            row_h = max(30, (available - (len(menu_items) - 1) * gap) // len(menu_items))
 
         for key, label, accent in menu_items:
             row = pygame.Rect(menu_x, y_offset, row_w, row_h)
             theme.draw_panel(self.screen, row, fill=theme.PALETTE["panel_hi"], border=accent, border_width=2)
 
-            key_box = pygame.Rect(row.x + 8, row.y + 6, 92, row_h - 12)
+            key_box = pygame.Rect(row.x + 8, row.y + 5, 92, row_h - 10)
             pygame.draw.rect(self.screen, theme.PALETTE["ink"], key_box)
             pygame.draw.rect(self.screen, accent, key_box, 2)
             key_surface = theme.render_pixel_text(key, color=theme.PALETTE["text"], scale=2, bold=True, base_px=11)
@@ -119,7 +125,7 @@ class Menu:
 
             label_surface = theme.render_pixel_text(label, color=theme.PALETTE["text"], scale=2, bold=True, base_px=12)
             self.screen.blit(label_surface, (key_box.right + 18, row.y + (row_h - label_surface.get_height()) // 2))
-            y_offset += row_h + 8
+            y_offset += row_h + gap
 
         footer = theme.render_pixel_text(
             "9 POWERS  ·  25 ACHIEVEMENTS  ·  RESIZE WINDOW ANYTIME",
@@ -127,7 +133,7 @@ class Menu:
             scale=1,
             base_px=12,
         )
-        self.screen.blit(footer, footer.get_rect(center=(center_x, settings.HEIGHT - 42)))
+        self.screen.blit(footer, footer.get_rect(center=(center_x, settings.HEIGHT - 36)))
 
     def draw_pause_overlay(self):
         overlay = pygame.Surface((settings.WIDTH, settings.HEIGHT), pygame.SRCALPHA)

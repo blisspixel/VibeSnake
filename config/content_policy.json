@@ -5,7 +5,8 @@
     {
       "id": "asset-tree-documentation",
       "patterns": [
-        "README.md"
+        "README.md",
+        "audio/radio/README.md"
       ],
       "role": "development-reference",
       "packId": "development-only",
@@ -86,6 +87,23 @@
         "license": "Apache-2.0",
         "attribution": "Copyright 2025-2026 blisspixel contributors",
         "reviewNote": "Open-source prompts and production plans stay outside player artifacts"
+      }
+    },
+    {
+      "id": "radio-station-library",
+      "patterns": [
+        "audio/radio/*.mp3"
+      ],
+      "role": "runtime-radio-track",
+      "packId": "vibesnake-radio",
+      "runtimeUse": "optional",
+      "shipStatus": "blocked",
+      "rights": {
+        "status": "cleared",
+        "source": "Original Vibe Snake eight-station radio library authored for this game by blisspixel and released under Apache-2.0",
+        "license": "Apache-2.0",
+        "attribution": "Copyright 2025-2026 blisspixel contributors",
+        "reviewNote": "Owner directed public Apache-2.0 inclusion of the curated GTA-style station catalog; pack loudness, credits, and native export allowlist review remain before shipStatus can become approved"
       }
     },
     {

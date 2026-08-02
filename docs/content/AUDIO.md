@@ -7,34 +7,36 @@ Vibe Snake has two audio layers:
 1. Event sound effects loaded by the game coordinator.
 2. A radio manager that discovers MP3 playlists by station prefix and controls playback.
 
-The radio network is a defining feature. Its locally preserved candidate library is also the largest rights, curation, and release-distribution problem.
+The radio network is a defining world-building feature: eight diegetic stations,
+host identity, and a full offline playlist you can flip through like GTA radio
+while you play.
 
-## Local review inventory
+## Public radio inventory
 
-The ignored local archive preserves 95 unique MP3 candidates under `archive/source-assets/audio/unverified-runtime/radio/`. When a developer explicitly sets `VIBESNAKE_AUDIO_DIR` to the parent `unverified-runtime` directory, the reference runtime assigns each path to exactly one station. Every candidate passed the bounded two-frame MPEG structure gate before isolation. Structure does not prove complete decode, listening quality, provider-aware provenance, or release approval.
+The clean public-source tree includes 95 original MP3 tracks under
+`assets/audio/radio/`. `RadioManager` assigns each path to exactly one station by
+filename prefix. All eight stations are populated in a normal clone.
 
-| Station | Runtime key | Discovered paths | Non-empty candidates | Recognized prefixes |
-| --- | --- | ---: | ---: | --- |
-| The Flow Signal | `flow_signal` | 12 | 12 | `flow_signal_`, `ambient_`, `chill_` |
-| Chaos Theory | `chaos_theory` | 12 | 12 | `chaos_theory_`, `jazz_` |
-| The Global Coil | `global_coil` | 12 | 12 | `global_coil_`, `world_`, `soul_` |
-| Ourotron | `ourotron` | 14 | 13 | `ourotron_`, `synthwave_` |
-| The Pit | `the_pit` | 11 | 11 | `the_pit_`, `dance_` |
-| The Bureau | `the_bureau` | 12 | 12 | `the_bureau_` |
-| The Strike | `the_strike` | 13 | 11 | `the_strike_`, `rock_` |
-| Underground Scales | `underground_scales` | 15 | 12 | `underground_scales_`, `hiphop_` |
+| Station | Runtime key | Tracks | Recognized prefixes |
+| --- | --- | ---: | --- |
+| The Flow Signal | `flow_signal` | 12 | `flow_signal_`, `ambient_`, `chill_` |
+| Chaos Theory | `chaos_theory` | 12 | `chaos_theory_`, `jazz_` |
+| The Global Coil | `global_coil` | 12 | `global_coil_`, `world_`, `soul_` |
+| Ourotron | `ourotron` | 13 | `ourotron_`, `synthwave_` |
+| The Pit | `the_pit` | 11 | `the_pit_`, `dance_` |
+| The Bureau | `the_bureau` | 12 | `the_bureau_` |
+| The Strike | `the_strike` | 11 | `the_strike_`, `rock_` |
+| Underground Scales | `underground_scales` | 12 | `underground_scales_`, `hiphop_` |
 
-The six empty radio paths and the empty test-audio file were removed. The clean public-source tree contains no MP3 or WAV candidate. The source alpha remains fully playable with deterministic procedural event cues and no radio pack. Local audition still skips unreadable files at playback, but curation must reject any decode failure rather than relying on that recovery path.
-
-The mapping lives in [radio_manager.py](../../src/vibesnake/audio/radio_manager.py). Tests assert station discovery, cycling, track uniqueness, empty-library handling, and playback orchestration.
+The mapping lives in [radio_manager.py](../../src/vibesnake/audio/radio_manager.py).
+Tests assert station discovery, cycling, track uniqueness, empty-library
+handling, and playback orchestration. Procedural SFX fallbacks still cover
+missing event cues when individual SFX files are absent.
 
 ## Inventory authority
 
-- Public runtime truth: no authored audio pack is approved; procedural event cues provide the clean-clone fallback.
-- Local audition truth: files discovered by `RadioManager` beneath the explicit `VIBESNAKE_AUDIO_DIR` overlay.
-- Production history: an ignored local inventory containing 186 historical
-  records; it is evidence for candidate review, not live playlist or release
-  authority.
+- Public runtime truth: the eight-station radio catalog under `assets/audio/radio/` plus procedural event-cue fallbacks.
+- Override truth: an explicit `VIBESNAKE_AUDIO_DIR` overlay for local experiments.
 - File, integrity, and release authority: [content_inventory.json](../../config/content_inventory.json) plus [content_policy.json](../../config/content_policy.json).
 - Creative plan: [config/radio_network_plan.json](../../config/radio_network_plan.json).
 - Canonical lore and broadcast grammar: [World and broadcast bible](../design/WORLD_BIBLE.md).

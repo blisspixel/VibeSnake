@@ -6,7 +6,7 @@
       "file": "main-menu.png",
       "height": 720,
       "label": "Main menu",
-      "sha256": "adabfdb195962ffc7ed6aaa22b1a0f6bf621ef234765dde02864475e3c648595",
+      "sha256": "afc43fdd0fc710a43ecc73d86f20c89bf32c23e27763e456b35247bfbceb5fb4",
       "state": "MENU",
       "width": 1280
     },
@@ -14,7 +14,7 @@
       "file": "customization.png",
       "height": 720,
       "label": "Customization",
-      "sha256": "c7408679c7edf42a3ea0af63ab710ad861db3066fa02f01233a4a1d4a49e5f46",
+      "sha256": "5baf5de14999a03d7f16f5989a326726803304cbd8b720ca9b479db3e5aa85a4",
       "state": "CUSTOMIZE",
       "width": 1280
     },
@@ -27,5 +27,5 @@
       "width": 1280
     }
   ],
-  "sourceSha256": "a7a29a1f85a05e3d52821530ae79ee9e1a298cd1a4f3a654a789722a74f2d358"
+  "sourceSha256": "6953ea2e770d6467ec746f7604094e750e77a24e9c4bb68b6f2a0735b9854a46"
 }

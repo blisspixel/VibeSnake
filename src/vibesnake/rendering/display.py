@@ -52,7 +52,9 @@ class AdaptiveDisplay:
             frame_w = max(320, int(frame_w * scale))
             frame_h = max(240, int(frame_h * scale))
         except pygame.error:
-            pass
+            # Display info can be unavailable under dummy drivers; keep computed frame.
+            frame_w = max(320, frame_w)
+            frame_h = max(240, frame_h)
         return frame_w, frame_h
 
     def _open_window(self, size: tuple[int, int] | None = None) -> None:

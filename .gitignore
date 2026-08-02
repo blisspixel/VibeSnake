@@ -143,8 +143,6 @@ logs/
 # Local production history and rejected source media (never public)
 /archive/
 /assets/audio/radio_archive/
-/assets/audio/radio/*.wav
-/assets/audio/radio/*.mp3
 /assets/gen/
 /assets/reports/
 /data/generation_history/

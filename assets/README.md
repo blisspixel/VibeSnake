@@ -5,7 +5,7 @@ This directory contains rights-cleared source candidates and production metadata
 | Directory | Purpose |
 | --- | --- |
 | `ai/` | Built-in, example, and custom AI personality data |
-| `audio/` | Rights-cleared production metadata; public runtime audio is intentionally absent until approved |
+| `audio/` | Production metadata plus the public eight-station radio MP3 library under `audio/radio/` |
 | `config/` | Runtime configuration overlay |
 | `images/` | Logo and station badges |
 

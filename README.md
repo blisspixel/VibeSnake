@@ -84,7 +84,7 @@ The main menu also exposes customization, achievements, high scores, settings, a
 - Nine power-up types with tested activation, gameplay, expiry, collision, and reset behavior.
 - Twenty-five persistent achievements and 10,800 cosmetic combinations.
 - Ten built-in AI personalities plus loadable JSON personalities.
-- Eight authored radio-station identities and a locally preserved 95-track review library. The owner intends an Apache-2.0 release, but historical records identify service-assisted production for part of the library. The candidates are absent from the public-source tree until exact generation terms, decode, loudness, clipping, listening, lyrics, station, and pack review are complete. A clean clone retains procedural gameplay cues and the complete offline game loop.
+- Eight authored radio-station identities and a 95-track offline GTA-style radio library under `assets/audio/radio/`, released with the project as original Vibe Snake soundtrack material. A clean clone starts the full station network; procedural SFX fallbacks still cover missing event cues.
 - Versioned, atomic save repositories in the operating system's user-data directory.
 - Headless automated tests, an enforced 80 percent line-coverage floor, full-tree Ruff and source-policy gates, hash-locked Python dependencies, audited locked NuGet restore, local pre-commit hooks, and a GitHub Actions workflow.
 - A seeded gameplay QA laboratory with property-generated input, per-step invariants, replayed trace hashes, automated policies, and JSON reports.
