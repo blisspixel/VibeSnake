@@ -26,6 +26,22 @@ This directory contains explicit command-line tools. Runtime code belongs under 
 
 These entry points are kept at `scripts/` root because README, CI, and release documentation invoke them directly.
 
+## Player install and updates
+
+| Script | Purpose |
+| --- | --- |
+| `install_player.ps1` | Windows one-shot clone + venv + runtime install |
+| `install_player.sh` | macOS/Linux one-shot clone + venv + runtime install |
+
+After install, players use the package CLI:
+
+```text
+vibesnake              # play
+vibesnake update        # pull GitHub main and reinstall
+vibesnake doctor        # health check
+vibesnake version
+```
+
 ## Visual production
 
 `visual_generate_badges.py` is deterministic and enforced by CI using project-owned

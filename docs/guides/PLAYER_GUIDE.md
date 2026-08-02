@@ -2,13 +2,41 @@
 
 ## Start the game
 
-Vibe Snake currently runs from a source checkout. Follow the installation commands in the [root README](../../README.md), then launch with:
+Vibe Snake currently runs from a source checkout of
+[blisspixel/VibeSnake](https://github.com/blisspixel/VibeSnake). Follow the
+installation commands in the [root README](../../README.md), then launch with:
+
+```powershell
+vibesnake
+```
+
+or:
 
 ```powershell
 python -m vibesnake
 ```
 
 The game opens at the main menu. Press Enter to begin a human run or L to browse AI channels.
+
+## Keep it updated
+
+From the same checkout (with your virtual environment active):
+
+```powershell
+vibesnake update
+```
+
+This fast-forwards `main` from GitHub and reinstalls the package. Local saves stay
+in the operating system user-data directory. Optional checks:
+
+```powershell
+vibesnake doctor
+vibesnake version
+vibesnake update --dry-run
+```
+
+Player source zips and Python wheels are produced by the GitHub Actions
+`Player build` workflow on `main` and attached to version tags.
 
 ## Core loop
 

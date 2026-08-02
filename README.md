@@ -44,7 +44,7 @@ py -3.14 -m venv .venv
 .\.venv\Scripts\Activate.ps1
 python -m pip install --require-hashes --only-binary=:all: -r requirements-runtime.lock
 python -m pip install --no-deps --no-build-isolation -e .
-python -m vibesnake
+vibesnake
 ```
 
 On macOS or Linux:
@@ -56,8 +56,33 @@ python3.14 -m venv .venv
 source .venv/bin/activate
 python -m pip install --require-hashes --only-binary=:all: -r requirements-runtime.lock
 python -m pip install --no-deps --no-build-isolation -e .
-python -m vibesnake
+vibesnake
 ```
+
+One-shot install scripts (clone + venv + install):
+
+```powershell
+./scripts/install_player.ps1
+```
+
+```bash
+./scripts/install_player.sh
+```
+
+### Commands
+
+| Command | Purpose |
+| --- | --- |
+| `vibesnake` or `vibesnake play` | Launch the game |
+| `vibesnake update` | Fast-forward this checkout from GitHub `main` and reinstall |
+| `vibesnake doctor` | Check Python, assets, and the offline radio library |
+| `vibesnake version` | Print the installed package version |
+
+```powershell
+vibesnake update
+```
+
+That pulls the latest `main` from [blisspixel/VibeSnake](https://github.com/blisspixel/VibeSnake), reinstalls the editable package, and keeps your local saves in the OS user-data directory. Use `vibesnake update --dry-run` to inspect without changing files. Player zip builds and wheels are published from `main` by the [Player build](https://github.com/blisspixel/VibeSnake/actions/workflows/player-build.yml) workflow; tagged releases attach the same artifacts.
 
 ## Controls
 

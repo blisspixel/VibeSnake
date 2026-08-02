@@ -1,29 +1,27 @@
 """
-Vibe Snake - Main entry point
+Vibe Snake - package entry point.
 
-Run with: python -m vibesnake
+Play:
+  vibesnake
+  python -m vibesnake
+
+Update from GitHub main:
+  vibesnake update
+  python -m vibesnake update
 """
+
+from __future__ import annotations
 
 import os
 
-os.environ["PYGAME_HIDE_SUPPORT_PROMPT"] = "1"
-
-from vibesnake.core.game_state import Game
-import pygame
-import traceback
+os.environ.setdefault("PYGAME_HIDE_SUPPORT_PROMPT", "1")
 
 
-def main() -> int:
-    """Run Vibe Snake and return a process-compatible status code."""
-    try:
-        Game().run()
-    except Exception:
-        print("[Main] Game crashed with error:")
-        traceback.print_exc()
-        return 1
-    finally:
-        pygame.quit()
-    return 0
+def main(argv: list[str] | None = None) -> int:
+    """CLI entry point used by `vibesnake` and `python -m vibesnake`."""
+    from vibesnake.cli import main as cli_main
+
+    return cli_main(argv)
 
 
 if __name__ == "__main__":
