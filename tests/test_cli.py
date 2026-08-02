@@ -42,6 +42,28 @@ def test_update_dry_run(capsys):
     assert "dry-run complete" in captured.out
 
 
+def test_status_command(monkeypatch, capsys):
+    monkeypatch.setattr(
+        "vibesnake.cli.checkout_status",
+        lambda branch="main", remote="origin": {
+            "root": "C:/repo",
+            "branch": "main",
+            "local": "abc1234",
+            "remote": "abc1234",
+            "ahead": "0",
+            "behind": "0",
+            "state": "current",
+            "dirty": "no",
+            "remote_ref": "origin/main",
+        },
+    )
+    status = cli.main(["status"])
+    captured = capsys.readouterr()
+    assert status == 0
+    assert "state    current" in captured.out
+    assert "matches the remote branch" in captured.out
+
+
 def test_update_rejects_dirty_tree(tmp_path, monkeypatch):
     root = find_checkout_root(Path(__file__).resolve())
     assert root is not None

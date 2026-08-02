@@ -6,6 +6,29 @@ Notable player-facing and engineering changes are recorded here. The project is 
 
 ### Added
 
+- Player CLI commands `vibesnake play`, `update`, `status`, `doctor`, and `version`, plus `play.ps1` / `play.sh` / `play.bat` launch helpers.
+- Continuous [player-latest](https://github.com/blisspixel/VibeSnake/releases/tag/player-latest) GitHub release rebuilt from every `main` push with playable source zip, wheels, and checksums.
+- Adaptive window presentation with preferred 4:3 framing, integer pixel scaling, and retro-modern title/settings/pause chrome.
+- Preferred Snakev2 brand logo hash gate and README captures for main menu, customization, and powers-active play.
+- Public eight-station offline radio catalog (95 tracks) under `assets/audio/radio/`.
+- Canonical documentation hub, status report, roadmap, player guide, architecture guide, subsystem references, and release checklist.
+
+## 0.2.1 - 2026-08-02
+
+### Added
+
+- Player-facing install and update path for source checkouts (`vibesnake update`, install scripts, player-build workflow).
+- GTA-style offline radio library shipping in public source.
+- Retro-modern adaptive UI shell for the Python alpha.
+
+### Changed
+
+- Default player documentation now centers on `vibesnake` commands and GitHub `main` updates.
+
+## 0.2.0
+
+### Added
+
 - Canonical documentation hub, status report, roadmap, player guide, architecture guide, subsystem references, and release checklist.
 - Detailed capability-gated release plan from 0.3.0 through 1.0.0, including product scope, compatibility policy, acceptance gates, quality growth, risk controls, and primary research references.
 - GitHub Actions quality workflow for Python 3.11 through 3.14.

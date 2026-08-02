@@ -7,7 +7,7 @@ import sys
 
 from vibesnake import __version__
 from vibesnake.checkout import DEFAULT_BRANCH, DEFAULT_REMOTE, find_checkout_root, radio_track_count
-from vibesnake.update import UpdateError, update_checkout
+from vibesnake.update import UpdateError, checkout_status, update_checkout
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -45,6 +45,13 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="print the checkout identity without changing files",
     )
+
+    status = subparsers.add_parser(
+        "status",
+        help=f"compare this checkout to GitHub {DEFAULT_BRANCH} without changing files",
+    )
+    status.add_argument("--branch", default=DEFAULT_BRANCH, help=f"remote branch (default: {DEFAULT_BRANCH})")
+    status.add_argument("--remote", default="origin", help="git remote name (default: origin)")
 
     subparsers.add_parser("version", help="print the installed package version")
     subparsers.add_parser("doctor", help="check Python, assets, radio library, and checkout health")
@@ -141,6 +148,31 @@ def run_update(args: argparse.Namespace) -> int:
     return 0
 
 
+def run_status(args: argparse.Namespace) -> int:
+    try:
+        result = checkout_status(branch=args.branch, remote=args.remote)
+    except UpdateError as error:
+        print(f"status failed: {error}", file=sys.stderr)
+        return 1
+
+    print(f"vibe-snake {__version__}")
+    print(f"checkout {result['root']}")
+    print(f"branch   {result['branch']}")
+    print(f"local    {result['local']}")
+    print(f"remote   {result['remote']} ({result['remote_ref']})")
+    print(f"ahead    {result['ahead']}")
+    print(f"behind   {result['behind']}")
+    print(f"state    {result['state']}")
+    print(f"dirty    {result['dirty']}")
+    if result["state"] == "behind":
+        print("update with: vibesnake update")
+    elif result["state"] == "current":
+        print("checkout matches the remote branch")
+    else:
+        print("local commits are not on the remote branch")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     """Dispatch player commands; bare `vibesnake` launches the game."""
     parser = build_parser()
@@ -154,5 +186,7 @@ def main(argv: list[str] | None = None) -> int:
         return run_doctor()
     if command == "update":
         return run_update(args)
+    if command == "status":
+        return run_status(args)
     parser.error(f"unknown command: {command}")
     return 2

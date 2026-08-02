@@ -74,15 +74,24 @@ One-shot install scripts (clone + venv + install):
 | Command | Purpose |
 | --- | --- |
 | `vibesnake` or `vibesnake play` | Launch the game |
+| `./play.ps1` / `./play.sh` / `play.bat` | Launch using the local `.venv` when present |
 | `vibesnake update` | Fast-forward this checkout from GitHub `main` and reinstall |
+| `vibesnake status` | Compare local commit to GitHub `main` without changing files |
 | `vibesnake doctor` | Check Python, assets, and the offline radio library |
 | `vibesnake version` | Print the installed package version |
 
 ```powershell
+vibesnake status
 vibesnake update
+./play.ps1
 ```
 
-That pulls the latest `main` from [blisspixel/VibeSnake](https://github.com/blisspixel/VibeSnake), reinstalls the editable package, and keeps your local saves in the OS user-data directory. Use `vibesnake update --dry-run` to inspect without changing files. Player zip builds and wheels are published from `main` by the [Player build](https://github.com/blisspixel/VibeSnake/actions/workflows/player-build.yml) workflow; tagged releases attach the same artifacts.
+`vibesnake update` pulls the latest `main` from [blisspixel/VibeSnake](https://github.com/blisspixel/VibeSnake), reinstalls the editable package, and keeps your local saves in the OS user-data directory. Use `vibesnake update --dry-run` to inspect without changing files.
+
+**Always-current download:** every successful `main` push refreshes the floating
+[player-latest](https://github.com/blisspixel/VibeSnake/releases/tag/player-latest)
+release with `VibeSnake-player-source.zip`, wheels, and checksums. Tagged
+releases publish the same artifacts under a version name.
 
 ## Controls
 

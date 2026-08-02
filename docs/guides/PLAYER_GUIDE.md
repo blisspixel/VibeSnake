@@ -31,12 +31,16 @@ in the operating system user-data directory. Optional checks:
 
 ```powershell
 vibesnake doctor
+vibesnake status
 vibesnake version
 vibesnake update --dry-run
+./play.ps1
 ```
 
-Player source zips and Python wheels are produced by the GitHub Actions
-`Player build` workflow on `main` and attached to version tags.
+Every successful `main` push refreshes the floating
+[player-latest](https://github.com/blisspixel/VibeSnake/releases/tag/player-latest)
+download (source zip, wheels, checksums). Version tags publish the same artifacts
+under a release name.
 
 ## Core loop
 

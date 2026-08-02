@@ -137,14 +137,22 @@ class Menu:
 
     def draw_pause_overlay(self):
         overlay = pygame.Surface((settings.WIDTH, settings.HEIGHT), pygame.SRCALPHA)
-        overlay.fill((0, 0, 0, 160))
+        overlay.fill((8, 6, 18, 180))
         self.screen.blit(overlay, (0, 0))
 
-        pause_msg = self.large_font.render("PAUSED", True, settings.YELLOW)
-        hint = self.font.render("Press P to resume or Q to quit", True, settings.WHITE)
-
-        self.screen.blit(pause_msg, pause_msg.get_rect(center=(settings.WIDTH // 2, settings.HEIGHT // 3)))
-        self.screen.blit(hint, hint.get_rect(center=(settings.WIDTH // 2, settings.HEIGHT // 2)))
+        panel = pygame.Rect(0, 0, min(520, settings.WIDTH - 80), 180)
+        panel.center = (settings.WIDTH // 2, settings.HEIGHT // 2)
+        theme.draw_panel(
+            self.screen,
+            panel,
+            fill=theme.PALETTE["panel"],
+            border=theme.PALETTE["accent_gold"],
+            border_width=3,
+        )
+        pause_msg = theme.render_pixel_text("PAUSED", color=theme.PALETTE["accent_gold"], scale=3, bold=True)
+        hint = theme.render_pixel_text("P RESUME   ·   Q QUIT", color=theme.PALETTE["text"], scale=2)
+        self.screen.blit(pause_msg, pause_msg.get_rect(center=(panel.centerx, panel.centery - 28)))
+        self.screen.blit(hint, hint.get_rect(center=(panel.centerx, panel.centery + 28)))
         # Presentation is owned by AdaptiveDisplay.present() in the game loop.
 
     def choose_game_over_message(self, score: int, high_score: int, is_new_high_score: bool) -> str:
@@ -1294,53 +1302,54 @@ class Menu:
             sound_on: Whether sound is enabled
             volume: Current volume (0.0 to 1.0)
         """
-        # Background
-        self.screen.fill((20, 20, 30))
+        self.screen.fill(theme.PALETTE["void"])
+        theme.draw_pixel_grid(self.screen, step=20, color=(16, 12, 34))
+        frame = pygame.Rect(40, 28, settings.WIDTH - 80, settings.HEIGHT - 56)
+        theme.draw_panel(
+            self.screen, frame, fill=theme.PALETTE["panel"], border=theme.PALETTE["accent_sky"], border_width=3
+        )
 
-        # Title
-        title_font = settings.create_font(48, bold=True)
-        title_surface = title_font.render("SETTINGS", True, (150, 200, 255))
-        title_rect = title_surface.get_rect(center=(settings.WIDTH // 2, 60))
-        self.screen.blit(title_surface, title_rect)
+        title_surface = theme.render_pixel_text("SETTINGS", color=theme.PALETTE["accent_sky"], scale=3, bold=True)
+        self.screen.blit(title_surface, title_surface.get_rect(center=(settings.WIDTH // 2, 72)))
 
-        # Settings options
         options_y_start = 150
-        option_height = 60
+        option_height = 58
+        row_w = min(520, settings.WIDTH - 160)
+        row_x = (settings.WIDTH - row_w) // 2
 
         settings_options = [
-            ("Sound", f"{'ON' if sound_on else 'OFF'}"),
-            ("Volume", f"{int(volume * 100)}%"),
-            ("Back to Menu", ""),
+            ("SOUND", f"{'ON' if sound_on else 'OFF'}"),
+            ("VOLUME", f"{int(volume * 100)}%"),
+            ("BACK", ""),
         ]
 
         for i, (label, value) in enumerate(settings_options):
             y = options_y_start + i * option_height
+            row = pygame.Rect(row_x, y, row_w, 48)
+            accent = theme.PALETTE["accent"] if i == selected_option else theme.PALETTE["dim"]
+            fill = theme.PALETTE["panel_hi"] if i == selected_option else theme.PALETTE["ink"]
+            theme.draw_panel(self.screen, row, fill=fill, border=accent, border_width=2, shadow=i == selected_option)
 
-            # Highlight selected option
-            if i == selected_option:
-                highlight_rect = pygame.Rect(200, y - 10, 400, 50)
-                pygame.draw.rect(self.screen, (50, 50, 70), highlight_rect)
-                pygame.draw.rect(self.screen, (100, 150, 255), highlight_rect, 3)
+            label_surface = theme.render_pixel_text(label, color=theme.PALETTE["text"], scale=2, bold=True)
+            self.screen.blit(label_surface, (row.x + 20, row.y + (row.height - label_surface.get_height()) // 2))
 
-            # Draw label
-            label_font = settings.create_font(28, bold=True)
-            label_surface = label_font.render(label, True, (255, 255, 255))
-            self.screen.blit(label_surface, (220, y))
-
-            # Draw value
             if value:
-                value_font = settings.create_font(24)
-                value_surface = value_font.render(value, True, (150, 200, 255))
-                self.screen.blit(value_surface, (450, y + 2))
+                value_surface = theme.render_pixel_text(value, color=theme.PALETTE["accent_sky"], scale=2, bold=True)
+                self.screen.blit(
+                    value_surface,
+                    (
+                        row.right - value_surface.get_width() - 20,
+                        row.y + (row.height - value_surface.get_height()) // 2,
+                    ),
+                )
 
-        # Instructions
-        instructions = ["UP/DOWN: Navigate  |  LEFT/RIGHT: Adjust  |  ENTER: Select  |  ESC: Back"]
-        inst_y = settings.HEIGHT - 60
-        inst_font = settings.create_font(18)
-        for i, instruction in enumerate(instructions):
-            inst_surface = inst_font.render(instruction, True, (150, 150, 150))
-            inst_rect = inst_surface.get_rect(center=(settings.WIDTH // 2, inst_y + i * 25))
-            self.screen.blit(inst_surface, inst_rect)
+        inst = theme.render_pixel_text(
+            "UP/DOWN NAV  ·  LEFT/RIGHT ADJUST  ·  ENTER  ·  ESC",
+            color=theme.PALETTE["dim"],
+            scale=1,
+            base_px=12,
+        )
+        self.screen.blit(inst, inst.get_rect(center=(settings.WIDTH // 2, settings.HEIGHT - 48)))
 
     def draw_high_scores(self, high_score_table):
         """

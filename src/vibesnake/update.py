@@ -94,6 +94,51 @@ def update_checkout(
     }
 
 
+def checkout_status(
+    root: Path | None = None,
+    *,
+    branch: str = DEFAULT_BRANCH,
+    remote: str = "origin",
+) -> dict[str, str]:
+    """Compare the local checkout to the remote branch without changing files."""
+    checkout = root or find_checkout_root()
+    if checkout is None:
+        raise UpdateError(
+            f"could not find a Vibe Snake checkout; clone {DEFAULT_REMOTE} and run this command from that directory"
+        )
+    if not (checkout / ".git").exists():
+        raise UpdateError(f"{checkout} is not a git checkout")
+
+    _require_git(checkout)
+    local = _git(checkout, "rev-parse", "--short", "HEAD")
+    current_branch = _git(checkout, "rev-parse", "--abbrev-ref", "HEAD")
+    dirty = _git(checkout, "status", "--porcelain")
+    fetch = _run(["git", "fetch", remote, branch], cwd=checkout)
+    if fetch.returncode != 0:
+        detail = (fetch.stderr or fetch.stdout or "").strip()
+        raise UpdateError(detail or f"git fetch {remote} {branch} failed")
+    remote_tip = _git(checkout, "rev-parse", "--short", f"{remote}/{branch}")
+    ahead = _git(checkout, "rev-list", "--count", f"{remote}/{branch}..HEAD")
+    behind = _git(checkout, "rev-list", "--count", f"HEAD..{remote}/{branch}")
+    if behind != "0":
+        state = "behind"
+    elif ahead != "0":
+        state = "ahead"
+    else:
+        state = "current"
+    return {
+        "root": str(checkout),
+        "branch": current_branch,
+        "local": local,
+        "remote": remote_tip,
+        "ahead": ahead,
+        "behind": behind,
+        "state": state,
+        "dirty": "yes" if dirty else "no",
+        "remote_ref": f"{remote}/{branch}",
+    }
+
+
 def _reinstall(checkout: Path) -> None:
     """Reinstall the editable package using the checkout lock file when present."""
     python = Path(sys.executable)
