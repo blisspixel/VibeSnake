@@ -114,6 +114,37 @@ public sealed class PersonalityDocumentTests
         Assert.False(string.IsNullOrWhiteSpace(result.Document!.Name));
     }
 
+    [Fact]
+    public void Rejects_empty_payload_and_unsafe_file_names()
+    {
+        Assert.Equal(PersonalityLoadCode.Empty, PersonalityDocument.Read("").Code);
+        Assert.Equal(PersonalityLoadCode.InvalidJson, PersonalityDocument.Read("{").Code);
+        Assert.Equal(
+            PersonalityLoadCode.PathUnsafe,
+            PersonalityDocument.ReadFile("not-json.txt").Code);
+    }
+
+    [Fact]
+    public void Rejects_missing_name_and_non_object_root()
+    {
+        Assert.Equal(PersonalityLoadCode.InvalidType, PersonalityDocument.Read("[]").Code);
+        var missing = PersonalityDocument.Read(
+            """
+            {
+              "description": "No name",
+              "aggression": 0.1,
+              "risk_tolerance": 0.1,
+              "patience": 0.1,
+              "greed": 0.1,
+              "chaos": 0.1,
+              "power_up_priority": 0.1,
+              "color": [1, 2, 3]
+            }
+            """);
+        Assert.False(missing.IsSuccess);
+        Assert.Contains(missing.Issues!, issue => issue.Field == "name");
+    }
+
     private static string? ResolveExamplePath()
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);

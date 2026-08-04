@@ -924,6 +924,7 @@ public partial class Main : Node2D
             ExecuteContentServiceSmokeTest();
             ExecuteStepFeedbackSmokeTest();
             ExecuteShellSettingsSmokeTest();
+            ExecuteVirtualViewportSmokeTest();
             await ExecutePresentationFrameSamplerSmokeTestAsync();
             ExecuteMenuRunDeathRestartSmokeTest();
             var first = SnakeRun.Create(SmokeSeed);
@@ -1458,6 +1459,35 @@ public partial class Main : Node2D
             || bank.Gameplay.NextUInt() == bank.Ai.NextUInt())
         {
             throw new InvalidOperationException("Master-seed stream bank smoke contract failed.");
+        }
+    }
+
+    private static void ExecuteVirtualViewportSmokeTest()
+    {
+        var viewport = new VirtualViewport(1920.0f, 1080.0f);
+        if (Math.Abs(viewport.Scale - 1.5f) > 0.0001f
+            || Math.Abs(viewport.OffsetX) > 0.0001f
+            || Math.Abs(viewport.OffsetY) > 0.0001f)
+        {
+            throw new InvalidOperationException("16:9 viewport scale contract failed.");
+        }
+
+        var ultrawide = new VirtualViewport(2560.0f, 1080.0f);
+        if (ultrawide.OffsetX <= 0.0f || Math.Abs(ultrawide.Scale - 1.5f) > 0.0001f)
+        {
+            throw new InvalidOperationException("Ultrawide letterbox contract failed.");
+        }
+
+        var logical = ultrawide.WindowToLogical(ultrawide.LogicalToWindow(new Vector2(640.0f, 360.0f)));
+        if (Math.Abs(logical.X - 640.0f) > 0.05f || Math.Abs(logical.Y - 360.0f) > 0.05f)
+        {
+            throw new InvalidOperationException("Pointer transform round-trip failed.");
+        }
+
+        if (!viewport.ContainsLogicalPoint(new Vector2(0.0f, 0.0f))
+            || viewport.ContainsLogicalPoint(new Vector2(1280.0f, 720.0f)))
+        {
+            throw new InvalidOperationException("Logical bounds contract failed.");
         }
     }
 

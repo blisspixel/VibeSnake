@@ -18,6 +18,7 @@ Notable player-facing and engineering changes are recorded here. The project is 
 - `SnakeRun.Create` records master seed via `RandomStreamBank.Gameplay` without changing scored RNG outcomes.
 - Headless smoke writes host-dependent `presentation_frames.json` p50/p95/p99 evidence under TestResults/native.
 - Schema 1 logical `InputBindingsDocument` with conflict detection, required escape-hatch actions, and atomic per-device-class storage.
+- Logical `VirtualViewport` 1280x720 letterbox and pointer transform contract for shell scaling.
 - Native pure C# Phase Shift power contract with collection, timed expiry, body-overlap movement, Shield precedence, canonical restore, and replay participation.
 - Six shared Python-to-C# Phase Shift parity fixtures (`phase_shift_rules_v1.json`) and CI check via `python -m vibesnake.qa.shared_phase_shift_traces --check`.
 - Native pure C# Last Stand power contract: held revive, half-body shrink, hunger reset, recovery immunity, collision precedence with Phase Shift and Shield.

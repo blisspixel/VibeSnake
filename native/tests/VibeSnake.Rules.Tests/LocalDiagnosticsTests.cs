@@ -40,4 +40,57 @@ public sealed class LocalDiagnosticsTests
     {
         Assert.Throws<ArgumentException>(() => new LocalDiagnostics("relative/path"));
     }
+
+    [Fact]
+    public void Prunes_reports_beyond_retention_limit()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "vibesnake-diagnostics-prune-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(root);
+        try
+        {
+            var diagnostics = new LocalDiagnostics(root);
+            for (var index = 0; index < LocalDiagnostics.MaximumReportsRetained + 5; index++)
+            {
+                diagnostics.WriteCrashReport(
+                    appVersion: "0.2.1",
+                    platform: "Linux",
+                    rulesetId: "vibesnake-core",
+                    rulesVersion: 4,
+                    screenState: "Menu",
+                    exception: new InvalidOperationException($"probe-{index}"));
+                Thread.Sleep(5);
+            }
+
+            Assert.True(diagnostics.ListReportFileNames().Count <= LocalDiagnostics.MaximumReportsRetained);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void Truncates_long_messages_and_lists_empty_directory()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "vibesnake-diagnostics-empty-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(root);
+        try
+        {
+            var diagnostics = new LocalDiagnostics(root);
+            Assert.Empty(diagnostics.ListReportFileNames());
+            var path = diagnostics.WriteCrashReport(
+                appVersion: "0.2.1",
+                platform: "macOS",
+                rulesetId: "vibesnake-core",
+                rulesVersion: 4,
+                screenState: "Ended",
+                exception: new InvalidOperationException(new string('x', LocalDiagnostics.MaximumMessageCharacters + 50)));
+            var text = File.ReadAllText(path);
+            Assert.True(text.Length < LocalDiagnostics.MaximumMessageCharacters + 500);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
 }
