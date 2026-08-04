@@ -138,6 +138,7 @@ The main menu also exposes customization, achievements, high scores, settings, a
 | Understand saves, achievements, and cosmetics | [Progression and save data](docs/design/PROGRESSION.md) |
 | Understand the code | [Architecture](docs/engineering/ARCHITECTURE.md) and [repository map](docs/engineering/REPOSITORY_MAP.md) |
 | Understand native replay capture and files | [Replay recording and storage](docs/engineering/REPLAYS.md) |
+| Find player-writable paths | [User-data directories](docs/engineering/USER_DATA.md) |
 | Change runtime settings | [Configuration](docs/guides/CONFIGURATION.md) |
 | Add or tune AI players | [AI players](docs/design/AI_PLAYERS.md) |
 | Work on music and sound | [Audio system](docs/content/AUDIO.md) |

@@ -99,7 +99,7 @@ Every active save document uses schema version 1:
 
 ## Save locations
 
-Normal runs use the operating system's per-user data directory:
+Normal runs use the operating system's per-user data directory. The full Python and native layouts, recovery rules, and dual-runtime boundaries are published in [USER_DATA.md](../engineering/USER_DATA.md).
 
 | Platform | Default directory |
 | --- | --- |

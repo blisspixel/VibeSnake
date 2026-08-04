@@ -55,6 +55,8 @@ The root keeps the four project-wide entry artifacts: `README.md`, `ROADMAP.md`,
 - [Testing](engineering/TESTING.md): deterministic suites, coverage policy, manual checks, and CI.
 - [Automated QA laboratory](engineering/AUTOMATED_QA.md): seeded simulation, policies, invariants, reports, balance campaigns, and human handoff.
 - [Replay recording and storage](engineering/REPLAYS.md): native replay capture, compatibility, deterministic verification, bounded atomic persistence, and import behavior.
+- [User-data directories](engineering/USER_DATA.md): platform roots, Python and native layouts, recovery, and separation rules.
+- [Migration ownership map](engineering/MIGRATION_MAP.md): Python-to-native owners, port order, data-migration procedures, dual-runtime freeze.
 - [Parity decisions](engineering/PARITY_DECISIONS.md): reviewed Python-to-C# mismatches, target corrections, and open differences.
 
 ## Content and production
