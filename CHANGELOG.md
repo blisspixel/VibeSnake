@@ -31,6 +31,7 @@ Notable player-facing and engineering changes are recorded here. The project is 
 - Closed `RulesEventCatalog` of ordered `RunEventKind` wire names for deterministic event publication (includes `near_miss` and `starvation_warning`).
 - `RunEventKind.StarvationWarning` / `RunEvent.StarvationWarning` emit once when hunger crosses the configured warning band (default 200 ticks remaining).
 - Godot shell captions and orange HUD tint for the starvation warning band, with headless smoke coverage.
+- Reserved `RunEventKind.ComboExpired` / `combo_expired` catalog entry for upcoming dual-runtime fixture regeneration (state reset remains silent for parity).
 - Native pure C# Phase Shift power contract with collection, timed expiry, body-overlap movement, Shield precedence, canonical restore, and replay participation.
 - Six shared Python-to-C# Phase Shift parity fixtures (`phase_shift_rules_v1.json`) and CI check via `python -m vibesnake.qa.shared_phase_shift_traces --check`.
 - Native pure C# Last Stand power contract: held revive, half-body shrink, hunger reset, recovery immunity, collision precedence with Phase Shift and Shield.

@@ -1360,6 +1360,9 @@ public sealed partial class SnakeRun
         TicksSinceLastFood = checked(TicksSinceLastFood + 1);
         if (TicksSinceLastFood > _config.ComboWindowTicks && ComboCount > 0)
         {
+            // ComboCount reset remains silent until shared core_rules fixtures
+            // include combo_expired events (V040-05). Kind is reserved in
+            // RulesEventCatalog for the upcoming dual-runtime regen.
             ComboCount = 0;
         }
     }
