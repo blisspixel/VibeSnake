@@ -26,6 +26,7 @@ Notable player-facing and engineering changes are recorded here. The project is 
 - `ContentBudgetReport` inventory totals vs declared pack ceilings, plus ContentService packaging resolve codes and media-type listing without loading media.
 - Shell settings apply multi-bus volume and mute to the Godot Master/Music/SFX/UI buses; high-contrast canvas colors, text scale, and shortened reduced-motion feedback captions.
 - `SnakeRun` can award near-miss score events for body proximity, clutch eats, and boost style points via pure `NearMissDetector` when `RunConfig.EnableNearMiss` is true (default false until shared fixtures regenerate); shell feedback recognizes `RunEventKind.NearMiss`.
+- Interactive Godot sessions apply preferred fullscreen mode from shell settings (headless smoke stays windowed).
 - Native pure C# Phase Shift power contract with collection, timed expiry, body-overlap movement, Shield precedence, canonical restore, and replay participation.
 - Six shared Python-to-C# Phase Shift parity fixtures (`phase_shift_rules_v1.json`) and CI check via `python -m vibesnake.qa.shared_phase_shift_traces --check`.
 - Native pure C# Last Stand power contract: held revive, half-body shrink, hunger reset, recovery immunity, collision precedence with Phase Shift and Shield.

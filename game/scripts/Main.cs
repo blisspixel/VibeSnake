@@ -93,7 +93,31 @@ public partial class Main : Node2D
             return;
         }
 
+        ApplyWindowModeFromSettings();
         QueueRedraw();
+    }
+
+    private void ApplyWindowModeFromSettings()
+    {
+        if (_window is null)
+        {
+            return;
+        }
+
+        // Headless and packaged smoke stay windowed; interactive sessions honor prefs.
+        if (DisplayServer.GetName() == "headless")
+        {
+            return;
+        }
+
+        if (_shellSettings.Fullscreen)
+        {
+            _window.Mode = Window.ModeEnum.Fullscreen;
+        }
+        else if (_window.Mode == Window.ModeEnum.Fullscreen)
+        {
+            _window.Mode = Window.ModeEnum.Windowed;
+        }
     }
 
     private void OnWindowSizeChanged()
