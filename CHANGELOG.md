@@ -24,7 +24,7 @@ Notable player-facing and engineering changes are recorded here. The project is 
 - Python QA contracts for the remaining-power shared fixture (`test_shared_remaining_power_traces.py`).
 - Native content-inventory gate that keeps `exportEligible` at zero until pack approval, and rejects rooted or traversing inventory paths.
 - Pure `ContentInventory` reader in Persistence for allowlist queries, with path-traversal rejection and public inventory parse coverage.
-- Native artifact inspection refuses inventory path traversal and blocks packaging of assets that are not `exportEligible`.
+- Native artifact inspection refuses inventory path traversal and blocks packaging of assets that are not `exportEligible`, with shared PowerShell policy coverage.
 
 ### Changed
 
