@@ -25,6 +25,9 @@
 ```text
 src/vibesnake/
 |-- __main__.py             Process entry point
+|-- cli.py                  play, update, status, doctor, version commands
+|-- checkout.py             GitHub main checkout helpers for updates
+|-- update.py               Fast-forward reinstall from GitHub main
 |-- ai/player.py            Personality schema, loading, and decisions
 |-- audio/                  SFX and radio management
 |-- core/                   Game coordinator and core models
@@ -33,7 +36,7 @@ src/vibesnake/
 |-- powerups/               Base class, manager, and nine types
 |-- content/                Asset inventory, pack validation, compatibility, and release blockers
 |-- qa/                     Simulation, invariants, reports, dependency lock, source policy, and CLI
-|-- rendering/              HUD, menus, backgrounds, and effects
+|-- rendering/              HUD, menus, adaptive display, theme, backgrounds, and effects
 `-- utils/                  Logging setup
 ```
 
@@ -67,11 +70,13 @@ native/
 |-- src/VibeSnake.Persistence/  Bounded replay import and atomic user-data storage
 `-- tests/VibeSnake.Rules.Tests/  xUnit parity, restore, replay, storage, and generated state-machine contracts
 
+```text
 scripts/
-|-- check_source_policy.py    Enforce executable anti-slop rules
+|-- check_source_policy.py      Enforce executable anti-slop rules
 |-- content_inventory.py        Generate or verify the source asset inventory
 |-- content_packs.py            Qualify canonical core and optional pack manifests
 |-- lock_python_dependencies.py Verify or regenerate the hash-locked Python graph
+|-- install_player.ps1/.sh      One-shot clone, venv, and player install
 |-- assert_godot_toolchain.ps1  Checksum-bound pinned editor-build gate
 |-- native_artifact_policy.ps1  Shared prohibited native-bundle path rules
 |-- platform_path_policy.ps1    Absolute environment-path policy for tooling
@@ -81,6 +86,8 @@ scripts/
 |-- test_native.ps1               Rules, coverage, formatting, import, and scene smoke
 |-- test_native_export.ps1        Outside-checkout packaged-player smoke
 `-- inspect_native_artifact.ps1   Payload, portability, and SHA-256 manifest gate
+
+play.ps1 / play.sh / play.bat     Launch using local .venv when present
 ```
 
 The native paths are an active 0.3 qualification slice, not yet the default playable game. The Python package remains the behavior reference until the roadmap parity and artifact gates pass.
@@ -100,7 +107,7 @@ Persistence and configuration boundaries:
 ```text
 assets/
 |-- ai/                     Built-in support files, custom definitions, examples
-|-- audio/                  Rights-cleared production metadata; no audio binaries
+|-- audio/                  Production metadata plus public radio MP3s under audio/radio/
 |-- config/config.json      Runtime configuration overlay
 `-- images/                 Logo and deterministic radio badges
 ```

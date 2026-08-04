@@ -82,15 +82,16 @@ The next native audio work is ordered as follows:
 
 ## Footprint and distribution
 
-The clean-clone `assets/audio` tree contains one rights-cleared JSON cue catalog
-and no audio binary. The ignored `archive/source-assets` collection contains 423 files totaling
-740,801,845 bytes; the 95-track radio review library accounts for 338,592,122
-bytes. The 1.0 delivery decision is a small approved core soundtrack plus one or
-more optional radio packs. Every pack needs a versioned manifest, hashes, sizes,
-compatibility, source, rights, provider-aware provenance, attribution, station
-identity, track metadata, and explicit install or removal. The game never
-downloads or replaces a pack without player action and always retains a complete
-offline core experience. Source classification and approval rules are defined in
+The public `assets/audio` tree contains the rights-cleared cue-metadata JSON and
+the full eight-station offline radio library (95 MP3 tracks under
+`assets/audio/radio/`). Those tracks are rights-cleared for project distribution
+and still blocked for native pack export until loudness, listening, credit, and
+allowlist gates pass. The 1.0 delivery decision remains a small approved core
+soundtrack plus one or more optional radio packs with versioned manifests,
+hashes, sizes, compatibility, rights, attribution, station identity, track
+metadata, and explicit install or removal. The game never downloads or replaces
+a pack without player action and always retains a complete offline core
+experience. Source classification and approval rules are defined in
 [CONTENT_PIPELINE.md](CONTENT_PIPELINE.md), and the executable manifest and
 failure-isolation rules are defined in [CONTENT_PACKS.md](CONTENT_PACKS.md).
 

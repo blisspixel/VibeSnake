@@ -35,10 +35,22 @@ python -m pip install --no-deps --no-build-isolation -e .
 ## Run
 
 ```powershell
+vibesnake
+# or
 python -m vibesnake
+# or, if a local .venv exists
+./play.ps1
 ```
 
-The `vibesnake` command is also installed by the editable install.
+| Command | Purpose |
+| --- | --- |
+| `vibesnake` / `vibesnake play` | Launch the Python alpha |
+| `vibesnake update` | Fast-forward this checkout from GitHub `main` and reinstall |
+| `vibesnake status` | Compare local HEAD to GitHub `main` without changing files |
+| `vibesnake doctor` | Check Python, assets, and the offline radio library |
+| `vibesnake version` | Print the installed package version |
+
+Use `vibesnake update --dry-run` to inspect without writing. The editable install also registers the `vibesnake` console script.
 
 ## Set up the native toolchain
 

@@ -62,7 +62,7 @@ As of 2026-08-01:
 - Save migration, corruption recovery, future-schema protection, and atomic-write failure are covered.
 - The reference gameplay QA runner passes seeded policy campaigns, immediate trace replay, and property-generated input sequences.
 - A parity mismatch writes a schema 1 JSON bundle with fixture, case, seed, shortest failing step prefix, normalized states and events, actual canonical state and hash, rules and runtime identity, and a one-command reproduction. CI uploads the bundle even though the test job failed.
-- The deterministic content gate classifies and hashes all 18 clean-clone assets, performs bounded structural checks including decoded PNG scanlines, reports one duplicate copy in one group, excludes 7 non-runtime files, and blocks 11 rights-cleared runtime candidates pending pack approval. Rights-unverified binaries remain outside the public tree.
+- The deterministic content gate classifies and hashes the public inventory (114 files including 95 radio MP3s), performs bounded structural checks including decoded PNG scanlines and MPEG structure, reports one duplicate copy in one group, excludes development-only material, and keeps export eligibility at zero until pack quality gates pass.
 - Schema 1 content-pack tests reject unknown fields, unsafe or colliding paths, stale bytes or hashes, incomplete approved allowlists, uncleared rights, mismatched credits, invalid semantic-version or ruleset ranges, bad station track lists, dependency errors, malformed optional packs, and optional failures that incorrectly block a valid offline core.
 - Station badge checks render all eight icons with the pinned Pillow graph and project-owned pixel glyphs, then compare exact PNG bytes with the checked-in set.
 

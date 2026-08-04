@@ -2,9 +2,9 @@
 
 ## Purpose
 
-The canonical asset tree contains rights-cleared images, configuration, AI data, documentation, and production metadata. Rights-unverified audio, lyrics, transcripts, rejected tracks, generated candidates, analysis output, copied research, and working stems live in the ignored local archive. Nothing enters a native player merely because it exists in the workspace. The content pipeline creates an explicit boundary between local source material, public source, and releasable game content.
+The canonical asset tree contains rights-cleared images, configuration, AI data, documentation, production metadata, and the public eight-station offline radio MP3 library. Optional ignored local archives on developer machines may still hold historical or rejected material; they are not part of a clean clone. Nothing enters a native player merely because it exists in the workspace. The content pipeline creates an explicit boundary between public source, pack approval, and releasable game content.
 
-The current foundation inventories every canonical source asset, records its exact bytes and policy classification, and blocks release use until the asset is explicitly approved. The owner's Apache-2.0 declaration is recorded separately from provider-aware provenance, technical analysis, listening, curation, and pack approval.
+The current foundation inventories every canonical source asset, records its exact bytes and policy classification, and blocks native export until the asset is explicitly pack-approved. Apache-2.0 rights clearance for the radio catalog is separate from loudness, listening, credits, and pack allowlist approval.
 
 ## Authorities
 
@@ -21,27 +21,23 @@ Edit the policy. Do not hand-edit the generated inventory.
 
 ## Current measured inventory
 
-The 2026-08-01 clean-clone inventory contains 18 rights-cleared files totaling
-95,377 bytes.
+The 2026-08-04 public inventory contains 114 rights-cleared files totaling
+340,378,770 bytes, including 95 radio MP3 tracks under `assets/audio/radio/`.
 
 | Classification | Files | Current meaning |
 | --- | ---: | --- |
-| Blocked runtime candidates | 11 | Rights-cleared source assets not yet approved for a release pack |
-| Excluded source material | 7 | Development examples, documentation, and production metadata |
-| Export eligible | 0 | Deliberately zero until selected files have complete rights and quality review |
-| Structurally valid | 18 | Passed the current bounded JSON, Markdown, and decoded PNG scanline checks |
-| Empty | 0 | Every zero-byte media candidate was removed from the source inventory |
+| Runtime radio tracks | 95 | Public GTA-style station catalog (`vibesnake-radio`), rights-cleared, still blocked for native pack export until quality and credit gates pass |
+| Runtime images and reference data | 11 | Logo, station badges, AI data, runtime config (rights-cleared, pack-blocked until export approval) |
+| Excluded source material | 8 | Development examples, documentation, and production metadata |
+| Export eligible | 0 | Deliberately zero until selected files complete loudness, listening, credit, and pack allowlist review |
+| Structurally valid | 114 | Passed the current bounded JSON, Markdown, MPEG structural, and decoded PNG scanline checks |
 | Byte-identical extras | 1 | One duplicate file beyond the first copy in one hash group |
 
-No audio binary is present in the public-source inventory. The ignored local archive preserves 95 radio MP3 candidates that passed the MPEG structural gate before isolation. The project owner has declared an Apache-2.0 release intent, while historical records identify service-assisted generation for at least part of the library. A candidate can return to the canonical tree only after its generation plan and applicable service terms are bound to its provenance record and its decode, loudness, clipping, listening, lyrics, station, and pack reviews pass.
+The project owner released the curated radio catalog under Apache-2.0 as original Vibe Snake soundtrack material. Structural MPEG checks and rights clearance do not replace loudness, clipping, listening, station credit, or pack-manifest approval. Export eligibility stays zero until those gates pass for the selected core and radio manifests.
 
 The complete canonical breakdown is generated in `summary` inside
 `config/content_inventory.json`. Current policy separates reference core
-material, radio artwork, and development-only material. The ignored `archive/source-assets` collection
-currently preserves 423 files totaling 740,801,845 bytes and is not part of the
-clean-clone inventory. It includes unresolved and rejected media, copied research
-inputs, working lyrics, retired production tooling, superseded documents, and
-historical reports with private workstation paths.
+material, radio tracks, radio artwork, and development-only material.
 
 ## Policy contract
 
