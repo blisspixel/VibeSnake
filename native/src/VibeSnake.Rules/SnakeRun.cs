@@ -516,8 +516,6 @@ public sealed partial class SnakeRun
             orderedEvents.Add(new RunEventDetail(RunEventKind.Wrapped, Position: nextHead));
         }
 
-        CollectPowerAtHead(nextHead, ref events, orderedEvents);
-
         if (ateFood)
         {
             var points = CalculateFoodPoints(_body.Count);
@@ -581,6 +579,13 @@ public sealed partial class SnakeRun
             }
 
             ResolveStarvation(nextHead, ref events, orderedEvents);
+        }
+
+        // Collect after movement settles so Segment Detach sees the post-move body,
+        // matching the Python coordinator order (move, then collect_at).
+        if (Status == RunStatus.Running)
+        {
+            CollectPowerAtHead(nextHead, ref events, orderedEvents);
         }
 
         return Result(events, orderedEvents);

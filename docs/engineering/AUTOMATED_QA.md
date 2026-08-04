@@ -42,6 +42,7 @@ python -m vibesnake.qa.shared_rule_traces --check
 python -m vibesnake.qa.shared_power_traces --check
 python -m vibesnake.qa.shared_phase_shift_traces --check
 python -m vibesnake.qa.shared_last_stand_traces --check
+python -m vibesnake.qa.shared_remaining_power_traces --check
 ```
 
 Add `--verbose` only when scoring logs are useful. `qa_reports/` is ignored because generated evidence belongs in CI artifacts or an explicitly retained test record, not normal source commits.

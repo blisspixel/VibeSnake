@@ -48,7 +48,7 @@ Slow-Mo and Boost are pure cadence modifiers on the rules snapshot. They do not 
 
 - **Bait** records the collection head and weights the next food respawn with integer inverse-square Manhattan weights (`1_000_000 / (d + 1)^2`), then clears the marker.
 - **Gluttony** scores and resets hunger on food without growing the body for its duration.
-- **Segment Detach** removes up to five tail cells into timed obstacles that block content and kill without Phase Shift; Phase Shift bypasses those cells; obstacles expire together.
+- **Segment Detach** removes up to five tail cells into timed obstacles that block content and kill without Phase Shift; Phase Shift bypasses those cells; obstacles expire together. Collection runs after movement settles so detached cells match the Python post-move body.
 
 ## Native Last Stand qualification
 

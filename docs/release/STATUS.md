@@ -21,8 +21,8 @@ The gated 1.0 target remains Godot 4 .NET with deterministic pure C# rules and f
 | Python deterministic tests | 466 passing and 3 environment-dependent radio skips on the supported interpreters in CI |
 | Python line coverage | About 87 percent measured with an 80 percent floor enforced by configuration and CI |
 | Native toolchain | Godot 4.7.1 Mono and .NET SDK 10.0.302 pinned and verified |
-| Native contract tests | 207 passing on .NET 10 with an 80 percent line floor per module |
-| Cross-language parity | 100 movement cases (25,600 steps), 35 targeted core-rule cases, 8 Shield, 6 Phase Shift, and 5 Last Stand cases pass |
+| Native contract tests | 208 passing on .NET 10 with an 80 percent line floor per module |
+| Cross-language parity | 100 movement cases (25,600 steps), 35 targeted core-rule cases, 8 Shield, 6 Phase Shift, 5 Last Stand, and 9 remaining-power cases pass |
 | Godot integration | Headless import plus seeded rules, restoration, logical input, focus-loss pause, audio buses, fourteen fallback cues, full nine-power markers and captions, cadence-aware stepping, live replay recording, isolated atomic save, and clean shutdown smoke on hosted runners |
 | Native artifacts | Windows, macOS, and Linux player smokes run outside the checkout on matching hosted runners; continuous Python player-latest packages publish from `main` |
 | Static policy | Ruff, source-policy, documentation links, screenshot fingerprint, logo and badge hashes, content inventory, and dependency locks are CI gates |
@@ -48,7 +48,7 @@ The gated 1.0 target remains Godot 4 .NET with deterministic pure C# rules and f
 | AI spectator mode | Working | Ten built-in personalities plus JSON-loaded custom personalities. AI runs do not advance human progression. |
 | Radio | Public offline library | Eight stations and 95 original MP3 tracks ship under `assets/audio/radio/` with Apache-2.0 project intent. Prefix discovery assigns every track once. Native pack export still requires loudness, credit, and allowlist approval (`exportEligible` remains zero). |
 | Sound effects | Partial | Procedural Python and native fallbacks cover critical cues; authored SFX catalog and mix review remain. |
-| Power-ups | Python complete; native complete; Godot presentation wired | All nine powers are pure C# with lifecycle, collision, and food-interaction contracts. Godot draws pickups, active state, hazards, composite HUD, and cadence. Shared parity fixtures exist for Shield, Phase Shift, and Last Stand. |
+| Power-ups | Python complete; native complete; Godot presentation wired | All nine powers are pure C# with lifecycle, collision, and food-interaction contracts. Godot draws pickups, active state, hazards, composite HUD, and cadence. Shared parity fixtures cover Shield, Phase Shift, Last Stand, and the remaining six power types. |
 | Adaptive difficulty | Not active | Removed unwired controller. Future policy requires deterministic integration, disclosure, opt-out, separate score categories, and evidence. |
 | Configuration | Working | Schema version 1 validates types and ranges; changes still require restart. |
 | Player CLI and updates | Working | `vibesnake play`, `update`, `status`, `doctor`, and `version`; `play.ps1` / `play.sh` / `play.bat`; install scripts; GitHub `main` fast-forward reinstall. |
