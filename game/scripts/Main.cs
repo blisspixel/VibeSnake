@@ -2040,6 +2040,17 @@ public partial class Main : Node2D
             throw new InvalidOperationException("Last Stand recovery feedback is not canonical.");
         }
 
+        var starvationWarning = StepFeedback.Resolve(
+        [
+            new RunEventDetail(RunEventKind.StarvationWarning, Value: 200),
+        ]);
+        if (
+            starvationWarning.Cue != AudioCue.Pause
+            || starvationWarning.Caption != "STARVATION WARNING")
+        {
+            throw new InvalidOperationException("Starvation warning feedback is not canonical.");
+        }
+
         var accumulated = 0.0;
         var drained = RulesCadenceClock.DrainSteps(
             ref accumulated,
