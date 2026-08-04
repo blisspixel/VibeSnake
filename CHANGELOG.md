@@ -22,6 +22,7 @@ Notable player-facing and engineering changes are recorded here. The project is 
 - Expanded [migration map](docs/engineering/MIGRATION_MAP.md) with save, replay, pack, and ruleset data-migration procedures plus a dual-runtime freeze checklist.
 - Published [user-data directory contracts](docs/engineering/USER_DATA.md) for Python and native platform roots, layouts, recovery, and separation rules.
 - Python QA contracts for the remaining-power shared fixture (`test_shared_remaining_power_traces.py`).
+- Native content-inventory gate that keeps `exportEligible` at zero until pack approval, and rejects rooted or traversing inventory paths.
 
 ### Changed
 
