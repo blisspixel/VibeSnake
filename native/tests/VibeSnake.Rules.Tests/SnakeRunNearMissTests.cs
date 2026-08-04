@@ -48,6 +48,7 @@ public sealed class SnakeRunNearMissTests
         Assert.Contains(
             result.OrderedEvents,
             detail => detail.Kind == RunEventKind.NearMiss && detail.Value == 1);
+        Assert.True(result.Events.HasFlag(RunEvent.NearMiss));
         Assert.True(run.Score > before);
         Assert.Equal(1, run.SessionNearMisses);
     }

@@ -30,6 +30,7 @@ public enum RunEvent : ushort
     PowerConsumed = 512,
     PowerDiscarded = 1024,
     CollisionPrevented = 2048,
+    NearMiss = 4096,
 }
 
 public enum RunEventKind : byte

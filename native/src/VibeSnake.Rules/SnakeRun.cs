@@ -563,7 +563,7 @@ public sealed partial class SnakeRun
                     RunEventKind.HungerReset,
                     Value: _config.StarvationTicks));
 
-            ApplyFoodNearMisses(hungerBeforeEat, orderedEvents);
+            ApplyFoodNearMisses(hungerBeforeEat, ref events, orderedEvents);
 
             if (!grows)
             {
@@ -611,7 +611,7 @@ public sealed partial class SnakeRun
             ResolveStarvation(nextHead, ref events, orderedEvents);
             if (Status == RunStatus.Running)
             {
-                ApplyBodyNearMiss(orderedEvents);
+                ApplyBodyNearMiss(ref events, orderedEvents);
             }
         }
 
@@ -625,7 +625,7 @@ public sealed partial class SnakeRun
         return Result(events, orderedEvents);
     }
 
-    private void ApplyBodyNearMiss(List<RunEventDetail> orderedEvents)
+    private void ApplyBodyNearMiss(ref RunEvent events, List<RunEventDetail> orderedEvents)
     {
         if (!_config.EnableNearMiss)
         {
@@ -638,11 +638,12 @@ public sealed partial class SnakeRun
             return;
         }
 
-        ApplyNearMissResult(result.Value, orderedEvents);
+        ApplyNearMissResult(result.Value, ref events, orderedEvents);
     }
 
     private void ApplyFoodNearMisses(
         int hungerBeforeEat,
+        ref RunEvent events,
         List<RunEventDetail> orderedEvents)
     {
         if (!_config.EnableNearMiss)
@@ -653,20 +654,22 @@ public sealed partial class SnakeRun
         var clutch = _nearMiss.CheckClutchEat(hungerBeforeEat);
         if (clutch is not null)
         {
-            ApplyNearMissResult(clutch.Value, orderedEvents);
+            ApplyNearMissResult(clutch.Value, ref events, orderedEvents);
         }
 
         var style = _nearMiss.CheckStylePoints(HasBoost);
         if (style is not null)
         {
-            ApplyNearMissResult(style.Value, orderedEvents);
+            ApplyNearMissResult(style.Value, ref events, orderedEvents);
         }
     }
 
     private void ApplyNearMissResult(
         NearMissEvent nearMissEvent,
+        ref RunEvent events,
         List<RunEventDetail> orderedEvents)
     {
+        events |= RunEvent.NearMiss;
         if (nearMissEvent.IsWarning)
         {
             orderedEvents.Add(
