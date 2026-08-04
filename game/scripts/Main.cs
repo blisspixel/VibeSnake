@@ -878,6 +878,7 @@ public partial class Main : Node2D
             }
             ExecuteContentServiceSmokeTest();
             ExecuteStepFeedbackSmokeTest();
+            ExecuteMenuRunDeathRestartSmokeTest();
             var first = SnakeRun.Create(SmokeSeed);
             var replay = SnakeRun.Create(SmokeSeed);
             if (first.ComputeStateHash() != replay.ComputeStateHash())
@@ -1334,6 +1335,79 @@ public partial class Main : Node2D
 
         inventoryPath = string.Empty;
         return false;
+    }
+
+    private void ExecuteMenuRunDeathRestartSmokeTest()
+    {
+        _screenState = ScreenState.Menu;
+        _run = null;
+        _paused = false;
+        _pausedByFocusLoss = false;
+        _replayRecorder = null;
+        _rulesStepAccumulatorMilliseconds = 0.0;
+
+        DispatchSmokeAction(GameActions.Confirm);
+        if (_screenState != ScreenState.Running || _run is null || _replayRecorder is null)
+        {
+            throw new InvalidOperationException("Menu confirm did not start a recorded run.");
+        }
+
+        // Force a terminal self-collision on a fixed body without depending on long starvation.
+        _run = SnakeRun.CreateForTesting(
+            new RunConfig(
+                Width: 8,
+                Height: 6,
+                StarvationTicks: 100,
+                PowerSpawnIntervalTicks: 0,
+                PowerVisibleTicks: 4),
+            [
+                new GridPoint(1, 1),
+                new GridPoint(1, 2),
+                new GridPoint(2, 2),
+                new GridPoint(2, 1),
+            ],
+            RulesDirection.Down,
+            food: new GridPoint(6, 4),
+            hungerTicksRemaining: 100);
+        _replayRecorder = new RunReplayRecorder(_run);
+
+        var deathResult = _run.Step();
+        if (
+            _run.Status != RunStatus.Dead
+            || _run.DeathCause != DeathCause.SelfCollision
+            || !deathResult.Events.HasFlag(RunEvent.Died))
+        {
+            throw new InvalidOperationException("Forced collision did not end the run.");
+        }
+
+        _screenState = ScreenState.Ended;
+        FinalizeAndStoreReplay();
+        for (var frame = 0; frame < 300 && (_replayOperation is not null || _queuedReplaySave is not null); frame++)
+        {
+            // Drain single-flight replay work without waiting on process frames.
+            TryCompleteReplayOperation();
+        }
+
+        if (_replayOperation is not null || _queuedReplaySave is not null)
+        {
+            throw new InvalidOperationException("Death path did not finish terminal replay save.");
+        }
+
+        DispatchSmokeAction(GameActions.Confirm);
+        if (
+            _screenState != ScreenState.Running
+            || _run is null
+            || _run.Status != RunStatus.Running
+            || _replayRecorder is null)
+        {
+            throw new InvalidOperationException("Death-screen confirm did not start a fresh run.");
+        }
+
+        DispatchSmokeAction(GameActions.Back);
+        if (_screenState != ScreenState.Menu || _run is not null)
+        {
+            throw new InvalidOperationException("Post-death back did not return to the menu.");
+        }
     }
 
     private static void ExecuteStepFeedbackSmokeTest()

@@ -6,6 +6,11 @@ Notable player-facing and engineering changes are recorded here. The project is 
 
 ### Added
 
+- Multi-stream `RandomStreamBank` for independent gameplay, AI, cosmetic, radio, and copy PCG32 streams derived from one master seed.
+- Fail-closed native custom AI `PersonalityDocument` validation with schema, trait range, boolean rejection, RGB checks, and filename-scoped errors.
+- Architecture boundary tests that forbid Godot/presentation references from `VibeSnake.Rules` and `VibeSnake.Persistence`.
+- Declared `ContentPackBudgets` ceilings for core and radio pack size and timing gates.
+- Godot automated menu to run to death to restart smoke on a forced self-collision terminal path with replay save drain.
 - Native pure C# Phase Shift power contract with collection, timed expiry, body-overlap movement, Shield precedence, canonical restore, and replay participation.
 - Six shared Python-to-C# Phase Shift parity fixtures (`phase_shift_rules_v1.json`) and CI check via `python -m vibesnake.qa.shared_phase_shift_traces --check`.
 - Native pure C# Last Stand power contract: held revive, half-body shrink, hunger reset, recovery immunity, collision precedence with Phase Shift and Shield.
