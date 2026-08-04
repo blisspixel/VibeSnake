@@ -71,6 +71,11 @@ internal readonly record struct StepFeedback(AudioCue? Cue, string? Caption)
             return new StepFeedback(AudioCue.Food, nearMissCaption);
         }
 
+        if (events.Any(detail => detail.Kind == RunEventKind.StarvationWarning))
+        {
+            return new StepFeedback(AudioCue.Pause, "STARVATION WARNING");
+        }
+
         return events.Any(detail => detail.Kind == RunEventKind.AteFood)
             ? new StepFeedback(AudioCue.Food, null)
             : default;
