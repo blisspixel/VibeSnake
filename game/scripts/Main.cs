@@ -1247,22 +1247,60 @@ public partial class Main : Node2D
 
     private static void ExecuteContentServiceSmokeTest()
     {
-        var inventoryPath = ResolveCheckoutInventoryPath();
-        var content = ContentService.LoadInventoryFile(inventoryPath);
-        if (content.ExportEligibleCount != 0)
+        // Embedded fixture keeps packaged-player smoke independent of the
+        // development checkout inventory used only by optional live checks.
+        const string blockedPath = "audio/radio/smoke_blocked_track.mp3";
+        const string syntheticInventoryJson =
+            """
+            {
+              "schemaVersion": 1,
+              "fileCount": 1,
+              "assets": [
+                {
+                  "id": "asset:audio/radio/smoke_blocked_track.mp3",
+                  "path": "audio/radio/smoke_blocked_track.mp3",
+                  "mediaType": "audio/mpeg",
+                  "bytes": 32,
+                  "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+                  "exportEligible": false,
+                  "shipStatus": "blocked",
+                  "rights": { "status": "cleared" }
+                }
+              ]
+            }
+            """;
+
+        var content = new ContentService(ContentInventory.Parse(syntheticInventoryJson));
+        if (content.FileCount != 1 || content.ExportEligibleCount != 0)
         {
             throw new InvalidOperationException(
-                "Content service smoke expected zero exportEligible assets until pack approval.");
+                "Content service smoke expected one blocked synthetic inventory asset.");
         }
 
-        if (content.MayPackage("audio/radio/ambient_graceful_laminar.mp3"))
+        if (content.MayPackage(blockedPath))
         {
             throw new InvalidOperationException(
-                "Content service must deny packaging of non-exportEligible radio assets.");
+                "Content service must deny packaging of non-exportEligible assets.");
+        }
+
+        if (TryResolveCheckoutInventoryPath(out var inventoryPath))
+        {
+            var live = ContentService.LoadInventoryFile(inventoryPath);
+            if (live.ExportEligibleCount != 0)
+            {
+                throw new InvalidOperationException(
+                    "Live content inventory must keep exportEligible at zero until pack approval.");
+            }
+
+            if (live.MayPackage("audio/radio/ambient_graceful_laminar.mp3"))
+            {
+                throw new InvalidOperationException(
+                    "Live content inventory must deny packaging of non-exportEligible radio assets.");
+            }
         }
     }
 
-    private static string ResolveCheckoutInventoryPath()
+    private static bool TryResolveCheckoutInventoryPath(out string inventoryPath)
     {
         string[] candidates =
         [
@@ -1289,12 +1327,13 @@ public partial class Main : Node2D
         {
             if (System.IO.File.Exists(candidate))
             {
-                return candidate;
+                inventoryPath = candidate;
+                return true;
             }
         }
 
-        throw new InvalidOperationException(
-            "Content service smoke could not locate config/content_inventory.json from the checkout.");
+        inventoryPath = string.Empty;
+        return false;
     }
 
     private static void ExecuteStepFeedbackSmokeTest()
