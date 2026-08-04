@@ -1,4 +1,4 @@
-using System.Text.Json;
+using VibeSnake.Persistence;
 
 namespace VibeSnake.Rules.Tests;
 
@@ -14,44 +14,16 @@ public sealed class ContentInventoryGateTests
         var inventoryPath = ResolveInventoryPath();
         Assert.True(File.Exists(inventoryPath), $"Missing inventory: {inventoryPath}");
 
-        using var document = JsonDocument.Parse(File.ReadAllText(inventoryPath));
-        var root = document.RootElement;
-        Assert.Equal(1, root.GetProperty("schemaVersion").GetInt32());
-        var fileCount = root.GetProperty("fileCount").GetInt32();
-        Assert.True(fileCount > 0, "Inventory must list at least one classified asset.");
-
-        var assets = root.GetProperty("assets");
-        Assert.Equal(fileCount, assets.GetArrayLength());
-
-        var exportEligible = 0;
-        var unclearedRights = 0;
-        foreach (var asset in assets.EnumerateArray())
+        var inventory = ContentInventory.LoadFromFile(inventoryPath);
+        Assert.Equal(1, inventory.SchemaVersion);
+        Assert.True(inventory.FileCount > 0);
+        Assert.Equal(0, inventory.ExportEligibleCount);
+        Assert.All(inventory.Assets, asset =>
         {
-            if (asset.GetProperty("exportEligible").GetBoolean())
-            {
-                exportEligible++;
-            }
-
-            var rights = asset.GetProperty("rights");
-            if (!string.Equals(
-                    rights.GetProperty("status").GetString(),
-                    "cleared",
-                    StringComparison.Ordinal))
-            {
-                unclearedRights++;
-            }
-
-            var path = asset.GetProperty("path").GetString() ?? string.Empty;
-            Assert.False(
-                path.Contains("..", StringComparison.Ordinal),
-                $"Inventory path must not traverse: {path}");
-            Assert.False(
-                Path.IsPathRooted(path),
-                $"Inventory path must be relative: {path}");
-        }
-
-        Assert.Equal(0, exportEligible);
-        Assert.Equal(0, unclearedRights);
+            Assert.Equal("cleared", asset.RightsStatus);
+            Assert.False(System.IO.Path.IsPathRooted(asset.RelativePath));
+            Assert.DoesNotContain("..", asset.RelativePath, StringComparison.Ordinal);
+        });
     }
 
     private static string ResolveInventoryPath()
