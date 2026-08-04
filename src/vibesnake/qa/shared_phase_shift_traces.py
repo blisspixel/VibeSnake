@@ -161,10 +161,7 @@ def main(argv: list[str] | None = None) -> int:
 
         arguments.output.parent.mkdir(parents=True, exist_ok=True)
         arguments.output.write_text(fixture_json(fixture), encoding="utf-8")
-        print(
-            f"Shared Phase Shift fixture written: {fixture['case_count']} targeted cases; "
-            f"output={arguments.output}"
-        )
+        print(f"Shared Phase Shift fixture written: {fixture['case_count']} targeted cases; output={arguments.output}")
         return 0
 
 
