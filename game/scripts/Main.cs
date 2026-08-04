@@ -1363,6 +1363,21 @@ public partial class Main : Node2D
         {
             throw new InvalidOperationException("Accessibility placeholder settings failed.");
         }
+
+        ShellTransitions.EnsureTransition(ShellScreen.Menu, ShellScreen.Running);
+        ShellTransitions.EnsureTransition(ShellScreen.Running, ShellScreen.Ended);
+        ShellTransitions.EnsureTransition(ShellScreen.Ended, ShellScreen.Running);
+        ShellTransitions.EnsureTransition(ShellScreen.Ended, ShellScreen.Menu);
+        try
+        {
+            ShellTransitions.EnsureTransition(ShellScreen.Menu, ShellScreen.Ended);
+            throw new InvalidOperationException("Illegal shell transition was accepted.");
+        }
+        catch (InvalidOperationException exception)
+            when (exception.Message.Contains("Illegal shell transition", StringComparison.Ordinal))
+        {
+            // Expected rejection.
+        }
     }
 
     private void ExecuteMenuRunDeathRestartSmokeTest()
