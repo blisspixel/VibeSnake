@@ -51,6 +51,12 @@ public sealed class SnakeRunNearMissTests
         Assert.True(result.Events.HasFlag(RunEvent.NearMiss));
         Assert.True(run.Score > before);
         Assert.Equal(1, run.SessionNearMisses);
+
+        // Food events precede near-miss awards within the same step.
+        var kinds = result.OrderedEvents.Select(detail => detail.Kind).ToArray();
+        var ateIndex = Array.IndexOf(kinds, RunEventKind.AteFood);
+        var nearMissIndex = Array.IndexOf(kinds, RunEventKind.NearMiss);
+        Assert.True(ateIndex >= 0 && nearMissIndex > ateIndex);
     }
 
     [Fact]
