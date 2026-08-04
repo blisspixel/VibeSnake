@@ -6,7 +6,7 @@ Snapshot date: 2026-08-04
 
 Vibe Snake is a substantial, playable alpha with a distinctive audiovisual identity and a reliable engineering baseline on GitHub. The canonical repository is [blisspixel/VibeSnake](https://github.com/blisspixel/VibeSnake): a single `main` branch, open PR list kept empty, and green hosted CI on every push. All nine power-ups work end to end in the Python reference. Saves, schema migration, corruption protection, runtime configuration validation, and player preferences are implemented. The public checkout includes the full eight-station offline radio library (95 tracks), adaptive 4:3-first presentation, and a player path (`vibesnake play|update|status|doctor|version` plus `play.*` and install scripts). Continuous [player-latest](https://github.com/blisspixel/VibeSnake/releases/tag/player-latest) artifacts rebuild from `main`.
 
-The gated 1.0 target remains Godot 4 .NET with deterministic pure C# rules and first-class Windows, macOS, and Linux players. The native foundation builds, tests, exports, and smokes on hosted Windows, macOS, and Linux runners. Six of nine powers are complete native contracts (Shield, Phase Shift, Last Stand, Slow-Mo, Boost, Magnet). Remaining: Bait, Gluttony, Segment Detach. Pack export approval and structured playtesting remain open.
+The gated 1.0 target remains Godot 4 .NET with deterministic pure C# rules and first-class Windows, macOS, and Linux players. The native foundation builds, tests, exports, and smokes on hosted Windows, macOS, and Linux runners. All nine powers are complete pure C# contracts with unit coverage. Pack export approval, Godot presentation for every power, and structured playtesting remain open.
 
 ## Verified quality baseline
 
@@ -21,7 +21,7 @@ The gated 1.0 target remains Godot 4 .NET with deterministic pure C# rules and f
 | Python deterministic tests | 466 passing and 3 environment-dependent radio skips on the supported interpreters in CI |
 | Python line coverage | About 87 percent measured with an 80 percent floor enforced by configuration and CI |
 | Native toolchain | Godot 4.7.1 Mono and .NET SDK 10.0.302 pinned and verified |
-| Native contract tests | 196+ passing on .NET 10 with an 80 percent line floor per module |
+| Native contract tests | 203 passing on .NET 10 with an 80 percent line floor per module |
 | Cross-language parity | 100 movement cases (25,600 steps), 35 targeted core-rule cases, 8 Shield, 6 Phase Shift, and 5 Last Stand cases pass |
 | Godot integration | Headless import plus seeded rules, restoration, logical input, focus-loss pause, audio buses, fallback cues, Shield feedback, live replay recording, isolated atomic save, and clean shutdown smoke on hosted runners |
 | Native artifacts | Windows, macOS, and Linux player smokes run outside the checkout on matching hosted runners; continuous Python player-latest packages publish from `main` |
@@ -48,7 +48,7 @@ The gated 1.0 target remains Godot 4 .NET with deterministic pure C# rules and f
 | AI spectator mode | Working | Ten built-in personalities plus JSON-loaded custom personalities. AI runs do not advance human progression. |
 | Radio | Public offline library | Eight stations and 95 original MP3 tracks ship under `assets/audio/radio/` with Apache-2.0 project intent. Prefix discovery assigns every track once. Native pack export still requires loudness, credit, and allowlist approval (`exportEligible` remains zero). |
 | Sound effects | Partial | Procedural Python and native fallbacks cover critical cues; authored SFX catalog and mix review remain. |
-| Power-ups | Python complete; native 6 of 9 | Shield, Phase Shift, Last Stand, Slow-Mo, Boost, and Magnet are pure C#. Bait, Gluttony, and Segment Detach remain unported. |
+| Power-ups | Python complete; native complete | All nine powers are pure C# with lifecycle, collision, and food-interaction contracts. Shared parity fixtures exist for Shield, Phase Shift, and Last Stand. |
 | Adaptive difficulty | Not active | Removed unwired controller. Future policy requires deterministic integration, disclosure, opt-out, separate score categories, and evidence. |
 | Configuration | Working | Schema version 1 validates types and ranges; changes still require restart. |
 | Player CLI and updates | Working | `vibesnake play`, `update`, `status`, `doctor`, and `version`; `play.ps1` / `play.sh` / `play.bat`; install scripts; GitHub `main` fast-forward reinstall. |
@@ -56,7 +56,7 @@ The gated 1.0 target remains Godot 4 .NET with deterministic pure C# rules and f
 | Automated gameplay QA | Foundation working | Seeded policies, invariants, property-generated input, replay hashes, JSON reports. Native parity retains first-divergence bundles. Full powers, DDA, AI, and presentation campaigns still depend on the completed deterministic engine. |
 | Content inventory | Foundation working | Deterministic policy and generated inventory cover 114 public assets including the radio library. Export eligibility is deliberately zero until pack quality gates pass. |
 | Content pack contract | Foundation working | Schema 1 validates core and optional radio manifests against inventory allowlists. No production manifest is export-approved yet. |
-| Target technology | Qualification in progress | Godot 4.7.1 and .NET 10.0.302 pinned. Pure C# kernel covers core rules plus Shield, Phase Shift, and Last Stand. Hosted multi-platform player smoke exists. Full feature parity with the Python reference does not. |
+| Target technology | Qualification in progress | Godot 4.7.1 and .NET 10.0.302 pinned. Pure C# kernel covers core rules and all nine powers. Hosted multi-platform player smoke exists. Full presentation and pack export parity remain open. |
 
 ## Inventory facts
 

@@ -1,6 +1,6 @@
 # Power-ups
 
-All nine power-ups are connected to normal runs in the Python reference and tested through the main `Game.update` boundary. Unless stated otherwise, collecting a duplicate type is prevented while that effect remains active. Different types can overlap. Six powers are complete native C# contracts (Shield, Phase Shift, Last Stand, Slow-Mo, Boost, Magnet). Bait, Gluttony, and Segment Detach remain Python-only during migration.
+All nine power-ups are connected to normal runs in the Python reference and tested through the main `Game.update` boundary. Unless stated otherwise, collecting a duplicate type is prevented while that effect remains active. Different types can overlap. All nine powers are complete native C# contracts in `VibeSnake.Rules`. Godot presentation still trails for powers beyond Shield.
 
 ## Gameplay contracts
 
@@ -43,6 +43,12 @@ The manager schedules spawns, excludes the snake, food, detached obstacles, and 
 ## Native Slow-Mo and Boost qualification
 
 Slow-Mo and Boost are pure cadence modifiers on the rules snapshot. They do not change fixed-step movement distance, scoring, or randomness when `Step` is invoked. Presentation shells advance rules at `RulesTickMilliseconds * MovementCadenceNumerator / MovementCadenceDenominator`, where Slow-Mo multiplies the numerator by 2, Boost multiplies the denominator by 2, and both compose (product of factors), matching the Python cadence helper.
+
+## Native Bait, Gluttony, and Segment Detach qualification
+
+- **Bait** records the collection head and weights the next food respawn with integer inverse-square Manhattan weights (`1_000_000 / (d + 1)^2`), then clears the marker.
+- **Gluttony** scores and resets hunger on food without growing the body for its duration.
+- **Segment Detach** removes up to five tail cells into timed obstacles that block content and kill without Phase Shift; Phase Shift bypasses those cells; obstacles expire together.
 
 ## Native Last Stand qualification
 

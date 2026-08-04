@@ -105,7 +105,14 @@ public sealed partial class SnakeRun
                 "lastStandRecoveryTicks"),
             SlowMoDurationTicks: ReadInt32(configElement, "slowMoDurationTicks"),
             BoostDurationTicks: ReadInt32(configElement, "boostDurationTicks"),
-            MagnetDurationTicks: ReadInt32(configElement, "magnetDurationTicks"));
+            MagnetDurationTicks: ReadInt32(configElement, "magnetDurationTicks"),
+            GluttonyDurationTicks: ReadInt32(configElement, "gluttonyDurationTicks"),
+            SegmentDetachObstacleTicks: ReadInt32(
+                configElement,
+                "segmentDetachObstacleTicks"),
+            SegmentDetachMaxSegments: ReadInt32(
+                configElement,
+                "segmentDetachMaxSegments"));
         config.Validate();
 
         var randomElement = RequireObject(root.GetProperty("random"), "random");
@@ -120,6 +127,11 @@ public sealed partial class SnakeRun
             root.GetProperty("pendingDirections"),
             config.MaximumDirectionQueue);
         var powerPickup = ReadPowerPickup(root.GetProperty("powerPickup"));
+        var baitElement = root.GetProperty("baitPosition");
+        GridPoint? baitPosition = baitElement.ValueKind == JsonValueKind.Null
+            ? null
+            : ReadPoint(baitElement, "baitPosition");
+        var detachedObstacles = ReadPoints(root.GetProperty("detachedObstacles"), config);
 
         var restored = new SnakeRun(
             config,
@@ -143,6 +155,10 @@ public sealed partial class SnakeRun
             ReadInt32(root, "slowMoTicksRemaining"),
             ReadInt32(root, "boostTicksRemaining"),
             ReadInt32(root, "magnetTicksRemaining"),
+            ReadInt32(root, "gluttonyTicksRemaining"),
+            baitPosition,
+            detachedObstacles,
+            ReadInt32(root, "detachedObstacleTicksRemaining"),
             pendingDirections);
         restored.ValidateRestoredProductionState();
         return restored;

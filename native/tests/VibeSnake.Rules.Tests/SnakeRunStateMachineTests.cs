@@ -93,6 +93,12 @@ public sealed class SnakeRunStateMachineTests
         Assert.Equal(expected.SlowMoTicksRemaining, actual.SlowMoTicksRemaining);
         Assert.Equal(expected.BoostTicksRemaining, actual.BoostTicksRemaining);
         Assert.Equal(expected.MagnetTicksRemaining, actual.MagnetTicksRemaining);
+        Assert.Equal(expected.GluttonyTicksRemaining, actual.GluttonyTicksRemaining);
+        Assert.Equal(expected.BaitPosition, actual.BaitPosition);
+        Assert.Equal(expected.DetachedObstacles, actual.DetachedObstacles);
+        Assert.Equal(
+            expected.DetachedObstacleTicksRemaining,
+            actual.DetachedObstacleTicksRemaining);
         Assert.Equal(expected.StateHash, actual.StateHash);
     }
 }

@@ -22,6 +22,10 @@ public sealed record RunSnapshot(
     int SlowMoTicksRemaining,
     int BoostTicksRemaining,
     int MagnetTicksRemaining,
+    int GluttonyTicksRemaining,
+    GridPoint? BaitPosition,
+    IReadOnlyList<GridPoint> DetachedObstacles,
+    int DetachedObstacleTicksRemaining,
     string StateHash)
 {
     public GridPoint Head => Body[^1];
@@ -37,6 +41,12 @@ public sealed record RunSnapshot(
     public bool HasBoost => BoostTicksRemaining > 0;
 
     public bool HasMagnet => MagnetTicksRemaining > 0;
+
+    public bool HasGluttony => GluttonyTicksRemaining > 0;
+
+    public bool HasBait => BaitPosition is not null;
+
+    public bool HasDetachedObstacles => DetachedObstacleTicksRemaining > 0 && DetachedObstacles.Count > 0;
 
     /// <summary>
     /// Effective rules-tick scale as numerator/denominator: Slow-Mo multiplies by 2,

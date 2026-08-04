@@ -13,6 +13,7 @@ Notable player-facing and engineering changes are recorded here. The project is 
 - [Migration ownership map](docs/engineering/MIGRATION_MAP.md) for V030-12.
 - Native Slow-Mo and Boost cadence modifiers with composable snapshot scale and fixed-step movement invariance.
 - Native Magnet food attraction (one-cell pull toward the head each rules step, blocked by body and pickups).
+- Native Bait (weighted next-food respawn), Gluttony (eat without growth), and Segment Detach (timed tail obstacles with Phase Shift bypass).
 
 ### Changed
 

@@ -8,6 +8,9 @@ public enum PowerKind : byte
     SlowMo = 4,
     Boost = 5,
     Magnet = 6,
+    Bait = 7,
+    Gluttony = 8,
+    SegmentDetach = 9,
 }
 
 public sealed record PowerPickup

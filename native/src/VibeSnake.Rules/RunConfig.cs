@@ -15,7 +15,10 @@ public sealed record RunConfig(
     int LastStandRecoveryTicks = 60,
     int SlowMoDurationTicks = 120,
     int BoostDurationTicks = 80,
-    int MagnetDurationTicks = 120)
+    int MagnetDurationTicks = 120,
+    int GluttonyDurationTicks = 100,
+    int SegmentDetachObstacleTicks = 200,
+    int SegmentDetachMaxSegments = 5)
 {
     public const int RulesTickMilliseconds = 50;
     public const int MaximumGridDimension = 4_096;
@@ -30,6 +33,10 @@ public sealed record RunConfig(
     public const int MinimumSlowMoDurationTicks = 2;
     public const int MinimumBoostDurationTicks = 2;
     public const int MinimumMagnetDurationTicks = 2;
+    public const int MinimumGluttonyDurationTicks = 2;
+    public const int MinimumSegmentDetachObstacleTicks = 2;
+    public const int MinimumSegmentDetachMaxSegments = 1;
+    public const int MaximumSegmentDetachMaxSegments = 64;
 
     internal void Validate()
     {
@@ -149,6 +156,27 @@ public sealed record RunConfig(
             || MagnetDurationTicks > MaximumConfiguredTicks)
         {
             throw new ArgumentOutOfRangeException(nameof(MagnetDurationTicks));
+        }
+
+        if (
+            GluttonyDurationTicks < MinimumGluttonyDurationTicks
+            || GluttonyDurationTicks > MaximumConfiguredTicks)
+        {
+            throw new ArgumentOutOfRangeException(nameof(GluttonyDurationTicks));
+        }
+
+        if (
+            SegmentDetachObstacleTicks < MinimumSegmentDetachObstacleTicks
+            || SegmentDetachObstacleTicks > MaximumConfiguredTicks)
+        {
+            throw new ArgumentOutOfRangeException(nameof(SegmentDetachObstacleTicks));
+        }
+
+        if (
+            SegmentDetachMaxSegments < MinimumSegmentDetachMaxSegments
+            || SegmentDetachMaxSegments > MaximumSegmentDetachMaxSegments)
+        {
+            throw new ArgumentOutOfRangeException(nameof(SegmentDetachMaxSegments));
         }
     }
 }

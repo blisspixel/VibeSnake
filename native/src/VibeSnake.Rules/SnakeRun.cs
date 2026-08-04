@@ -22,6 +22,9 @@ public sealed partial class SnakeRun
     private readonly List<GridPoint> _body;
     private readonly ReadOnlyCollection<GridPoint> _bodyView;
     private readonly HashSet<GridPoint> _occupied;
+    private readonly List<GridPoint> _detachedObstacles;
+    private readonly ReadOnlyCollection<GridPoint> _detachedObstaclesView;
+    private readonly HashSet<GridPoint> _detachedOccupied;
     private readonly Queue<Direction> _pendingDirections;
     private readonly Pcg32 _random;
 
@@ -47,6 +50,10 @@ public sealed partial class SnakeRun
         int slowMoTicksRemaining = 0,
         int boostTicksRemaining = 0,
         int magnetTicksRemaining = 0,
+        int gluttonyTicksRemaining = 0,
+        GridPoint? baitPosition = null,
+        IEnumerable<GridPoint>? detachedObstacles = null,
+        int detachedObstacleTicksRemaining = 0,
         IEnumerable<Direction>? pendingDirections = null)
     {
         config.Validate();
@@ -55,6 +62,9 @@ public sealed partial class SnakeRun
         ValidateBody(_body, config);
         _bodyView = _body.AsReadOnly();
         _occupied = _body.ToHashSet();
+        _detachedObstacles = (detachedObstacles ?? []).Distinct().ToList();
+        _detachedObstaclesView = _detachedObstacles.AsReadOnly();
+        _detachedOccupied = _detachedObstacles.ToHashSet();
         _pendingDirections = new Queue<Direction>(config.MaximumDirectionQueue);
         _random = random;
         Direction = direction;
@@ -75,6 +85,9 @@ public sealed partial class SnakeRun
         SlowMoTicksRemaining = slowMoTicksRemaining;
         BoostTicksRemaining = boostTicksRemaining;
         MagnetTicksRemaining = magnetTicksRemaining;
+        GluttonyTicksRemaining = gluttonyTicksRemaining;
+        BaitPosition = baitPosition;
+        DetachedObstacleTicksRemaining = detachedObstacleTicksRemaining;
 
         if (!Enum.IsDefined(direction))
         {
@@ -83,9 +96,39 @@ public sealed partial class SnakeRun
 
         RestorePendingDirections(pendingDirections ?? [], direction);
 
-        if (food is { } foodPoint && (!IsInBounds(foodPoint) || _occupied.Contains(foodPoint)))
+        if (
+            food is { } foodPoint
+            && (!IsInBounds(foodPoint) || _occupied.Contains(foodPoint) || _detachedOccupied.Contains(foodPoint)))
         {
-            throw new ArgumentException("Food must be in bounds and outside the snake.", nameof(food));
+            throw new ArgumentException(
+                "Food must be in bounds and outside the snake and obstacles.",
+                nameof(food));
+        }
+
+        if (
+            (DetachedObstacleTicksRemaining == 0 && _detachedObstacles.Count > 0)
+            || (DetachedObstacleTicksRemaining > 0 && _detachedObstacles.Count == 0))
+        {
+            throw new ArgumentException(
+                "Detached obstacles and their timer must both be present or both absent.");
+        }
+
+        if (DetachedObstacleTicksRemaining > config.SegmentDetachObstacleTicks)
+        {
+            throw new ArgumentOutOfRangeException(nameof(detachedObstacleTicksRemaining));
+        }
+
+        foreach (var obstacle in _detachedObstacles)
+        {
+            if (!IsInBounds(obstacle))
+            {
+                throw new ArgumentException("Detached obstacles must be inside the grid.");
+            }
+        }
+
+        if (baitPosition is { } bait && !IsInBounds(bait))
+        {
+            throw new ArgumentException("Bait position must be inside the grid.", nameof(baitPosition));
         }
 
         ValidatePowerState();
@@ -169,6 +212,14 @@ public sealed partial class SnakeRun
 
     public int MagnetTicksRemaining { get; private set; }
 
+    public int GluttonyTicksRemaining { get; private set; }
+
+    public GridPoint? BaitPosition { get; private set; }
+
+    public IReadOnlyList<GridPoint> DetachedObstacles => _detachedObstaclesView;
+
+    public int DetachedObstacleTicksRemaining { get; private set; }
+
     public bool HasShield => ShieldTicksRemaining > 0;
 
     public bool HasPhaseShift => PhaseShiftTicksRemaining > 0;
@@ -180,6 +231,13 @@ public sealed partial class SnakeRun
     public bool HasBoost => BoostTicksRemaining > 0;
 
     public bool HasMagnet => MagnetTicksRemaining > 0;
+
+    public bool HasGluttony => GluttonyTicksRemaining > 0;
+
+    public bool HasBait => BaitPosition is not null;
+
+    public bool HasDetachedObstacles =>
+        DetachedObstacleTicksRemaining > 0 && _detachedObstacles.Count > 0;
 
     public int MovementCadenceNumerator => HasSlowMo ? 2 : 1;
 
@@ -276,7 +334,11 @@ public sealed partial class SnakeRun
         int lastStandRecoveryTicksRemaining = 0,
         int slowMoTicksRemaining = 0,
         int boostTicksRemaining = 0,
-        int magnetTicksRemaining = 0)
+        int magnetTicksRemaining = 0,
+        int gluttonyTicksRemaining = 0,
+        GridPoint? baitPosition = null,
+        IEnumerable<GridPoint>? detachedObstacles = null,
+        int detachedObstacleTicksRemaining = 0)
     {
         return new SnakeRun(
             config,
@@ -299,7 +361,11 @@ public sealed partial class SnakeRun
             lastStandRecoveryTicksRemaining,
             slowMoTicksRemaining,
             boostTicksRemaining,
-            magnetTicksRemaining);
+            magnetTicksRemaining,
+            gluttonyTicksRemaining,
+            baitPosition,
+            detachedObstacles,
+            detachedObstacleTicksRemaining);
     }
 
     public bool QueueDirection(Direction direction)
@@ -360,14 +426,17 @@ public sealed partial class SnakeRun
         var nextHead = unwrappedHead.Wrap(_config.Width, _config.Height);
         var wrapped = nextHead != unwrappedHead;
         AdvancePowerSpawnClock(nextHead, ref events, orderedEvents);
-        var grows = Food == nextHead;
+        var ateFood = Food == nextHead;
+        var grows = ateFood && !HasGluttony;
         var movesOntoDepartingTail = !grows && nextHead == _body[0];
-        if (!grows)
+        if (!ateFood)
         {
             HungerTicksRemaining = Math.Max(0, HungerTicksRemaining - 1);
         }
 
-        var bodyCollision = _occupied.Contains(nextHead) && !movesOntoDepartingTail;
+        var hitsObstacle = _detachedOccupied.Contains(nextHead);
+        var bodyCollision =
+            (_occupied.Contains(nextHead) || hitsObstacle) && !movesOntoDepartingTail;
         if (bodyCollision && !HasPhaseShift)
         {
             if (wrapped)
@@ -441,7 +510,7 @@ public sealed partial class SnakeRun
 
         CollectPowerAtHead(nextHead, ref events, orderedEvents);
 
-        if (grows)
+        if (ateFood)
         {
             var points = CalculateFoodPoints(_body.Count);
             var awardedPoints = (int)Math.Min((long)points, MaximumScore - (long)Score);
@@ -460,7 +529,19 @@ public sealed partial class SnakeRun
                     RunEventKind.HungerReset,
                     Value: _config.StarvationTicks));
 
-            if (_occupied.Count == _config.Width * _config.Height)
+            if (!grows)
+            {
+                var gluttonyTail = _body[0];
+                _body.RemoveAt(0);
+                if (gluttonyTail != nextHead && !_body.Contains(gluttonyTail))
+                {
+                    _occupied.Remove(gluttonyTail);
+                }
+            }
+
+            // Victory ignores optional pickups: a lone free pickup cell is discarded
+            // for food respawn, not treated as a full board.
+            if (_occupied.Count + _detachedOccupied.Count >= _config.Width * _config.Height)
             {
                 Food = null;
                 Status = RunStatus.Won;
@@ -521,6 +602,10 @@ public sealed partial class SnakeRun
             SlowMoTicksRemaining,
             BoostTicksRemaining,
             MagnetTicksRemaining,
+            GluttonyTicksRemaining,
+            BaitPosition,
+            _detachedObstaclesView,
+            DetachedObstacleTicksRemaining,
             ComputeStateHash());
     }
 
@@ -572,6 +657,13 @@ public sealed partial class SnakeRun
             writer.WriteNumber("slowMoDurationTicks", _config.SlowMoDurationTicks);
             writer.WriteNumber("boostDurationTicks", _config.BoostDurationTicks);
             writer.WriteNumber("magnetDurationTicks", _config.MagnetDurationTicks);
+            writer.WriteNumber("gluttonyDurationTicks", _config.GluttonyDurationTicks);
+            writer.WriteNumber(
+                "segmentDetachObstacleTicks",
+                _config.SegmentDetachObstacleTicks);
+            writer.WriteNumber(
+                "segmentDetachMaxSegments",
+                _config.SegmentDetachMaxSegments);
             writer.WriteEndObject();
 
             writer.WriteNumber("tick", Tick);
@@ -592,6 +684,27 @@ public sealed partial class SnakeRun
             writer.WriteNumber("slowMoTicksRemaining", SlowMoTicksRemaining);
             writer.WriteNumber("boostTicksRemaining", BoostTicksRemaining);
             writer.WriteNumber("magnetTicksRemaining", MagnetTicksRemaining);
+            writer.WriteNumber("gluttonyTicksRemaining", GluttonyTicksRemaining);
+            writer.WriteNumber(
+                "detachedObstacleTicksRemaining",
+                DetachedObstacleTicksRemaining);
+
+            if (BaitPosition is { } baitPosition)
+            {
+                WritePoint(writer, "baitPosition", baitPosition);
+            }
+            else
+            {
+                writer.WriteNull("baitPosition");
+            }
+
+            writer.WriteStartArray("detachedObstacles");
+            foreach (var obstacle in _detachedObstacles)
+            {
+                WritePoint(writer, obstacle);
+            }
+
+            writer.WriteEndArray();
 
             if (PowerPickup is { } powerPickup)
             {
@@ -749,19 +862,47 @@ public sealed partial class SnakeRun
             }
         }
 
-        if (MagnetTicksRemaining <= 0)
+        if (MagnetTicksRemaining > 0)
+        {
+            MagnetTicksRemaining--;
+            if (MagnetTicksRemaining == 0)
+            {
+                events |= RunEvent.PowerExpired;
+                orderedEvents.Add(
+                    new RunEventDetail(
+                        RunEventKind.PowerExpired,
+                        Power: PowerKind.Magnet));
+            }
+        }
+
+        if (GluttonyTicksRemaining > 0)
+        {
+            GluttonyTicksRemaining--;
+            if (GluttonyTicksRemaining == 0)
+            {
+                events |= RunEvent.PowerExpired;
+                orderedEvents.Add(
+                    new RunEventDetail(
+                        RunEventKind.PowerExpired,
+                        Power: PowerKind.Gluttony));
+            }
+        }
+
+        if (DetachedObstacleTicksRemaining <= 0)
         {
             return;
         }
 
-        MagnetTicksRemaining--;
-        if (MagnetTicksRemaining == 0)
+        DetachedObstacleTicksRemaining--;
+        if (DetachedObstacleTicksRemaining == 0)
         {
+            _detachedObstacles.Clear();
+            _detachedOccupied.Clear();
             events |= RunEvent.PowerExpired;
             orderedEvents.Add(
                 new RunEventDetail(
                     RunEventKind.PowerExpired,
-                    Power: PowerKind.Magnet));
+                    Power: PowerKind.SegmentDetach));
         }
     }
 
@@ -781,16 +922,25 @@ public sealed partial class SnakeRun
         var dx = food.X == head.X ? 0 : (head.X > food.X ? 1 : -1);
         var dy = food.Y == head.Y ? 0 : (head.Y > food.Y ? 1 : -1);
         var candidate = new GridPoint(food.X + dx, food.Y + dy);
-        if (
-            !IsInBounds(candidate)
-            || _occupied.Contains(candidate)
-            || PowerPickup?.Position == candidate)
+        if (IsCellBlockedForContent(candidate))
         {
             return;
         }
 
         Food = candidate;
     }
+
+    private bool IsCellBlockedForContent(GridPoint candidate) =>
+        !IsInBounds(candidate)
+        || _occupied.Contains(candidate)
+        || _detachedOccupied.Contains(candidate)
+        || PowerPickup?.Position == candidate;
+
+    private int FreeCellCount() =>
+        (_config.Width * _config.Height)
+        - _occupied.Count
+        - _detachedOccupied.Count
+        - (PowerPickup is null ? 0 : 1);
 
     private void ResolveStarvation(
         GridPoint position,
@@ -982,9 +1132,64 @@ public sealed partial class SnakeRun
                         Value: MagnetTicksRemaining,
                         Power: pickup.Kind));
                 break;
+            case PowerKind.Bait:
+                BaitPosition = head;
+                events |= RunEvent.PowerActivated;
+                orderedEvents.Add(
+                    new RunEventDetail(
+                        RunEventKind.PowerActivated,
+                        Position: head,
+                        Value: 0,
+                        Power: pickup.Kind));
+                break;
+            case PowerKind.Gluttony:
+                GluttonyTicksRemaining = _config.GluttonyDurationTicks;
+                events |= RunEvent.PowerActivated;
+                orderedEvents.Add(
+                    new RunEventDetail(
+                        RunEventKind.PowerActivated,
+                        Value: GluttonyTicksRemaining,
+                        Power: pickup.Kind));
+                break;
+            case PowerKind.SegmentDetach:
+                var detachedCount = ApplySegmentDetach();
+                events |= RunEvent.PowerActivated;
+                orderedEvents.Add(
+                    new RunEventDetail(
+                        RunEventKind.PowerActivated,
+                        Value: detachedCount,
+                        Power: pickup.Kind));
+                break;
             default:
                 throw new InvalidOperationException($"Unsupported power kind {pickup.Kind}.");
         }
+    }
+
+    private int ApplySegmentDetach()
+    {
+        var detachCount = Math.Min(_config.SegmentDetachMaxSegments, Math.Max(0, _body.Count - 1));
+        if (detachCount == 0)
+        {
+            return 0;
+        }
+
+        for (var index = 0; index < detachCount; index++)
+        {
+            var segment = _body[0];
+            _body.RemoveAt(0);
+            if (!_body.Contains(segment))
+            {
+                _occupied.Remove(segment);
+            }
+
+            if (_detachedOccupied.Add(segment))
+            {
+                _detachedObstacles.Add(segment);
+            }
+        }
+
+        DetachedObstacleTicksRemaining = _config.SegmentDetachObstacleTicks;
+        return detachCount;
     }
 
     private void AdvanceComboClock()
@@ -1042,21 +1247,36 @@ public sealed partial class SnakeRun
     private GridPoint SpawnFood(out PowerPickup? discardedPickup)
     {
         discardedPickup = null;
-        var freeCellCount = (_config.Width * _config.Height)
-            - _occupied.Count
-            - (PowerPickup is null ? 0 : 1);
+        var freeCellCount = FreeCellCount();
         if (freeCellCount <= 0 && PowerPickup is { } pickup)
         {
             discardedPickup = pickup;
             PowerPickup = null;
-            freeCellCount = (_config.Width * _config.Height) - _occupied.Count;
+            freeCellCount = FreeCellCount();
         }
 
         if (freeCellCount <= 0)
         {
+            BaitPosition = null;
             throw new InvalidOperationException("Cannot spawn food on a full grid.");
         }
 
+        GridPoint chosen;
+        if (BaitPosition is { } bait)
+        {
+            chosen = SpawnFoodWithBaitWeights(bait, freeCellCount);
+            BaitPosition = null;
+        }
+        else
+        {
+            chosen = SpawnFoodUniform(freeCellCount);
+        }
+
+        return chosen;
+    }
+
+    private GridPoint SpawnFoodUniform(int freeCellCount)
+    {
         var targetFreeCell = _random.NextInt(freeCellCount);
         var freeCellIndex = 0;
         for (var y = 0; y < _config.Height; y++)
@@ -1064,9 +1284,7 @@ public sealed partial class SnakeRun
             for (var x = 0; x < _config.Width; x++)
             {
                 var candidate = new GridPoint(x, y);
-                if (
-                    _occupied.Contains(candidate)
-                    || PowerPickup?.Position == candidate)
+                if (IsCellBlockedForContent(candidate))
                 {
                     continue;
                 }
@@ -1081,6 +1299,67 @@ public sealed partial class SnakeRun
         }
 
         throw new InvalidOperationException("The free-cell count did not match board occupancy.");
+    }
+
+    private GridPoint SpawnFoodWithBaitWeights(GridPoint bait, int freeCellCount)
+    {
+        // Integer inverse-square weights: weight = 1_000_000 / (d + 1)^2.
+        // Every free cell keeps a nonzero probability, matching the Python bait path.
+        long totalWeight = 0;
+        Span<int> weights = freeCellCount <= 512
+            ? stackalloc int[freeCellCount]
+            : new int[freeCellCount];
+        Span<GridPoint> freeCells = freeCellCount <= 512
+            ? stackalloc GridPoint[freeCellCount]
+            : new GridPoint[freeCellCount];
+        var freeIndex = 0;
+        for (var y = 0; y < _config.Height; y++)
+        {
+            for (var x = 0; x < _config.Width; x++)
+            {
+                var candidate = new GridPoint(x, y);
+                if (IsCellBlockedForContent(candidate))
+                {
+                    continue;
+                }
+
+                var distance = Math.Abs(candidate.X - bait.X) + Math.Abs(candidate.Y - bait.Y);
+                var weight = 1_000_000 / ((distance + 1) * (distance + 1));
+                if (weight < 1)
+                {
+                    weight = 1;
+                }
+
+                freeCells[freeIndex] = candidate;
+                weights[freeIndex] = weight;
+                totalWeight += weight;
+                freeIndex++;
+            }
+        }
+
+        if (freeIndex != freeCellCount || totalWeight <= 0)
+        {
+            throw new InvalidOperationException("The free-cell count did not match board occupancy.");
+        }
+
+        var roll = (long)_random.NextInt((int)Math.Min(totalWeight, int.MaxValue));
+        if (totalWeight > int.MaxValue)
+        {
+            // Extremely large boards: fall back to uniform selection among free cells.
+            return freeCells[_random.NextInt(freeCellCount)];
+        }
+
+        long cumulative = 0;
+        for (var index = 0; index < freeCellCount; index++)
+        {
+            cumulative += weights[index];
+            if (roll < cumulative)
+            {
+                return freeCells[index];
+            }
+        }
+
+        return freeCells[freeCellCount - 1];
     }
 
     private PowerPickup? SpawnPower(GridPoint reservedDestination)
@@ -1134,6 +1413,7 @@ public sealed partial class SnakeRun
         GridPoint candidate,
         GridPoint reservedDestination) =>
         _occupied.Contains(candidate)
+        || _detachedOccupied.Contains(candidate)
         || Food == candidate
         || reservedDestination == candidate;
 
@@ -1144,10 +1424,13 @@ public sealed partial class SnakeRun
     {
         if (PowerPickup is { } pickup)
         {
-            if (!IsInBounds(pickup.Position) || _occupied.Contains(pickup.Position))
+            if (
+                !IsInBounds(pickup.Position)
+                || _occupied.Contains(pickup.Position)
+                || _detachedOccupied.Contains(pickup.Position))
             {
                 throw new ArgumentException(
-                    "A power pickup must be in bounds and outside the snake.",
+                    "A power pickup must be in bounds and outside the snake and obstacles.",
                     nameof(PowerPickup));
             }
 
@@ -1249,6 +1532,25 @@ public sealed partial class SnakeRun
                 "A second Magnet pickup cannot coexist with an active Magnet.",
                 nameof(PowerPickup));
         }
+
+        if (GluttonyTicksRemaining < 0 || GluttonyTicksRemaining > _config.GluttonyDurationTicks)
+        {
+            throw new ArgumentOutOfRangeException(nameof(GluttonyTicksRemaining));
+        }
+
+        if (PowerPickup?.Kind == PowerKind.Gluttony && HasGluttony)
+        {
+            throw new ArgumentException(
+                "A second Gluttony pickup cannot coexist with an active Gluttony.",
+                nameof(PowerPickup));
+        }
+
+        if (PowerPickup?.Kind == PowerKind.Bait && HasBait)
+        {
+            throw new ArgumentException(
+                "A second Bait pickup cannot coexist with an active bait marker.",
+                nameof(PowerPickup));
+        }
     }
 
     private static void ValidateBody(IReadOnlyCollection<GridPoint> body, RunConfig config)
@@ -1335,7 +1637,8 @@ public sealed partial class SnakeRun
             throw new ArgumentOutOfRangeException(nameof(DeathCause));
         }
 
-        var gridIsFull = _occupied.Count == _config.Width * _config.Height;
+        var gridIsFull =
+            _occupied.Count + _detachedOccupied.Count == _config.Width * _config.Height;
         switch (Status)
         {
             case RunStatus.Running when DeathCause != DeathCause.None:

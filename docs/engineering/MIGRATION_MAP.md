@@ -18,8 +18,9 @@ This map assigns every Python reference subsystem to its target C# or Godot owne
 | Last Stand | `VibeSnake.Rules` | Done | Parity `last_stand_rules_v1` |
 | Slow-Mo / Boost tempo | `VibeSnake.Rules` + Godot cadence | Rules done | Snapshot cadence numerator/denominator; shell must honor scale |
 | Magnet | `VibeSnake.Rules` | Done | One-cell food pull each rules step |
-| Bait / Gluttony | `VibeSnake.Rules` | Not started | Food spawn bias and no-growth scoring |
-| Segment Detach | `VibeSnake.Rules` | Not started | Obstacle ownership |
+| Bait | `VibeSnake.Rules` | Done | Inverse-square weighted next food spawn |
+| Gluttony | `VibeSnake.Rules` | Done | Eat without growth |
+| Segment Detach | `VibeSnake.Rules` | Done | Timed obstacles; Phase Shift bypass |
 | Input devices | Godot `GameActions` | Partial | Logical actions present; remapping open |
 | Menus / HUD / cosmetics | Godot presentation | Partial | Thin vertical slice only |
 | Audio buses / SFX | Godot `AudioFallback` | Partial | Fallback cues; authored packs open |
@@ -34,10 +35,8 @@ This map assigns every Python reference subsystem to its target C# or Godot owne
 
 1. Shield, Phase Shift, Last Stand (collision recovery matrix): done
 2. Slow-Mo and Boost (tempo modifiers): rules done
-3. Magnet (food pull): done
-4. Bait, Gluttony (food geometry): **current**
-5. Segment Detach (obstacles)
-5. Presentation, radio, progression UI on Godot after rules parity for each system
+3. Magnet, Bait, Gluttony, Segment Detach: done
+4. Presentation, radio, progression UI on Godot after rules parity for each system: **current**
 
 ## Rollback
 

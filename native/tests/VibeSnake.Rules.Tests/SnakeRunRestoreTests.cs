@@ -338,6 +338,12 @@ public sealed class SnakeRunRestoreTests
         Assert.Equal(expectedSnapshot.SlowMoTicksRemaining, actualSnapshot.SlowMoTicksRemaining);
         Assert.Equal(expectedSnapshot.BoostTicksRemaining, actualSnapshot.BoostTicksRemaining);
         Assert.Equal(expectedSnapshot.MagnetTicksRemaining, actualSnapshot.MagnetTicksRemaining);
+        Assert.Equal(expectedSnapshot.GluttonyTicksRemaining, actualSnapshot.GluttonyTicksRemaining);
+        Assert.Equal(expectedSnapshot.BaitPosition, actualSnapshot.BaitPosition);
+        Assert.Equal(expectedSnapshot.DetachedObstacles, actualSnapshot.DetachedObstacles);
+        Assert.Equal(
+            expectedSnapshot.DetachedObstacleTicksRemaining,
+            actualSnapshot.DetachedObstacleTicksRemaining);
         Assert.Equal(expectedSnapshot.StateHash, actualSnapshot.StateHash);
     }
 
