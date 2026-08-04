@@ -14,6 +14,8 @@ Notable player-facing and engineering changes are recorded here. The project is 
 - Offline `LocalDiagnostics` crash reports with path sanitization, retention limits, and no network submission.
 - In-memory `ShellSettings` multi-bus volumes and reduced-motion / high-contrast / flash-free placeholders for the 0.5 accessible shell.
 - Explicit `ShellTransitions` table for legal menu/run/pause/ended presentation transitions.
+- Preferences schema 2 with multi-bus audio and accessibility fields, schema 1 migration, and atomic `PreferencesStore`.
+- `SnakeRun.Create` records master seed via `RandomStreamBank.Gameplay` without changing scored RNG outcomes.
 - Native pure C# Phase Shift power contract with collection, timed expiry, body-overlap movement, Shield precedence, canonical restore, and replay participation.
 - Six shared Python-to-C# Phase Shift parity fixtures (`phase_shift_rules_v1.json`) and CI check via `python -m vibesnake.qa.shared_phase_shift_traces --check`.
 - Native pure C# Last Stand power contract: held revive, half-body shrink, hunger reset, recovery immunity, collision precedence with Phase Shift and Shield.

@@ -1,12 +1,14 @@
+using VibeSnake.Persistence;
+
 namespace VibeSnake.Game;
 
 /// <summary>
 /// Presentation settings contract for the accessible shell milestone.
-/// Values are in-memory defaults until preferences schema 2 lands.
+/// Maps 1:1 to <see cref="PreferencesDocument"/> schema 2.
 /// </summary>
 internal sealed class ShellSettings
 {
-    public const int SchemaVersion = 2;
+    public const int SchemaVersion = PreferencesDocument.CurrentSchemaVersion;
 
     public float MasterVolume { get; set; } = 0.8f;
 
@@ -36,16 +38,58 @@ internal sealed class ShellSettings
 
     public bool FlashFree { get; set; }
 
-    public static ShellSettings CreateDefaults() => new();
+    public static ShellSettings CreateDefaults() => FromDocument(PreferencesDocument.CreateDefaults());
+
+    public static ShellSettings FromDocument(PreferencesDocument document)
+    {
+        ArgumentNullException.ThrowIfNull(document);
+        var clamped = document.Clamped();
+        return new ShellSettings
+        {
+            MasterVolume = clamped.MasterVolume,
+            MusicVolume = clamped.MusicVolume,
+            SfxVolume = clamped.SfxVolume,
+            UiVolume = clamped.UiVolume,
+            MasterMuted = clamped.MasterMuted,
+            MusicMuted = clamped.MusicMuted,
+            SfxMuted = clamped.SfxMuted,
+            UiMuted = clamped.UiMuted,
+            Fullscreen = clamped.Fullscreen,
+            ReducedMotion = clamped.ReducedMotion,
+            HighContrast = clamped.HighContrast,
+            TextScale = clamped.TextScale,
+            ScreenShakeIntensity = clamped.ScreenShakeIntensity,
+            FlashFree = clamped.FlashFree,
+        };
+    }
+
+    public PreferencesDocument ToDocument() =>
+        new PreferencesDocument(
+            SchemaVersion: SchemaVersion,
+            MasterVolume: MasterVolume,
+            MusicVolume: MusicVolume,
+            SfxVolume: SfxVolume,
+            UiVolume: UiVolume,
+            MasterMuted: MasterMuted,
+            MusicMuted: MusicMuted,
+            SfxMuted: SfxMuted,
+            UiMuted: UiMuted,
+            Fullscreen: Fullscreen,
+            ReducedMotion: ReducedMotion,
+            HighContrast: HighContrast,
+            TextScale: TextScale,
+            ScreenShakeIntensity: ScreenShakeIntensity,
+            FlashFree: FlashFree).Clamped();
 
     public void Clamp()
     {
-        MasterVolume = Clamp01(MasterVolume);
-        MusicVolume = Clamp01(MusicVolume);
-        SfxVolume = Clamp01(SfxVolume);
-        UiVolume = Clamp01(UiVolume);
-        TextScale = Math.Clamp(TextScale, 0.85f, 1.5f);
-        ScreenShakeIntensity = Clamp01(ScreenShakeIntensity);
+        var clamped = ToDocument();
+        MasterVolume = clamped.MasterVolume;
+        MusicVolume = clamped.MusicVolume;
+        SfxVolume = clamped.SfxVolume;
+        UiVolume = clamped.UiVolume;
+        TextScale = clamped.TextScale;
+        ScreenShakeIntensity = clamped.ScreenShakeIntensity;
     }
 
     public float EffectiveMusicVolume() =>
@@ -56,6 +100,4 @@ internal sealed class ShellSettings
 
     public float EffectiveUiVolume() =>
         MasterMuted || UiMuted ? 0.0f : MasterVolume * UiVolume;
-
-    private static float Clamp01(float value) => Math.Clamp(value, 0.0f, 1.0f);
 }

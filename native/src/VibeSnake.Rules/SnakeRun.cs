@@ -27,6 +27,7 @@ public sealed partial class SnakeRun
     private readonly HashSet<GridPoint> _detachedOccupied;
     private readonly Queue<Direction> _pendingDirections;
     private readonly Pcg32 _random;
+    private readonly ulong? _masterSeed;
 
     private SnakeRun(
         RunConfig config,
@@ -54,7 +55,8 @@ public sealed partial class SnakeRun
         GridPoint? baitPosition = null,
         IEnumerable<GridPoint>? detachedObstacles = null,
         int detachedObstacleTicksRemaining = 0,
-        IEnumerable<Direction>? pendingDirections = null)
+        IEnumerable<Direction>? pendingDirections = null,
+        ulong? masterSeed = null)
     {
         config.Validate();
         _config = config;
@@ -67,6 +69,7 @@ public sealed partial class SnakeRun
         _detachedOccupied = _detachedObstacles.ToHashSet();
         _pendingDirections = new Queue<Direction>(config.MaximumDirectionQueue);
         _random = random;
+        _masterSeed = masterSeed;
         Direction = direction;
         Food = food;
         HungerTicksRemaining = hungerTicksRemaining;
@@ -299,11 +302,25 @@ public sealed partial class SnakeRun
         return workUnits;
     }
 
+    /// <summary>
+    /// Master seed used by <see cref="Create"/> when available.
+    /// Restored runs retain only the gameplay PCG state and report null.
+    /// </summary>
+    public ulong? MasterSeed => _masterSeed;
+
+    /// <summary>
+    /// Creates presentation and AI streams from the same master seed used by Create.
+    /// Non-gameplay streams must never advance the rules gameplay stream.
+    /// </summary>
+    public static RandomStreamBank CreateStreamBank(ulong masterSeed) =>
+        new(masterSeed);
+
     public static SnakeRun Create(ulong seed, RunConfig? config = null)
     {
         config ??= new RunConfig();
         config.Validate();
-        var random = new Pcg32(seed);
+        // Gameplay stream uses the same sequence as legacy Pcg32(seed).
+        var streamBank = new RandomStreamBank(seed);
         var start = new GridPoint(config.Width / 2, config.Height / 2);
         var run = new SnakeRun(
             config,
@@ -317,7 +334,8 @@ public sealed partial class SnakeRun
             0,
             RunStatus.Running,
             DeathCause.None,
-            random);
+            streamBank.Gameplay,
+            masterSeed: seed);
         run.Food = run.SpawnFood(out _);
         return run;
     }

@@ -31,13 +31,32 @@ public sealed class RandomStreamBankTests
     [Fact]
     public void Gameplay_stream_matches_legacy_snake_run_seed_construction()
     {
-        // SnakeRun.Create currently uses Pcg32(seed) which defaults to sequence 54,
-        // the same sequence owned by RandomStreamBank.Gameplay.
+        // SnakeRun.Create uses RandomStreamBank.Gameplay, which matches Pcg32(seed)
+        // with the historical default sequence of 54.
         var bank = new RandomStreamBank(42UL);
         var legacy = new Pcg32(42UL);
         for (var index = 0; index < 16; index++)
         {
             Assert.Equal(legacy.NextUInt(), bank.Gameplay.NextUInt());
         }
+    }
+
+    [Fact]
+    public void Snake_run_create_preserves_master_seed_and_matches_stream_bank_gameplay()
+    {
+        const ulong seed = 777001UL;
+        var run = SnakeRun.Create(seed);
+        var twin = SnakeRun.Create(seed);
+        Assert.Equal(seed, run.MasterSeed);
+        Assert.Equal(run.ComputeStateHash(), twin.ComputeStateHash());
+
+        var bank = SnakeRun.CreateStreamBank(seed);
+        // First food placement already advanced gameplay; bank starts fresh.
+        // Equal master seeds still produce independent presentation streams.
+        Assert.NotEqual(bank.Gameplay.NextUInt(), bank.Ai.NextUInt());
+
+        var restored = SnakeRun.RestoreCanonicalState(run.SerializeCanonicalState());
+        Assert.Null(restored.MasterSeed);
+        Assert.Equal(run.ComputeStateHash(), restored.ComputeStateHash());
     }
 }

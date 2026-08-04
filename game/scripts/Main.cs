@@ -33,6 +33,9 @@ public partial class Main : Node2D
     private ulong? _replayQuitDeadlineMilliseconds;
     private bool _skipReplayShutdownDrain;
     private Window? _window;
+    private ShellSettings _shellSettings = ShellSettings.CreateDefaults();
+    private PreferencesStore? _preferencesStore;
+    private LocalDiagnostics? _diagnostics;
 
     private enum ScreenState
     {
@@ -68,6 +71,9 @@ public partial class Main : Node2D
         var userDataRoot = smokeUserDataRoot
             ?? ProjectSettings.GlobalizePath("user://");
         _replayStore = new ReplayStore(userDataRoot);
+        _preferencesStore = new PreferencesStore(userDataRoot);
+        _diagnostics = new LocalDiagnostics(userDataRoot);
+        LoadShellSettings();
         _window = GetWindow();
         _window.FilesDropped += OnFilesDropped;
         if (smokeTest)
@@ -77,6 +83,45 @@ public partial class Main : Node2D
         }
 
         QueueRedraw();
+    }
+
+    private void LoadShellSettings()
+    {
+        if (_preferencesStore is null)
+        {
+            _shellSettings = ShellSettings.CreateDefaults();
+            return;
+        }
+
+        var loaded = _preferencesStore.Load();
+        if (loaded.IsSuccess && loaded.Document is not null)
+        {
+            _shellSettings = ShellSettings.FromDocument(loaded.Document);
+            return;
+        }
+
+        _shellSettings = ShellSettings.CreateDefaults();
+        if (loaded.Code is PreferencesLoadCode.UnsupportedSchema or PreferencesLoadCode.InvalidJson)
+        {
+            _diagnostics?.WriteCrashReport(
+                appVersion: "0.2.1",
+                platform: OS.GetName(),
+                rulesetId: SnakeRun.RulesetId,
+                rulesVersion: SnakeRun.RulesVersion,
+                screenState: "SettingsLoad",
+                exception: new InvalidOperationException(loaded.Message));
+        }
+    }
+
+    private void SaveShellSettings()
+    {
+        if (_preferencesStore is null)
+        {
+            return;
+        }
+
+        _shellSettings.Clamp();
+        _preferencesStore.Save(_shellSettings.ToDocument());
     }
 
     public override void _PhysicsProcess(double delta)
@@ -1339,7 +1384,7 @@ public partial class Main : Node2D
         return false;
     }
 
-    private static void ExecuteShellSettingsSmokeTest()
+    private void ExecuteShellSettingsSmokeTest()
     {
         var settings = ShellSettings.CreateDefaults();
         settings.MasterVolume = 2.0f;
@@ -1365,6 +1410,33 @@ public partial class Main : Node2D
             throw new InvalidOperationException("Accessibility placeholder settings failed.");
         }
 
+        if (_preferencesStore is null || _diagnostics is null)
+        {
+            throw new InvalidOperationException("Preferences and diagnostics services were not ready.");
+        }
+
+        settings.MusicVolume = 0.33f;
+        _shellSettings = settings;
+        SaveShellSettings();
+        LoadShellSettings();
+        if (Math.Abs(_shellSettings.MusicVolume - 0.33f) > 0.0001f || !_shellSettings.ReducedMotion)
+        {
+            throw new InvalidOperationException("Preferences schema 2 did not round-trip through the store.");
+        }
+
+        var reportPath = _diagnostics.WriteCrashReport(
+            appVersion: "0.2.1",
+            platform: OS.GetName(),
+            rulesetId: SnakeRun.RulesetId,
+            rulesVersion: SnakeRun.RulesVersion,
+            screenState: "Smoke",
+            exception: new InvalidOperationException("Smoke diagnostics probe under C:\\Users\\example\\x"));
+        if (!System.IO.File.Exists(reportPath)
+            || !System.IO.File.ReadAllText(reportPath).Contains("<path>", StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException("Diagnostics smoke report was missing or unsanitized.");
+        }
+
         ShellTransitions.EnsureTransition(ShellScreen.Menu, ShellScreen.Running);
         ShellTransitions.EnsureTransition(ShellScreen.Running, ShellScreen.Ended);
         ShellTransitions.EnsureTransition(ShellScreen.Ended, ShellScreen.Running);
@@ -1378,6 +1450,14 @@ public partial class Main : Node2D
             when (exception.Message.Contains("Illegal shell transition", StringComparison.Ordinal))
         {
             // Expected rejection.
+        }
+
+        var bank = SnakeRun.CreateStreamBank(SmokeSeed);
+        var run = SnakeRun.Create(SmokeSeed);
+        if (run.MasterSeed != SmokeSeed
+            || bank.Gameplay.NextUInt() == bank.Ai.NextUInt())
+        {
+            throw new InvalidOperationException("Master-seed stream bank smoke contract failed.");
         }
     }
 
