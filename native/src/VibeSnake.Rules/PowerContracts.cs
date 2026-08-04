@@ -4,6 +4,7 @@ public enum PowerKind : byte
 {
     Shield = 1,
     PhaseShift = 2,
+    LastStand = 3,
 }
 
 public sealed record PowerPickup

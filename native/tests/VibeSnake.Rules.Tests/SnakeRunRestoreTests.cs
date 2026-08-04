@@ -331,6 +331,10 @@ public sealed class SnakeRunRestoreTests
         Assert.Equal(
             expectedSnapshot.PhaseShiftTicksRemaining,
             actualSnapshot.PhaseShiftTicksRemaining);
+        Assert.Equal(expectedSnapshot.LastStandHeld, actualSnapshot.LastStandHeld);
+        Assert.Equal(
+            expectedSnapshot.LastStandRecoveryTicksRemaining,
+            actualSnapshot.LastStandRecoveryTicksRemaining);
         Assert.Equal(expectedSnapshot.StateHash, actualSnapshot.StateHash);
     }
 

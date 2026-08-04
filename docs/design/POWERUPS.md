@@ -1,6 +1,6 @@
 # Power-ups
 
-All nine power-ups are connected to normal runs in the Python reference and tested through the main `Game.update` boundary. Unless stated otherwise, collecting a duplicate type is prevented while that effect remains active. Different types can overlap. Shield and Phase Shift are complete native C# power contracts; the remaining seven powers remain Python-only during migration.
+All nine power-ups are connected to normal runs in the Python reference and tested through the main `Game.update` boundary. Unless stated otherwise, collecting a duplicate type is prevented while that effect remains active. Different types can overlap. Shield, Phase Shift, and Last Stand are complete native C# power contracts; the remaining six powers remain Python-only during migration.
 
 ## Gameplay contracts
 
@@ -39,6 +39,17 @@ The [base class](../../src/vibesnake/powerups/base.py) has three terminal-safe s
 Instant effects become inactive during activation. Last Stand overrides timed expiry and remains held until the death resolver consumes it. Reset clears every effect flag, obstacle, timer, and visual indicator.
 
 The manager schedules spawns, excludes the snake, food, detached obstacles, and visible collectibles from candidate cells, rejects duplicate active effect types, detects collection, advances effects, and removes every inactive instance.
+
+## Native Last Stand qualification
+
+The pure C# rules kernel implements Last Stand as a held recovery resource:
+
+- Collection marks `LastStandHeld` without a duration timer until consumption.
+- Collision precedence: Phase Shift, recovery immunity, Shield, held Last Stand revive, then death.
+- Revive keeps score, shrinks body to half length rounded up (`max(1, (n + 1) / 2)`), resets hunger, and grants recovery immunity for the configured recovery ticks (default 60 ticks / 3 seconds).
+- Recovery immunity blocks self-collision without moving the body and advances each rules step.
+- Starvation consumes held Last Stand the same way and never leaves a starvation death while held.
+- Five shared Python-to-C# cases live in `last_stand_rules_v1.json`.
 
 ## Native Phase Shift qualification
 

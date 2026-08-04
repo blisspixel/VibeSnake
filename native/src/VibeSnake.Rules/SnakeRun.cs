@@ -42,6 +42,8 @@ public sealed partial class SnakeRun
         int powerSpawnTicksElapsed = 0,
         int shieldTicksRemaining = 0,
         int phaseShiftTicksRemaining = 0,
+        bool lastStandHeld = false,
+        int lastStandRecoveryTicksRemaining = 0,
         IEnumerable<Direction>? pendingDirections = null)
     {
         config.Validate();
@@ -65,6 +67,8 @@ public sealed partial class SnakeRun
         PowerSpawnTicksElapsed = powerSpawnTicksElapsed;
         ShieldTicksRemaining = shieldTicksRemaining;
         PhaseShiftTicksRemaining = phaseShiftTicksRemaining;
+        LastStandHeld = lastStandHeld;
+        LastStandRecoveryTicksRemaining = lastStandRecoveryTicksRemaining;
 
         if (!Enum.IsDefined(direction))
         {
@@ -149,9 +153,15 @@ public sealed partial class SnakeRun
 
     public int PhaseShiftTicksRemaining { get; private set; }
 
+    public bool LastStandHeld { get; private set; }
+
+    public int LastStandRecoveryTicksRemaining { get; private set; }
+
     public bool HasShield => ShieldTicksRemaining > 0;
 
     public bool HasPhaseShift => PhaseShiftTicksRemaining > 0;
+
+    public bool HasLastStandRecovery => LastStandRecoveryTicksRemaining > 0;
 
     internal long GetNextStepVerificationWorkUnits()
     {
@@ -239,7 +249,9 @@ public sealed partial class SnakeRun
         PowerPickup? powerPickup = null,
         int powerSpawnTicksElapsed = 0,
         int shieldTicksRemaining = 0,
-        int phaseShiftTicksRemaining = 0)
+        int phaseShiftTicksRemaining = 0,
+        bool lastStandHeld = false,
+        int lastStandRecoveryTicksRemaining = 0)
     {
         return new SnakeRun(
             config,
@@ -257,7 +269,9 @@ public sealed partial class SnakeRun
             powerPickup,
             powerSpawnTicksElapsed,
             shieldTicksRemaining,
-            phaseShiftTicksRemaining);
+            phaseShiftTicksRemaining,
+            lastStandHeld,
+            lastStandRecoveryTicksRemaining);
     }
 
     public bool QueueDirection(Direction direction)
@@ -333,6 +347,20 @@ public sealed partial class SnakeRun
                 orderedEvents.Add(new RunEventDetail(RunEventKind.Wrapped, Position: nextHead));
             }
 
+            // Precedence: recovery immunity, then Shield, then held Last Stand, then death.
+            if (HasLastStandRecovery)
+            {
+                events |= RunEvent.CollisionPrevented;
+                orderedEvents.Add(
+                    new RunEventDetail(
+                        RunEventKind.CollisionPrevented,
+                        Position: nextHead,
+                        Cause: DeathCause.SelfCollision,
+                        Power: PowerKind.LastStand));
+                ResolveStarvation(Head, ref events, orderedEvents);
+                return Result(events, orderedEvents);
+            }
+
             if (HasShield)
             {
                 ShieldTicksRemaining = 0;
@@ -348,6 +376,16 @@ public sealed partial class SnakeRun
                         Cause: DeathCause.SelfCollision,
                         Power: PowerKind.Shield));
                 ResolveStarvation(Head, ref events, orderedEvents);
+                return Result(events, orderedEvents);
+            }
+
+            if (LastStandHeld)
+            {
+                ApplyLastStandRevive(
+                    nextHead,
+                    DeathCause.SelfCollision,
+                    ref events,
+                    orderedEvents);
                 return Result(events, orderedEvents);
             }
 
@@ -449,6 +487,8 @@ public sealed partial class SnakeRun
             PowerSpawnTicksElapsed,
             ShieldTicksRemaining,
             PhaseShiftTicksRemaining,
+            LastStandHeld,
+            LastStandRecoveryTicksRemaining,
             ComputeStateHash());
     }
 
@@ -496,6 +536,7 @@ public sealed partial class SnakeRun
             writer.WriteNumber("powerVisibleTicks", _config.PowerVisibleTicks);
             writer.WriteNumber("shieldDurationTicks", _config.ShieldDurationTicks);
             writer.WriteNumber("phaseShiftDurationTicks", _config.PhaseShiftDurationTicks);
+            writer.WriteNumber("lastStandRecoveryTicks", _config.LastStandRecoveryTicks);
             writer.WriteEndObject();
 
             writer.WriteNumber("tick", Tick);
@@ -509,6 +550,10 @@ public sealed partial class SnakeRun
             writer.WriteNumber("powerSpawnTicksElapsed", PowerSpawnTicksElapsed);
             writer.WriteNumber("shieldTicksRemaining", ShieldTicksRemaining);
             writer.WriteNumber("phaseShiftTicksRemaining", PhaseShiftTicksRemaining);
+            writer.WriteBoolean("lastStandHeld", LastStandHeld);
+            writer.WriteNumber(
+                "lastStandRecoveryTicksRemaining",
+                LastStandRecoveryTicksRemaining);
 
             if (PowerPickup is { } powerPickup)
             {
@@ -614,19 +659,32 @@ public sealed partial class SnakeRun
             }
         }
 
-        if (PhaseShiftTicksRemaining <= 0)
+        if (PhaseShiftTicksRemaining > 0)
+        {
+            PhaseShiftTicksRemaining--;
+            if (PhaseShiftTicksRemaining == 0)
+            {
+                events |= RunEvent.PowerExpired;
+                orderedEvents.Add(
+                    new RunEventDetail(
+                        RunEventKind.PowerExpired,
+                        Power: PowerKind.PhaseShift));
+            }
+        }
+
+        if (LastStandRecoveryTicksRemaining <= 0)
         {
             return;
         }
 
-        PhaseShiftTicksRemaining--;
-        if (PhaseShiftTicksRemaining == 0)
+        LastStandRecoveryTicksRemaining--;
+        if (LastStandRecoveryTicksRemaining == 0)
         {
             events |= RunEvent.PowerExpired;
             orderedEvents.Add(
                 new RunEventDetail(
                     RunEventKind.PowerExpired,
-                    Power: PowerKind.PhaseShift));
+                    Power: PowerKind.LastStand));
         }
     }
 
@@ -640,6 +698,16 @@ public sealed partial class SnakeRun
             return;
         }
 
+        if (LastStandHeld)
+        {
+            ApplyLastStandRevive(
+                position,
+                DeathCause.Starvation,
+                ref events,
+                orderedEvents);
+            return;
+        }
+
         Status = RunStatus.Dead;
         DeathCause = DeathCause.Starvation;
         events |= RunEvent.Died;
@@ -648,6 +716,53 @@ public sealed partial class SnakeRun
                 RunEventKind.Died,
                 Position: position,
                 Cause: DeathCause.Starvation));
+    }
+
+    private void ApplyLastStandRevive(
+        GridPoint triggerPosition,
+        DeathCause preventedCause,
+        ref RunEvent events,
+        ICollection<RunEventDetail> orderedEvents)
+    {
+        LastStandHeld = false;
+        ShrinkBodyToHalfRoundedUp();
+        HungerTicksRemaining = _config.StarvationTicks;
+        LastStandRecoveryTicksRemaining = _config.LastStandRecoveryTicks;
+
+        events |= RunEvent.PowerConsumed | RunEvent.CollisionPrevented;
+        orderedEvents.Add(
+            new RunEventDetail(
+                RunEventKind.PowerConsumed,
+                Power: PowerKind.LastStand));
+        orderedEvents.Add(
+            new RunEventDetail(
+                RunEventKind.CollisionPrevented,
+                Position: triggerPosition,
+                Cause: preventedCause,
+                Power: PowerKind.LastStand));
+        orderedEvents.Add(
+            new RunEventDetail(
+                RunEventKind.HungerReset,
+                Value: _config.StarvationTicks));
+        orderedEvents.Add(
+            new RunEventDetail(
+                RunEventKind.PowerActivated,
+                Value: LastStandRecoveryTicksRemaining,
+                Power: PowerKind.LastStand));
+    }
+
+    private void ShrinkBodyToHalfRoundedUp()
+    {
+        var targetLength = Math.Max(1, (_body.Count + 1) / 2);
+        while (_body.Count > targetLength)
+        {
+            var tail = _body[0];
+            _body.RemoveAt(0);
+            if (!_body.Contains(tail))
+            {
+                _occupied.Remove(tail);
+            }
+        }
     }
 
     private void AdvancePowerSpawnClock(
@@ -707,28 +822,38 @@ public sealed partial class SnakeRun
                 Position: head,
                 Power: pickup.Kind));
 
-        var activatedDuration = pickup.Kind switch
-        {
-            PowerKind.Shield => _config.ShieldDurationTicks,
-            PowerKind.PhaseShift => _config.PhaseShiftDurationTicks,
-            _ => throw new InvalidOperationException($"Unsupported power kind {pickup.Kind}."),
-        };
         switch (pickup.Kind)
         {
             case PowerKind.Shield:
-                ShieldTicksRemaining = activatedDuration;
+                ShieldTicksRemaining = _config.ShieldDurationTicks;
+                events |= RunEvent.PowerActivated;
+                orderedEvents.Add(
+                    new RunEventDetail(
+                        RunEventKind.PowerActivated,
+                        Value: ShieldTicksRemaining,
+                        Power: pickup.Kind));
                 break;
             case PowerKind.PhaseShift:
-                PhaseShiftTicksRemaining = activatedDuration;
+                PhaseShiftTicksRemaining = _config.PhaseShiftDurationTicks;
+                events |= RunEvent.PowerActivated;
+                orderedEvents.Add(
+                    new RunEventDetail(
+                        RunEventKind.PowerActivated,
+                        Value: PhaseShiftTicksRemaining,
+                        Power: pickup.Kind));
                 break;
+            case PowerKind.LastStand:
+                LastStandHeld = true;
+                events |= RunEvent.PowerActivated;
+                orderedEvents.Add(
+                    new RunEventDetail(
+                        RunEventKind.PowerActivated,
+                        Value: 0,
+                        Power: pickup.Kind));
+                break;
+            default:
+                throw new InvalidOperationException($"Unsupported power kind {pickup.Kind}.");
         }
-
-        events |= RunEvent.PowerActivated;
-        orderedEvents.Add(
-            new RunEventDetail(
-                RunEventKind.PowerActivated,
-                Value: activatedDuration,
-                Power: pickup.Kind));
     }
 
     private void AdvanceComboClock()
@@ -943,6 +1068,20 @@ public sealed partial class SnakeRun
                 "A second Phase Shift pickup cannot coexist with an active Phase Shift.",
                 nameof(PowerPickup));
         }
+
+        if (PowerPickup?.Kind == PowerKind.LastStand && LastStandHeld)
+        {
+            throw new ArgumentException(
+                "A second Last Stand pickup cannot coexist with a held Last Stand.",
+                nameof(PowerPickup));
+        }
+
+        if (
+            LastStandRecoveryTicksRemaining < 0
+            || LastStandRecoveryTicksRemaining > _config.LastStandRecoveryTicks)
+        {
+            throw new ArgumentOutOfRangeException(nameof(LastStandRecoveryTicksRemaining));
+        }
     }
 
     private static void ValidateBody(IReadOnlyCollection<GridPoint> body, RunConfig config)
@@ -1045,6 +1184,15 @@ public sealed partial class SnakeRun
             case RunStatus.Dead when DeathCause == DeathCause.SelfCollision && HasPhaseShift:
                 throw new ArgumentException(
                     "A self-collision death cannot retain an active Phase Shift.");
+            case RunStatus.Dead when DeathCause == DeathCause.SelfCollision && LastStandHeld:
+                throw new ArgumentException(
+                    "A self-collision death cannot retain a held Last Stand.");
+            case RunStatus.Dead when DeathCause == DeathCause.SelfCollision && HasLastStandRecovery:
+                throw new ArgumentException(
+                    "A self-collision death cannot retain Last Stand recovery.");
+            case RunStatus.Dead when DeathCause == DeathCause.Starvation && LastStandHeld:
+                throw new ArgumentException(
+                    "A starvation death cannot retain a held Last Stand.");
             case RunStatus.Won when DeathCause != DeathCause.None:
                 throw new ArgumentException("A won game cannot have a death cause.");
             case RunStatus.Won when !gridIsFull || Food is not null:

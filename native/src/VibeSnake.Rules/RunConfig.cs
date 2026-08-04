@@ -11,7 +11,8 @@ public sealed record RunConfig(
     int PowerSpawnIntervalTicks = 300,
     int PowerVisibleTicks = 120,
     int ShieldDurationTicks = 100,
-    int PhaseShiftDurationTicks = 100)
+    int PhaseShiftDurationTicks = 100,
+    int LastStandRecoveryTicks = 60)
 {
     public const int RulesTickMilliseconds = 50;
     public const int MaximumGridDimension = 4_096;
@@ -22,6 +23,7 @@ public sealed record RunConfig(
     public const int MinimumPowerVisibleTicks = 2;
     public const int MinimumShieldDurationTicks = 2;
     public const int MinimumPhaseShiftDurationTicks = 2;
+    public const int MinimumLastStandRecoveryTicks = 1;
 
     internal void Validate()
     {
@@ -113,6 +115,13 @@ public sealed record RunConfig(
             || PhaseShiftDurationTicks > MaximumConfiguredTicks)
         {
             throw new ArgumentOutOfRangeException(nameof(PhaseShiftDurationTicks));
+        }
+
+        if (
+            LastStandRecoveryTicks < MinimumLastStandRecoveryTicks
+            || LastStandRecoveryTicks > MaximumConfiguredTicks)
+        {
+            throw new ArgumentOutOfRangeException(nameof(LastStandRecoveryTicks));
         }
     }
 }

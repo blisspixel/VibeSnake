@@ -17,6 +17,8 @@ public sealed record RunSnapshot(
     int PowerSpawnTicksElapsed,
     int ShieldTicksRemaining,
     int PhaseShiftTicksRemaining,
+    bool LastStandHeld,
+    int LastStandRecoveryTicksRemaining,
     string StateHash)
 {
     public GridPoint Head => Body[^1];
@@ -24,6 +26,8 @@ public sealed record RunSnapshot(
     public bool HasShield => ShieldTicksRemaining > 0;
 
     public bool HasPhaseShift => PhaseShiftTicksRemaining > 0;
+
+    public bool HasLastStandRecovery => LastStandRecoveryTicksRemaining > 0;
 }
 
 public readonly struct RunStepResult : IEquatable<RunStepResult>

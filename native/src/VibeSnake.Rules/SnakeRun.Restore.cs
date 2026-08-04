@@ -99,7 +99,10 @@ public sealed partial class SnakeRun
             ShieldDurationTicks: ReadInt32(configElement, "shieldDurationTicks"),
             PhaseShiftDurationTicks: ReadInt32(
                 configElement,
-                "phaseShiftDurationTicks"));
+                "phaseShiftDurationTicks"),
+            LastStandRecoveryTicks: ReadInt32(
+                configElement,
+                "lastStandRecoveryTicks"));
         config.Validate();
 
         var randomElement = RequireObject(root.GetProperty("random"), "random");
@@ -132,6 +135,8 @@ public sealed partial class SnakeRun
             ReadInt32(root, "powerSpawnTicksElapsed"),
             ReadInt32(root, "shieldTicksRemaining"),
             ReadInt32(root, "phaseShiftTicksRemaining"),
+            root.GetProperty("lastStandHeld").GetBoolean(),
+            ReadInt32(root, "lastStandRecoveryTicksRemaining"),
             pendingDirections);
         restored.ValidateRestoredProductionState();
         return restored;

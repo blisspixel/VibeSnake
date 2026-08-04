@@ -11,3 +11,4 @@ Architecture and verification contracts:
 - [Automated QA laboratory](AUTOMATED_QA.md): deterministic gameplay simulation, invariants, policies, reports, and human handoff.
 - [Replay recording and storage](REPLAYS.md): native capture, compatibility, verification, atomic persistence, import, and bounds.
 - [Parity decisions](PARITY_DECISIONS.md): reviewed behavior differences during the Python-to-C# migration.
+- [Migration map](MIGRATION_MAP.md): subsystem ownership, port order, and dual-runtime freeze rules.

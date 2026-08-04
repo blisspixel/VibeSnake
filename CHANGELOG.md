@@ -8,11 +8,14 @@ Notable player-facing and engineering changes are recorded here. The project is 
 
 - Native pure C# Phase Shift power contract with collection, timed expiry, body-overlap movement, Shield precedence, canonical restore, and replay participation.
 - Six shared Python-to-C# Phase Shift parity fixtures (`phase_shift_rules_v1.json`) and CI check via `python -m vibesnake.qa.shared_phase_shift_traces --check`.
+- Native pure C# Last Stand power contract: held revive, half-body shrink, hunger reset, recovery immunity, collision precedence with Phase Shift and Shield.
+- Five shared Python-to-C# Last Stand parity fixtures (`last_stand_rules_v1.json`) and CI check via `python -m vibesnake.qa.shared_last_stand_traces --check`.
+- [Migration ownership map](docs/engineering/MIGRATION_MAP.md) for V030-12.
 
 ### Changed
 
 - Documentation snapshot refreshed for public radio inventory, hosted multi-platform CI, and single-`main` repository hygiene.
-- Canonical run state serializes `phaseShiftDurationTicks` and `phaseShiftTicksRemaining`.
+- Canonical run state serializes phase-shift and last-stand fields.
 
 ## 0.2.1 - 2026-08-02
 
