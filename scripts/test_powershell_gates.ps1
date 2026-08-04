@@ -120,7 +120,22 @@ try {
         throw "Relative XDG data paths must resolve to the absolute platform fallback."
     }
 
-    $caseCount = 4 + $prohibitedPaths.Count + $invalidPaths.Count
+    $inventoryPath = Join-Path $repositoryRoot "config/content_inventory.json"
+    Assert-ArtifactRespectsContentInventory `
+        -InventoryPath $inventoryPath `
+        -ArtifactRelativePaths @("VibeSnake.exe", "VibeSnake.pck", "data_VibeSnake.Game_windows_x86_64/VibeSnake.Rules.dll")
+    try {
+        Assert-ArtifactRespectsContentInventory `
+            -InventoryPath $inventoryPath `
+            -ArtifactRelativePaths @("audio/radio/ambient_graceful_laminar.mp3")
+        throw "Inventory gate accepted a non-exportEligible packaged asset path."
+    } catch {
+        if ($_.Exception.Message -notlike "Artifact contains inventory asset that is not exportEligible:*") {
+            throw
+        }
+    }
+
+    $caseCount = 6 + $prohibitedPaths.Count + $invalidPaths.Count
     Write-Output "PowerShell qualification regression checks passed: cases=$caseCount."
 } finally {
     if (Test-Path -LiteralPath $temporaryRoot) {
