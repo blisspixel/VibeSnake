@@ -1,0 +1,164 @@
+using System.Globalization;
+using System.Text;
+using System.Text.Encodings.Web;
+using System.Text.Json;
+using System.Text.RegularExpressions;
+
+namespace VibeSnake.Persistence;
+
+/// <summary>
+/// Offline crash and support report writer. Never embeds absolute user paths
+/// or full save contents. Network submission is intentionally absent.
+/// </summary>
+public sealed class LocalDiagnostics
+{
+    public const string DiagnosticsDirectoryName = "diagnostics";
+    public const string ReportFileExtension = ".vibesnake-diagnostic.json";
+    public const int MaximumMessageCharacters = 2_000;
+    public const int MaximumStackCharacters = 8_000;
+    public const int MaximumReportsRetained = 32;
+
+    public LocalDiagnostics(string userDataRoot)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(userDataRoot);
+        if (!Path.IsPathFullyQualified(userDataRoot))
+        {
+            throw new ArgumentException(
+                "The user-data root must be an absolute path.",
+                nameof(userDataRoot));
+        }
+
+        UserDataRoot = Path.GetFullPath(userDataRoot);
+        DiagnosticsDirectory = Path.Combine(UserDataRoot, DiagnosticsDirectoryName);
+    }
+
+    public string UserDataRoot { get; }
+
+    public string DiagnosticsDirectory { get; }
+
+    public string WriteCrashReport(
+        string appVersion,
+        string platform,
+        string rulesetId,
+        int rulesVersion,
+        string screenState,
+        Exception exception,
+        TimeProvider? timeProvider = null)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(appVersion);
+        ArgumentException.ThrowIfNullOrWhiteSpace(platform);
+        ArgumentException.ThrowIfNullOrWhiteSpace(rulesetId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(screenState);
+        ArgumentNullException.ThrowIfNull(exception);
+        timeProvider ??= TimeProvider.System;
+
+        Directory.CreateDirectory(DiagnosticsDirectory);
+        var timestamp = timeProvider.GetUtcNow().UtcDateTime;
+        var fileName = string.Create(
+            CultureInfo.InvariantCulture,
+            $"{timestamp:yyyyMMdd'T'HHmmss'Z'}_{SanitizeToken(exception.GetType().Name)}{ReportFileExtension}");
+        var path = Path.Combine(DiagnosticsDirectory, fileName);
+
+        var payload = new
+        {
+            schemaVersion = 1,
+            kind = "crash-report",
+            capturedAtUtc = timestamp.ToString("O", CultureInfo.InvariantCulture),
+            appVersion,
+            platform = SanitizeToken(platform),
+            rulesetId = SanitizeToken(rulesetId),
+            rulesVersion,
+            screenState = SanitizeToken(screenState),
+            exceptionType = exception.GetType().FullName ?? exception.GetType().Name,
+            message = Truncate(SanitizeMessage(exception.Message), MaximumMessageCharacters),
+            stackTrace = Truncate(
+                SanitizeMessage(exception.StackTrace ?? string.Empty),
+                MaximumStackCharacters),
+        };
+
+        var json = JsonSerializer.Serialize(
+            payload,
+            new JsonSerializerOptions
+            {
+                WriteIndented = true,
+                Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
+            }) + "\n";
+        var temporaryPath = path + ".tmp";
+        File.WriteAllText(temporaryPath, json, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
+        File.Move(temporaryPath, path, overwrite: true);
+        PruneOldReports();
+        return path;
+    }
+
+    public IReadOnlyList<string> ListReportFileNames()
+    {
+        if (!Directory.Exists(DiagnosticsDirectory))
+        {
+            return Array.Empty<string>();
+        }
+
+        return Directory.GetFiles(DiagnosticsDirectory, "*" + ReportFileExtension)
+            .Select(Path.GetFileName)
+            .Where(name => !string.IsNullOrWhiteSpace(name))
+            .Cast<string>()
+            .OrderBy(name => name, StringComparer.Ordinal)
+            .ToArray();
+    }
+
+    private void PruneOldReports()
+    {
+        var files = Directory.GetFiles(DiagnosticsDirectory, "*" + ReportFileExtension)
+            .Select(path => new FileInfo(path))
+            .OrderByDescending(info => info.CreationTimeUtc)
+            .ToArray();
+        for (var index = MaximumReportsRetained; index < files.Length; index++)
+        {
+            files[index].Delete();
+        }
+    }
+
+    private static string Truncate(string value, int maximum)
+    {
+        if (value.Length <= maximum)
+        {
+            return value;
+        }
+
+        return value[..maximum];
+    }
+
+    private static string SanitizeToken(string value)
+    {
+        var builder = new StringBuilder(value.Length);
+        foreach (var character in value)
+        {
+            if (char.IsAsciiLetterOrDigit(character) || character is '.' or '-' or '_' or ' ')
+            {
+                builder.Append(character);
+            }
+            else
+            {
+                builder.Append('_');
+            }
+        }
+
+        return builder.ToString();
+    }
+
+    private static string SanitizeMessage(string value)
+    {
+        // Strip absolute filesystem paths so crash reports stay support-safe offline.
+        var sanitized = value.Replace('\\', '/');
+        sanitized = Regex.Replace(
+            sanitized,
+            "[A-Za-z]:/[^\\s\"']+",
+            "<path>",
+            RegexOptions.CultureInvariant);
+        sanitized = Regex.Replace(
+            sanitized,
+            "/(?:home|Users)/[^\\s\"']+",
+            "<path>",
+            RegexOptions.CultureInvariant);
+        return sanitized;
+    }
+}
