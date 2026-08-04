@@ -113,7 +113,11 @@ public sealed partial class SnakeRun
             SegmentDetachMaxSegments: ReadInt32(
                 configElement,
                 "segmentDetachMaxSegments"),
-            EnableNearMiss: ReadOptionalBoolean(configElement, "enableNearMiss"));
+            EnableNearMiss: ReadOptionalBoolean(configElement, "enableNearMiss"),
+            StarvationWarningTicks: ReadOptionalInt32(
+                configElement,
+                "starvationWarningTicks",
+                defaultValue: 200));
         config.Validate();
 
         var randomElement = RequireObject(root.GetProperty("random"), "random");
@@ -192,6 +196,19 @@ public sealed partial class SnakeRun
         }
 
         return element.GetBoolean();
+    }
+
+    private static int ReadOptionalInt32(
+        JsonElement parent,
+        string propertyName,
+        int defaultValue)
+    {
+        if (!parent.TryGetProperty(propertyName, out var element))
+        {
+            return defaultValue;
+        }
+
+        return element.GetInt32();
     }
 
     private static string ReadString(JsonElement parent, string propertyName) =>

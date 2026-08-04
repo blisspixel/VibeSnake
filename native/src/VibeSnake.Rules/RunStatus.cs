@@ -31,6 +31,7 @@ public enum RunEvent : ushort
     PowerDiscarded = 1024,
     CollisionPrevented = 2048,
     NearMiss = 4096,
+    StarvationWarning = 8192,
 }
 
 public enum RunEventKind : byte
@@ -51,6 +52,7 @@ public enum RunEventKind : byte
     PowerDiscarded = 13,
     CollisionPrevented = 14,
     NearMiss = 15,
+    StarvationWarning = 16,
 }
 
 public readonly record struct RunEventDetail(

@@ -465,7 +465,9 @@ public sealed partial class SnakeRun
         var movesOntoDepartingTail = !grows && nextHead == _body[0];
         if (!ateFood)
         {
+            var hungerBefore = HungerTicksRemaining;
             HungerTicksRemaining = Math.Max(0, HungerTicksRemaining - 1);
+            TryEmitStarvationWarning(hungerBefore, orderedEvents, ref events);
         }
 
         var hitsObstacle = _detachedOccupied.Contains(nextHead);
@@ -771,6 +773,11 @@ public sealed partial class SnakeRun
             writer.WriteNumber("height", _config.Height);
             writer.WriteNumber("rulesTickMilliseconds", RunConfig.RulesTickMilliseconds);
             writer.WriteNumber("starvationTicks", _config.StarvationTicks);
+            if (_config.StarvationWarningTicks != 200)
+            {
+                writer.WriteNumber("starvationWarningTicks", _config.StarvationWarningTicks);
+            }
+
             writer.WriteNumber("maximumDirectionQueue", _config.MaximumDirectionQueue);
             writer.WriteNumber("foodScore", _config.FoodScore);
             writer.WriteNumber("comboWindowTicks", _config.ComboWindowTicks);
@@ -1074,6 +1081,29 @@ public sealed partial class SnakeRun
         - _occupied.Count
         - _detachedOccupied.Count
         - (PowerPickup is null ? 0 : 1);
+
+    private void TryEmitStarvationWarning(
+        int hungerBeforeDecrement,
+        List<RunEventDetail> orderedEvents,
+        ref RunEvent events)
+    {
+        // Crossing into the warning band (Python: 10s remaining of 30s) emits once
+        // until hunger is reset by food or recovery.
+        var threshold = _config.StarvationWarningTicks;
+        if (threshold <= 0)
+        {
+            return;
+        }
+
+        if (hungerBeforeDecrement > threshold && HungerTicksRemaining <= threshold)
+        {
+            events |= RunEvent.StarvationWarning;
+            orderedEvents.Add(
+                new RunEventDetail(
+                    RunEventKind.StarvationWarning,
+                    Value: HungerTicksRemaining));
+        }
+    }
 
     private void ResolveStarvation(
         GridPoint position,

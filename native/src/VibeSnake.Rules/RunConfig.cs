@@ -19,7 +19,8 @@ public sealed record RunConfig(
     int GluttonyDurationTicks = 100,
     int SegmentDetachObstacleTicks = 200,
     int SegmentDetachMaxSegments = 5,
-    bool EnableNearMiss = false)
+    bool EnableNearMiss = false,
+    int StarvationWarningTicks = 200)
 {
     public const int RulesTickMilliseconds = 50;
     public const int MaximumGridDimension = 4_096;
@@ -77,6 +78,15 @@ public sealed record RunConfig(
             throw new ArgumentOutOfRangeException(
                 nameof(StarvationTicks),
                 $"Starvation cannot exceed {MaximumConfiguredTicks} ticks.");
+        }
+
+        // Warning ticks at or above StarvationTicks never fire (short test configs
+        // keep the production default of 200 while using smaller starvation budgets).
+        if (StarvationWarningTicks < 0 || StarvationWarningTicks > MaximumConfiguredTicks)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(StarvationWarningTicks),
+                $"Starvation warning cannot exceed {MaximumConfiguredTicks} ticks.");
         }
 
         if (
