@@ -773,7 +773,7 @@ public sealed partial class SnakeRun
             writer.WriteNumber("height", _config.Height);
             writer.WriteNumber("rulesTickMilliseconds", RunConfig.RulesTickMilliseconds);
             writer.WriteNumber("starvationTicks", _config.StarvationTicks);
-            if (_config.StarvationWarningTicks != 200)
+            if (_config.StarvationWarningTicks != RunConfig.DefaultStarvationWarningTicks)
             {
                 writer.WriteNumber("starvationWarningTicks", _config.StarvationWarningTicks);
             }

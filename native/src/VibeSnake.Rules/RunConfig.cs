@@ -23,6 +23,8 @@ public sealed record RunConfig(
     int StarvationWarningTicks = 200)
 {
     public const int RulesTickMilliseconds = 50;
+    /// <summary>Default remaining hunger ticks that trigger a starvation warning (10s at 50ms).</summary>
+    public const int DefaultStarvationWarningTicks = 200;
     public const int MaximumGridDimension = 4_096;
     public const int MaximumGridCells = 262_144;
     public const int MaximumConfiguredTicks = 1_000_000;

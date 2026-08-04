@@ -871,7 +871,7 @@ public partial class Main : Node2D
         var snapshot = _run.GetSnapshot();
         var hungerSeconds = snapshot.HungerTicksRemaining * RunConfig.RulesTickMilliseconds / 1000.0;
         var hungerWarning = snapshot.HungerTicksRemaining > 0
-            && snapshot.HungerTicksRemaining <= 200;
+            && snapshot.HungerTicksRemaining <= RunConfig.DefaultStarvationWarningTicks;
         var statusText = _pausedByFocusLoss
             ? "PAUSED: FOCUS LOST"
             : _paused

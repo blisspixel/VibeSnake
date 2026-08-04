@@ -117,7 +117,7 @@ public sealed partial class SnakeRun
             StarvationWarningTicks: ReadOptionalInt32(
                 configElement,
                 "starvationWarningTicks",
-                defaultValue: 200));
+                defaultValue: RunConfig.DefaultStarvationWarningTicks));
         config.Validate();
 
         var randomElement = RequireObject(root.GetProperty("random"), "random");
