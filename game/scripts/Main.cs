@@ -33,6 +33,9 @@ public partial class Main : Node2D
     private ulong? _replayQuitDeadlineMilliseconds;
     private bool _skipReplayShutdownDrain;
     private Window? _window;
+    private VirtualViewport _virtualViewport = new(
+        VirtualViewport.LogicalWidth,
+        VirtualViewport.LogicalHeight);
     private ShellSettings _shellSettings = ShellSettings.CreateDefaults();
     private PreferencesStore? _preferencesStore;
     private LocalDiagnostics? _diagnostics;
@@ -81,6 +84,8 @@ public partial class Main : Node2D
         LoadInputBindings();
         _window = GetWindow();
         _window.FilesDropped += OnFilesDropped;
+        _window.SizeChanged += OnWindowSizeChanged;
+        RefreshVirtualViewport();
         if (smokeTest)
         {
             ExecuteSmokeTest();
@@ -89,6 +94,28 @@ public partial class Main : Node2D
 
         QueueRedraw();
     }
+
+    private void OnWindowSizeChanged()
+    {
+        RefreshVirtualViewport();
+        QueueRedraw();
+    }
+
+    private void RefreshVirtualViewport()
+    {
+        var size = _window?.Size ?? new Vector2I(
+            (int)VirtualViewport.LogicalWidth,
+            (int)VirtualViewport.LogicalHeight);
+        var width = Math.Max(size.X, 1);
+        var height = Math.Max(size.Y, 1);
+        _virtualViewport.Resize(width, height);
+    }
+
+    /// <summary>
+    /// Maps a window-space pointer into the logical 1280x720 canvas.
+    /// </summary>
+    private Vector2 MapPointerToLogical(Vector2 windowPoint) =>
+        _virtualViewport.WindowToLogical(windowPoint);
 
     private void LoadShellSettings()
     {
@@ -345,6 +372,15 @@ public partial class Main : Node2D
 
     public override void _Draw()
     {
+        // Window-space letterbox/pillarbox bars, then logical canvas content.
+        DrawRect(
+            new Rect2(0.0f, 0.0f, _virtualViewport.WindowWidth, _virtualViewport.WindowHeight),
+            Colors.Black);
+        DrawSetTransform(
+            new Vector2(_virtualViewport.OffsetX, _virtualViewport.OffsetY),
+            0.0f,
+            new Vector2(_virtualViewport.Scale, _virtualViewport.Scale));
+
         DrawRect(new Rect2(0.0f, 0.0f, 1280.0f, 720.0f), new Color(0.02f, 0.035f, 0.03f));
         DrawRect(new Rect2(0.0f, HudHeight, 1280.0f, 660.0f), new Color(0.055f, 0.12f, 0.085f));
 
@@ -1562,7 +1598,7 @@ public partial class Main : Node2D
         }
     }
 
-    private static void ExecuteVirtualViewportSmokeTest()
+    private void ExecuteVirtualViewportSmokeTest()
     {
         var viewport = new VirtualViewport(1920.0f, 1080.0f);
         if (Math.Abs(viewport.Scale - 1.5f) > 0.0001f
@@ -1589,6 +1625,31 @@ public partial class Main : Node2D
         {
             throw new InvalidOperationException("Logical bounds contract failed.");
         }
+
+        // Live shell viewport must track the active window and preserve pointer math.
+        RefreshVirtualViewport();
+        if (_virtualViewport.WindowWidth < VirtualViewport.MinimumWindowWidth
+            || _virtualViewport.WindowHeight < VirtualViewport.MinimumWindowHeight
+            || _virtualViewport.Scale <= 0.0f)
+        {
+            throw new InvalidOperationException("Live virtual viewport was not initialized from the window.");
+        }
+
+        var mapped = MapPointerToLogical(
+            _virtualViewport.LogicalToWindow(new Vector2(100.0f, 200.0f)));
+        if (Math.Abs(mapped.X - 100.0f) > 0.05f || Math.Abs(mapped.Y - 200.0f) > 0.05f)
+        {
+            throw new InvalidOperationException("Live pointer mapping round-trip failed.");
+        }
+
+        // Ultrawide resize path: pillarbox offsets must appear without stretching Y.
+        _virtualViewport.Resize(2560.0f, 1080.0f);
+        if (_virtualViewport.OffsetX <= 0.0f || Math.Abs(_virtualViewport.Scale - 1.5f) > 0.0001f)
+        {
+            throw new InvalidOperationException("Live ultrawide resize contract failed.");
+        }
+
+        RefreshVirtualViewport();
     }
 
     private async Task ExecutePresentationFrameSamplerSmokeTestAsync()

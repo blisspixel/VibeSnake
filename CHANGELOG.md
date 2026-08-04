@@ -21,6 +21,7 @@ Notable player-facing and engineering changes are recorded here. The project is 
 - Pure `InputBindingToken` parser for `key:`, `button:`, and `axis:` tokens with unit coverage.
 - Godot `GameActions.ApplyKeyboardBindings` / `ApplyControllerBindings` apply stored documents to the InputMap while preserving the opposite device class, secondary convenience keys, and stick axes; headless smoke remaps pause and restores defaults.
 - Logical `VirtualViewport` 1280x720 letterbox and pointer transform contract for shell scaling.
+- Godot shell draws through `VirtualViewport` letterbox transforms (engine stretch disabled), tracks window resize, and maps window pointers into logical canvas space.
 - Native pure C# Phase Shift power contract with collection, timed expiry, body-overlap movement, Shield precedence, canonical restore, and replay participation.
 - Six shared Python-to-C# Phase Shift parity fixtures (`phase_shift_rules_v1.json`) and CI check via `python -m vibesnake.qa.shared_phase_shift_traces --check`.
 - Native pure C# Last Stand power contract: held revive, half-body shrink, hunger reset, recovery immunity, collision precedence with Phase Shift and Shield.
