@@ -879,6 +879,7 @@ public partial class Main : Node2D
             ExecuteContentServiceSmokeTest();
             ExecuteStepFeedbackSmokeTest();
             ExecuteShellSettingsSmokeTest();
+            ExecutePresentationFrameSamplerSmokeTest();
             ExecuteMenuRunDeathRestartSmokeTest();
             var first = SnakeRun.Create(SmokeSeed);
             var replay = SnakeRun.Create(SmokeSeed);
@@ -1377,6 +1378,26 @@ public partial class Main : Node2D
             when (exception.Message.Contains("Illegal shell transition", StringComparison.Ordinal))
         {
             // Expected rejection.
+        }
+    }
+
+    private static void ExecutePresentationFrameSamplerSmokeTest()
+    {
+        var sampler = new PresentationFrameSampler();
+        // Synthetic host-independent samples prove percentile math only.
+        double[] samples = [8.0, 9.0, 10.0, 11.0, 12.0, 16.0, 20.0, 33.0];
+        foreach (var sample in samples)
+        {
+            sampler.RecordFrameMilliseconds(sample);
+        }
+
+        var summary = sampler.Summarize();
+        if (summary.SampleCount != samples.Length
+            || summary.P50Milliseconds < 10.0
+            || summary.P95Milliseconds < 20.0
+            || summary.MaxMilliseconds != 33.0)
+        {
+            throw new InvalidOperationException("Presentation frame sampler summary contract failed.");
         }
     }
 
