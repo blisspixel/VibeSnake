@@ -19,6 +19,7 @@ Notable player-facing and engineering changes are recorded here. The project is 
 - Nine shared Python-to-C# remaining-power parity fixtures (`remaining_powers_rules_v1.json`) covering Slow-Mo, Boost, Magnet, Bait, Gluttony, and Segment Detach, checked via `python -m vibesnake.qa.shared_remaining_power_traces --check`.
 - Automated parity delta reduction (`ParityDeltaReducer`) that minimizes failing command prefixes, proves clean re-execution, and records minimized reproducers on movement divergence bundles.
 - Host-dependent pure rules throughput evidence (`rules_throughput.json`) with a conservative CI floor for the technology decision gate (presentation frame times remain unmeasured).
+- Expanded [migration map](docs/engineering/MIGRATION_MAP.md) with save, replay, pack, and ruleset data-migration procedures plus a dual-runtime freeze checklist.
 
 ### Changed
 

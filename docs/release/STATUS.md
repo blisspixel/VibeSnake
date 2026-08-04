@@ -83,7 +83,7 @@ Earlier 0.2.0 foundations (nine powers, save schemas, QA laboratory, pure C# Shi
 
 ## Release blockers
 
-1. Extend parity beyond Shield through the other eight powers with delta-reduced regression fixtures.
+1. Complete for rules and shared fixtures: all nine powers have pure C# contracts, Godot presentation, and shared parity coverage; delta reduction is automated for movement prefixes.
 2. Complete the native vertical slice with physical-controller and hot-plug proof, remapping, accessible presentation, authored audio, scaling feel review, and reviewed UX parity.
 3. Expand artifact smokes through user data, controller, audio failure, scaling, and lifecycle paths on all three platforms with retained evidence.
 4. Qualify the first real core and radio pack manifests (export eligibility is still zero): loudness, credits, allowlists, and pack approval for selected public assets.
