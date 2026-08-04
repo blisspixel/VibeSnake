@@ -81,6 +81,7 @@ public partial class Main : Node2D
         _diagnostics = new LocalDiagnostics(userDataRoot);
         _inputBindingsStore = new InputBindingsStore(userDataRoot);
         LoadShellSettings();
+        AudioBuses.ApplyShellSettings(_shellSettings);
         LoadInputBindings();
         _window = GetWindow();
         _window.FilesDropped += OnFilesDropped;
@@ -154,6 +155,33 @@ public partial class Main : Node2D
 
         _shellSettings.Clamp();
         _preferencesStore.Save(_shellSettings.ToDocument());
+        AudioBuses.ApplyShellSettings(_shellSettings);
+    }
+
+    private Color CanvasBackgroundColor() =>
+        _shellSettings.HighContrast
+            ? new Color(0.0f, 0.0f, 0.0f)
+            : new Color(0.02f, 0.035f, 0.03f);
+
+    private Color BoardBackgroundColor() =>
+        _shellSettings.HighContrast
+            ? new Color(0.0f, 0.0f, 0.0f)
+            : new Color(0.055f, 0.12f, 0.085f);
+
+    private Color PrimaryTextColor() =>
+        _shellSettings.HighContrast
+            ? Colors.White
+            : new Color(0.45f, 1.0f, 0.68f);
+
+    private Color SecondaryTextColor() =>
+        _shellSettings.HighContrast
+            ? new Color(0.92f, 0.92f, 0.92f)
+            : new Color(0.58f, 0.7f, 0.64f);
+
+    private int ScaledFontSize(int baseSize)
+    {
+        var scale = Math.Clamp(_shellSettings.TextScale, 0.8f, 1.5f);
+        return Math.Max(10, (int)Math.Round(baseSize * scale));
     }
 
     private void LoadInputBindings()
@@ -381,21 +409,21 @@ public partial class Main : Node2D
             0.0f,
             new Vector2(_virtualViewport.Scale, _virtualViewport.Scale));
 
-        DrawRect(new Rect2(0.0f, 0.0f, 1280.0f, 720.0f), new Color(0.02f, 0.035f, 0.03f));
-        DrawRect(new Rect2(0.0f, HudHeight, 1280.0f, 660.0f), new Color(0.055f, 0.12f, 0.085f));
+        DrawRect(new Rect2(0.0f, 0.0f, 1280.0f, 720.0f), CanvasBackgroundColor());
+        DrawRect(new Rect2(0.0f, HudHeight, 1280.0f, 660.0f), BoardBackgroundColor());
 
         switch (_screenState)
         {
             case ScreenState.Menu:
-                DrawLabel("VIBE SNAKE", new Vector2(42.0f, 190.0f), 52, new Color(0.45f, 1.0f, 0.68f));
-                DrawLabel("Plan the route. Build the vibe. Recover with style.", new Vector2(46.0f, 238.0f), 24, Colors.White);
-                DrawLabel("START RUN", new Vector2(46.0f, 300.0f), 22, new Color(0.75f, 0.85f, 0.8f));
-                DrawLabel("Enter, Space, or Controller South", new Vector2(46.0f, 336.0f), 18, new Color(0.58f, 0.7f, 0.64f));
-                DrawLabel("R or Controller North: verify latest replay", new Vector2(46.0f, 378.0f), 18, new Color(0.58f, 0.7f, 0.64f));
-                DrawLabel("Drop one replay file here to verify without changing it", new Vector2(46.0f, 410.0f), 18, new Color(0.58f, 0.7f, 0.64f));
+                DrawLabel("VIBE SNAKE", new Vector2(42.0f, 190.0f), ScaledFontSize(52), PrimaryTextColor());
+                DrawLabel("Plan the route. Build the vibe. Recover with style.", new Vector2(46.0f, 238.0f), ScaledFontSize(24), Colors.White);
+                DrawLabel("START RUN", new Vector2(46.0f, 300.0f), ScaledFontSize(22), new Color(0.75f, 0.85f, 0.8f));
+                DrawLabel("Enter, Space, or Controller South", new Vector2(46.0f, 336.0f), ScaledFontSize(18), SecondaryTextColor());
+                DrawLabel("R or Controller North: verify latest replay", new Vector2(46.0f, 378.0f), ScaledFontSize(18), SecondaryTextColor());
+                DrawLabel("Drop one replay file here to verify without changing it", new Vector2(46.0f, 410.0f), ScaledFontSize(18), SecondaryTextColor());
                 if (_replayStatusCaption is not null)
                 {
-                    DrawLabel(_replayStatusCaption, new Vector2(46.0f, 458.0f), 16, new Color(0.46f, 0.94f, 0.96f));
+                    DrawLabel(_replayStatusCaption, new Vector2(46.0f, 458.0f), ScaledFontSize(16), new Color(0.46f, 0.94f, 0.96f));
                 }
 
                 break;
@@ -981,7 +1009,10 @@ public partial class Main : Node2D
         if (feedback.Caption is { } caption)
         {
             _feedbackCaption = caption;
-            _feedbackTicksRemaining = FeedbackVisibilityTicks;
+            // Reduced motion shortens transient captions without hiding critical recovery text.
+            _feedbackTicksRemaining = _shellSettings.ReducedMotion
+                ? Math.Max(8, FeedbackVisibilityTicks / 2)
+                : FeedbackVisibilityTicks;
         }
     }
 
@@ -1532,6 +1563,32 @@ public partial class Main : Node2D
         {
             throw new InvalidOperationException("Shell bus mute contract failed.");
         }
+
+        AudioBuses.ApplyShellSettings(settings);
+        if (AudioBuses.GetBusLinear(AudioBuses.Music) > 0.0001f)
+        {
+            throw new InvalidOperationException("Muted music bus must apply zero linear gain.");
+        }
+
+        if (AudioBuses.GetBusLinear(AudioBuses.Sfx) <= 0.0f)
+        {
+            throw new InvalidOperationException("Unmuted SFX bus must keep positive linear gain.");
+        }
+
+        settings.MusicMuted = false;
+        settings.MusicVolume = 0.5f;
+        settings.SfxVolume = 0.25f;
+        settings.UiVolume = 0.75f;
+        AudioBuses.ApplyShellSettings(settings);
+        if (Math.Abs(AudioBuses.GetBusLinear(AudioBuses.Music) - 0.5f) > 0.02f
+            || Math.Abs(AudioBuses.GetBusLinear(AudioBuses.Sfx) - 0.25f) > 0.02f
+            || Math.Abs(AudioBuses.GetBusLinear(AudioBuses.Ui) - 0.75f) > 0.02f)
+        {
+            throw new InvalidOperationException("Shell settings bus volume apply contract failed.");
+        }
+
+        // Restore defaults so later smoke cues remain audible on host runners.
+        AudioBuses.ApplyShellSettings(ShellSettings.CreateDefaults());
 
         settings.ReducedMotion = true;
         settings.FlashFree = true;

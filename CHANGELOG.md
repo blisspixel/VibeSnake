@@ -24,6 +24,7 @@ Notable player-facing and engineering changes are recorded here. The project is 
 - Godot shell draws through `VirtualViewport` letterbox transforms (engine stretch disabled), tracks window resize, and maps window pointers into logical canvas space.
 - Pure `NearMissDetector` for body-proximity tiers, edge ride, clutch eat, style points, and bounded combo windows using fixed rules ticks.
 - `ContentBudgetReport` inventory totals vs declared pack ceilings, plus ContentService packaging resolve codes and media-type listing without loading media.
+- Shell settings apply multi-bus volume and mute to the Godot Master/Music/SFX/UI buses; high-contrast canvas colors, text scale, and shortened reduced-motion feedback captions.
 - Native pure C# Phase Shift power contract with collection, timed expiry, body-overlap movement, Shield precedence, canonical restore, and replay participation.
 - Six shared Python-to-C# Phase Shift parity fixtures (`phase_shift_rules_v1.json`) and CI check via `python -m vibesnake.qa.shared_phase_shift_traces --check`.
 - Native pure C# Last Stand power contract: held revive, half-body shrink, hunger reset, recovery immunity, collision precedence with Phase Shift and Shield.

@@ -46,6 +46,58 @@ internal static class AudioBuses
         }
     }
 
+    /// <summary>
+    /// Applies multi-bus linear volumes and mute flags from shell settings.
+    /// Master is the engine Master bus; Music/SFX/UI keep relative gains.
+    /// </summary>
+    public static void ApplyShellSettings(ShellSettings settings)
+    {
+        ArgumentNullException.ThrowIfNull(settings);
+        EnsureRegistered();
+        settings.Clamp();
+
+        SetBusLinear("Master", settings.MasterMuted ? 0.0f : settings.MasterVolume);
+        SetBusLinear(Music, settings.MusicMuted ? 0.0f : settings.MusicVolume);
+        SetBusLinear(Sfx, settings.SfxMuted ? 0.0f : settings.SfxVolume);
+        SetBusLinear(Ui, settings.UiMuted ? 0.0f : settings.UiVolume);
+    }
+
+    public static float GetBusLinear(string busName)
+    {
+        var index = AudioServer.GetBusIndex(busName);
+        if (index < 0)
+        {
+            throw new InvalidOperationException("Unknown audio bus: " + busName);
+        }
+
+        if (AudioServer.IsBusMute(index))
+        {
+            return 0.0f;
+        }
+
+        return Mathf.DbToLinear(AudioServer.GetBusVolumeDb(index));
+    }
+
+    private static void SetBusLinear(string busName, float linear)
+    {
+        var index = AudioServer.GetBusIndex(busName);
+        if (index < 0)
+        {
+            throw new InvalidOperationException("Unknown audio bus: " + busName);
+        }
+
+        var clamped = Math.Clamp(linear, 0.0f, 1.0f);
+        if (clamped <= 0.0001f)
+        {
+            AudioServer.SetBusMute(index, true);
+            AudioServer.SetBusVolumeDb(index, -80.0f);
+            return;
+        }
+
+        AudioServer.SetBusMute(index, false);
+        AudioServer.SetBusVolumeDb(index, Mathf.LinearToDb(clamped));
+    }
+
     private static void EnsureBus(string name)
     {
         if (AudioServer.GetBusIndex(name) >= 0)
