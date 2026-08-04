@@ -16,11 +16,14 @@ public sealed record RunSnapshot(
     PowerPickup? PowerPickup,
     int PowerSpawnTicksElapsed,
     int ShieldTicksRemaining,
+    int PhaseShiftTicksRemaining,
     string StateHash)
 {
     public GridPoint Head => Body[^1];
 
     public bool HasShield => ShieldTicksRemaining > 0;
+
+    public bool HasPhaseShift => PhaseShiftTicksRemaining > 0;
 }
 
 public readonly struct RunStepResult : IEquatable<RunStepResult>

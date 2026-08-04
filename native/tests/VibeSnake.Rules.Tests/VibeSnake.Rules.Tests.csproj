@@ -43,6 +43,9 @@
     <None Include="..\..\..\tests\fixtures\shared\shield_rules_v1.json"
           Link="Fixtures\shield_rules_v1.json"
           CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\..\tests\fixtures\shared\phase_shift_rules_v1.json"
+          Link="Fixtures\phase_shift_rules_v1.json"
+          CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

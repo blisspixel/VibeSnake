@@ -3,6 +3,7 @@ namespace VibeSnake.Rules;
 public enum PowerKind : byte
 {
     Shield = 1,
+    PhaseShift = 2,
 }
 
 public sealed record PowerPickup

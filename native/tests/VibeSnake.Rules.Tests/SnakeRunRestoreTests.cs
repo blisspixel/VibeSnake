@@ -164,7 +164,9 @@ public sealed class SnakeRunRestoreTests
             ReplaceOnce(
                 canonical,
                 "\"powerPickup\":null",
-                "\"powerPickup\":{\"kind\":2,\"position\":{\"x\":3,\"y\":3},\"visibilityTicksRemaining\":10}"));
+                "\"powerPickup\":{\"kind\":255,\"position\":{\"x\":3,\"y\":3},\"visibilityTicksRemaining\":10}"));
+        AssertInvalid(
+            ReplaceOnce(canonical, "\"phaseShiftTicksRemaining\":0", "\"phaseShiftTicksRemaining\":101"));
         AssertInvalid(
             ReplaceOnce(
                 canonical,
@@ -326,6 +328,9 @@ public sealed class SnakeRunRestoreTests
         Assert.Equal(
             expectedSnapshot.ShieldTicksRemaining,
             actualSnapshot.ShieldTicksRemaining);
+        Assert.Equal(
+            expectedSnapshot.PhaseShiftTicksRemaining,
+            actualSnapshot.PhaseShiftTicksRemaining);
         Assert.Equal(expectedSnapshot.StateHash, actualSnapshot.StateHash);
     }
 

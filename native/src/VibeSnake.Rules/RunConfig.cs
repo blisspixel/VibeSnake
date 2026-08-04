@@ -10,7 +10,8 @@ public sealed record RunConfig(
     int SpeedBonusTicks = 30,
     int PowerSpawnIntervalTicks = 300,
     int PowerVisibleTicks = 120,
-    int ShieldDurationTicks = 100)
+    int ShieldDurationTicks = 100,
+    int PhaseShiftDurationTicks = 100)
 {
     public const int RulesTickMilliseconds = 50;
     public const int MaximumGridDimension = 4_096;
@@ -20,6 +21,7 @@ public sealed record RunConfig(
     public const int MaximumFoodScore = 1_000_000;
     public const int MinimumPowerVisibleTicks = 2;
     public const int MinimumShieldDurationTicks = 2;
+    public const int MinimumPhaseShiftDurationTicks = 2;
 
     internal void Validate()
     {
@@ -104,6 +106,13 @@ public sealed record RunConfig(
             || ShieldDurationTicks > MaximumConfiguredTicks)
         {
             throw new ArgumentOutOfRangeException(nameof(ShieldDurationTicks));
+        }
+
+        if (
+            PhaseShiftDurationTicks < MinimumPhaseShiftDurationTicks
+            || PhaseShiftDurationTicks > MaximumConfiguredTicks)
+        {
+            throw new ArgumentOutOfRangeException(nameof(PhaseShiftDurationTicks));
         }
     }
 }

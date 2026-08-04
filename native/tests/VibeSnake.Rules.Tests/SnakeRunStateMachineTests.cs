@@ -85,6 +85,7 @@ public sealed class SnakeRunStateMachineTests
         Assert.Equal(expected.PowerPickup, actual.PowerPickup);
         Assert.Equal(expected.PowerSpawnTicksElapsed, actual.PowerSpawnTicksElapsed);
         Assert.Equal(expected.ShieldTicksRemaining, actual.ShieldTicksRemaining);
+        Assert.Equal(expected.PhaseShiftTicksRemaining, actual.PhaseShiftTicksRemaining);
         Assert.Equal(expected.StateHash, actual.StateHash);
     }
 }

@@ -4,9 +4,15 @@ Notable player-facing and engineering changes are recorded here. The project is 
 
 ## Unreleased
 
+### Added
+
+- Native pure C# Phase Shift power contract with collection, timed expiry, body-overlap movement, Shield precedence, canonical restore, and replay participation.
+- Six shared Python-to-C# Phase Shift parity fixtures (`phase_shift_rules_v1.json`) and CI check via `python -m vibesnake.qa.shared_phase_shift_traces --check`.
+
 ### Changed
 
 - Documentation snapshot refreshed for public radio inventory, hosted multi-platform CI, and single-`main` repository hygiene.
+- Canonical run state serializes `phaseShiftDurationTicks` and `phaseShiftTicksRemaining`.
 
 ## 0.2.1 - 2026-08-02
 

@@ -41,6 +41,7 @@ public sealed partial class SnakeRun
         PowerPickup? powerPickup = null,
         int powerSpawnTicksElapsed = 0,
         int shieldTicksRemaining = 0,
+        int phaseShiftTicksRemaining = 0,
         IEnumerable<Direction>? pendingDirections = null)
     {
         config.Validate();
@@ -63,6 +64,7 @@ public sealed partial class SnakeRun
         PowerPickup = powerPickup;
         PowerSpawnTicksElapsed = powerSpawnTicksElapsed;
         ShieldTicksRemaining = shieldTicksRemaining;
+        PhaseShiftTicksRemaining = phaseShiftTicksRemaining;
 
         if (!Enum.IsDefined(direction))
         {
@@ -145,7 +147,11 @@ public sealed partial class SnakeRun
 
     public int ShieldTicksRemaining { get; private set; }
 
+    public int PhaseShiftTicksRemaining { get; private set; }
+
     public bool HasShield => ShieldTicksRemaining > 0;
+
+    public bool HasPhaseShift => PhaseShiftTicksRemaining > 0;
 
     internal long GetNextStepVerificationWorkUnits()
     {
@@ -232,7 +238,8 @@ public sealed partial class SnakeRun
         ulong randomIncrement = 109UL,
         PowerPickup? powerPickup = null,
         int powerSpawnTicksElapsed = 0,
-        int shieldTicksRemaining = 0)
+        int shieldTicksRemaining = 0,
+        int phaseShiftTicksRemaining = 0)
     {
         return new SnakeRun(
             config,
@@ -249,7 +256,8 @@ public sealed partial class SnakeRun
             new Pcg32(randomState, randomIncrement, restoreState: true),
             powerPickup,
             powerSpawnTicksElapsed,
-            shieldTicksRemaining);
+            shieldTicksRemaining,
+            phaseShiftTicksRemaining);
     }
 
     public bool QueueDirection(Direction direction)
@@ -316,7 +324,8 @@ public sealed partial class SnakeRun
             HungerTicksRemaining = Math.Max(0, HungerTicksRemaining - 1);
         }
 
-        if (_occupied.Contains(nextHead) && !movesOntoDepartingTail)
+        var bodyCollision = _occupied.Contains(nextHead) && !movesOntoDepartingTail;
+        if (bodyCollision && !HasPhaseShift)
         {
             if (wrapped)
             {
@@ -384,7 +393,7 @@ public sealed partial class SnakeRun
                     RunEventKind.HungerReset,
                     Value: _config.StarvationTicks));
 
-            if (_body.Count == _config.Width * _config.Height)
+            if (_occupied.Count == _config.Width * _config.Height)
             {
                 Food = null;
                 Status = RunStatus.Won;
@@ -408,7 +417,9 @@ public sealed partial class SnakeRun
         {
             var tail = _body[0];
             _body.RemoveAt(0);
-            if (tail != nextHead)
+            // Phase Shift may leave duplicate coordinates; keep occupancy until
+            // the final occurrence of a cell leaves the body.
+            if (tail != nextHead && !_body.Contains(tail))
             {
                 _occupied.Remove(tail);
             }
@@ -437,6 +448,7 @@ public sealed partial class SnakeRun
             PowerPickup,
             PowerSpawnTicksElapsed,
             ShieldTicksRemaining,
+            PhaseShiftTicksRemaining,
             ComputeStateHash());
     }
 
@@ -483,6 +495,7 @@ public sealed partial class SnakeRun
             writer.WriteNumber("powerSpawnIntervalTicks", _config.PowerSpawnIntervalTicks);
             writer.WriteNumber("powerVisibleTicks", _config.PowerVisibleTicks);
             writer.WriteNumber("shieldDurationTicks", _config.ShieldDurationTicks);
+            writer.WriteNumber("phaseShiftDurationTicks", _config.PhaseShiftDurationTicks);
             writer.WriteEndObject();
 
             writer.WriteNumber("tick", Tick);
@@ -495,6 +508,7 @@ public sealed partial class SnakeRun
             writer.WriteNumber("hungerTicksRemaining", HungerTicksRemaining);
             writer.WriteNumber("powerSpawnTicksElapsed", PowerSpawnTicksElapsed);
             writer.WriteNumber("shieldTicksRemaining", ShieldTicksRemaining);
+            writer.WriteNumber("phaseShiftTicksRemaining", PhaseShiftTicksRemaining);
 
             if (PowerPickup is { } powerPickup)
             {
@@ -587,19 +601,32 @@ public sealed partial class SnakeRun
             }
         }
 
-        if (ShieldTicksRemaining <= 0)
+        if (ShieldTicksRemaining > 0)
+        {
+            ShieldTicksRemaining--;
+            if (ShieldTicksRemaining == 0)
+            {
+                events |= RunEvent.PowerExpired;
+                orderedEvents.Add(
+                    new RunEventDetail(
+                        RunEventKind.PowerExpired,
+                        Power: PowerKind.Shield));
+            }
+        }
+
+        if (PhaseShiftTicksRemaining <= 0)
         {
             return;
         }
 
-        ShieldTicksRemaining--;
-        if (ShieldTicksRemaining == 0)
+        PhaseShiftTicksRemaining--;
+        if (PhaseShiftTicksRemaining == 0)
         {
             events |= RunEvent.PowerExpired;
             orderedEvents.Add(
                 new RunEventDetail(
                     RunEventKind.PowerExpired,
-                    Power: PowerKind.Shield));
+                    Power: PowerKind.PhaseShift));
         }
     }
 
@@ -680,12 +707,27 @@ public sealed partial class SnakeRun
                 Position: head,
                 Power: pickup.Kind));
 
-        ShieldTicksRemaining = _config.ShieldDurationTicks;
+        var activatedDuration = pickup.Kind switch
+        {
+            PowerKind.Shield => _config.ShieldDurationTicks,
+            PowerKind.PhaseShift => _config.PhaseShiftDurationTicks,
+            _ => throw new InvalidOperationException($"Unsupported power kind {pickup.Kind}."),
+        };
+        switch (pickup.Kind)
+        {
+            case PowerKind.Shield:
+                ShieldTicksRemaining = activatedDuration;
+                break;
+            case PowerKind.PhaseShift:
+                PhaseShiftTicksRemaining = activatedDuration;
+                break;
+        }
+
         events |= RunEvent.PowerActivated;
         orderedEvents.Add(
             new RunEventDetail(
                 RunEventKind.PowerActivated,
-                Value: ShieldTicksRemaining,
+                Value: activatedDuration,
                 Power: pickup.Kind));
     }
 
@@ -881,10 +923,24 @@ public sealed partial class SnakeRun
             throw new ArgumentOutOfRangeException(nameof(ShieldTicksRemaining));
         }
 
+        if (
+            PhaseShiftTicksRemaining < 0
+            || PhaseShiftTicksRemaining > _config.PhaseShiftDurationTicks)
+        {
+            throw new ArgumentOutOfRangeException(nameof(PhaseShiftTicksRemaining));
+        }
+
         if (PowerPickup?.Kind == PowerKind.Shield && HasShield)
         {
             throw new ArgumentException(
                 "A second Shield pickup cannot coexist with an active Shield.",
+                nameof(PowerPickup));
+        }
+
+        if (PowerPickup?.Kind == PowerKind.PhaseShift && HasPhaseShift)
+        {
+            throw new ArgumentException(
+                "A second Phase Shift pickup cannot coexist with an active Phase Shift.",
                 nameof(PowerPickup));
         }
     }
@@ -896,9 +952,13 @@ public sealed partial class SnakeRun
             throw new ArgumentException("A snake must contain at least one segment.", nameof(body));
         }
 
-        if (body.Count != body.Distinct().Count())
+        // Phase Shift permits temporary coordinate duplicates along the body.
+        // Cap length so restore remains resource-bounded.
+        if (body.Count > RunConfig.MaximumGridCells)
         {
-            throw new ArgumentException("Snake segments must be unique.", nameof(body));
+            throw new ArgumentException(
+                $"Snake length cannot exceed {RunConfig.MaximumGridCells} segments.",
+                nameof(body));
         }
 
         if (body.Any(point => point.X < 0 || point.X >= config.Width || point.Y < 0 || point.Y >= config.Height))
@@ -969,7 +1029,7 @@ public sealed partial class SnakeRun
             throw new ArgumentOutOfRangeException(nameof(DeathCause));
         }
 
-        var gridIsFull = _body.Count == _config.Width * _config.Height;
+        var gridIsFull = _occupied.Count == _config.Width * _config.Height;
         switch (Status)
         {
             case RunStatus.Running when DeathCause != DeathCause.None:
@@ -982,6 +1042,9 @@ public sealed partial class SnakeRun
                 throw new ArgumentException("A starvation death must end at zero hunger.");
             case RunStatus.Dead when DeathCause == DeathCause.SelfCollision && HasShield:
                 throw new ArgumentException("A self-collision death cannot retain an active Shield.");
+            case RunStatus.Dead when DeathCause == DeathCause.SelfCollision && HasPhaseShift:
+                throw new ArgumentException(
+                    "A self-collision death cannot retain an active Phase Shift.");
             case RunStatus.Won when DeathCause != DeathCause.None:
                 throw new ArgumentException("A won game cannot have a death cause.");
             case RunStatus.Won when !gridIsFull || Food is not null:

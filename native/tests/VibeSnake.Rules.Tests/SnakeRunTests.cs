@@ -346,10 +346,10 @@ public sealed class SnakeRunTests
             body: [new GridPoint(1, 1)],
             direction: Direction.Right,
             food: new GridPoint(4, 3));
-        const string expected = """{"schemaVersion":2,"rulesVersion":4,"hashAlgorithm":"fnv1a64-canonical-json-v3","rngAlgorithm":"pcg-xsh-rr-32-v1","config":{"width":5,"height":4,"rulesTickMilliseconds":50,"starvationTicks":100,"maximumDirectionQueue":3,"foodScore":10,"comboWindowTicks":60,"speedBonusTicks":30,"powerSpawnIntervalTicks":300,"powerVisibleTicks":120,"shieldDurationTicks":100},"tick":0,"status":0,"deathCause":0,"direction":1,"score":0,"comboCount":0,"ticksSinceLastFood":0,"hungerTicksRemaining":100,"powerSpawnTicksElapsed":0,"shieldTicksRemaining":0,"powerPickup":null,"random":{"state":"1","increment":"109"},"food":{"x":4,"y":3},"body":[{"x":1,"y":1}],"pendingDirections":[]}""";
+        const string expected = """{"schemaVersion":2,"rulesVersion":4,"hashAlgorithm":"fnv1a64-canonical-json-v3","rngAlgorithm":"pcg-xsh-rr-32-v1","config":{"width":5,"height":4,"rulesTickMilliseconds":50,"starvationTicks":100,"maximumDirectionQueue":3,"foodScore":10,"comboWindowTicks":60,"speedBonusTicks":30,"powerSpawnIntervalTicks":300,"powerVisibleTicks":120,"shieldDurationTicks":100,"phaseShiftDurationTicks":100},"tick":0,"status":0,"deathCause":0,"direction":1,"score":0,"comboCount":0,"ticksSinceLastFood":0,"hungerTicksRemaining":100,"powerSpawnTicksElapsed":0,"shieldTicksRemaining":0,"phaseShiftTicksRemaining":0,"powerPickup":null,"random":{"state":"1","increment":"109"},"food":{"x":4,"y":3},"body":[{"x":1,"y":1}],"pendingDirections":[]}""";
 
         Assert.Equal(expected, run.SerializeCanonicalState());
-        Assert.Equal("b419e69b09573805", run.ComputeStateHash());
+        Assert.Equal("0c9e29ad07e8ce20", run.ComputeStateHash());
     }
 
     [Fact]

@@ -1,6 +1,6 @@
 # Power-ups
 
-All nine power-ups are connected to normal runs in the Python reference and tested through the main `Game.update` boundary. Unless stated otherwise, collecting a duplicate type is prevented while that effect remains active. Different types can overlap. Shield is the first complete native C# power contract; the other eight remain Python-only during migration.
+All nine power-ups are connected to normal runs in the Python reference and tested through the main `Game.update` boundary. Unless stated otherwise, collecting a duplicate type is prevented while that effect remains active. Different types can overlap. Shield and Phase Shift are complete native C# power contracts; the remaining seven powers remain Python-only during migration.
 
 ## Gameplay contracts
 
@@ -40,9 +40,21 @@ Instant effects become inactive during activation. Last Stand overrides timed ex
 
 The manager schedules spawns, excludes the snake, food, detached obstacles, and visible collectibles from candidate cells, rejects duplicate active effect types, detects collection, advances effects, and removes every inactive instance.
 
+## Native Phase Shift qualification
+
+The pure C# rules kernel implements Phase Shift beside Shield:
+
+- Collection activates a fixed-duration Phase Shift timer (default 100 ticks / 5 seconds).
+- While active, self-collision is ignored and the snake may occupy duplicate body coordinates.
+- Occupancy tracking keeps a cell blocked until the last body occurrence leaves it.
+- Lifecycle advances before movement, so a one-tick remaining Phase Shift expires before that step's collision check.
+- Phase Shift does not prevent starvation and does not stack with a second Phase Shift pickup.
+- When Phase Shift and Shield are both active, Phase Shift wins on self-collision (the body phases through; Shield is not consumed).
+- Six generated Python-to-C# cases compare collection, expiry, body overlap, and starvation bypass under `phase_shift_rules_v1.json`.
+
 ## Native Shield qualification
 
-The pure C# rules kernel now implements Shield without a Godot dependency:
+The pure C# rules kernel implements Shield without a Godot dependency:
 
 - A dedicated PCG32 gameplay stream chooses a legal pickup cell outside the snake, food, and immediate destination.
 - The reserved destination guarantees at least one full movement boundary between spawn feedback and possible collection.

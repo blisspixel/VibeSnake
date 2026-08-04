@@ -96,7 +96,10 @@ public sealed partial class SnakeRun
                 configElement,
                 "powerSpawnIntervalTicks"),
             PowerVisibleTicks: ReadInt32(configElement, "powerVisibleTicks"),
-            ShieldDurationTicks: ReadInt32(configElement, "shieldDurationTicks"));
+            ShieldDurationTicks: ReadInt32(configElement, "shieldDurationTicks"),
+            PhaseShiftDurationTicks: ReadInt32(
+                configElement,
+                "phaseShiftDurationTicks"));
         config.Validate();
 
         var randomElement = RequireObject(root.GetProperty("random"), "random");
@@ -128,6 +131,7 @@ public sealed partial class SnakeRun
             powerPickup,
             ReadInt32(root, "powerSpawnTicksElapsed"),
             ReadInt32(root, "shieldTicksRemaining"),
+            ReadInt32(root, "phaseShiftTicksRemaining"),
             pendingDirections);
         restored.ValidateRestoredProductionState();
         return restored;

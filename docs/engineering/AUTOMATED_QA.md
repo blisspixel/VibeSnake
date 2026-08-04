@@ -40,6 +40,7 @@ python -m vibesnake.qa --seeds 0 1 2 3 4 --steps 500 --output qa_reports/core.js
 python -m vibesnake.qa.shared_traces --check
 python -m vibesnake.qa.shared_rule_traces --check
 python -m vibesnake.qa.shared_power_traces --check
+python -m vibesnake.qa.shared_phase_shift_traces --check
 ```
 
 Add `--verbose` only when scoring logs are useful. `qa_reports/` is ignored because generated evidence belongs in CI artifacts or an explicitly retained test record, not normal source commits.
