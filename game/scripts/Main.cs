@@ -870,16 +870,21 @@ public partial class Main : Node2D
 
         var snapshot = _run.GetSnapshot();
         var hungerSeconds = snapshot.HungerTicksRemaining * RunConfig.RulesTickMilliseconds / 1000.0;
+        var hungerWarning = snapshot.HungerTicksRemaining > 0
+            && snapshot.HungerTicksRemaining <= 200;
         var statusText = _pausedByFocusLoss
             ? "PAUSED: FOCUS LOST"
             : _paused
                 ? "PAUSED"
                 : snapshot.Status.ToString().ToUpperInvariant();
+        var hudColor = hungerWarning
+            ? new Color(1.0f, 0.55f, 0.2f)
+            : Colors.White;
         DrawLabel(
             $"SCORE {snapshot.Score:D6}    COMBO {snapshot.ComboMultiplier:0.0}x    HUNGER {hungerSeconds:0.0}s    {statusText}",
             new Vector2(18.0f, 31.0f),
-            20,
-            Colors.White);
+            ScaledFontSize(20),
+            hudColor);
 
         var powerStatus = DescribePowerStatus(snapshot);
         var secondaryStatus = _feedbackCaption is null
