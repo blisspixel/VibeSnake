@@ -134,6 +134,8 @@ public partial class Main : Node2D
         if (_inputBindingsStore is null)
         {
             _keyboardBindings = InputBindingsDocument.CreateKeyboardDefaults();
+            GameActions.ApplyKeyboardBindings(_keyboardBindings);
+            GameActions.ApplyControllerBindings(InputBindingsDocument.CreateControllerDefaults());
             return;
         }
 
@@ -141,17 +143,27 @@ public partial class Main : Node2D
         if (loaded.IsSuccess && loaded.Document is not null)
         {
             _keyboardBindings = loaded.Document;
-            return;
+        }
+        else
+        {
+            _keyboardBindings = InputBindingsDocument.CreateKeyboardDefaults();
+            _diagnostics?.WriteCrashReport(
+                appVersion: "0.2.1",
+                platform: OS.GetName(),
+                rulesetId: SnakeRun.RulesetId,
+                rulesVersion: SnakeRun.RulesVersion,
+                screenState: "InputBindingsLoad",
+                exception: new InvalidOperationException(loaded.Message));
         }
 
-        _keyboardBindings = InputBindingsDocument.CreateKeyboardDefaults();
-        _diagnostics?.WriteCrashReport(
-            appVersion: "0.2.1",
-            platform: OS.GetName(),
-            rulesetId: SnakeRun.RulesetId,
-            rulesVersion: SnakeRun.RulesVersion,
-            screenState: "InputBindingsLoad",
-            exception: new InvalidOperationException(loaded.Message));
+        GameActions.ApplyKeyboardBindings(_keyboardBindings);
+
+        var controllerLoaded = _inputBindingsStore.LoadOrDefault(
+            InputBindingsDocument.ControllerDeviceClass);
+        var controllerDocument = controllerLoaded.IsSuccess && controllerLoaded.Document is not null
+            ? controllerLoaded.Document
+            : InputBindingsDocument.CreateControllerDefaults();
+        GameActions.ApplyControllerBindings(controllerDocument);
     }
 
     private void SaveInputBindings()
@@ -1513,6 +1525,40 @@ public partial class Main : Node2D
             || _keyboardBindings.ActionToBinding["confirm"] != "key:enter")
         {
             throw new InvalidOperationException("Input bindings smoke round-trip failed.");
+        }
+
+        if (!GameActions.ActionHasKeyboardToken(GameActions.Confirm, "key:enter")
+            || !GameActions.ActionHasKeyboardToken(GameActions.MoveUp, "key:up"))
+        {
+            throw new InvalidOperationException(
+                "Default keyboard bindings were not applied to the InputMap.");
+        }
+
+        var remappedActions = new Dictionary<string, string>(
+            InputBindingsDocument.CreateKeyboardDefaults().ActionToBinding,
+            StringComparer.Ordinal)
+        {
+            ["pause"] = "key:space",
+        };
+        _keyboardBindings = new InputBindingsDocument(
+            InputBindingsDocument.CurrentSchemaVersion,
+            InputBindingsDocument.KeyboardDeviceClass,
+            remappedActions);
+        GameActions.ApplyKeyboardBindings(_keyboardBindings);
+        if (!GameActions.ActionHasKeyboardToken(GameActions.Pause, "key:space")
+            || GameActions.ActionHasKeyboardToken(GameActions.Pause, "key:p"))
+        {
+            throw new InvalidOperationException(
+                "Keyboard remap did not replace the pause primary key.");
+        }
+
+        // Restore defaults for the remainder of the smoke path.
+        _keyboardBindings = InputBindingsDocument.CreateKeyboardDefaults();
+        GameActions.ApplyKeyboardBindings(_keyboardBindings);
+        if (!GameActions.ActionHasKeyboardToken(GameActions.Pause, "key:p"))
+        {
+            throw new InvalidOperationException(
+                "Keyboard defaults could not be restored after remap smoke.");
         }
     }
 

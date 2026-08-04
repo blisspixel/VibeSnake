@@ -1,7 +1,13 @@
 using Godot;
+using VibeSnake.Persistence;
 
 namespace VibeSnake.Game;
 
+/// <summary>
+/// Logical Godot InputMap actions for the shell. Defaults cover keyboard dual
+/// bindings and common controller paths. Schema-1 documents may replace the
+/// primary keyboard or controller events without dropping the opposite device.
+/// </summary>
 internal static class GameActions
 {
     private const int AnyJoypadDevice = -1;
@@ -15,6 +21,7 @@ internal static class GameActions
     public const string Pause = "vibe_pause";
     public const string Replay = "vibe_replay";
     public const string Quit = "vibe_quit";
+    public const string RestoreDefaults = "vibe_restore_defaults";
 
     private static readonly string[] RequiredActions =
     [
@@ -28,6 +35,22 @@ internal static class GameActions
         Replay,
         Quit,
     ];
+
+    private static readonly Dictionary<string, string> LogicalToRuntime =
+        new(StringComparer.Ordinal)
+        {
+            ["move_up"] = MoveUp,
+            ["move_down"] = MoveDown,
+            ["move_left"] = MoveLeft,
+            ["move_right"] = MoveRight,
+            ["confirm"] = Confirm,
+            ["back"] = Back,
+            ["pause"] = Pause,
+            ["replay"] = Replay,
+            ["quit"] = Quit,
+            ["restore_defaults"] = RestoreDefaults,
+        };
+
     private static readonly HashSet<string> RuntimeActions = [];
 
     public static void EnsureDefaults()
@@ -89,7 +112,93 @@ internal static class GameActions
                 Keycode = Key.Q,
                 CommandOrControlAutoremap = true,
             });
+        AddAction(
+            RestoreDefaults,
+            0.5f,
+            KeyEvent(Key.F8, physical: false),
+            JoyButtonEvent(JoyButton.Back));
     }
+
+    /// <summary>
+    /// Replaces keyboard events for documented actions while retaining joypad
+    /// events so a keyboard remap never disables controller input.
+    /// </summary>
+    public static void ApplyKeyboardBindings(InputBindingsDocument document)
+    {
+        ArgumentNullException.ThrowIfNull(document);
+        if (!string.Equals(
+                document.DeviceClass,
+                InputBindingsDocument.KeyboardDeviceClass,
+                StringComparison.Ordinal))
+        {
+            throw new ArgumentException(
+                "Keyboard binding application requires deviceClass keyboard.",
+                nameof(document));
+        }
+
+        EnsureActionSlotsExist();
+        var usedKeys = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var pair in document.ActionToBinding)
+        {
+            if (!LogicalToRuntime.TryGetValue(pair.Key, out var action))
+            {
+                continue;
+            }
+
+            if (!InputBindingToken.TryParse(pair.Value, out var parsed)
+                || parsed.Kind != InputBindingKind.Key)
+            {
+                throw new InvalidOperationException(
+                    "Keyboard binding token is invalid for action " + pair.Key + ": " + pair.Value);
+            }
+
+            usedKeys.Add(parsed.Identifier);
+            ReplaceKeyboardEvents(action, pair.Value);
+        }
+
+        ApplySecondaryKeyboardFallbacks(usedKeys);
+    }
+
+    /// <summary>
+    /// Replaces joypad events for documented actions while retaining keyboard
+    /// events so a controller remap never disables keyboard input.
+    /// </summary>
+    public static void ApplyControllerBindings(InputBindingsDocument document)
+    {
+        ArgumentNullException.ThrowIfNull(document);
+        if (!string.Equals(
+                document.DeviceClass,
+                InputBindingsDocument.ControllerDeviceClass,
+                StringComparison.Ordinal))
+        {
+            throw new ArgumentException(
+                "Controller binding application requires deviceClass controller.",
+                nameof(document));
+        }
+
+        EnsureActionSlotsExist();
+        foreach (var pair in document.ActionToBinding)
+        {
+            if (!LogicalToRuntime.TryGetValue(pair.Key, out var action))
+            {
+                continue;
+            }
+
+            if (!InputBindingToken.TryParse(pair.Value, out var parsed)
+                || (parsed.Kind is not (InputBindingKind.Button or InputBindingKind.Axis)))
+            {
+                throw new InvalidOperationException(
+                    "Controller binding token is invalid for action " + pair.Key + ": " + pair.Value);
+            }
+
+            ReplaceJoypadEvents(action, pair.Value);
+        }
+
+        ApplySecondaryControllerAxes();
+    }
+
+    public static bool TryMapLogicalAction(string logicalAction, out string runtimeAction) =>
+        LogicalToRuntime.TryGetValue(logicalAction, out runtimeAction!);
 
     public static void AssertDefaultsRegistered()
     {
@@ -109,6 +218,39 @@ internal static class GameActions
         }
     }
 
+    public static bool ActionHasKeyboardToken(string runtimeAction, string token)
+    {
+        if (!InputMap.HasAction(runtimeAction)
+            || !InputBindingToken.TryParse(token, out var parsed)
+            || parsed.Kind != InputBindingKind.Key
+            || !TryMapKey(parsed.Identifier, out var key, out var physical))
+        {
+            return false;
+        }
+
+        foreach (var inputEvent in InputMap.ActionGetEvents(runtimeAction))
+        {
+            if (inputEvent is not InputEventKey keyEvent)
+            {
+                continue;
+            }
+
+            if (physical)
+            {
+                if (keyEvent.PhysicalKeycode == key)
+                {
+                    return true;
+                }
+            }
+            else if (keyEvent.Keycode == key)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     public static void ReleaseRuntimeDefaults()
     {
         foreach (var action in RuntimeActions)
@@ -120,6 +262,285 @@ internal static class GameActions
         }
 
         RuntimeActions.Clear();
+    }
+
+    private static void EnsureActionSlotsExist()
+    {
+        EnsureDefaults();
+        if (!InputMap.HasAction(RestoreDefaults))
+        {
+            AddAction(
+                RestoreDefaults,
+                0.5f,
+                KeyEvent(Key.F8, physical: false),
+                JoyButtonEvent(JoyButton.Back));
+        }
+    }
+
+    private static void ReplaceKeyboardEvents(string action, string token)
+    {
+        ClearEvents(action, keepJoypad: true, keepKeyboard: false);
+        var inputEvent = CreateEventFromToken(token);
+        try
+        {
+            InputMap.ActionAddEvent(action, inputEvent);
+        }
+        finally
+        {
+            inputEvent.Dispose();
+        }
+    }
+
+    private static void ReplaceJoypadEvents(string action, string token)
+    {
+        ClearEvents(action, keepJoypad: false, keepKeyboard: true);
+        var inputEvent = CreateEventFromToken(token);
+        try
+        {
+            InputMap.ActionAddEvent(action, inputEvent);
+        }
+        finally
+        {
+            inputEvent.Dispose();
+        }
+    }
+
+    private static void ClearEvents(string action, bool keepJoypad, bool keepKeyboard)
+    {
+        if (!InputMap.HasAction(action))
+        {
+            return;
+        }
+
+        var existing = InputMap.ActionGetEvents(action);
+        foreach (var inputEvent in existing)
+        {
+            var isKey = inputEvent is InputEventKey;
+            var isJoy = inputEvent is InputEventJoypadButton or InputEventJoypadMotion;
+            if ((isKey && !keepKeyboard) || (isJoy && !keepJoypad))
+            {
+                InputMap.ActionEraseEvent(action, inputEvent);
+            }
+        }
+    }
+
+    private static void ApplySecondaryKeyboardFallbacks(HashSet<string> usedKeys)
+    {
+        // Convenience dual-binds that match EnsureDefaults, skipped on conflict.
+        TryAddSecondaryKey(MoveUp, Key.W, "w", usedKeys);
+        TryAddSecondaryKey(MoveDown, Key.S, "s", usedKeys);
+        TryAddSecondaryKey(MoveLeft, Key.A, "a", usedKeys);
+        TryAddSecondaryKey(MoveRight, Key.D, "d", usedKeys);
+        TryAddSecondaryKey(Confirm, Key.Space, "space", usedKeys, physical: false);
+        TryAddSecondaryKey(Replay, Key.R, "r", usedKeys);
+    }
+
+    private static void TryAddSecondaryKey(
+        string action,
+        Key key,
+        string identifier,
+        HashSet<string> usedKeys,
+        bool physical = true)
+    {
+        if (usedKeys.Contains(identifier) || ActionHasKeyboardToken(action, "key:" + identifier))
+        {
+            return;
+        }
+
+        var inputEvent = KeyEvent(key, physical);
+        try
+        {
+            InputMap.ActionAddEvent(action, inputEvent);
+        }
+        finally
+        {
+            inputEvent.Dispose();
+        }
+    }
+
+    private static void ApplySecondaryControllerAxes()
+    {
+        // Stick axes remain available unless a remap already owns LeftX/LeftY events.
+        EnsureAxis(MoveUp, JoyAxis.LeftY, -1.0f);
+        EnsureAxis(MoveDown, JoyAxis.LeftY, 1.0f);
+        EnsureAxis(MoveLeft, JoyAxis.LeftX, -1.0f);
+        EnsureAxis(MoveRight, JoyAxis.LeftX, 1.0f);
+    }
+
+    private static void EnsureAxis(string action, JoyAxis axis, float value)
+    {
+        if (!InputMap.HasAction(action))
+        {
+            return;
+        }
+
+        foreach (var inputEvent in InputMap.ActionGetEvents(action))
+        {
+            if (inputEvent is InputEventJoypadMotion motion
+                && motion.Axis == axis
+                && Math.Abs(motion.AxisValue - value) < 0.01f)
+            {
+                return;
+            }
+        }
+
+        var axisEvent = JoyAxisEvent(axis, value);
+        try
+        {
+            InputMap.ActionAddEvent(action, axisEvent);
+        }
+        finally
+        {
+            axisEvent.Dispose();
+        }
+    }
+
+    private static InputEvent CreateEventFromToken(string token)
+    {
+        if (!InputBindingToken.TryParse(token, out var parsed))
+        {
+            throw new InvalidOperationException("Unsupported binding token: " + token);
+        }
+
+        return parsed.Kind switch
+        {
+            InputBindingKind.Key when TryMapKey(parsed.Identifier, out var key, out var physical)
+                => KeyEvent(key, physical),
+            InputBindingKind.Button when TryMapButton(parsed.Identifier, out var button)
+                => JoyButtonEvent(button),
+            InputBindingKind.Axis when TryMapAxis(parsed.Identifier, out var axis)
+                => JoyAxisEvent(axis, parsed.AxisValue),
+            _ => throw new InvalidOperationException("Unsupported binding token: " + token),
+        };
+    }
+
+    private static bool TryMapKey(string identifier, out Key key, out bool physical)
+    {
+        physical = true;
+        switch (identifier)
+        {
+            case "up":
+                key = Key.Up;
+                return true;
+            case "down":
+                key = Key.Down;
+                return true;
+            case "left":
+                key = Key.Left;
+                return true;
+            case "right":
+                key = Key.Right;
+                return true;
+            case "enter":
+            case "return":
+                key = Key.Enter;
+                physical = false;
+                return true;
+            case "escape":
+            case "esc":
+                key = Key.Escape;
+                physical = false;
+                return true;
+            case "space":
+                key = Key.Space;
+                physical = false;
+                return true;
+            case "p":
+                key = Key.P;
+                return true;
+            case "w":
+                key = Key.W;
+                return true;
+            case "a":
+                key = Key.A;
+                return true;
+            case "s":
+                key = Key.S;
+                return true;
+            case "d":
+                key = Key.D;
+                return true;
+            case "r":
+                key = Key.R;
+                return true;
+            case "q":
+                key = Key.Q;
+                return true;
+            case "f8":
+                key = Key.F8;
+                physical = false;
+                return true;
+            default:
+                key = Key.None;
+                return false;
+        }
+    }
+
+    private static bool TryMapButton(string identifier, out JoyButton button)
+    {
+        switch (identifier)
+        {
+            case "dpad_up":
+                button = JoyButton.DpadUp;
+                return true;
+            case "dpad_down":
+                button = JoyButton.DpadDown;
+                return true;
+            case "dpad_left":
+                button = JoyButton.DpadLeft;
+                return true;
+            case "dpad_right":
+                button = JoyButton.DpadRight;
+                return true;
+            case "south":
+            case "a":
+                button = JoyButton.A;
+                return true;
+            case "east":
+            case "b":
+                button = JoyButton.B;
+                return true;
+            case "west":
+            case "x":
+                button = JoyButton.X;
+                return true;
+            case "north":
+            case "y":
+                button = JoyButton.Y;
+                return true;
+            case "start":
+                button = JoyButton.Start;
+                return true;
+            case "select":
+            case "back":
+                button = JoyButton.Back;
+                return true;
+            default:
+                button = JoyButton.Invalid;
+                return false;
+        }
+    }
+
+    private static bool TryMapAxis(string identifier, out JoyAxis axis)
+    {
+        switch (identifier)
+        {
+            case "left_x":
+                axis = JoyAxis.LeftX;
+                return true;
+            case "left_y":
+                axis = JoyAxis.LeftY;
+                return true;
+            case "right_x":
+                axis = JoyAxis.RightX;
+                return true;
+            case "right_y":
+                axis = JoyAxis.RightY;
+                return true;
+            default:
+                axis = JoyAxis.Invalid;
+                return false;
+        }
     }
 
     private static void AddAction(

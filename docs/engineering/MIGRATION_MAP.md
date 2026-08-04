@@ -21,7 +21,7 @@ This map assigns every Python reference subsystem to its target C# or Godot owne
 | Bait | `VibeSnake.Rules` + Godot | Done | Parity remaining-powers; bait mark draw |
 | Gluttony | `VibeSnake.Rules` + Godot | Done | Parity remaining-powers; body tint |
 | Segment Detach | `VibeSnake.Rules` + Godot | Done | Parity remaining-powers; hazard draw; collect-after-move |
-| Input devices | Godot `GameActions` | Partial | Logical actions present; remapping open |
+| Input devices | Godot `GameActions` + Persistence bindings | Partial | Logical actions, schema-1 store, and InputMap apply for keyboard/controller; remapping UI and glyphs open |
 | Menus / HUD / cosmetics | Godot presentation | Partial | Thin vertical slice only |
 | Audio buses / SFX | Godot `AudioFallback` | Partial | Fourteen fallback cues; authored packs open |
 | Radio playback | Godot content service | Not started | Python has full offline radio |
