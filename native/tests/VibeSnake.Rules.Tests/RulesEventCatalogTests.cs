@@ -27,4 +27,18 @@ public sealed class RulesEventCatalogTests
 
         Assert.Equal("near_miss", RulesEventCatalog.ToWireName(RunEventKind.NearMiss));
     }
+
+    [Fact]
+    public void Presentation_priority_orders_recovery_above_spawn_and_food()
+    {
+        Assert.True(
+            RulesEventCatalog.PresentationPriority(RunEventKind.CollisionPrevented)
+            > RulesEventCatalog.PresentationPriority(RunEventKind.PowerSpawned));
+        Assert.True(
+            RulesEventCatalog.PresentationPriority(RunEventKind.StarvationWarning)
+            > RulesEventCatalog.PresentationPriority(RunEventKind.AteFood));
+        Assert.True(
+            RulesEventCatalog.PresentationPriority(RunEventKind.Died)
+            > RulesEventCatalog.PresentationPriority(RunEventKind.NearMiss));
+    }
 }

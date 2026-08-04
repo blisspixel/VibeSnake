@@ -31,6 +31,32 @@ public static class RulesEventCatalog
     public static bool IsKnown(RunEventKind kind) =>
         OrderedKinds.Contains(kind);
 
+    /// <summary>
+    /// Declared relative priority for presentation caption selection when multiple
+    /// events share a step. Higher values win. Not a substitute for ordered event lists.
+    /// </summary>
+    public static int PresentationPriority(RunEventKind kind) => kind switch
+    {
+        RunEventKind.Died => 100,
+        RunEventKind.Won => 95,
+        RunEventKind.CollisionPrevented => 90,
+        RunEventKind.PowerActivated => 80,
+        RunEventKind.PowerConsumed => 75,
+        RunEventKind.PowerExpired => 70,
+        RunEventKind.PowerDiscarded => 65,
+        RunEventKind.PowerSpawned => 60,
+        RunEventKind.StarvationWarning => 55,
+        RunEventKind.NearMiss => 50,
+        RunEventKind.ComboExpired => 45,
+        RunEventKind.AteFood => 40,
+        RunEventKind.ScoreChanged => 35,
+        RunEventKind.HungerReset => 30,
+        RunEventKind.Wrapped => 20,
+        RunEventKind.Moved => 10,
+        RunEventKind.DirectionChanged => 5,
+        _ => 0,
+    };
+
     public static string ToWireName(RunEventKind kind) => kind switch
     {
         RunEventKind.DirectionChanged => "direction_changed",
