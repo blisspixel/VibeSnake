@@ -36,14 +36,15 @@ Notes:
 | `replays/` | `ReplayStore` | Bounded atomic replay envelopes |
 | `replays/.vibesnake-replay-store.lock` | `ReplayStore` | Cross-process store lock |
 | `replays/*.vibesnake-replay.json` | `ReplayStore` | Individual verified replay files |
+| `preferences.json` | `PreferencesStore` | Schema 2 multi-bus audio and accessibility settings |
+| `diagnostics/` | `LocalDiagnostics` | Offline crash reports with path sanitization |
 
 Future native-owned rows (not yet writers in shipping code):
 
 | Relative path | Intended owner | Purpose |
 | --- | --- | --- |
 | `profiles/` | Future profile store | Native profiles after dual-runtime freeze |
-| `preferences.json` | Future preferences store | Native settings once UI owns them |
-| `logs/` | Future diagnostics | Player-visible logs and support bundles |
+| `logs/` | Future diagnostics | Player-visible support log tails |
 | `screenshots/` | Future capture service | Manual and smoke captures |
 | `packs/` | Future content service | Installed optional packs (never write into the install tree) |
 | `tmp/` | Future services | Short-lived work; safe to delete on start |

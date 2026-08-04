@@ -924,7 +924,7 @@ public partial class Main : Node2D
             ExecuteContentServiceSmokeTest();
             ExecuteStepFeedbackSmokeTest();
             ExecuteShellSettingsSmokeTest();
-            ExecutePresentationFrameSamplerSmokeTest();
+            await ExecutePresentationFrameSamplerSmokeTestAsync();
             ExecuteMenuRunDeathRestartSmokeTest();
             var first = SnakeRun.Create(SmokeSeed);
             var replay = SnakeRun.Create(SmokeSeed);
@@ -1461,7 +1461,7 @@ public partial class Main : Node2D
         }
     }
 
-    private static void ExecutePresentationFrameSamplerSmokeTest()
+    private async Task ExecutePresentationFrameSamplerSmokeTestAsync()
     {
         var sampler = new PresentationFrameSampler();
         // Synthetic host-independent samples prove percentile math only.
@@ -1479,6 +1479,66 @@ public partial class Main : Node2D
         {
             throw new InvalidOperationException("Presentation frame sampler summary contract failed.");
         }
+
+        // Capture a short live burst using process frames for host-dependent evidence.
+        var live = new PresentationFrameSampler();
+        for (var index = 0; index < 32; index++)
+        {
+            var started = Time.GetTicksUsec();
+            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+            var elapsedMilliseconds = (Time.GetTicksUsec() - started) / 1000.0;
+            live.RecordFrameMilliseconds(Math.Max(0.01, elapsedMilliseconds));
+        }
+
+        WritePresentationFrameEvidence(live.Summarize());
+    }
+
+    private static void WritePresentationFrameEvidence(PresentationFrameSummary summary)
+    {
+        var directory = ResolveEvidenceDirectory();
+        System.IO.Directory.CreateDirectory(directory);
+        var path = System.IO.Path.Combine(directory, "presentation_frames.json");
+        var json =
+            "{\n"
+            + "  \"schemaVersion\": 1,\n"
+            + "  \"kind\": \"presentation-frame-evidence-v1\",\n"
+            + $"  \"sampleCount\": {summary.SampleCount},\n"
+            + $"  \"averageMilliseconds\": {summary.AverageMilliseconds.ToString(System.Globalization.CultureInfo.InvariantCulture)},\n"
+            + $"  \"p50Milliseconds\": {summary.P50Milliseconds.ToString(System.Globalization.CultureInfo.InvariantCulture)},\n"
+            + $"  \"p95Milliseconds\": {summary.P95Milliseconds.ToString(System.Globalization.CultureInfo.InvariantCulture)},\n"
+            + $"  \"p99Milliseconds\": {summary.P99Milliseconds.ToString(System.Globalization.CultureInfo.InvariantCulture)},\n"
+            + $"  \"maxMilliseconds\": {summary.MaxMilliseconds.ToString(System.Globalization.CultureInfo.InvariantCulture)},\n"
+            + "  \"notes\": [\n"
+            + "    \"Host-dependent smoke burst only.\",\n"
+            + "    \"Does not claim declared-hardware acceptance.\"\n"
+            + "  ]\n"
+            + "}\n";
+        System.IO.File.WriteAllText(path, json);
+    }
+
+    private static string ResolveEvidenceDirectory()
+    {
+        var configured = System.Environment.GetEnvironmentVariable("VIBESNAKE_EVIDENCE_DIR");
+        if (!string.IsNullOrWhiteSpace(configured))
+        {
+            return System.IO.Path.GetFullPath(configured);
+        }
+
+        var directory = new System.IO.DirectoryInfo(System.IO.Directory.GetCurrentDirectory());
+        while (directory is not null)
+        {
+            var roadmap = System.IO.Path.Combine(directory.FullName, "ROADMAP.md");
+            var solution = System.IO.Path.Combine(directory.FullName, "native", "VibeSnake.slnx");
+            if (System.IO.File.Exists(roadmap) && System.IO.File.Exists(solution))
+            {
+                return System.IO.Path.Combine(directory.FullName, "TestResults", "native");
+            }
+
+            directory = directory.Parent;
+        }
+
+        return System.IO.Path.GetFullPath(
+            System.IO.Path.Combine(System.IO.Directory.GetCurrentDirectory(), "TestResults", "native"));
     }
 
     private void ExecuteMenuRunDeathRestartSmokeTest()
