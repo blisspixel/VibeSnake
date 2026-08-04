@@ -255,6 +255,21 @@ public partial class Main : Node2D
         _inputBindingsStore.Save(_keyboardBindings);
     }
 
+    private void RestoreInputBindingDefaults()
+    {
+        _keyboardBindings = InputBindingsDocument.CreateKeyboardDefaults();
+        if (_inputBindingsStore is not null)
+        {
+            _inputBindingsStore.Save(_keyboardBindings);
+            _inputBindingsStore.Save(InputBindingsDocument.CreateControllerDefaults());
+        }
+
+        GameActions.ApplyKeyboardBindings(_keyboardBindings);
+        GameActions.ApplyControllerBindings(InputBindingsDocument.CreateControllerDefaults());
+        ShowReplayStatus("INPUT DEFAULTS RESTORED");
+        QueueRedraw();
+    }
+
     public override void _PhysicsProcess(double delta)
     {
         if (_screenState != ScreenState.Running || _paused || _run is null)
@@ -338,6 +353,12 @@ public partial class Main : Node2D
         if (inputEvent.IsActionPressed(GameActions.Quit))
         {
             RequestQuit();
+            return;
+        }
+
+        if (inputEvent.IsActionPressed(GameActions.RestoreDefaults))
+        {
+            RestoreInputBindingDefaults();
             return;
         }
 
@@ -1713,9 +1734,9 @@ public partial class Main : Node2D
         }
 
         // Restore defaults for the remainder of the smoke path.
-        _keyboardBindings = InputBindingsDocument.CreateKeyboardDefaults();
-        GameActions.ApplyKeyboardBindings(_keyboardBindings);
-        if (!GameActions.ActionHasKeyboardToken(GameActions.Pause, "key:p"))
+        RestoreInputBindingDefaults();
+        if (!GameActions.ActionHasKeyboardToken(GameActions.Pause, "key:p")
+            || !GameActions.ActionHasKeyboardToken(GameActions.Confirm, "key:enter"))
         {
             throw new InvalidOperationException(
                 "Keyboard defaults could not be restored after remap smoke.");
