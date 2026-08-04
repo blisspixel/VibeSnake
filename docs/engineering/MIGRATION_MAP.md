@@ -16,7 +16,7 @@ This map assigns every Python reference subsystem to its target C# or Godot owne
 | Shield | `VibeSnake.Rules` | Done | Parity `shield_rules_v1` |
 | Phase Shift | `VibeSnake.Rules` | Done | Parity `phase_shift_rules_v1` |
 | Last Stand | `VibeSnake.Rules` | Done | Parity `last_stand_rules_v1` |
-| Slow-Mo / Boost tempo | `VibeSnake.Rules` + Godot cadence | Not started | Rules must expose tempo modifiers without wall-clock |
+| Slow-Mo / Boost tempo | `VibeSnake.Rules` + Godot cadence | Rules done | Snapshot cadence numerator/denominator; shell must honor scale |
 | Magnet / Bait / Gluttony | `VibeSnake.Rules` | Not started | Food and growth events |
 | Segment Detach | `VibeSnake.Rules` | Not started | Obstacle ownership |
 | Input devices | Godot `GameActions` | Partial | Logical actions present; remapping open |
@@ -31,9 +31,9 @@ This map assigns every Python reference subsystem to its target C# or Godot owne
 
 ## Port order (locked)
 
-1. Shield, Phase Shift, Last Stand (collision recovery matrix): **current**
-2. Slow-Mo and Boost (tempo modifiers)
-3. Magnet, Bait, Gluttony (food geometry)
+1. Shield, Phase Shift, Last Stand (collision recovery matrix): done
+2. Slow-Mo and Boost (tempo modifiers): rules done
+3. Magnet, Bait, Gluttony (food geometry): **current**
 4. Segment Detach (obstacles)
 5. Presentation, radio, progression UI on Godot after rules parity for each system
 

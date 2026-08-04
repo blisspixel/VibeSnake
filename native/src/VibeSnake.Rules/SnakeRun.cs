@@ -44,6 +44,8 @@ public sealed partial class SnakeRun
         int phaseShiftTicksRemaining = 0,
         bool lastStandHeld = false,
         int lastStandRecoveryTicksRemaining = 0,
+        int slowMoTicksRemaining = 0,
+        int boostTicksRemaining = 0,
         IEnumerable<Direction>? pendingDirections = null)
     {
         config.Validate();
@@ -69,6 +71,8 @@ public sealed partial class SnakeRun
         PhaseShiftTicksRemaining = phaseShiftTicksRemaining;
         LastStandHeld = lastStandHeld;
         LastStandRecoveryTicksRemaining = lastStandRecoveryTicksRemaining;
+        SlowMoTicksRemaining = slowMoTicksRemaining;
+        BoostTicksRemaining = boostTicksRemaining;
 
         if (!Enum.IsDefined(direction))
         {
@@ -157,11 +161,23 @@ public sealed partial class SnakeRun
 
     public int LastStandRecoveryTicksRemaining { get; private set; }
 
+    public int SlowMoTicksRemaining { get; private set; }
+
+    public int BoostTicksRemaining { get; private set; }
+
     public bool HasShield => ShieldTicksRemaining > 0;
 
     public bool HasPhaseShift => PhaseShiftTicksRemaining > 0;
 
     public bool HasLastStandRecovery => LastStandRecoveryTicksRemaining > 0;
+
+    public bool HasSlowMo => SlowMoTicksRemaining > 0;
+
+    public bool HasBoost => BoostTicksRemaining > 0;
+
+    public int MovementCadenceNumerator => HasSlowMo ? 2 : 1;
+
+    public int MovementCadenceDenominator => HasBoost ? 2 : 1;
 
     internal long GetNextStepVerificationWorkUnits()
     {
@@ -251,7 +267,9 @@ public sealed partial class SnakeRun
         int shieldTicksRemaining = 0,
         int phaseShiftTicksRemaining = 0,
         bool lastStandHeld = false,
-        int lastStandRecoveryTicksRemaining = 0)
+        int lastStandRecoveryTicksRemaining = 0,
+        int slowMoTicksRemaining = 0,
+        int boostTicksRemaining = 0)
     {
         return new SnakeRun(
             config,
@@ -271,7 +289,9 @@ public sealed partial class SnakeRun
             shieldTicksRemaining,
             phaseShiftTicksRemaining,
             lastStandHeld,
-            lastStandRecoveryTicksRemaining);
+            lastStandRecoveryTicksRemaining,
+            slowMoTicksRemaining,
+            boostTicksRemaining);
     }
 
     public bool QueueDirection(Direction direction)
@@ -489,6 +509,8 @@ public sealed partial class SnakeRun
             PhaseShiftTicksRemaining,
             LastStandHeld,
             LastStandRecoveryTicksRemaining,
+            SlowMoTicksRemaining,
+            BoostTicksRemaining,
             ComputeStateHash());
     }
 
@@ -537,6 +559,8 @@ public sealed partial class SnakeRun
             writer.WriteNumber("shieldDurationTicks", _config.ShieldDurationTicks);
             writer.WriteNumber("phaseShiftDurationTicks", _config.PhaseShiftDurationTicks);
             writer.WriteNumber("lastStandRecoveryTicks", _config.LastStandRecoveryTicks);
+            writer.WriteNumber("slowMoDurationTicks", _config.SlowMoDurationTicks);
+            writer.WriteNumber("boostDurationTicks", _config.BoostDurationTicks);
             writer.WriteEndObject();
 
             writer.WriteNumber("tick", Tick);
@@ -554,6 +578,8 @@ public sealed partial class SnakeRun
             writer.WriteNumber(
                 "lastStandRecoveryTicksRemaining",
                 LastStandRecoveryTicksRemaining);
+            writer.WriteNumber("slowMoTicksRemaining", SlowMoTicksRemaining);
+            writer.WriteNumber("boostTicksRemaining", BoostTicksRemaining);
 
             if (PowerPickup is { } powerPickup)
             {
@@ -672,19 +698,45 @@ public sealed partial class SnakeRun
             }
         }
 
-        if (LastStandRecoveryTicksRemaining <= 0)
+        if (LastStandRecoveryTicksRemaining > 0)
+        {
+            LastStandRecoveryTicksRemaining--;
+            if (LastStandRecoveryTicksRemaining == 0)
+            {
+                events |= RunEvent.PowerExpired;
+                orderedEvents.Add(
+                    new RunEventDetail(
+                        RunEventKind.PowerExpired,
+                        Power: PowerKind.LastStand));
+            }
+        }
+
+        if (SlowMoTicksRemaining > 0)
+        {
+            SlowMoTicksRemaining--;
+            if (SlowMoTicksRemaining == 0)
+            {
+                events |= RunEvent.PowerExpired;
+                orderedEvents.Add(
+                    new RunEventDetail(
+                        RunEventKind.PowerExpired,
+                        Power: PowerKind.SlowMo));
+            }
+        }
+
+        if (BoostTicksRemaining <= 0)
         {
             return;
         }
 
-        LastStandRecoveryTicksRemaining--;
-        if (LastStandRecoveryTicksRemaining == 0)
+        BoostTicksRemaining--;
+        if (BoostTicksRemaining == 0)
         {
             events |= RunEvent.PowerExpired;
             orderedEvents.Add(
                 new RunEventDetail(
                     RunEventKind.PowerExpired,
-                    Power: PowerKind.LastStand));
+                    Power: PowerKind.Boost));
         }
     }
 
@@ -849,6 +901,24 @@ public sealed partial class SnakeRun
                     new RunEventDetail(
                         RunEventKind.PowerActivated,
                         Value: 0,
+                        Power: pickup.Kind));
+                break;
+            case PowerKind.SlowMo:
+                SlowMoTicksRemaining = _config.SlowMoDurationTicks;
+                events |= RunEvent.PowerActivated;
+                orderedEvents.Add(
+                    new RunEventDetail(
+                        RunEventKind.PowerActivated,
+                        Value: SlowMoTicksRemaining,
+                        Power: pickup.Kind));
+                break;
+            case PowerKind.Boost:
+                BoostTicksRemaining = _config.BoostDurationTicks;
+                events |= RunEvent.PowerActivated;
+                orderedEvents.Add(
+                    new RunEventDetail(
+                        RunEventKind.PowerActivated,
+                        Value: BoostTicksRemaining,
                         Power: pickup.Kind));
                 break;
             default:
@@ -1081,6 +1151,30 @@ public sealed partial class SnakeRun
             || LastStandRecoveryTicksRemaining > _config.LastStandRecoveryTicks)
         {
             throw new ArgumentOutOfRangeException(nameof(LastStandRecoveryTicksRemaining));
+        }
+
+        if (SlowMoTicksRemaining < 0 || SlowMoTicksRemaining > _config.SlowMoDurationTicks)
+        {
+            throw new ArgumentOutOfRangeException(nameof(SlowMoTicksRemaining));
+        }
+
+        if (BoostTicksRemaining < 0 || BoostTicksRemaining > _config.BoostDurationTicks)
+        {
+            throw new ArgumentOutOfRangeException(nameof(BoostTicksRemaining));
+        }
+
+        if (PowerPickup?.Kind == PowerKind.SlowMo && HasSlowMo)
+        {
+            throw new ArgumentException(
+                "A second Slow-Mo pickup cannot coexist with an active Slow-Mo.",
+                nameof(PowerPickup));
+        }
+
+        if (PowerPickup?.Kind == PowerKind.Boost && HasBoost)
+        {
+            throw new ArgumentException(
+                "A second Boost pickup cannot coexist with an active Boost.",
+                nameof(PowerPickup));
         }
     }
 

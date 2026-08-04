@@ -90,6 +90,8 @@ public sealed class SnakeRunStateMachineTests
         Assert.Equal(
             expected.LastStandRecoveryTicksRemaining,
             actual.LastStandRecoveryTicksRemaining);
+        Assert.Equal(expected.SlowMoTicksRemaining, actual.SlowMoTicksRemaining);
+        Assert.Equal(expected.BoostTicksRemaining, actual.BoostTicksRemaining);
         Assert.Equal(expected.StateHash, actual.StateHash);
     }
 }

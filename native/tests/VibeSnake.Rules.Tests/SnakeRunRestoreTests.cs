@@ -335,6 +335,8 @@ public sealed class SnakeRunRestoreTests
         Assert.Equal(
             expectedSnapshot.LastStandRecoveryTicksRemaining,
             actualSnapshot.LastStandRecoveryTicksRemaining);
+        Assert.Equal(expectedSnapshot.SlowMoTicksRemaining, actualSnapshot.SlowMoTicksRemaining);
+        Assert.Equal(expectedSnapshot.BoostTicksRemaining, actualSnapshot.BoostTicksRemaining);
         Assert.Equal(expectedSnapshot.StateHash, actualSnapshot.StateHash);
     }
 

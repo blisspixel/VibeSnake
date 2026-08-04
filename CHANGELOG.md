@@ -11,6 +11,7 @@ Notable player-facing and engineering changes are recorded here. The project is 
 - Native pure C# Last Stand power contract: held revive, half-body shrink, hunger reset, recovery immunity, collision precedence with Phase Shift and Shield.
 - Five shared Python-to-C# Last Stand parity fixtures (`last_stand_rules_v1.json`) and CI check via `python -m vibesnake.qa.shared_last_stand_traces --check`.
 - [Migration ownership map](docs/engineering/MIGRATION_MAP.md) for V030-12.
+- Native Slow-Mo and Boost cadence modifiers with composable snapshot scale and fixed-step movement invariance.
 
 ### Changed
 

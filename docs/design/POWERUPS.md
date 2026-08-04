@@ -1,6 +1,6 @@
 # Power-ups
 
-All nine power-ups are connected to normal runs in the Python reference and tested through the main `Game.update` boundary. Unless stated otherwise, collecting a duplicate type is prevented while that effect remains active. Different types can overlap. Shield, Phase Shift, and Last Stand are complete native C# power contracts; the remaining six powers remain Python-only during migration.
+All nine power-ups are connected to normal runs in the Python reference and tested through the main `Game.update` boundary. Unless stated otherwise, collecting a duplicate type is prevented while that effect remains active. Different types can overlap. Shield, Phase Shift, Last Stand, Slow-Mo, and Boost are complete native C# power contracts; the remaining four powers remain Python-only during migration.
 
 ## Gameplay contracts
 
@@ -39,6 +39,10 @@ The [base class](../../src/vibesnake/powerups/base.py) has three terminal-safe s
 Instant effects become inactive during activation. Last Stand overrides timed expiry and remains held until the death resolver consumes it. Reset clears every effect flag, obstacle, timer, and visual indicator.
 
 The manager schedules spawns, excludes the snake, food, detached obstacles, and visible collectibles from candidate cells, rejects duplicate active effect types, detects collection, advances effects, and removes every inactive instance.
+
+## Native Slow-Mo and Boost qualification
+
+Slow-Mo and Boost are pure cadence modifiers on the rules snapshot. They do not change fixed-step movement distance, scoring, or randomness when `Step` is invoked. Presentation shells advance rules at `RulesTickMilliseconds * MovementCadenceNumerator / MovementCadenceDenominator`, where Slow-Mo multiplies the numerator by 2, Boost multiplies the denominator by 2, and both compose (product of factors), matching the Python cadence helper.
 
 ## Native Last Stand qualification
 

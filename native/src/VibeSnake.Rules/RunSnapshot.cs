@@ -19,6 +19,8 @@ public sealed record RunSnapshot(
     int PhaseShiftTicksRemaining,
     bool LastStandHeld,
     int LastStandRecoveryTicksRemaining,
+    int SlowMoTicksRemaining,
+    int BoostTicksRemaining,
     string StateHash)
 {
     public GridPoint Head => Body[^1];
@@ -28,6 +30,19 @@ public sealed record RunSnapshot(
     public bool HasPhaseShift => PhaseShiftTicksRemaining > 0;
 
     public bool HasLastStandRecovery => LastStandRecoveryTicksRemaining > 0;
+
+    public bool HasSlowMo => SlowMoTicksRemaining > 0;
+
+    public bool HasBoost => BoostTicksRemaining > 0;
+
+    /// <summary>
+    /// Effective rules-tick scale as numerator/denominator: Slow-Mo multiplies by 2,
+    /// Boost multiplies by 1/2, and both compose. Shells advance rules at
+    /// <c>RulesTickMilliseconds * Numerator / Denominator</c> without changing step semantics.
+    /// </summary>
+    public int MovementCadenceNumerator => HasSlowMo ? 2 : 1;
+
+    public int MovementCadenceDenominator => HasBoost ? 2 : 1;
 }
 
 public readonly struct RunStepResult : IEquatable<RunStepResult>

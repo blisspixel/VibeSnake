@@ -102,7 +102,9 @@ public sealed partial class SnakeRun
                 "phaseShiftDurationTicks"),
             LastStandRecoveryTicks: ReadInt32(
                 configElement,
-                "lastStandRecoveryTicks"));
+                "lastStandRecoveryTicks"),
+            SlowMoDurationTicks: ReadInt32(configElement, "slowMoDurationTicks"),
+            BoostDurationTicks: ReadInt32(configElement, "boostDurationTicks"));
         config.Validate();
 
         var randomElement = RequireObject(root.GetProperty("random"), "random");
@@ -137,6 +139,8 @@ public sealed partial class SnakeRun
             ReadInt32(root, "phaseShiftTicksRemaining"),
             root.GetProperty("lastStandHeld").GetBoolean(),
             ReadInt32(root, "lastStandRecoveryTicksRemaining"),
+            ReadInt32(root, "slowMoTicksRemaining"),
+            ReadInt32(root, "boostTicksRemaining"),
             pendingDirections);
         restored.ValidateRestoredProductionState();
         return restored;
