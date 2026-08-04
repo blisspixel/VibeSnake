@@ -112,7 +112,8 @@ public sealed partial class SnakeRun
                 "segmentDetachObstacleTicks"),
             SegmentDetachMaxSegments: ReadInt32(
                 configElement,
-                "segmentDetachMaxSegments"));
+                "segmentDetachMaxSegments"),
+            EnableNearMiss: ReadOptionalBoolean(configElement, "enableNearMiss"));
         config.Validate();
 
         var randomElement = RequireObject(root.GetProperty("random"), "random");
@@ -176,6 +177,22 @@ public sealed partial class SnakeRun
 
     private static int ReadInt32(JsonElement parent, string propertyName) =>
         parent.GetProperty(propertyName).GetInt32();
+
+    private static bool ReadOptionalBoolean(JsonElement parent, string propertyName)
+    {
+        if (!parent.TryGetProperty(propertyName, out var element))
+        {
+            return false;
+        }
+
+        if (element.ValueKind is not (JsonValueKind.True or JsonValueKind.False))
+        {
+            throw new InvalidDataException(
+                $"The {propertyName} value must be a boolean.");
+        }
+
+        return element.GetBoolean();
+    }
 
     private static string ReadString(JsonElement parent, string propertyName) =>
         parent.GetProperty(propertyName).GetString()

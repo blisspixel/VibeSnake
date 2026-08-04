@@ -27,7 +27,9 @@ public sealed partial class SnakeRun
     private readonly HashSet<GridPoint> _detachedOccupied;
     private readonly Queue<Direction> _pendingDirections;
     private readonly Pcg32 _random;
+    private readonly NearMissDetector _nearMiss = new();
     private readonly ulong? _masterSeed;
+    private int _sessionNearMisses;
 
     private SnakeRun(
         RunConfig config,
@@ -190,6 +192,11 @@ public sealed partial class SnakeRun
     public int ComboCount { get; private set; }
 
     public double ComboMultiplier => CalculateComboMultiplier(ComboCount);
+
+    /// <summary>
+    /// Rewarded near-miss events in the current run (warnings excluded).
+    /// </summary>
+    public int SessionNearMisses => _sessionNearMisses;
 
     public int TicksSinceLastFood { get; private set; }
 
@@ -445,6 +452,7 @@ public sealed partial class SnakeRun
 
         Tick = checked(Tick + 1);
         AdvanceComboClock();
+        _nearMiss.AdvanceTicks(1);
         var events = RunEvent.None;
         AdvancePowerLifecycle(ref events, orderedEvents);
         ApplyMagnetPull();
@@ -536,6 +544,8 @@ public sealed partial class SnakeRun
 
         if (ateFood)
         {
+            // Capture hunger before the eat reset so clutch uses pre-meal remaining.
+            var hungerBeforeEat = HungerTicksRemaining;
             var points = CalculateFoodPoints(_body.Count);
             var awardedPoints = (int)Math.Min((long)points, MaximumScore - (long)Score);
             Score += awardedPoints;
@@ -552,6 +562,8 @@ public sealed partial class SnakeRun
                 new RunEventDetail(
                     RunEventKind.HungerReset,
                     Value: _config.StarvationTicks));
+
+            ApplyFoodNearMisses(hungerBeforeEat, orderedEvents);
 
             if (!grows)
             {
@@ -597,6 +609,10 @@ public sealed partial class SnakeRun
             }
 
             ResolveStarvation(nextHead, ref events, orderedEvents);
+            if (Status == RunStatus.Running)
+            {
+                ApplyBodyNearMiss(orderedEvents);
+            }
         }
 
         // Collect after movement settles so Segment Detach sees the post-move body,
@@ -607,6 +623,82 @@ public sealed partial class SnakeRun
         }
 
         return Result(events, orderedEvents);
+    }
+
+    private void ApplyBodyNearMiss(List<RunEventDetail> orderedEvents)
+    {
+        if (!_config.EnableNearMiss)
+        {
+            return;
+        }
+
+        var result = _nearMiss.CheckBodyProximity(Head, _occupied, _body.Count);
+        if (result is null)
+        {
+            return;
+        }
+
+        ApplyNearMissResult(result.Value, orderedEvents);
+    }
+
+    private void ApplyFoodNearMisses(
+        int hungerBeforeEat,
+        List<RunEventDetail> orderedEvents)
+    {
+        if (!_config.EnableNearMiss)
+        {
+            return;
+        }
+
+        var clutch = _nearMiss.CheckClutchEat(hungerBeforeEat);
+        if (clutch is not null)
+        {
+            ApplyNearMissResult(clutch.Value, orderedEvents);
+        }
+
+        var style = _nearMiss.CheckStylePoints(HasBoost);
+        if (style is not null)
+        {
+            ApplyNearMissResult(style.Value, orderedEvents);
+        }
+    }
+
+    private void ApplyNearMissResult(
+        NearMissEvent nearMissEvent,
+        List<RunEventDetail> orderedEvents)
+    {
+        if (nearMissEvent.IsWarning)
+        {
+            orderedEvents.Add(
+                new RunEventDetail(
+                    RunEventKind.NearMiss,
+                    Position: nearMissEvent.Position,
+                    Value: 0));
+            return;
+        }
+
+        // Multiplier uses events already in the window; this event is tracked after award.
+        var multiplier = _nearMiss.GetComboMultiplier();
+        var rawBonus = nearMissEvent.ScoreBonus * multiplier;
+        var bonus = (int)Math.Min(
+            (long)Math.Floor(rawBonus + 1e-9),
+            MaximumScore - (long)Score);
+        if (bonus > 0)
+        {
+            Score += bonus;
+            orderedEvents.Add(
+                new RunEventDetail(
+                    RunEventKind.ScoreChanged,
+                    Value: bonus));
+        }
+
+        orderedEvents.Add(
+            new RunEventDetail(
+                RunEventKind.NearMiss,
+                Position: nearMissEvent.Position,
+                Value: bonus));
+        _nearMiss.TrackEvent(nearMissEvent);
+        _sessionNearMisses = checked(_sessionNearMisses + 1);
     }
 
     public RunSnapshot GetSnapshot()
@@ -695,6 +787,13 @@ public sealed partial class SnakeRun
             writer.WriteNumber(
                 "segmentDetachMaxSegments",
                 _config.SegmentDetachMaxSegments);
+            // Omit false to keep legacy canonical hashes stable while the flag
+            // defaults off until shared fixtures regenerate with near-miss.
+            if (_config.EnableNearMiss)
+            {
+                writer.WriteBoolean("enableNearMiss", true);
+            }
+
             writer.WriteEndObject();
 
             writer.WriteNumber("tick", Tick);

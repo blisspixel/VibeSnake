@@ -66,9 +66,35 @@ internal readonly record struct StepFeedback(AudioCue? Cue, string? Caption)
                 $"{PowerPresentation.ShortName(spawned)} SIGNAL DETECTED");
         }
 
+        if (TryNearMissCaption(events, out var nearMissCaption))
+        {
+            return new StepFeedback(AudioCue.Food, nearMissCaption);
+        }
+
         return events.Any(detail => detail.Kind == RunEventKind.AteFood)
             ? new StepFeedback(AudioCue.Food, null)
             : default;
+    }
+
+    private static bool TryNearMissCaption(
+        IReadOnlyList<RunEventDetail> events,
+        out string caption)
+    {
+        foreach (var detail in events)
+        {
+            if (detail.Kind != RunEventKind.NearMiss || detail.Value is null or 0)
+            {
+                continue;
+            }
+
+            caption = detail.Value >= 2
+                ? $"+{detail.Value} THREADING THE NEEDLE!"
+                : $"+{detail.Value} CLOSE CALL!";
+            return true;
+        }
+
+        caption = string.Empty;
+        return false;
     }
 
     private static string ActivationCaption(PowerKind power) => power switch

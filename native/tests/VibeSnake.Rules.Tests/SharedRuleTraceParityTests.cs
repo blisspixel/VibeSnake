@@ -156,6 +156,7 @@ public sealed class SharedRuleTraceParityTests
         RunEventKind.HungerReset => "hunger_reset",
         RunEventKind.Died => "died",
         RunEventKind.Won => "won",
+        RunEventKind.NearMiss => "near_miss",
         _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, "Unknown event kind."),
     };
 

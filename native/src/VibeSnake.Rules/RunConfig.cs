@@ -18,7 +18,8 @@ public sealed record RunConfig(
     int MagnetDurationTicks = 120,
     int GluttonyDurationTicks = 100,
     int SegmentDetachObstacleTicks = 200,
-    int SegmentDetachMaxSegments = 5)
+    int SegmentDetachMaxSegments = 5,
+    bool EnableNearMiss = false)
 {
     public const int RulesTickMilliseconds = 50;
     public const int MaximumGridDimension = 4_096;

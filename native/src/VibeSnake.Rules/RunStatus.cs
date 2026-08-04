@@ -49,6 +49,7 @@ public enum RunEventKind : byte
     PowerConsumed = 12,
     PowerDiscarded = 13,
     CollisionPrevented = 14,
+    NearMiss = 15,
 }
 
 public readonly record struct RunEventDetail(
