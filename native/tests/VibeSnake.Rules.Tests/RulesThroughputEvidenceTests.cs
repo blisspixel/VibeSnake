@@ -1,0 +1,92 @@
+using System.Diagnostics;
+using System.Text.Json;
+
+namespace VibeSnake.Rules.Tests;
+
+/// <summary>
+/// Records pure rules throughput evidence for the 0.3 technology decision gate.
+/// These numbers are host-dependent and do not claim presentation frame times,
+/// declared-hardware p95, or product-feel acceptance.
+/// </summary>
+public sealed class RulesThroughputEvidenceTests
+{
+    private const int StepBudget = 50_000;
+    private const double MinimumStepsPerSecond = 1_000.0;
+
+    private static readonly Direction[] TurnPattern =
+    [
+        Direction.Up,
+        Direction.Right,
+        Direction.Down,
+        Direction.Left,
+    ];
+
+    [Fact]
+    public void Records_rules_throughput_evidence_for_decision_gate()
+    {
+        var createWatch = Stopwatch.StartNew();
+        var run = SnakeRun.Create(42UL);
+        createWatch.Stop();
+
+        var stepWatch = Stopwatch.StartNew();
+        var steps = 0;
+        var restarts = 0;
+        var patternIndex = 0;
+        while (steps < StepBudget)
+        {
+            if (run.Status != RunStatus.Running)
+            {
+                run = run.Restart(checked(42UL + (ulong)restarts + 1UL));
+                restarts++;
+            }
+
+            run.QueueDirection(TurnPattern[patternIndex % TurnPattern.Length]);
+            patternIndex++;
+            run.Step();
+            steps++;
+        }
+
+        stepWatch.Stop();
+
+        var elapsedSeconds = Math.Max(stepWatch.Elapsed.TotalSeconds, 1e-9);
+        var stepsPerSecond = steps / elapsedSeconds;
+        var evidence = new
+        {
+            schema_version = 1,
+            kind = "rules-throughput-evidence-v1",
+            ruleset_id = SnakeRun.RulesetId,
+            rules_version = SnakeRun.RulesVersion,
+            step_budget = StepBudget,
+            steps_executed = steps,
+            restarts,
+            create_milliseconds = createWatch.Elapsed.TotalMilliseconds,
+            step_milliseconds = stepWatch.Elapsed.TotalMilliseconds,
+            steps_per_second = stepsPerSecond,
+            minimum_steps_per_second_floor = MinimumStepsPerSecond,
+            notes = new[]
+            {
+                "Host-dependent pure rules measurement only.",
+                "Does not measure Godot presentation frame times.",
+                "Does not claim declared-hardware p50/p95/p99 acceptance.",
+            },
+        };
+
+        var outputDirectory = Path.GetFullPath("TestResults/native");
+        Directory.CreateDirectory(outputDirectory);
+        var path = Path.Combine(outputDirectory, "rules_throughput.json");
+        File.WriteAllText(
+            path,
+            JsonSerializer.Serialize(
+                evidence,
+                new JsonSerializerOptions { WriteIndented = true }) + "\n");
+
+        Assert.True(
+            stepsPerSecond >= MinimumStepsPerSecond,
+            $"Rules throughput {stepsPerSecond:F1} steps/s is below the "
+                + $"conservative CI floor of {MinimumStepsPerSecond:F0} steps/s. "
+                + $"Evidence: {path}");
+        Assert.True(File.Exists(path));
+        Assert.True(createWatch.Elapsed.TotalMilliseconds >= 0.0);
+        Assert.Equal(StepBudget, steps);
+    }
+}
