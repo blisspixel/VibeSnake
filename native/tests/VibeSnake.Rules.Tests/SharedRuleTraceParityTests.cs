@@ -146,19 +146,8 @@ public sealed class SharedRuleTraceParityTests
         detail.Value,
         detail.Cause is { } cause ? NormalizeDeathCause(cause) : null);
 
-    private static string NormalizeEventKind(RunEventKind kind) => kind switch
-    {
-        RunEventKind.DirectionChanged => "direction_changed",
-        RunEventKind.Moved => "moved",
-        RunEventKind.Wrapped => "wrapped",
-        RunEventKind.AteFood => "ate_food",
-        RunEventKind.ScoreChanged => "score_changed",
-        RunEventKind.HungerReset => "hunger_reset",
-        RunEventKind.Died => "died",
-        RunEventKind.Won => "won",
-        RunEventKind.NearMiss => "near_miss",
-        _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, "Unknown event kind."),
-    };
+    private static string NormalizeEventKind(RunEventKind kind) =>
+        RulesEventCatalog.ToWireName(kind);
 
     private static string? NormalizeDeathCause(DeathCause cause) => cause switch
     {

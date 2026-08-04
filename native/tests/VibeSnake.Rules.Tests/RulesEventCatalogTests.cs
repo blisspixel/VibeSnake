@@ -1,0 +1,30 @@
+namespace VibeSnake.Rules.Tests;
+
+public sealed class RulesEventCatalogTests
+{
+    [Fact]
+    public void Catalog_covers_every_defined_event_kind_exactly_once()
+    {
+        var defined = Enum.GetValues<RunEventKind>();
+        Assert.Equal(defined.Length, RulesEventCatalog.OrderedKinds.Count);
+        Assert.Equal(
+            defined.OrderBy(kind => (byte)kind),
+            RulesEventCatalog.OrderedKinds.OrderBy(kind => (byte)kind));
+        Assert.Equal(
+            RulesEventCatalog.OrderedKinds.Count,
+            RulesEventCatalog.OrderedKinds.Distinct().Count());
+    }
+
+    [Fact]
+    public void Wire_names_are_stable_snake_case_identifiers()
+    {
+        foreach (var kind in RulesEventCatalog.OrderedKinds)
+        {
+            Assert.True(RulesEventCatalog.IsKnown(kind));
+            var wire = RulesEventCatalog.ToWireName(kind);
+            Assert.Matches("^[a-z]+(_[a-z]+)*$", wire);
+        }
+
+        Assert.Equal("near_miss", RulesEventCatalog.ToWireName(RunEventKind.NearMiss));
+    }
+}
