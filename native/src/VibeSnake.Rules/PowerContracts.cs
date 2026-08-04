@@ -7,6 +7,7 @@ public enum PowerKind : byte
     LastStand = 3,
     SlowMo = 4,
     Boost = 5,
+    Magnet = 6,
 }
 
 public sealed record PowerPickup

@@ -21,6 +21,7 @@ public sealed record RunSnapshot(
     int LastStandRecoveryTicksRemaining,
     int SlowMoTicksRemaining,
     int BoostTicksRemaining,
+    int MagnetTicksRemaining,
     string StateHash)
 {
     public GridPoint Head => Body[^1];
@@ -34,6 +35,8 @@ public sealed record RunSnapshot(
     public bool HasSlowMo => SlowMoTicksRemaining > 0;
 
     public bool HasBoost => BoostTicksRemaining > 0;
+
+    public bool HasMagnet => MagnetTicksRemaining > 0;
 
     /// <summary>
     /// Effective rules-tick scale as numerator/denominator: Slow-Mo multiplies by 2,

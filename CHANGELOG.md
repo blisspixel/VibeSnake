@@ -12,6 +12,7 @@ Notable player-facing and engineering changes are recorded here. The project is 
 - Five shared Python-to-C# Last Stand parity fixtures (`last_stand_rules_v1.json`) and CI check via `python -m vibesnake.qa.shared_last_stand_traces --check`.
 - [Migration ownership map](docs/engineering/MIGRATION_MAP.md) for V030-12.
 - Native Slow-Mo and Boost cadence modifiers with composable snapshot scale and fixed-step movement invariance.
+- Native Magnet food attraction (one-cell pull toward the head each rules step, blocked by body and pickups).
 
 ### Changed
 

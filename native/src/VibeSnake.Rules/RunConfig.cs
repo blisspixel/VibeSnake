@@ -14,7 +14,8 @@ public sealed record RunConfig(
     int PhaseShiftDurationTicks = 100,
     int LastStandRecoveryTicks = 60,
     int SlowMoDurationTicks = 120,
-    int BoostDurationTicks = 80)
+    int BoostDurationTicks = 80,
+    int MagnetDurationTicks = 120)
 {
     public const int RulesTickMilliseconds = 50;
     public const int MaximumGridDimension = 4_096;
@@ -28,6 +29,7 @@ public sealed record RunConfig(
     public const int MinimumLastStandRecoveryTicks = 1;
     public const int MinimumSlowMoDurationTicks = 2;
     public const int MinimumBoostDurationTicks = 2;
+    public const int MinimumMagnetDurationTicks = 2;
 
     internal void Validate()
     {
@@ -140,6 +142,13 @@ public sealed record RunConfig(
             || BoostDurationTicks > MaximumConfiguredTicks)
         {
             throw new ArgumentOutOfRangeException(nameof(BoostDurationTicks));
+        }
+
+        if (
+            MagnetDurationTicks < MinimumMagnetDurationTicks
+            || MagnetDurationTicks > MaximumConfiguredTicks)
+        {
+            throw new ArgumentOutOfRangeException(nameof(MagnetDurationTicks));
         }
     }
 }

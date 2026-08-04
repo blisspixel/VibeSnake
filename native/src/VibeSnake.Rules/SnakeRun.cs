@@ -46,6 +46,7 @@ public sealed partial class SnakeRun
         int lastStandRecoveryTicksRemaining = 0,
         int slowMoTicksRemaining = 0,
         int boostTicksRemaining = 0,
+        int magnetTicksRemaining = 0,
         IEnumerable<Direction>? pendingDirections = null)
     {
         config.Validate();
@@ -73,6 +74,7 @@ public sealed partial class SnakeRun
         LastStandRecoveryTicksRemaining = lastStandRecoveryTicksRemaining;
         SlowMoTicksRemaining = slowMoTicksRemaining;
         BoostTicksRemaining = boostTicksRemaining;
+        MagnetTicksRemaining = magnetTicksRemaining;
 
         if (!Enum.IsDefined(direction))
         {
@@ -165,6 +167,8 @@ public sealed partial class SnakeRun
 
     public int BoostTicksRemaining { get; private set; }
 
+    public int MagnetTicksRemaining { get; private set; }
+
     public bool HasShield => ShieldTicksRemaining > 0;
 
     public bool HasPhaseShift => PhaseShiftTicksRemaining > 0;
@@ -174,6 +178,8 @@ public sealed partial class SnakeRun
     public bool HasSlowMo => SlowMoTicksRemaining > 0;
 
     public bool HasBoost => BoostTicksRemaining > 0;
+
+    public bool HasMagnet => MagnetTicksRemaining > 0;
 
     public int MovementCadenceNumerator => HasSlowMo ? 2 : 1;
 
@@ -269,7 +275,8 @@ public sealed partial class SnakeRun
         bool lastStandHeld = false,
         int lastStandRecoveryTicksRemaining = 0,
         int slowMoTicksRemaining = 0,
-        int boostTicksRemaining = 0)
+        int boostTicksRemaining = 0,
+        int magnetTicksRemaining = 0)
     {
         return new SnakeRun(
             config,
@@ -291,7 +298,8 @@ public sealed partial class SnakeRun
             lastStandHeld,
             lastStandRecoveryTicksRemaining,
             slowMoTicksRemaining,
-            boostTicksRemaining);
+            boostTicksRemaining,
+            magnetTicksRemaining);
     }
 
     public bool QueueDirection(Direction direction)
@@ -347,6 +355,7 @@ public sealed partial class SnakeRun
         AdvanceComboClock();
         var events = RunEvent.None;
         AdvancePowerLifecycle(ref events, orderedEvents);
+        ApplyMagnetPull();
         var unwrappedHead = Head.Add(Direction.Offset());
         var nextHead = unwrappedHead.Wrap(_config.Width, _config.Height);
         var wrapped = nextHead != unwrappedHead;
@@ -511,6 +520,7 @@ public sealed partial class SnakeRun
             LastStandRecoveryTicksRemaining,
             SlowMoTicksRemaining,
             BoostTicksRemaining,
+            MagnetTicksRemaining,
             ComputeStateHash());
     }
 
@@ -561,6 +571,7 @@ public sealed partial class SnakeRun
             writer.WriteNumber("lastStandRecoveryTicks", _config.LastStandRecoveryTicks);
             writer.WriteNumber("slowMoDurationTicks", _config.SlowMoDurationTicks);
             writer.WriteNumber("boostDurationTicks", _config.BoostDurationTicks);
+            writer.WriteNumber("magnetDurationTicks", _config.MagnetDurationTicks);
             writer.WriteEndObject();
 
             writer.WriteNumber("tick", Tick);
@@ -580,6 +591,7 @@ public sealed partial class SnakeRun
                 LastStandRecoveryTicksRemaining);
             writer.WriteNumber("slowMoTicksRemaining", SlowMoTicksRemaining);
             writer.WriteNumber("boostTicksRemaining", BoostTicksRemaining);
+            writer.WriteNumber("magnetTicksRemaining", MagnetTicksRemaining);
 
             if (PowerPickup is { } powerPickup)
             {
@@ -724,20 +736,60 @@ public sealed partial class SnakeRun
             }
         }
 
-        if (BoostTicksRemaining <= 0)
+        if (BoostTicksRemaining > 0)
+        {
+            BoostTicksRemaining--;
+            if (BoostTicksRemaining == 0)
+            {
+                events |= RunEvent.PowerExpired;
+                orderedEvents.Add(
+                    new RunEventDetail(
+                        RunEventKind.PowerExpired,
+                        Power: PowerKind.Boost));
+            }
+        }
+
+        if (MagnetTicksRemaining <= 0)
         {
             return;
         }
 
-        BoostTicksRemaining--;
-        if (BoostTicksRemaining == 0)
+        MagnetTicksRemaining--;
+        if (MagnetTicksRemaining == 0)
         {
             events |= RunEvent.PowerExpired;
             orderedEvents.Add(
                 new RunEventDetail(
                     RunEventKind.PowerExpired,
-                    Power: PowerKind.Boost));
+                    Power: PowerKind.Magnet));
         }
+    }
+
+    private void ApplyMagnetPull()
+    {
+        if (!HasMagnet || Food is not { } food)
+        {
+            return;
+        }
+
+        var head = Head;
+        if (food == head)
+        {
+            return;
+        }
+
+        var dx = food.X == head.X ? 0 : (head.X > food.X ? 1 : -1);
+        var dy = food.Y == head.Y ? 0 : (head.Y > food.Y ? 1 : -1);
+        var candidate = new GridPoint(food.X + dx, food.Y + dy);
+        if (
+            !IsInBounds(candidate)
+            || _occupied.Contains(candidate)
+            || PowerPickup?.Position == candidate)
+        {
+            return;
+        }
+
+        Food = candidate;
     }
 
     private void ResolveStarvation(
@@ -919,6 +971,15 @@ public sealed partial class SnakeRun
                     new RunEventDetail(
                         RunEventKind.PowerActivated,
                         Value: BoostTicksRemaining,
+                        Power: pickup.Kind));
+                break;
+            case PowerKind.Magnet:
+                MagnetTicksRemaining = _config.MagnetDurationTicks;
+                events |= RunEvent.PowerActivated;
+                orderedEvents.Add(
+                    new RunEventDetail(
+                        RunEventKind.PowerActivated,
+                        Value: MagnetTicksRemaining,
                         Power: pickup.Kind));
                 break;
             default:
@@ -1174,6 +1235,18 @@ public sealed partial class SnakeRun
         {
             throw new ArgumentException(
                 "A second Boost pickup cannot coexist with an active Boost.",
+                nameof(PowerPickup));
+        }
+
+        if (MagnetTicksRemaining < 0 || MagnetTicksRemaining > _config.MagnetDurationTicks)
+        {
+            throw new ArgumentOutOfRangeException(nameof(MagnetTicksRemaining));
+        }
+
+        if (PowerPickup?.Kind == PowerKind.Magnet && HasMagnet)
+        {
+            throw new ArgumentException(
+                "A second Magnet pickup cannot coexist with an active Magnet.",
                 nameof(PowerPickup));
         }
     }

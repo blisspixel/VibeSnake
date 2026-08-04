@@ -1,6 +1,6 @@
 # Power-ups
 
-All nine power-ups are connected to normal runs in the Python reference and tested through the main `Game.update` boundary. Unless stated otherwise, collecting a duplicate type is prevented while that effect remains active. Different types can overlap. Shield, Phase Shift, Last Stand, Slow-Mo, and Boost are complete native C# power contracts; the remaining four powers remain Python-only during migration.
+All nine power-ups are connected to normal runs in the Python reference and tested through the main `Game.update` boundary. Unless stated otherwise, collecting a duplicate type is prevented while that effect remains active. Different types can overlap. Six powers are complete native C# contracts (Shield, Phase Shift, Last Stand, Slow-Mo, Boost, Magnet). Bait, Gluttony, and Segment Detach remain Python-only during migration.
 
 ## Gameplay contracts
 

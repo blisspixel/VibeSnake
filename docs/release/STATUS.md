@@ -6,7 +6,7 @@ Snapshot date: 2026-08-04
 
 Vibe Snake is a substantial, playable alpha with a distinctive audiovisual identity and a reliable engineering baseline on GitHub. The canonical repository is [blisspixel/VibeSnake](https://github.com/blisspixel/VibeSnake): a single `main` branch, open PR list kept empty, and green hosted CI on every push. All nine power-ups work end to end in the Python reference. Saves, schema migration, corruption protection, runtime configuration validation, and player preferences are implemented. The public checkout includes the full eight-station offline radio library (95 tracks), adaptive 4:3-first presentation, and a player path (`vibesnake play|update|status|doctor|version` plus `play.*` and install scripts). Continuous [player-latest](https://github.com/blisspixel/VibeSnake/releases/tag/player-latest) artifacts rebuild from `main`.
 
-The gated 1.0 target remains Godot 4 .NET with deterministic pure C# rules and first-class Windows, macOS, and Linux players. The native foundation builds, tests, exports, and smokes on hosted Windows, macOS, and Linux runners. Shield, Phase Shift, Last Stand, Slow-Mo, and Boost are complete native power contracts. The game is not release-ready: the other four powers, full native feature parity, pack export approval (inventory export-eligible count is still zero), and structured player validation remain.
+The gated 1.0 target remains Godot 4 .NET with deterministic pure C# rules and first-class Windows, macOS, and Linux players. The native foundation builds, tests, exports, and smokes on hosted Windows, macOS, and Linux runners. Six of nine powers are complete native contracts (Shield, Phase Shift, Last Stand, Slow-Mo, Boost, Magnet). Remaining: Bait, Gluttony, Segment Detach. Pack export approval and structured playtesting remain open.
 
 ## Verified quality baseline
 
@@ -48,7 +48,7 @@ The gated 1.0 target remains Godot 4 .NET with deterministic pure C# rules and f
 | AI spectator mode | Working | Ten built-in personalities plus JSON-loaded custom personalities. AI runs do not advance human progression. |
 | Radio | Public offline library | Eight stations and 95 original MP3 tracks ship under `assets/audio/radio/` with Apache-2.0 project intent. Prefix discovery assigns every track once. Native pack export still requires loudness, credit, and allowlist approval (`exportEligible` remains zero). |
 | Sound effects | Partial | Procedural Python and native fallbacks cover critical cues; authored SFX catalog and mix review remain. |
-| Power-ups | Python complete; native Shield, Phase Shift, Last Stand, Slow-Mo, Boost complete | All nine powers change real Python runs. Recovery and tempo powers are pure C#. Magnet, Bait, Gluttony, and Segment Detach remain unported. |
+| Power-ups | Python complete; native 6 of 9 | Shield, Phase Shift, Last Stand, Slow-Mo, Boost, and Magnet are pure C#. Bait, Gluttony, and Segment Detach remain unported. |
 | Adaptive difficulty | Not active | Removed unwired controller. Future policy requires deterministic integration, disclosure, opt-out, separate score categories, and evidence. |
 | Configuration | Working | Schema version 1 validates types and ranges; changes still require restart. |
 | Player CLI and updates | Working | `vibesnake play`, `update`, `status`, `doctor`, and `version`; `play.ps1` / `play.sh` / `play.bat`; install scripts; GitHub `main` fast-forward reinstall. |
