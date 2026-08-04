@@ -33,6 +33,7 @@ public enum RunEvent : ushort
     NearMiss = 4096,
     StarvationWarning = 8192,
     ComboExpired = 16384,
+    AchievementCandidate = 32768,
 }
 
 public enum RunEventKind : byte
@@ -55,6 +56,7 @@ public enum RunEventKind : byte
     NearMiss = 15,
     StarvationWarning = 16,
     ComboExpired = 17,
+    AchievementCandidate = 18,
 }
 
 public readonly record struct RunEventDetail(

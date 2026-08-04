@@ -26,6 +26,7 @@ public static class RulesEventCatalog
         RunEventKind.NearMiss,
         RunEventKind.StarvationWarning,
         RunEventKind.ComboExpired,
+        RunEventKind.AchievementCandidate,
     ];
 
     public static bool IsKnown(RunEventKind kind) =>
@@ -61,6 +62,7 @@ public static class RulesEventCatalog
     {
         RunEventKind.Died => 100,
         RunEventKind.Won => 95,
+        RunEventKind.AchievementCandidate => 92,
         RunEventKind.CollisionPrevented => 90,
         RunEventKind.PowerActivated => 80,
         RunEventKind.PowerConsumed => 75,
@@ -100,6 +102,7 @@ public static class RulesEventCatalog
         RunEventKind.NearMiss => "near_miss",
         RunEventKind.StarvationWarning => "starvation_warning",
         RunEventKind.ComboExpired => "combo_expired",
+        RunEventKind.AchievementCandidate => "achievement_candidate",
         _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, "Unknown event kind."),
     };
 }

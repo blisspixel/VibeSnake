@@ -26,6 +26,9 @@ public sealed class RulesEventCatalogTests
         }
 
         Assert.Equal("near_miss", RulesEventCatalog.ToWireName(RunEventKind.NearMiss));
+        Assert.Equal(
+            "achievement_candidate",
+            RulesEventCatalog.ToWireName(RunEventKind.AchievementCandidate));
     }
 
     [Fact]
