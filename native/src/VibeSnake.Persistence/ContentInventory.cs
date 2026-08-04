@@ -30,6 +30,13 @@ public sealed class ContentInventory
 
     public int ExportEligibleCount => Assets.Count(asset => asset.ExportEligible);
 
+    public long TotalBytes => Assets.Sum(asset => asset.Bytes);
+
+    public long ExportEligibleBytes =>
+        Assets.Where(asset => asset.ExportEligible).Sum(asset => asset.Bytes);
+
+    public ContentBudgetReport MeasureBudgets() => ContentBudgetReport.FromInventory(this);
+
     public static ContentInventory Parse(string json)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(json);

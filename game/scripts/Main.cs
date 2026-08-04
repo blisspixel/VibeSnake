@@ -1408,7 +1408,7 @@ public partial class Main : Node2D
             """;
 
         var content = new ContentService(ContentInventory.Parse(syntheticInventoryJson));
-        if (content.FileCount != 1 || content.ExportEligibleCount != 0)
+        if (content.FileCount != 1 || content.ExportEligibleCount != 0 || content.TotalBytes != 32)
         {
             throw new InvalidOperationException(
                 "Content service smoke expected one blocked synthetic inventory asset.");
@@ -1418,6 +1418,42 @@ public partial class Main : Node2D
         {
             throw new InvalidOperationException(
                 "Content service must deny packaging of non-exportEligible assets.");
+        }
+
+        var denied = content.ResolveForPackaging(blockedPath);
+        if (denied.Code != ContentResolveCode.NotExportEligible || denied.IsReady)
+        {
+            throw new InvalidOperationException(
+                "ResolveForPackaging must return NotExportEligible for blocked assets.");
+        }
+
+        var missing = content.ResolveForPackaging("missing/asset.bin");
+        if (missing.Code != ContentResolveCode.NotFound)
+        {
+            throw new InvalidOperationException(
+                "ResolveForPackaging must return NotFound for unknown assets.");
+        }
+
+        var invalid = content.ResolveForPackaging("../escape.bin");
+        if (invalid.Code != ContentResolveCode.InvalidPath)
+        {
+            throw new InvalidOperationException(
+                "ResolveForPackaging must reject path traversal.");
+        }
+
+        var budget = content.MeasureBudgets();
+        if (budget.ExportEligibleCount != 0
+            || budget.InventoryBytes != 32
+            || !budget.ExportEligibleWithinCoreCompressedBudget)
+        {
+            throw new InvalidOperationException(
+                "Content budget smoke contract failed for the synthetic inventory.");
+        }
+
+        if (content.ListByMediaTypePrefix("audio/").Count != 1)
+        {
+            throw new InvalidOperationException(
+                "Content service media-type listing smoke contract failed.");
         }
 
         if (TryResolveCheckoutInventoryPath(out var inventoryPath))
@@ -1433,6 +1469,13 @@ public partial class Main : Node2D
             {
                 throw new InvalidOperationException(
                     "Live content inventory must deny packaging of non-exportEligible radio assets.");
+            }
+
+            var liveBudget = live.MeasureBudgets();
+            if (liveBudget.ExportEligibleCount != 0 || liveBudget.InventoryBytes <= 0)
+            {
+                throw new InvalidOperationException(
+                    "Live content inventory budget report must keep eligibility at zero.");
             }
         }
     }
