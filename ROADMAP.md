@@ -434,6 +434,7 @@ Complete the pure C# simulation boundary so gameplay defects can be reproduced, 
 - Make feedback and analytics consume events without modifying simulation state.
 - Define event ordering when several events occur in one step.
 - Test that retries or redraws never duplicate events.
+- **Progress (not closed):** `RulesEventCatalog` is the closed wire-name owner; `StarvationWarning` is emitted once at the warning band; `NearMiss` awards are opt-in via `EnableNearMiss`; food precedes near-miss in the same step. Achievement-candidate events and combo-expire events remain open.
 
 #### V040-06: add replay schema version 1
 
