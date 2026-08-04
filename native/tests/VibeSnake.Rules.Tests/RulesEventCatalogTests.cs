@@ -52,4 +52,27 @@ public sealed class RulesEventCatalogTests
                 kind + " must have a positive presentation priority.");
         }
     }
+
+    [Fact]
+    public void SelectPrimaryKind_returns_the_highest_priority_kind()
+    {
+        Assert.Null(RulesEventCatalog.SelectPrimaryKind([]));
+        Assert.Equal(
+            RunEventKind.Died,
+            RulesEventCatalog.SelectPrimaryKind(
+            [
+                RunEventKind.Moved,
+                RunEventKind.AteFood,
+                RunEventKind.Died,
+                RunEventKind.PowerSpawned,
+            ]));
+        Assert.Equal(
+            RunEventKind.StarvationWarning,
+            RulesEventCatalog.SelectPrimaryKind(
+            [
+                RunEventKind.NearMiss,
+                RunEventKind.StarvationWarning,
+                RunEventKind.AteFood,
+            ]));
+    }
 }

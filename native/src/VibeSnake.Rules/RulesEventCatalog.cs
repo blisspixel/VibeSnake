@@ -32,6 +32,28 @@ public static class RulesEventCatalog
         OrderedKinds.Contains(kind);
 
     /// <summary>
+    /// Returns the highest-priority event kind present in <paramref name="kinds"/>,
+    /// or null when the sequence is empty.
+    /// </summary>
+    public static RunEventKind? SelectPrimaryKind(IEnumerable<RunEventKind> kinds)
+    {
+        ArgumentNullException.ThrowIfNull(kinds);
+        RunEventKind? best = null;
+        var bestPriority = int.MinValue;
+        foreach (var kind in kinds)
+        {
+            var priority = PresentationPriority(kind);
+            if (priority > bestPriority)
+            {
+                bestPriority = priority;
+                best = kind;
+            }
+        }
+
+        return best;
+    }
+
+    /// <summary>
     /// Declared relative priority for presentation caption selection when multiple
     /// events share a step. Higher values win. Not a substitute for ordered event lists.
     /// </summary>
