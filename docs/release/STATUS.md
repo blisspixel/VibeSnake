@@ -83,9 +83,9 @@ Earlier 0.2.0 foundations (nine powers, save schemas, QA laboratory, pure C# Shi
 
 ## Release blockers
 
-1. Complete for rules and shared fixtures: all nine powers have pure C# contracts, Godot presentation, and shared parity coverage; delta reduction is automated for movement prefixes.
+1. Complete for rules, shared fixtures, and Godot presentation of all nine powers; delta reduction and inventory export locks are automated.
 2. Complete the native vertical slice with physical-controller and hot-plug proof, remapping, accessible presentation, authored audio, scaling feel review, and reviewed UX parity.
-3. Expand artifact smokes through user data, controller, audio failure, scaling, and lifecycle paths on all three platforms with retained evidence.
+3. Expand artifact smokes through controller, audio failure, scaling, and lifecycle paths on all three platforms with retained evidence; inventory exportEligible remains zero by gate.
 4. Qualify the first real core and radio pack manifests (export eligibility is still zero): loudness, credits, allowlists, and pack approval for selected public assets.
 5. Replace repository-relative asset paths with the target content service and prove allowlisted artifact contents.
 6. Complete deterministic rules port and expand QA to powers, DDA, AI, persistence, replays, presentation, and reliability campaigns.
