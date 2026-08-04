@@ -113,6 +113,45 @@ foreach ($file in $files) {
     }
 }
 
+$inventoryPath = Join-Path $repositoryRoot "config/content_inventory.json"
+if (-not (Test-Path -LiteralPath $inventoryPath -PathType Leaf)) {
+    throw "Content inventory is required for artifact inspection: $inventoryPath"
+}
+$inventory = Get-Content -LiteralPath $inventoryPath -Raw | ConvertFrom-Json
+if ([int]$inventory.schemaVersion -ne 1) {
+    throw "Content inventory schemaVersion must be 1 for artifact inspection."
+}
+$blockedInventoryPaths = [System.Collections.Generic.HashSet[string]]::new(
+    [StringComparer]::OrdinalIgnoreCase)
+$exportEligibleCount = 0
+foreach ($asset in @($inventory.assets)) {
+    $assetPath = ([string]$asset.path).Replace("\", "/")
+    if ([string]::IsNullOrWhiteSpace($assetPath) -or $assetPath.Contains("..") -or [System.IO.Path]::IsPathRooted($assetPath)) {
+        throw "Content inventory contains an unsafe path: $assetPath"
+    }
+    if ([bool]$asset.exportEligible) {
+        $exportEligibleCount++
+    } else {
+        [void]$blockedInventoryPaths.Add($assetPath)
+    }
+}
+if ($exportEligibleCount -ne 0) {
+    # Until pack approval lands, refuse to inspect exports that would claim eligibility.
+    # When eligibility becomes non-zero, this branch must be replaced with exact allowlist matching.
+    throw "Content inventory exportEligible count is $exportEligibleCount; pack approval and allowlist wiring are required before non-zero eligibility."
+}
+foreach ($entry in $fileEntries) {
+    $normalizedArtifactPath = ([string]$entry.path).Replace("\", "/")
+    foreach ($blockedPath in $blockedInventoryPaths) {
+        if (
+            $normalizedArtifactPath -eq $blockedPath -or
+            $normalizedArtifactPath.EndsWith("/" + $blockedPath, [StringComparison]::OrdinalIgnoreCase)
+        ) {
+            throw "Artifact contains inventory asset that is not exportEligible: $blockedPath"
+        }
+    }
+}
+
 $relativePaths = @($fileEntries | ForEach-Object { [string]$_.path })
 switch ($PlatformId) {
     "windows-x64" {
