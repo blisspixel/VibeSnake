@@ -42,6 +42,7 @@ public static class RulesEventCatalog
         RunEventKind.CollisionPrevented => 90,
         RunEventKind.PowerActivated => 80,
         RunEventKind.PowerConsumed => 75,
+        RunEventKind.PowerCollected => 72,
         RunEventKind.PowerExpired => 70,
         RunEventKind.PowerDiscarded => 65,
         RunEventKind.PowerSpawned => 60,

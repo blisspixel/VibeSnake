@@ -41,4 +41,15 @@ public sealed class RulesEventCatalogTests
             RulesEventCatalog.PresentationPriority(RunEventKind.Died)
             > RulesEventCatalog.PresentationPriority(RunEventKind.NearMiss));
     }
+
+    [Fact]
+    public void Presentation_priority_is_positive_for_every_catalog_kind()
+    {
+        foreach (var kind in RulesEventCatalog.OrderedKinds)
+        {
+            Assert.True(
+                RulesEventCatalog.PresentationPriority(kind) > 0,
+                kind + " must have a positive presentation priority.");
+        }
+    }
 }
