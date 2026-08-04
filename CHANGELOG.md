@@ -21,6 +21,7 @@ Notable player-facing and engineering changes are recorded here. The project is 
 - Host-dependent pure rules throughput evidence (`rules_throughput.json`) with a conservative CI floor for the technology decision gate (presentation frame times remain unmeasured).
 - Expanded [migration map](docs/engineering/MIGRATION_MAP.md) with save, replay, pack, and ruleset data-migration procedures plus a dual-runtime freeze checklist.
 - Published [user-data directory contracts](docs/engineering/USER_DATA.md) for Python and native platform roots, layouts, recovery, and separation rules.
+- Python QA contracts for the remaining-power shared fixture (`test_shared_remaining_power_traces.py`).
 
 ### Changed
 
