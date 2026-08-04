@@ -71,7 +71,7 @@ public sealed class RulesThroughputEvidenceTests
             },
         };
 
-        var outputDirectory = Path.GetFullPath("TestResults/native");
+        var outputDirectory = ResolveEvidenceDirectory();
         Directory.CreateDirectory(outputDirectory);
         var path = Path.Combine(outputDirectory, "rules_throughput.json");
         File.WriteAllText(
@@ -88,5 +88,29 @@ public sealed class RulesThroughputEvidenceTests
         Assert.True(File.Exists(path));
         Assert.True(createWatch.Elapsed.TotalMilliseconds >= 0.0);
         Assert.Equal(StepBudget, steps);
+    }
+
+    private static string ResolveEvidenceDirectory()
+    {
+        var configured = Environment.GetEnvironmentVariable("VIBESNAKE_EVIDENCE_DIR");
+        if (!string.IsNullOrWhiteSpace(configured))
+        {
+            return Path.GetFullPath(configured);
+        }
+
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+        while (directory is not null)
+        {
+            var roadmap = Path.Combine(directory.FullName, "ROADMAP.md");
+            var solution = Path.Combine(directory.FullName, "native", "VibeSnake.slnx");
+            if (File.Exists(roadmap) && File.Exists(solution))
+            {
+                return Path.Combine(directory.FullName, "TestResults", "native");
+            }
+
+            directory = directory.Parent;
+        }
+
+        return Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "TestResults", "native"));
     }
 }
