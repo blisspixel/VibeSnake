@@ -118,7 +118,7 @@ internal sealed partial class ProceduralCuePlayer : AudioStreamPlayer
 
     private readonly Dictionary<AudioCue, AudioStreamWav> _streams = [];
 
-    public void PlayCue(AudioCue cue)
+    public void PlayCue(AudioCue cue, float volumeLinear = 1.0f)
     {
         var specification = CueSpecification.For(cue);
         if (!_streams.TryGetValue(cue, out var stream))
@@ -137,7 +137,12 @@ internal sealed partial class ProceduralCuePlayer : AudioStreamPlayer
         Stop();
         Bus = specification.Bus;
         Stream = stream;
-        Play();
+        var clamped = Math.Clamp(volumeLinear, 0.0f, 1.0f);
+        VolumeDb = clamped <= 0.0001f ? -80.0f : Mathf.LinearToDb(clamped);
+        if (clamped > 0.0001f)
+        {
+            Play();
+        }
     }
 
     public void ValidateCue(AudioCue cue)

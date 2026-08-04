@@ -483,7 +483,9 @@ public partial class Main : Node2D
 
     private void PlayCue(AudioCue cue)
     {
-        _cuePlayer?.PlayCue(cue);
+        // Bus gains (Master + SFX/UI) already apply mute and volume. Keep the
+        // stream player at full linear gain so levels are not attenuated twice.
+        _cuePlayer?.PlayCue(cue, volumeLinear: 1.0f);
     }
 
     private void StartRun()
