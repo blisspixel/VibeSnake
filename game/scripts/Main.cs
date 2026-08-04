@@ -876,6 +876,7 @@ public partial class Main : Node2D
             {
                 _cuePlayer?.ValidateCue(cue);
             }
+            ExecuteContentServiceSmokeTest();
             ExecuteStepFeedbackSmokeTest();
             var first = SnakeRun.Create(SmokeSeed);
             var replay = SnakeRun.Create(SmokeSeed);
@@ -1242,6 +1243,58 @@ public partial class Main : Node2D
         _replayOperation = null;
         _replayOperationKind = null;
         _skipReplayShutdownDrain = false;
+    }
+
+    private static void ExecuteContentServiceSmokeTest()
+    {
+        var inventoryPath = ResolveCheckoutInventoryPath();
+        var content = ContentService.LoadInventoryFile(inventoryPath);
+        if (content.ExportEligibleCount != 0)
+        {
+            throw new InvalidOperationException(
+                "Content service smoke expected zero exportEligible assets until pack approval.");
+        }
+
+        if (content.MayPackage("audio/radio/ambient_graceful_laminar.mp3"))
+        {
+            throw new InvalidOperationException(
+                "Content service must deny packaging of non-exportEligible radio assets.");
+        }
+    }
+
+    private static string ResolveCheckoutInventoryPath()
+    {
+        string[] candidates =
+        [
+            System.IO.Path.GetFullPath(
+                System.IO.Path.Combine(
+                    System.IO.Directory.GetCurrentDirectory(),
+                    "config",
+                    "content_inventory.json")),
+            System.IO.Path.GetFullPath(
+                System.IO.Path.Combine(
+                    System.IO.Directory.GetCurrentDirectory(),
+                    "..",
+                    "config",
+                    "content_inventory.json")),
+            System.IO.Path.GetFullPath(
+                System.IO.Path.Combine(
+                    ProjectSettings.GlobalizePath("res://"),
+                    "..",
+                    "config",
+                    "content_inventory.json")),
+        ];
+
+        foreach (var candidate in candidates)
+        {
+            if (System.IO.File.Exists(candidate))
+            {
+                return candidate;
+            }
+        }
+
+        throw new InvalidOperationException(
+            "Content service smoke could not locate config/content_inventory.json from the checkout.");
     }
 
     private static void ExecuteStepFeedbackSmokeTest()

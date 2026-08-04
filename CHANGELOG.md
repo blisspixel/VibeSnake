@@ -25,6 +25,7 @@ Notable player-facing and engineering changes are recorded here. The project is 
 - Native content-inventory gate that keeps `exportEligible` at zero until pack approval, and rejects rooted or traversing inventory paths.
 - Pure `ContentInventory` reader in Persistence for allowlist queries, with path-traversal rejection and public inventory parse coverage.
 - Native artifact inspection refuses inventory path traversal and blocks packaging of assets that are not `exportEligible`, with shared PowerShell policy coverage.
+- Godot `ContentService` smoke loads the published inventory and denies packaging of non-exportEligible assets.
 
 ### Changed
 
