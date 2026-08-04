@@ -66,14 +66,15 @@ internal readonly record struct StepFeedback(AudioCue? Cue, string? Caption)
                 $"{PowerPresentation.ShortName(spawned)} SIGNAL DETECTED");
         }
 
-        if (TryNearMissCaption(events, out var nearMissCaption))
-        {
-            return new StepFeedback(AudioCue.Food, nearMissCaption);
-        }
-
+        // Starvation pressure outranks near-miss style captions (catalog priority).
         if (events.Any(detail => detail.Kind == RunEventKind.StarvationWarning))
         {
             return new StepFeedback(AudioCue.Pause, "STARVATION WARNING");
+        }
+
+        if (TryNearMissCaption(events, out var nearMissCaption))
+        {
+            return new StepFeedback(AudioCue.Food, nearMissCaption);
         }
 
         return events.Any(detail => detail.Kind == RunEventKind.AteFood)
