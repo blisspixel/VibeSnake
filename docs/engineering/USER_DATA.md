@@ -38,6 +38,7 @@ Notes:
 | `replays/*.vibesnake-replay.json` | `ReplayStore` | Individual verified replay files |
 | `preferences.json` | `PreferencesStore` | Schema 2 multi-bus audio and accessibility settings |
 | `diagnostics/` | `LocalDiagnostics` | Offline crash reports with path sanitization |
+| `input/*.input_bindings.json` | `InputBindingsStore` | Logical action bindings by device class |
 
 Future native-owned rows (not yet writers in shipping code):
 
