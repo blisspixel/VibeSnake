@@ -243,6 +243,14 @@ public sealed partial class SnakeRun
 
     public int MovementCadenceDenominator => HasBoost ? 2 : 1;
 
+    /// <summary>
+    /// Wall-clock milliseconds between presentation rules steps for the live run.
+    /// </summary>
+    public int EffectiveRulesStepMilliseconds =>
+        RulesCadenceClock.StepIntervalMilliseconds(
+            MovementCadenceNumerator,
+            MovementCadenceDenominator);
+
     internal long GetNextStepVerificationWorkUnits()
     {
         if (Status != RunStatus.Running)

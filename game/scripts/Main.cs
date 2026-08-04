@@ -19,6 +19,7 @@ public partial class Main : Node2D
     private ulong _nextSeed = 1UL;
     private bool _paused;
     private bool _pausedByFocusLoss;
+    private double _rulesStepAccumulatorMilliseconds;
     private string? _feedbackCaption;
     private int _feedbackTicksRemaining;
     private ProceduralCuePlayer? _cuePlayer;
@@ -80,8 +81,34 @@ public partial class Main : Node2D
 
     public override void _PhysicsProcess(double delta)
     {
-        _ = delta;
         if (_screenState != ScreenState.Running || _paused || _run is null)
+        {
+            return;
+        }
+
+        var steps = RulesCadenceClock.DrainSteps(
+            ref _rulesStepAccumulatorMilliseconds,
+            delta,
+            () => _run.EffectiveRulesStepMilliseconds);
+        for (var index = 0; index < steps; index++)
+        {
+            if (_run is null || _run.Status != RunStatus.Running)
+            {
+                break;
+            }
+
+            AdvanceOneRulesStep();
+        }
+
+        if (steps > 0)
+        {
+            QueueRedraw();
+        }
+    }
+
+    private void AdvanceOneRulesStep()
+    {
+        if (_run is null)
         {
             return;
         }
@@ -107,8 +134,6 @@ public partial class Main : Node2D
                     : AudioCue.Death);
             FinalizeAndStoreReplay();
         }
-
-        QueueRedraw();
     }
 
     public override void _Process(double delta)
@@ -270,6 +295,7 @@ public partial class Main : Node2D
         _screenState = ScreenState.Running;
         _paused = false;
         _pausedByFocusLoss = false;
+        _rulesStepAccumulatorMilliseconds = 0.0;
         _feedbackCaption = null;
         _feedbackTicksRemaining = 0;
         _replayStatusCaption = null;
@@ -284,6 +310,7 @@ public partial class Main : Node2D
         _replayRecorder = null;
         _paused = false;
         _pausedByFocusLoss = false;
+        _rulesStepAccumulatorMilliseconds = 0.0;
         _feedbackCaption = null;
         _feedbackTicksRemaining = 0;
         PlayCue(AudioCue.Back);
@@ -656,6 +683,30 @@ public partial class Main : Node2D
             15,
             new Color(0.46f, 0.94f, 0.96f));
 
+        if (snapshot.HasDetachedObstacles)
+        {
+            var hazard = PowerPresentation.SignalColor(PowerKind.SegmentDetach);
+            foreach (var obstacle in snapshot.DetachedObstacles)
+            {
+                DrawCell(obstacle, new Color(0.18f, 0.05f, 0.07f), inset: 2.0f);
+                DrawCellOutline(obstacle, hazard, 1.5f, inset: 2.0f);
+            }
+        }
+
+        if (snapshot.HasBait && snapshot.BaitPosition is { } bait)
+        {
+            var baitColor = PowerPresentation.SignalColor(PowerKind.Bait);
+            DrawCell(bait, new Color(0.16f, 0.12f, 0.02f), inset: 4.0f);
+            DrawCellOutline(bait, baitColor, 1.5f, inset: 3.0f);
+            DrawLabel(
+                "T",
+                new Vector2(
+                    (bait.X * CellSize) + 5.0f,
+                    HudHeight + (bait.Y * CellSize) + 16.0f),
+                14,
+                baitColor);
+        }
+
         if (snapshot.Food is { } food)
         {
             DrawCell(food, new Color(1.0f, 0.25f, 0.38f), inset: 4.0f);
@@ -663,22 +714,31 @@ public partial class Main : Node2D
 
         if (snapshot.PowerPickup is { } pickup)
         {
-            DrawShieldPickup(pickup);
+            DrawPowerPickup(pickup);
         }
 
         for (var index = 0; index < snapshot.Body.Count; index++)
         {
             var isHead = index == snapshot.Body.Count - 1;
+            var bodyColor = isHead
+                ? new Color(0.72f, 1.0f, 0.82f)
+                : new Color(0.22f, 0.88f, 0.47f);
+            if (snapshot.HasPhaseShift && !isHead)
+            {
+                bodyColor = new Color(0.55f, 0.42f, 0.88f, 0.72f);
+            }
+            else if (snapshot.HasGluttony && !isHead)
+            {
+                bodyColor = new Color(0.88f, 0.58f, 0.22f);
+            }
+
             DrawCell(
                 snapshot.Body[index],
-                isHead ? new Color(0.72f, 1.0f, 0.82f) : new Color(0.22f, 0.88f, 0.47f),
+                bodyColor,
                 inset: isHead ? 1.0f : 2.0f);
         }
 
-        if (snapshot.HasShield)
-        {
-            DrawCellOutline(snapshot.Head, new Color(0.45f, 0.96f, 1.0f), 2.0f);
-        }
+        DrawActiveHeadOutlines(snapshot);
 
         if (_screenState == ScreenState.Ended)
         {
@@ -687,6 +747,39 @@ public partial class Main : Node2D
             DrawLabel(ending, new Vector2(445.0f, 330.0f), 38, new Color(1.0f, 0.75f, 0.3f));
             DrawLabel("Confirm to coil again", new Vector2(465.0f, 380.0f), 21, Colors.White);
             DrawLabel("R or Controller North: verify latest replay", new Vector2(430.0f, 410.0f), 16, new Color(0.58f, 0.7f, 0.64f));
+        }
+    }
+
+    private void DrawActiveHeadOutlines(RunSnapshot snapshot)
+    {
+        if (snapshot.HasShield)
+        {
+            DrawCellOutline(snapshot.Head, PowerPresentation.SignalColor(PowerKind.Shield), 2.0f);
+        }
+
+        if (snapshot.HasPhaseShift)
+        {
+            DrawCellOutline(snapshot.Head, PowerPresentation.SignalColor(PowerKind.PhaseShift), 2.0f, inset: 2.0f);
+        }
+
+        if (snapshot.LastStandHeld || snapshot.HasLastStandRecovery)
+        {
+            DrawCellOutline(snapshot.Head, PowerPresentation.SignalColor(PowerKind.LastStand), 1.5f, inset: 3.5f);
+        }
+
+        if (snapshot.HasMagnet)
+        {
+            DrawCellOutline(snapshot.Head, PowerPresentation.SignalColor(PowerKind.Magnet), 1.5f, inset: 5.0f);
+        }
+
+        if (snapshot.HasSlowMo)
+        {
+            DrawCellOutline(snapshot.Head, PowerPresentation.SignalColor(PowerKind.SlowMo), 1.5f, inset: -1.0f);
+        }
+
+        if (snapshot.HasBoost)
+        {
+            DrawCellOutline(snapshot.Head, PowerPresentation.SignalColor(PowerKind.Boost), 1.5f, inset: -2.5f);
         }
     }
 
@@ -701,13 +794,13 @@ public partial class Main : Node2D
             color);
     }
 
-    private void DrawShieldPickup(PowerPickup pickup)
+    private void DrawPowerPickup(PowerPickup pickup)
     {
-        var signalColor = new Color(0.45f, 0.96f, 1.0f);
+        var signalColor = PowerPresentation.SignalColor(pickup.Kind);
         DrawCell(pickup.Position, new Color(0.025f, 0.13f, 0.14f), inset: 3.0f);
         DrawCellOutline(pickup.Position, signalColor, 2.0f, inset: 3.0f);
         DrawLabel(
-            "S",
+            PowerPresentation.Marker(pickup.Kind).ToString(),
             new Vector2(
                 (pickup.Position.X * CellSize) + 5.0f,
                 HudHeight + (pickup.Position.Y * CellSize) + 16.0f),
@@ -732,22 +825,8 @@ public partial class Main : Node2D
             width: width);
     }
 
-    private static string DescribePowerStatus(RunSnapshot snapshot)
-    {
-        if (snapshot.HasShield)
-        {
-            var seconds = snapshot.ShieldTicksRemaining * RunConfig.RulesTickMilliseconds / 1000.0;
-            return $"SHIELD ONLINE    1 USE    {seconds:0.0}s";
-        }
-
-        if (snapshot.PowerPickup is { Kind: PowerKind.Shield } pickup)
-        {
-            var seconds = pickup.VisibilityTicksRemaining * RunConfig.RulesTickMilliseconds / 1000.0;
-            return $"SHIELD SIGNAL    {seconds:0.0}s    ROUTE TO S";
-        }
-
-        return "POWER SIGNAL QUIET";
-    }
+    private static string DescribePowerStatus(RunSnapshot snapshot) =>
+        PowerPresentation.DescribeStatus(snapshot);
 
     private void AdvanceFeedback(IReadOnlyList<RunEventDetail> events)
     {
@@ -1196,6 +1275,114 @@ public partial class Main : Node2D
         if (activationFeedback.Cue != AudioCue.ShieldActivate)
         {
             throw new InvalidOperationException("Shield activation feedback is not canonical.");
+        }
+
+        foreach (var kind in Enum.GetValues<PowerKind>())
+        {
+            var marker = PowerPresentation.Marker(kind);
+            if (marker is < 'A' or > 'Z')
+            {
+                throw new InvalidOperationException($"Power marker missing for {kind}.");
+            }
+
+            var spawn = StepFeedback.Resolve(
+            [
+                new RunEventDetail(RunEventKind.PowerSpawned, Power: kind),
+            ]);
+            if (spawn.Cue is null || spawn.Caption is null
+                || !spawn.Caption.Contains(
+                    PowerPresentation.ShortName(kind),
+                    StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException($"Spawn feedback missing for {kind}.");
+            }
+
+            var activate = StepFeedback.Resolve(
+            [
+                new RunEventDetail(RunEventKind.PowerActivated, Power: kind),
+            ]);
+            if (activate.Cue is null || activate.Caption is null)
+            {
+                throw new InvalidOperationException($"Activation feedback missing for {kind}.");
+            }
+        }
+
+        var lastStand = StepFeedback.Resolve(
+        [
+            new RunEventDetail(
+                RunEventKind.PowerConsumed,
+                Power: PowerKind.LastStand),
+            new RunEventDetail(
+                RunEventKind.CollisionPrevented,
+                Cause: DeathCause.SelfCollision,
+                Power: PowerKind.LastStand),
+            new RunEventDetail(
+                RunEventKind.PowerActivated,
+                Power: PowerKind.LastStand),
+        ]);
+        if (
+            lastStand.Cue != AudioCue.PowerRecovery
+            || lastStand.Caption != "LAST STAND: DEATH REVERSED")
+        {
+            throw new InvalidOperationException("Last Stand recovery feedback is not canonical.");
+        }
+
+        var accumulated = 0.0;
+        var drained = RulesCadenceClock.DrainSteps(
+            ref accumulated,
+            deltaSeconds: 0.05,
+            () => RulesCadenceClock.StepIntervalMilliseconds(1, 2));
+        if (drained != 2 || accumulated != 0.0)
+        {
+            throw new InvalidOperationException("Boost cadence drain did not advance two steps.");
+        }
+
+        var slowAccumulated = 0.0;
+        var slowDrain = RulesCadenceClock.DrainSteps(
+            ref slowAccumulated,
+            deltaSeconds: 0.05,
+            () => RulesCadenceClock.StepIntervalMilliseconds(2, 1));
+        if (slowDrain != 0 || slowAccumulated != 50.0)
+        {
+            throw new InvalidOperationException("Slow-Mo cadence drain did not hold a half-step.");
+        }
+
+        var status = PowerPresentation.DescribeStatus(
+            new RunSnapshot(
+                Tick: 1,
+                Status: RunStatus.Running,
+                DeathCause: DeathCause.None,
+                Direction: RulesDirection.Right,
+                Body: [new GridPoint(1, 1)],
+                PendingDirections: [],
+                Food: new GridPoint(2, 2),
+                Score: 0,
+                ComboCount: 0,
+                ComboMultiplier: 1.0,
+                TicksSinceLastFood: 0,
+                HungerTicksRemaining: 100,
+                PowerPickup: null,
+                PowerSpawnTicksElapsed: 0,
+                ShieldTicksRemaining: 40,
+                PhaseShiftTicksRemaining: 20,
+                LastStandHeld: true,
+                LastStandRecoveryTicksRemaining: 0,
+                SlowMoTicksRemaining: 10,
+                BoostTicksRemaining: 0,
+                MagnetTicksRemaining: 0,
+                GluttonyTicksRemaining: 0,
+                BaitPosition: null,
+                DetachedObstacles: [],
+                DetachedObstacleTicksRemaining: 0,
+                StateHash: "smoke"));
+        if (
+            !status.Contains("SHIELD", StringComparison.Ordinal)
+            || !status.Contains("PHASE", StringComparison.Ordinal)
+            || !status.Contains("LAST STAND HELD", StringComparison.Ordinal)
+            || !status.Contains("SLOW-MO", StringComparison.Ordinal)
+            || !status.Contains("CADENCE 2/1", StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException("Composite power status is incomplete.");
         }
     }
 

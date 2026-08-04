@@ -8,6 +8,13 @@ internal readonly record struct StepFeedback(AudioCue? Cue, string? Caption)
     {
         ArgumentNullException.ThrowIfNull(events);
 
+        if (Contains(events, RunEventKind.CollisionPrevented, PowerKind.LastStand))
+        {
+            return new StepFeedback(
+                AudioCue.PowerRecovery,
+                "LAST STAND: DEATH REVERSED");
+        }
+
         if (Contains(events, RunEventKind.CollisionPrevented, PowerKind.Shield))
         {
             return new StepFeedback(
@@ -15,32 +22,48 @@ internal readonly record struct StepFeedback(AudioCue? Cue, string? Caption)
                 "SHIELD BROKE: COLLISION BLOCKED");
         }
 
-        if (Contains(events, RunEventKind.PowerActivated, PowerKind.Shield))
+        if (Contains(events, RunEventKind.PowerActivated, PowerKind.LastStand)
+            && Contains(events, RunEventKind.PowerConsumed, PowerKind.LastStand))
         {
             return new StepFeedback(
-                AudioCue.ShieldActivate,
-                "SHIELD ONLINE: 1 COLLISION BLOCK");
+                AudioCue.PowerRecovery,
+                "LAST STAND RECOVERY WINDOW");
         }
 
-        if (Contains(events, RunEventKind.PowerExpired, PowerKind.Shield))
+        if (TryPowerEvent(events, RunEventKind.PowerActivated, out var activated))
         {
             return new StepFeedback(
-                AudioCue.ShieldExpire,
-                "SHIELD SIGNAL EXPIRED");
+                activated == PowerKind.Shield
+                    ? AudioCue.ShieldActivate
+                    : AudioCue.PowerActivate,
+                ActivationCaption(activated));
         }
 
-        if (Contains(events, RunEventKind.PowerDiscarded, PowerKind.Shield))
+        if (TryPowerEvent(events, RunEventKind.PowerExpired, out var expired))
         {
             return new StepFeedback(
-                AudioCue.ShieldExpire,
-                "SHIELD SIGNAL CLEARED");
+                expired == PowerKind.Shield
+                    ? AudioCue.ShieldExpire
+                    : AudioCue.PowerExpire,
+                $"{PowerPresentation.ShortName(expired)} SIGNAL EXPIRED");
         }
 
-        if (Contains(events, RunEventKind.PowerSpawned, PowerKind.Shield))
+        if (TryPowerEvent(events, RunEventKind.PowerDiscarded, out var discarded))
         {
             return new StepFeedback(
-                AudioCue.ShieldSpawn,
-                "SHIELD SIGNAL DETECTED");
+                discarded == PowerKind.Shield
+                    ? AudioCue.ShieldExpire
+                    : AudioCue.PowerExpire,
+                $"{PowerPresentation.ShortName(discarded)} SIGNAL CLEARED");
+        }
+
+        if (TryPowerEvent(events, RunEventKind.PowerSpawned, out var spawned))
+        {
+            return new StepFeedback(
+                spawned == PowerKind.Shield
+                    ? AudioCue.ShieldSpawn
+                    : AudioCue.PowerSpawn,
+                $"{PowerPresentation.ShortName(spawned)} SIGNAL DETECTED");
         }
 
         return events.Any(detail => detail.Kind == RunEventKind.AteFood)
@@ -48,9 +71,41 @@ internal readonly record struct StepFeedback(AudioCue? Cue, string? Caption)
             : default;
     }
 
+    private static string ActivationCaption(PowerKind power) => power switch
+    {
+        PowerKind.Shield => "SHIELD ONLINE: 1 COLLISION BLOCK",
+        PowerKind.PhaseShift => "PHASE SHIFT ONLINE: BODY PASS",
+        PowerKind.LastStand => "LAST STAND ARMED",
+        PowerKind.SlowMo => "SLOW-MO ONLINE: HALF STEP RATE",
+        PowerKind.Boost => "BOOST ONLINE: DOUBLE STEP RATE",
+        PowerKind.Magnet => "MAGNET ONLINE: FOOD PULL",
+        PowerKind.Bait => "BAIT MARKED: NEXT FOOD PULL",
+        PowerKind.Gluttony => "GLUTTONY ONLINE: EAT WITHOUT GROWTH",
+        PowerKind.SegmentDetach => "SEGMENTS DETACHED: TIMED HAZARDS",
+        _ => throw new ArgumentOutOfRangeException(nameof(power), power, "Unknown power kind."),
+    };
+
     private static bool Contains(
         IEnumerable<RunEventDetail> events,
         RunEventKind kind,
         PowerKind power) =>
         events.Any(detail => detail.Kind == kind && detail.Power == power);
+
+    private static bool TryPowerEvent(
+        IReadOnlyList<RunEventDetail> events,
+        RunEventKind kind,
+        out PowerKind power)
+    {
+        foreach (var detail in events)
+        {
+            if (detail.Kind == kind && detail.Power is { } matched)
+            {
+                power = matched;
+                return true;
+            }
+        }
+
+        power = default;
+        return false;
+    }
 }

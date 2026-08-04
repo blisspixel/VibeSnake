@@ -14,11 +14,14 @@ Notable player-facing and engineering changes are recorded here. The project is 
 - Native Slow-Mo and Boost cadence modifiers with composable snapshot scale and fixed-step movement invariance.
 - Native Magnet food attraction (one-cell pull toward the head each rules step, blocked by body and pickups).
 - Native Bait (weighted next-food respawn), Gluttony (eat without growth), and Segment Detach (timed tail obstacles with Phase Shift bypass).
+- Pure `RulesCadenceClock` for Slow-Mo/Boost wall-clock step intervals with re-evaluated tempo during multi-step drains.
+- Godot presentation for the full nine-power portfolio: letter markers, composite HUD, head outlines, body tints, bait marks, detached hazards, multi-power captions, and generic power fallback cues alongside Shield-specific tones.
 
 ### Changed
 
 - Documentation snapshot refreshed for public radio inventory, hosted multi-platform CI, and single-`main` repository hygiene.
 - Canonical run state serializes phase-shift and last-stand fields.
+- Godot shell advances rules through cadence-aware accumulation instead of one physics frame per rules step.
 
 ## 0.2.1 - 2026-08-02
 

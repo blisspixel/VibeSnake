@@ -1,6 +1,6 @@
 # Power-ups
 
-All nine power-ups are connected to normal runs in the Python reference and tested through the main `Game.update` boundary. Unless stated otherwise, collecting a duplicate type is prevented while that effect remains active. Different types can overlap. All nine powers are complete native C# contracts in `VibeSnake.Rules`. Godot presentation still trails for powers beyond Shield.
+All nine power-ups are connected to normal runs in the Python reference and tested through the main `Game.update` boundary. Unless stated otherwise, collecting a duplicate type is prevented while that effect remains active. Different types can overlap. All nine powers are complete native C# contracts in `VibeSnake.Rules`. The Godot shell renders markers, HUD status, head outlines, detached obstacles, bait marks, prioritized fallback cues, and Slow-Mo/Boost wall-clock cadence for the full portfolio.
 
 ## Gameplay contracts
 
@@ -42,7 +42,7 @@ The manager schedules spawns, excludes the snake, food, detached obstacles, and 
 
 ## Native Slow-Mo and Boost qualification
 
-Slow-Mo and Boost are pure cadence modifiers on the rules snapshot. They do not change fixed-step movement distance, scoring, or randomness when `Step` is invoked. Presentation shells advance rules at `RulesTickMilliseconds * MovementCadenceNumerator / MovementCadenceDenominator`, where Slow-Mo multiplies the numerator by 2, Boost multiplies the denominator by 2, and both compose (product of factors), matching the Python cadence helper.
+Slow-Mo and Boost are pure cadence modifiers on the rules snapshot. They do not change fixed-step movement distance, scoring, or randomness when `Step` is invoked. Presentation shells advance rules through `RulesCadenceClock`, which drains wall-clock time at `RulesTickMilliseconds * MovementCadenceNumerator / MovementCadenceDenominator`. Slow-Mo multiplies the numerator by 2, Boost multiplies the denominator by 2, and both compose (product of factors), matching the Python cadence helper. The Godot shell re-reads the live interval after every drained step so tempo expiry mid-burst is honored.
 
 ## Native Bait, Gluttony, and Segment Detach qualification
 
@@ -85,7 +85,7 @@ The pure C# rules kernel implements Shield without a Godot dependency:
 - Shield does not prevent starvation, does not stack, is removed on restart, and participates in canonical state, hashes, restoration, and replay verification.
 - If food must respawn on the only free cell, the pickup is explicitly discarded rather than overlapping food or creating a false grid-completion result.
 
-The Godot slice renders the pickup as a cyan outlined cell with an `S` marker, exposes pickup and active time in fixed-step seconds, outlines the protected head, and maps spawn, activation, expiry, and collision recovery into prioritized fallback cues and persistent text. These are accessible engineering fallbacks, not final authored art or sound.
+The Godot slice maps every power kind to a single-letter marker, signal color, composite HUD status, and prioritized fallback cue. Shield keeps its dedicated break and lifecycle tones; other powers share generic spawn, activate, expire, and recovery tones with power-specific captions. Active states draw head outlines (and body tint for Phase Shift and Gluttony), bait marks, and detached-segment hazards. These are accessible engineering fallbacks, not final authored art or sound.
 
 Eight generated Python-to-C# cases compare normalized state and ordered power events for collection, both expiry paths, collision recovery, expiry precedence, starvation bypass, and collision recovery at the starvation deadline. Native tests separately prove deterministic spawn, a usable minimum duration, anti-stacking, saturated-board discard, restart, restoration, replay, and invalid-state rejection. See [the parity decision log](../engineering/PARITY_DECISIONS.md#pd-008-shield-collection-and-lifecycle-receive-rules-version-4).
 

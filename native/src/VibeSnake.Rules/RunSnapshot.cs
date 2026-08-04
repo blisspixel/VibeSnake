@@ -56,6 +56,14 @@ public sealed record RunSnapshot(
     public int MovementCadenceNumerator => HasSlowMo ? 2 : 1;
 
     public int MovementCadenceDenominator => HasBoost ? 2 : 1;
+
+    /// <summary>
+    /// Wall-clock milliseconds between presentation rules steps for this snapshot.
+    /// </summary>
+    public int EffectiveRulesStepMilliseconds =>
+        RulesCadenceClock.StepIntervalMilliseconds(
+            MovementCadenceNumerator,
+            MovementCadenceDenominator);
 }
 
 public readonly struct RunStepResult : IEquatable<RunStepResult>
