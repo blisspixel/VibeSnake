@@ -82,14 +82,27 @@ internal readonly record struct StepFeedback(AudioCue? Cue, string? Caption)
     {
         foreach (var detail in events)
         {
-            if (detail.Kind != RunEventKind.NearMiss || detail.Value is null or 0)
+            if (detail.Kind != RunEventKind.NearMiss || detail.Value is null or <= 0)
             {
                 continue;
             }
 
-            caption = detail.Value >= 2
-                ? $"+{detail.Value} THREADING THE NEEDLE!"
-                : $"+{detail.Value} CLOSE CALL!";
+            // Spatial body-proximity uses a grid position; food style/clutch does not.
+            if (detail.Position is null)
+            {
+                caption = detail.Value >= 2
+                    ? $"+{detail.Value} STYLE STREAK!"
+                    : $"+{detail.Value} CLUTCH!";
+            }
+            else if (detail.Value >= 2)
+            {
+                caption = $"+{detail.Value} THREADING THE NEEDLE!";
+            }
+            else
+            {
+                caption = $"+{detail.Value} CLOSE CALL!";
+            }
+
             return true;
         }
 
