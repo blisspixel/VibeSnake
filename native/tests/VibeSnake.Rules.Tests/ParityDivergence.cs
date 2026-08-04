@@ -20,7 +20,9 @@ internal sealed record ParityDivergenceRequest(
     object ActualState,
     object ActualEvents,
     object ActualCanonicalState,
-    string ActualStateHash);
+    string ActualStateHash,
+    object? MinimizedCommandPrefix = null,
+    int? MinimizedStepCount = null);
 
 internal static class ParityDivergence
 {
@@ -102,6 +104,8 @@ internal static class ParityDivergence
             },
             request.InitialState,
             request.CommandPrefix,
+            MinimizedCommandPrefix = request.MinimizedCommandPrefix,
+            MinimizedStepCount = request.MinimizedStepCount,
             Expected = new
             {
                 State = request.ExpectedState,

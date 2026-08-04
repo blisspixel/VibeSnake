@@ -21,7 +21,7 @@ The gated 1.0 target remains Godot 4 .NET with deterministic pure C# rules and f
 | Python deterministic tests | 466 passing and 3 environment-dependent radio skips on the supported interpreters in CI |
 | Python line coverage | About 87 percent measured with an 80 percent floor enforced by configuration and CI |
 | Native toolchain | Godot 4.7.1 Mono and .NET SDK 10.0.302 pinned and verified |
-| Native contract tests | 208 passing on .NET 10 with an 80 percent line floor per module |
+| Native contract tests | 213 passing on .NET 10 with an 80 percent line floor per module |
 | Cross-language parity | 100 movement cases (25,600 steps), 35 targeted core-rule cases, 8 Shield, 6 Phase Shift, 5 Last Stand, and 9 remaining-power cases pass |
 | Godot integration | Headless import plus seeded rules, restoration, logical input, focus-loss pause, audio buses, fourteen fallback cues, full nine-power markers and captions, cadence-aware stepping, live replay recording, isolated atomic save, and clean shutdown smoke on hosted runners |
 | Native artifacts | Windows, macOS, and Linux player smokes run outside the checkout on matching hosted runners; continuous Python player-latest packages publish from `main` |
@@ -53,7 +53,7 @@ The gated 1.0 target remains Godot 4 .NET with deterministic pure C# rules and f
 | Configuration | Working | Schema version 1 validates types and ranges; changes still require restart. |
 | Player CLI and updates | Working | `vibesnake play`, `update`, `status`, `doctor`, and `version`; `play.ps1` / `play.sh` / `play.bat`; install scripts; GitHub `main` fast-forward reinstall. |
 | Packaging | Partial | Source and wheel player-latest artifacts exist. Runtime assets still use source-tree-relative paths; a bare wheel is not a fully self-contained game without assets. |
-| Automated gameplay QA | Foundation working | Seeded policies, invariants, property-generated input, replay hashes, JSON reports. Native parity retains first-divergence bundles. Full powers, DDA, AI, and presentation campaigns still depend on the completed deterministic engine. |
+| Automated gameplay QA | Foundation working | Seeded policies, invariants, property-generated input, replay hashes, JSON reports. Native parity retains first-divergence bundles with automated delta-reduced command prefixes. Full powers, DDA, AI, and presentation campaigns still depend on the completed deterministic engine. |
 | Content inventory | Foundation working | Deterministic policy and generated inventory cover 114 public assets including the radio library. Export eligibility is deliberately zero until pack quality gates pass. |
 | Content pack contract | Foundation working | Schema 1 validates core and optional radio manifests against inventory allowlists. No production manifest is export-approved yet. |
 | Target technology | Qualification in progress | Godot 4.7.1 and .NET 10.0.302 pinned. Pure C# kernel covers core rules and all nine powers. Godot shell honors full-power presentation and tempo cadence. Hosted multi-platform player smoke exists. Pack export, deeper parity fixtures, and feel review remain open. |

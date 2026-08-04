@@ -17,6 +17,7 @@ Notable player-facing and engineering changes are recorded here. The project is 
 - Pure `RulesCadenceClock` for Slow-Mo/Boost wall-clock step intervals with re-evaluated tempo during multi-step drains.
 - Godot presentation for the full nine-power portfolio: letter markers, composite HUD, head outlines, body tints, bait marks, detached hazards, multi-power captions, and generic power fallback cues alongside Shield-specific tones.
 - Nine shared Python-to-C# remaining-power parity fixtures (`remaining_powers_rules_v1.json`) covering Slow-Mo, Boost, Magnet, Bait, Gluttony, and Segment Detach, checked via `python -m vibesnake.qa.shared_remaining_power_traces --check`.
+- Automated parity delta reduction (`ParityDeltaReducer`) that minimizes failing command prefixes, proves clean re-execution, and records minimized reproducers on movement divergence bundles.
 
 ### Changed
 

@@ -116,6 +116,18 @@ public sealed class SharedTraceParityTests
             };
             if (!ParityDivergence.AreEquivalent(expectedState, actualState))
             {
+                var failingPrefix = traceCase.Steps
+                    .Take(stepIndex + 1)
+                    .Select((step, index) => new
+                    {
+                        Step = index + 1,
+                        CommandSymbols = DecodeStep(step).CommandSymbols,
+                    })
+                    .ToList();
+                var minimized = ParityDeltaReducer.MinimizePrefix(
+                    failingPrefix,
+                    stillFails: prefix =>
+                        MovementPrefixDiverges(fixture, traceCase, prefix.Count));
                 ParityDivergence.ThrowWithBundle(
                     new ParityDivergenceRequest(
                         Contract: fixture.Contract,
@@ -127,23 +139,83 @@ public sealed class SharedTraceParityTests
                         Seed: traceCase.Seed,
                         FirstDivergentStep: stepIndex + 1,
                         InitialState: traceCase.Initial,
-                        CommandPrefix: traceCase.Steps
-                            .Take(stepIndex + 1)
-                            .Select((step, index) => new
-                            {
-                                Step = index + 1,
-                                CommandSymbols = DecodeStep(step).CommandSymbols,
-                            })
-                            .ToList(),
+                        CommandPrefix: failingPrefix,
                         ExpectedState: expectedState,
                         ExpectedEvents: Array.Empty<object>(),
                         ActualState: actualState,
                         ActualEvents: result.OrderedEvents,
                         ActualCanonicalState: JsonSerializer.Deserialize<JsonElement>(
                             run.SerializeCanonicalState()),
-                        ActualStateHash: result.StateHash));
+                        ActualStateHash: result.StateHash,
+                        MinimizedCommandPrefix: minimized,
+                        MinimizedStepCount: minimized.Count));
             }
         }
+    }
+
+    private static bool MovementPrefixDiverges(
+        TraceFixture fixture,
+        TraceCase traceCase,
+        int prefixLength)
+    {
+        if (prefixLength <= 0 || prefixLength > traceCase.Steps.Count)
+        {
+            return false;
+        }
+
+        var config = new RunConfig(
+            Width: fixture.Grid.Width,
+            Height: fixture.Grid.Height,
+            StarvationTicks: fixture.StepsPerCase + 1);
+        var run = SnakeRun.CreateForTesting(
+            config,
+            traceCase.Initial.Body.Select(ToGridPoint),
+            ParseDirection(traceCase.Initial.Direction),
+            food: null,
+            hungerTicksRemaining: fixture.StepsPerCase + 1);
+
+        for (var stepIndex = 0; stepIndex < prefixLength; stepIndex++)
+        {
+            var traceStep = DecodeStep(traceCase.Steps[stepIndex]);
+            var actualAcceptance = new StringBuilder(traceStep.CommandSymbols.Length);
+            foreach (var commandSymbol in traceStep.CommandSymbols)
+            {
+                var accepted = run.QueueDirection(ParseDirectionSymbol(commandSymbol));
+                actualAcceptance.Append(accepted ? '1' : '0');
+            }
+
+            var result = run.Step();
+            var snapshot = run.GetSnapshot();
+            var expectedState = new
+            {
+                Tick = stepIndex + 1,
+                traceStep.DirectionSymbol,
+                Head = new[] { traceStep.HeadX, traceStep.HeadY },
+                traceStep.BodyLength,
+                traceStep.PendingDirectionSymbols,
+                traceStep.CommandAcceptanceBits,
+                traceStep.Wrapped,
+                traceStep.Alive,
+            };
+            var actualState = new
+            {
+                snapshot.Tick,
+                DirectionSymbol = DirectionSymbol(snapshot.Direction),
+                Head = new[] { snapshot.Head.X, snapshot.Head.Y },
+                BodyLength = snapshot.Body.Count,
+                PendingDirectionSymbols = string.Concat(
+                    snapshot.PendingDirections.Select(DirectionSymbol)),
+                CommandAcceptanceBits = actualAcceptance.ToString(),
+                Wrapped = result.Events.HasFlag(RunEvent.Wrapped),
+                Alive = snapshot.Status == RunStatus.Running,
+            };
+            if (!ParityDivergence.AreEquivalent(expectedState, actualState))
+            {
+                return stepIndex + 1 == prefixLength;
+            }
+        }
+
+        return false;
     }
 
     private static CompactTraceStep DecodeStep(IReadOnlyList<JsonElement> values)
