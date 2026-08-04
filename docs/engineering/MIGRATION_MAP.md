@@ -11,7 +11,7 @@ This map assigns every Python reference subsystem to its target C# or Godot owne
 | `core/snake.py` movement, wrap, body | `VibeSnake.Rules` | Done | Shared movement and core-rule fixtures |
 | `core/scoring.py` combo, bonuses | `VibeSnake.Rules` | Done | Shared core-rule fixtures |
 | `core/near_miss.py` proximity and style | `VibeSnake.Rules` `NearMissDetector` + `SnakeRun` | Partial | Pure detector ported; SnakeRun wires body proximity, clutch eat, and style points with `RunEventKind.NearMiss`; edge-ride remains unwired in both runtimes |
-| Starvation timer / deadline | `VibeSnake.Rules` | Done | Exact order with collision |
+| Starvation timer / deadline | `VibeSnake.Rules` | Done | Exact order with collision; one-shot `StarvationWarning` at default 200 remaining ticks |
 | Food spawn | `VibeSnake.Rules` | Done | PCG32 free-cell selection |
 | Power manager spawn cadence | `VibeSnake.Rules` | Partial | Shield auto-spawn only; other kinds injected for tests |
 | Shield | `VibeSnake.Rules` + Godot | Done | Parity `shield_rules_v1`; shell markers and cues |
