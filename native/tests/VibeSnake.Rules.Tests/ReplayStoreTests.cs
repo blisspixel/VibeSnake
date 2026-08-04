@@ -448,17 +448,31 @@ public sealed class ReplayStoreTests
     {
         using var ready = new CountdownEvent(2);
         using var release = new ManualResetEventSlim();
-        Task<ReplaySaveResult> Start(Func<ReplaySaveResult> operation) => Task.Run(() =>
-        {
-            ready.Signal();
-            release.Wait();
-            return operation();
-        });
+        Task<ReplaySaveResult> Start(Func<ReplaySaveResult> operation) =>
+            Task.Factory.StartNew(
+                () =>
+                {
+                    ready.Signal();
+                    // Bound wait so a stuck peer cannot hang the suite forever.
+                    if (!release.Wait(TimeSpan.FromSeconds(30)))
+                    {
+                        throw new TimeoutException(
+                            "Concurrent save peer did not release within 30 seconds.");
+                    }
+
+                    return operation();
+                },
+                CancellationToken.None,
+                TaskCreationOptions.LongRunning,
+                TaskScheduler.Default);
 
         var tasks = new[] { Start(first), Start(second) };
-        Assert.True(ready.Wait(TimeSpan.FromSeconds(5)));
+        // Hosted Linux runners can delay threadpool work under load; wait longer than 5s.
+        Assert.True(
+            ready.Wait(TimeSpan.FromSeconds(30)),
+            "Concurrent save workers did not become ready within 30 seconds.");
         release.Set();
-        return await Task.WhenAll(tasks);
+        return await Task.WhenAll(tasks).WaitAsync(TimeSpan.FromSeconds(60));
     }
 
     private static RunReplay CreateReplay(ulong seed)
