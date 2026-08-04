@@ -878,6 +878,7 @@ public partial class Main : Node2D
             }
             ExecuteContentServiceSmokeTest();
             ExecuteStepFeedbackSmokeTest();
+            ExecuteShellSettingsSmokeTest();
             ExecuteMenuRunDeathRestartSmokeTest();
             var first = SnakeRun.Create(SmokeSeed);
             var replay = SnakeRun.Create(SmokeSeed);
@@ -1335,6 +1336,33 @@ public partial class Main : Node2D
 
         inventoryPath = string.Empty;
         return false;
+    }
+
+    private static void ExecuteShellSettingsSmokeTest()
+    {
+        var settings = ShellSettings.CreateDefaults();
+        settings.MasterVolume = 2.0f;
+        settings.TextScale = 9.0f;
+        settings.MusicMuted = true;
+        settings.Clamp();
+        if (settings.MasterVolume != 1.0f || settings.TextScale != 1.5f)
+        {
+            throw new InvalidOperationException("Shell settings clamp contract failed.");
+        }
+
+        if (settings.EffectiveMusicVolume() != 0.0f || settings.EffectiveSfxVolume() <= 0.0f)
+        {
+            throw new InvalidOperationException("Shell bus mute contract failed.");
+        }
+
+        settings.ReducedMotion = true;
+        settings.FlashFree = true;
+        settings.HighContrast = true;
+        settings.ScreenShakeIntensity = 0.0f;
+        if (!settings.ReducedMotion || !settings.FlashFree || settings.ScreenShakeIntensity != 0.0f)
+        {
+            throw new InvalidOperationException("Accessibility placeholder settings failed.");
+        }
     }
 
     private void ExecuteMenuRunDeathRestartSmokeTest()
