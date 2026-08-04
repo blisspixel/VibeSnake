@@ -36,6 +36,9 @@ public partial class Main : Node2D
     private ShellSettings _shellSettings = ShellSettings.CreateDefaults();
     private PreferencesStore? _preferencesStore;
     private LocalDiagnostics? _diagnostics;
+    private InputBindingsStore? _inputBindingsStore;
+    private InputBindingsDocument _keyboardBindings =
+        InputBindingsDocument.CreateKeyboardDefaults();
 
     private enum ScreenState
     {
@@ -73,7 +76,9 @@ public partial class Main : Node2D
         _replayStore = new ReplayStore(userDataRoot);
         _preferencesStore = new PreferencesStore(userDataRoot);
         _diagnostics = new LocalDiagnostics(userDataRoot);
+        _inputBindingsStore = new InputBindingsStore(userDataRoot);
         LoadShellSettings();
+        LoadInputBindings();
         _window = GetWindow();
         _window.FilesDropped += OnFilesDropped;
         if (smokeTest)
@@ -122,6 +127,41 @@ public partial class Main : Node2D
 
         _shellSettings.Clamp();
         _preferencesStore.Save(_shellSettings.ToDocument());
+    }
+
+    private void LoadInputBindings()
+    {
+        if (_inputBindingsStore is null)
+        {
+            _keyboardBindings = InputBindingsDocument.CreateKeyboardDefaults();
+            return;
+        }
+
+        var loaded = _inputBindingsStore.LoadOrDefault(InputBindingsDocument.KeyboardDeviceClass);
+        if (loaded.IsSuccess && loaded.Document is not null)
+        {
+            _keyboardBindings = loaded.Document;
+            return;
+        }
+
+        _keyboardBindings = InputBindingsDocument.CreateKeyboardDefaults();
+        _diagnostics?.WriteCrashReport(
+            appVersion: "0.2.1",
+            platform: OS.GetName(),
+            rulesetId: SnakeRun.RulesetId,
+            rulesVersion: SnakeRun.RulesVersion,
+            screenState: "InputBindingsLoad",
+            exception: new InvalidOperationException(loaded.Message));
+    }
+
+    private void SaveInputBindings()
+    {
+        if (_inputBindingsStore is null)
+        {
+            return;
+        }
+
+        _inputBindingsStore.Save(_keyboardBindings);
     }
 
     public override void _PhysicsProcess(double delta)
@@ -1459,6 +1499,20 @@ public partial class Main : Node2D
             || bank.Gameplay.NextUInt() == bank.Ai.NextUInt())
         {
             throw new InvalidOperationException("Master-seed stream bank smoke contract failed.");
+        }
+
+        if (_inputBindingsStore is null)
+        {
+            throw new InvalidOperationException("Input bindings store was not ready.");
+        }
+
+        _keyboardBindings = InputBindingsDocument.CreateKeyboardDefaults();
+        SaveInputBindings();
+        LoadInputBindings();
+        if (!_keyboardBindings.ActionToBinding.ContainsKey("confirm")
+            || _keyboardBindings.ActionToBinding["confirm"] != "key:enter")
+        {
+            throw new InvalidOperationException("Input bindings smoke round-trip failed.");
         }
     }
 
