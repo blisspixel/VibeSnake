@@ -53,6 +53,7 @@ public partial class Main : Node2D
         Menu,
         Running,
         Ended,
+        Achievements,
     }
 
     private enum ReplayOperationKind
@@ -680,7 +681,11 @@ public partial class Main : Node2D
 
         if (_screenState is ScreenState.Menu or ScreenState.Ended)
         {
-            if (inputEvent.IsActionPressed(GameActions.Replay))
+            if (inputEvent.IsActionPressed(GameActions.BrowseAchievements))
+            {
+                OpenAchievementsBrowse();
+            }
+            else if (inputEvent.IsActionPressed(GameActions.Replay))
             {
                 VerifyLatestReplay();
             }
@@ -698,6 +703,18 @@ public partial class Main : Node2D
                 {
                     ReturnToMenu();
                 }
+            }
+
+            return;
+        }
+
+        if (_screenState == ScreenState.Achievements)
+        {
+            if (inputEvent.IsActionPressed(GameActions.Back)
+                || inputEvent.IsActionPressed(GameActions.BrowseAchievements)
+                || inputEvent.IsActionPressed(GameActions.Confirm))
+            {
+                ReturnToMenu();
             }
 
             return;
@@ -775,6 +792,9 @@ public partial class Main : Node2D
 
         switch (_screenState)
         {
+            case ScreenState.Achievements:
+                DrawAchievementsBrowse();
+                break;
             case ScreenState.Menu:
                 DrawLabel("VIBE SNAKE", new Vector2(42.0f, 190.0f), ScaledFontSize(52), PrimaryTextColor());
                 DrawLabel("Plan the route. Build the vibe. Recover with style.", new Vector2(46.0f, 238.0f), ScaledFontSize(24), Colors.White);
@@ -807,18 +827,19 @@ public partial class Main : Node2D
 
                 DrawLabel("START RUN", new Vector2(46.0f, 334.0f), ScaledFontSize(22), new Color(0.75f, 0.85f, 0.8f));
                 DrawLabel("Enter, Space, or Controller South", new Vector2(46.0f, 362.0f), ScaledFontSize(18), SecondaryTextColor());
-                DrawLabel("R or Controller North: verify latest replay", new Vector2(46.0f, 404.0f), ScaledFontSize(18), SecondaryTextColor());
-                DrawLabel("Drop one replay file here to verify without changing it", new Vector2(46.0f, 436.0f), ScaledFontSize(18), SecondaryTextColor());
+                DrawLabel("U or LB: browse run unlocks", new Vector2(46.0f, 390.0f), ScaledFontSize(18), SecondaryTextColor());
+                DrawLabel("R or Controller North: verify latest replay", new Vector2(46.0f, 418.0f), ScaledFontSize(18), SecondaryTextColor());
+                DrawLabel("Drop one replay file here to verify without changing it", new Vector2(46.0f, 446.0f), ScaledFontSize(18), SecondaryTextColor());
                 DrawLabel(
                     "F4 flash  F5/F6 text  F7 mute  -/= vol  F9-F11 a11y  F8 binds  F12 logs",
-                    new Vector2(46.0f, 468.0f),
+                    new Vector2(46.0f, 478.0f),
                     ScaledFontSize(16),
                     SecondaryTextColor());
                 if (_controllerCaption is not null)
                 {
                     DrawLabel(
                         _controllerCaption,
-                        new Vector2(46.0f, 500.0f),
+                        new Vector2(46.0f, 510.0f),
                         ScaledFontSize(16),
                         new Color(0.75f, 0.9f, 0.55f));
                 }
@@ -882,6 +903,11 @@ public partial class Main : Node2D
 
     private void ReturnToMenu()
     {
+        if (_screenState == ScreenState.Achievements)
+        {
+            ShellTransitions.EnsureTransition(ShellScreen.Achievements, ShellScreen.Menu);
+        }
+
         _screenState = ScreenState.Menu;
         _run = null;
         _replayRecorder = null;
@@ -892,6 +918,62 @@ public partial class Main : Node2D
         _feedbackTicksRemaining = 0;
         PlayCue(AudioCue.Back);
         QueueRedraw();
+    }
+
+    private void OpenAchievementsBrowse()
+    {
+        var from = _screenState switch
+        {
+            ScreenState.Ended => ShellScreen.Ended,
+            _ => ShellScreen.Menu,
+        };
+        ShellTransitions.EnsureTransition(from, ShellScreen.Achievements);
+        _screenState = ScreenState.Achievements;
+        _structuredLog?.Information(
+            "achievements",
+            "Opened pure run-unlock catalog browse.",
+            eventCode: "achievements_browse_open");
+        PlayCue(AudioCue.Confirm);
+        QueueRedraw();
+    }
+
+    private void DrawAchievementsBrowse()
+    {
+        var report = AchievementsBrowseReport.FromUnlocks(_achievements.UnlockedIds);
+        DrawLabel("RUN UNLOCKS", new Vector2(42.0f, 100.0f), ScaledFontSize(40), PrimaryTextColor());
+        DrawLabel(
+            report.FormatSummaryLine(prefix: "PROGRESS"),
+            new Vector2(46.0f, 148.0f),
+            ScaledFontSize(20),
+            new Color(0.85f, 0.78f, 0.45f));
+        var rarityCaption = string.Join("  ", report.FormatRarityProgressLines());
+        if (!string.IsNullOrEmpty(rarityCaption))
+        {
+            DrawLabel(
+                rarityCaption,
+                new Vector2(46.0f, 176.0f),
+                ScaledFontSize(15),
+                new Color(0.7f, 0.65f, 0.4f));
+        }
+
+        var y = 214.0f;
+        foreach (var entry in report.Entries)
+        {
+            var marker = entry.Unlocked ? "[*]" : "[ ]";
+            var line =
+                $"{marker} {entry.Name.ToUpperInvariant()}  ({entry.Rarity})  —  {entry.Description}";
+            var color = entry.Unlocked
+                ? new Color(0.9f, 0.86f, 0.55f)
+                : new Color(0.55f, 0.6f, 0.58f);
+            DrawLabel(line, new Vector2(46.0f, y), ScaledFontSize(15), color);
+            y += 24.0f;
+        }
+
+        DrawLabel(
+            "Esc, U, Confirm, or Controller South/East: return",
+            new Vector2(46.0f, Math.Min(y + 16.0f, 680.0f)),
+            ScaledFontSize(16),
+            SecondaryTextColor());
     }
 
     private void FinalizeAndStoreReplay()
@@ -2366,6 +2448,28 @@ public partial class Main : Node2D
         ShellTransitions.EnsureTransition(ShellScreen.Running, ShellScreen.Ended);
         ShellTransitions.EnsureTransition(ShellScreen.Ended, ShellScreen.Running);
         ShellTransitions.EnsureTransition(ShellScreen.Ended, ShellScreen.Menu);
+        ShellTransitions.EnsureTransition(ShellScreen.Menu, ShellScreen.Achievements);
+        ShellTransitions.EnsureTransition(ShellScreen.Ended, ShellScreen.Achievements);
+        ShellTransitions.EnsureTransition(ShellScreen.Achievements, ShellScreen.Menu);
+        OpenAchievementsBrowse();
+        if (_screenState != ScreenState.Achievements)
+        {
+            throw new InvalidOperationException("Achievements browse screen did not open.");
+        }
+
+        var browseLogText = System.IO.File.ReadAllText(_structuredLog.ActiveLogPath);
+        if (!browseLogText.Contains("achievements_browse_open", StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException(
+                "Structured log missing achievements_browse_open after browse open.");
+        }
+
+        ReturnToMenu();
+        if (_screenState != ScreenState.Menu)
+        {
+            throw new InvalidOperationException("Achievements browse did not return to menu.");
+        }
+
         try
         {
             ShellTransitions.EnsureTransition(ShellScreen.Menu, ShellScreen.Ended);

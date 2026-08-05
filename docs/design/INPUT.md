@@ -28,6 +28,7 @@ Godot submits logical actions to the application boundary. Gameplay rules receiv
 | `vibe_text_scale_down` | F5 | Not assigned | Lower text scale by 0.05, clamp to 0.85, and persist |
 | `vibe_toggle_flash_free` | F4 | Not assigned | Toggle flash-free presentation and persist preferences |
 | `vibe_open_diagnostics` | F12 | Not assigned | Ensure diagnostics folder, copy absolute path to clipboard, and open the folder (open is headless no-op) |
+| `vibe_browse_achievements` | U | Left shoulder | Open the pure rules-local run-unlock catalog browse from the menu or ended overlay; Esc/U/Confirm returns |
 
 Controller mappings use the engine's standardized button and axis names and accept any connected controller. The left-stick deadzone is 0.5 in the qualification slice. Shipping deadzones and per-device calibration remain settings work. Accessibility toggles are available on every screen and do not require a dedicated settings menu. Full remapping UI and glyph prompts remain open.
 
