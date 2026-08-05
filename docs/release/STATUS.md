@@ -21,7 +21,7 @@ The gated 1.0 target remains Godot 4 .NET with deterministic pure C# rules and f
 | Python deterministic tests | 466 passing and 3 environment-dependent radio skips on the supported interpreters in CI |
 | Python line coverage | About 87 percent measured with an 80 percent floor enforced by configuration and CI |
 | Native toolchain | Godot 4.7.1 Mono and .NET SDK 10.0.302 pinned and verified |
-| Native contract tests | 353 passing on .NET 10 with an 80 percent line floor per module |
+| Native contract tests | 367 passing on .NET 10 with an 80 percent line floor per module |
 | Cross-language parity | 100 movement cases (25,600 steps), 35 targeted core-rule cases, 8 Shield, 6 Phase Shift, 5 Last Stand, and 9 remaining-power cases pass |
 | Godot integration | Headless import plus seeded rules, restoration, logical input with schema-1 InputMap apply, VirtualViewport letterbox draw, multi-bus volume apply, focus-loss pause, audio buses, fourteen fallback cues, full nine-power markers and captions, cadence-aware stepping, live replay recording, isolated atomic save, and clean shutdown smoke on hosted runners |
 | Native artifacts | Windows, macOS, and Linux player smokes run outside the checkout on matching hosted runners; continuous Python player-latest packages publish from `main` |
@@ -40,7 +40,7 @@ The gated 1.0 target remains Godot 4 .NET with deterministic pure C# rules and f
 | Menus and overlays | Working | Twelve game states render headlessly; menu navigation is tested; retro-modern title, settings, and pause chrome with adaptive framing. |
 | Adaptive presentation | Working (Python alpha) | Preferred 4:3 framing, integer pixel scaling, and letterboxing for phone, square, and wide windows through `AdaptiveDisplay`. |
 | Input | Working with native qualification debt | Python alpha covers keyboard, WASD, mouse, and gamepad paths. Native shell centralizes logical keyboard and any-controller movement, confirm, back, pause, replay verification, and quit; schema-1 bindings store applies to the InputMap with opposite-device preservation and pure TryRemapAction conflict checks; accessibility hotkeys cover mute, volume, text scale, contrast, motion, flash-free, fullscreen, and diagnostics open; pure controller connection tracker pauses on last disconnect. Physical multi-controller hardware evidence, glyphs, and full remapping UI remain. |
-| Achievements | Working | Twenty-five achievement conditions evaluate, display, save with the profile, and restore. |
+| Achievements | Working | Twenty-five achievement conditions evaluate, display, save with the profile, and restore. Native pure `AchievementCatalog` evaluates run-local candidates; product runs emit once-only terminal `AchievementCandidate` events with shell captions (flag default off for dual-runtime fixture stability). |
 | Cosmetics | Working | Five cosmetic axes yield 10,800 combinations with versioned, validated, atomic persistence. |
 | Leaderboard | Working | One top-ten repository owns persistence; legacy single-score import is one-time. |
 | Save durability | Working with UX debt | Schema-versioned atomic repositories in OS user-data directories with migrations and corrupt backups. Native replay store is bounded and fail-closed. In-game reset and backup recovery UI remain open. |
