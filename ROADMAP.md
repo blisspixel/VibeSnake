@@ -461,7 +461,7 @@ Complete the pure C# simulation boundary so gameplay defects can be reproduced, 
 - Add a local crash report with app version, platform, rules identity, state name, exception, and sanitized stack trace.
 - Add an in-game path to open or copy the diagnostics location.
 - Keep network submission absent in 1.0.
-- **Progress (not closed):** `LocalDiagnostics` crash reports with path sanitization, retention, optional config hash; `EnsureDiagnosticsDirectory`; F12 opens folder and copies absolute path to clipboard; no network. `StructuredLocalLog` writes leveled JSONL under `logs/` (Information default minimum, path sanitization, rotation, retention); shell `WriteLocalCrashReport` pairs Error log lines with crash files; sparse session, run start, diagnostics-open, smoke crash probe, preferences/input load faults, controller connection events, and terminal replay finalize success/failure. Remaining: broader gameplay event logging policy and optional log tail UI.
+- **Progress (not closed):** `LocalDiagnostics` crash reports with path sanitization, retention, optional config hash; `EnsureDiagnosticsDirectory`; F12 opens folder and copies absolute path to clipboard; no network. `StructuredLocalLog` writes leveled JSONL under `logs/` (Information default minimum, path sanitization, rotation, retention); shell `WriteLocalCrashReport` pairs Error log lines with crash files; sparse session, run start, run won/dead, diagnostics-open, smoke crash probe, preferences/input load faults, controller connection events, and terminal replay finalize success/failure. Remaining: broader gameplay event logging policy and optional log tail UI.
 
 #### V040-09: strengthen static and structural checks
 
