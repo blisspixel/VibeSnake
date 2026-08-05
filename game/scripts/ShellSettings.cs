@@ -100,4 +100,32 @@ internal sealed class ShellSettings
 
     public float EffectiveUiVolume() =>
         MasterMuted || UiMuted ? 0.0f : MasterVolume * UiVolume;
+
+    /// <summary>Flips master mute and returns the new muted state.</summary>
+    public bool ToggleMasterMute()
+    {
+        MasterMuted = !MasterMuted;
+        return MasterMuted;
+    }
+
+    /// <summary>Flips high-contrast presentation and returns the new state.</summary>
+    public bool ToggleHighContrast()
+    {
+        HighContrast = !HighContrast;
+        return HighContrast;
+    }
+
+    /// <summary>Flips reduced-motion presentation and returns the new state.</summary>
+    public bool ToggleReducedMotion()
+    {
+        ReducedMotion = !ReducedMotion;
+        return ReducedMotion;
+    }
+
+    /// <summary>Flips preferred fullscreen mode and returns the new state.</summary>
+    public bool ToggleFullscreen()
+    {
+        Fullscreen = !Fullscreen;
+        return Fullscreen;
+    }
 }

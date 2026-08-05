@@ -17,8 +17,13 @@ Godot submits logical actions to the application boundary. Gameplay rules receiv
 | `vibe_pause` | P | Start | Pause or resume an active run |
 | `vibe_replay` | R | Controller North | Verify the latest stored native replay from the menu or ending |
 | `vibe_quit` | Command or Control plus Q | Not assigned | Request an exit that gives an active replay save one bounded drain window |
+| `vibe_restore_defaults` | F8 | Controller Select/Back | Rewrite keyboard and controller binding documents to defaults and re-apply the InputMap |
+| `vibe_toggle_master_mute` | F7 | Not assigned | Toggle master mute and persist preferences |
+| `vibe_toggle_high_contrast` | F9 | Not assigned | Toggle high-contrast presentation and persist preferences |
+| `vibe_toggle_reduced_motion` | F10 | Not assigned | Toggle reduced-motion presentation and persist preferences |
+| `vibe_toggle_fullscreen` | F11 | Not assigned | Toggle preferred fullscreen mode (interactive sessions only) and persist preferences |
 
-Controller mappings use the engine's standardized button and axis names and accept any connected controller. The left-stick deadzone is 0.5 in the qualification slice. Shipping deadzones and per-device calibration remain settings work.
+Controller mappings use the engine's standardized button and axis names and accept any connected controller. The left-stick deadzone is 0.5 in the qualification slice. Shipping deadzones and per-device calibration remain settings work. Accessibility toggles are available on every screen and do not require a dedicated settings menu. Full remapping UI and glyph prompts remain open.
 
 ## Deterministic direction policy
 

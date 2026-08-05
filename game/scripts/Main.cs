@@ -182,6 +182,35 @@ public partial class Main : Node2D
         AudioBuses.ApplyShellSettings(_shellSettings);
     }
 
+    private void ApplyMasterMuteToggle()
+    {
+        _shellSettings.ToggleMasterMute();
+        SaveShellSettings();
+        QueueRedraw();
+    }
+
+    private void ApplyHighContrastToggle()
+    {
+        _shellSettings.ToggleHighContrast();
+        SaveShellSettings();
+        QueueRedraw();
+    }
+
+    private void ApplyReducedMotionToggle()
+    {
+        _shellSettings.ToggleReducedMotion();
+        SaveShellSettings();
+        QueueRedraw();
+    }
+
+    private void ApplyFullscreenToggle()
+    {
+        _shellSettings.ToggleFullscreen();
+        SaveShellSettings();
+        ApplyWindowModeFromSettings();
+        QueueRedraw();
+    }
+
     private Color CanvasBackgroundColor() =>
         _shellSettings.HighContrast
             ? new Color(0.0f, 0.0f, 0.0f)
@@ -359,6 +388,30 @@ public partial class Main : Node2D
         if (inputEvent.IsActionPressed(GameActions.RestoreDefaults))
         {
             RestoreInputBindingDefaults();
+            return;
+        }
+
+        if (inputEvent.IsActionPressed(GameActions.ToggleMasterMute))
+        {
+            ApplyMasterMuteToggle();
+            return;
+        }
+
+        if (inputEvent.IsActionPressed(GameActions.ToggleHighContrast))
+        {
+            ApplyHighContrastToggle();
+            return;
+        }
+
+        if (inputEvent.IsActionPressed(GameActions.ToggleReducedMotion))
+        {
+            ApplyReducedMotionToggle();
+            return;
+        }
+
+        if (inputEvent.IsActionPressed(GameActions.ToggleFullscreen))
+        {
+            ApplyFullscreenToggle();
             return;
         }
 
@@ -1675,12 +1728,58 @@ public partial class Main : Node2D
             throw new InvalidOperationException("Accessibility placeholder settings failed.");
         }
 
+        settings.MasterMuted = false;
+        if (!settings.ToggleMasterMute() || !settings.MasterMuted)
+        {
+            throw new InvalidOperationException("Master mute toggle on failed.");
+        }
+
+        if (settings.ToggleMasterMute() || settings.MasterMuted)
+        {
+            throw new InvalidOperationException("Master mute toggle off failed.");
+        }
+
+        settings.HighContrast = false;
+        if (!settings.ToggleHighContrast() || !settings.HighContrast)
+        {
+            throw new InvalidOperationException("High contrast toggle on failed.");
+        }
+
+        if (settings.ToggleHighContrast() || settings.HighContrast)
+        {
+            throw new InvalidOperationException("High contrast toggle off failed.");
+        }
+
+        settings.ReducedMotion = false;
+        if (!settings.ToggleReducedMotion() || !settings.ReducedMotion)
+        {
+            throw new InvalidOperationException("Reduced motion toggle on failed.");
+        }
+
+        if (settings.ToggleReducedMotion() || settings.ReducedMotion)
+        {
+            throw new InvalidOperationException("Reduced motion toggle off failed.");
+        }
+
+        settings.Fullscreen = false;
+        if (!settings.ToggleFullscreen() || !settings.Fullscreen)
+        {
+            throw new InvalidOperationException("Fullscreen toggle on failed.");
+        }
+
+        if (settings.ToggleFullscreen() || settings.Fullscreen)
+        {
+            throw new InvalidOperationException("Fullscreen toggle off failed.");
+        }
+
         if (_preferencesStore is null || _diagnostics is null)
         {
             throw new InvalidOperationException("Preferences and diagnostics services were not ready.");
         }
 
         settings.MusicVolume = 0.33f;
+        settings.ReducedMotion = true;
+        settings.HighContrast = true;
         _shellSettings = settings;
         SaveShellSettings();
         LoadShellSettings();
@@ -1688,6 +1787,28 @@ public partial class Main : Node2D
         {
             throw new InvalidOperationException("Preferences schema 2 did not round-trip through the store.");
         }
+
+        // Production apply paths flip each preference and persist without throwing.
+        // After load: mute off, high-contrast on, reduced-motion on, fullscreen off.
+        ApplyMasterMuteToggle();
+        ApplyHighContrastToggle();
+        ApplyReducedMotionToggle();
+        ApplyFullscreenToggle();
+        if (!_shellSettings.MasterMuted
+            || _shellSettings.HighContrast
+            || _shellSettings.ReducedMotion
+            || !_shellSettings.Fullscreen)
+        {
+            throw new InvalidOperationException(
+                "Accessibility apply toggles did not flip persisted shell settings.");
+        }
+
+        // Restore quiet defaults for remaining smoke work.
+        _shellSettings.MasterMuted = false;
+        _shellSettings.HighContrast = false;
+        _shellSettings.ReducedMotion = false;
+        _shellSettings.Fullscreen = false;
+        SaveShellSettings();
 
         var reportPath = _diagnostics.WriteCrashReport(
             appVersion: "0.2.1",

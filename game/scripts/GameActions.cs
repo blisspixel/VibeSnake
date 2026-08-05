@@ -22,6 +22,10 @@ internal static class GameActions
     public const string Replay = "vibe_replay";
     public const string Quit = "vibe_quit";
     public const string RestoreDefaults = "vibe_restore_defaults";
+    public const string ToggleMasterMute = "vibe_toggle_master_mute";
+    public const string ToggleHighContrast = "vibe_toggle_high_contrast";
+    public const string ToggleReducedMotion = "vibe_toggle_reduced_motion";
+    public const string ToggleFullscreen = "vibe_toggle_fullscreen";
 
     private static readonly string[] RequiredActions =
     [
@@ -49,6 +53,10 @@ internal static class GameActions
             ["replay"] = Replay,
             ["quit"] = Quit,
             ["restore_defaults"] = RestoreDefaults,
+            ["toggle_master_mute"] = ToggleMasterMute,
+            ["toggle_high_contrast"] = ToggleHighContrast,
+            ["toggle_reduced_motion"] = ToggleReducedMotion,
+            ["toggle_fullscreen"] = ToggleFullscreen,
         };
 
     private static readonly HashSet<string> RuntimeActions = [];
@@ -117,6 +125,22 @@ internal static class GameActions
             0.5f,
             KeyEvent(Key.F8, physical: false),
             JoyButtonEvent(JoyButton.Back));
+        AddAction(
+            ToggleMasterMute,
+            0.5f,
+            KeyEvent(Key.F7, physical: false));
+        AddAction(
+            ToggleHighContrast,
+            0.5f,
+            KeyEvent(Key.F9, physical: false));
+        AddAction(
+            ToggleReducedMotion,
+            0.5f,
+            KeyEvent(Key.F10, physical: false));
+        AddAction(
+            ToggleFullscreen,
+            0.5f,
+            KeyEvent(Key.F11, physical: false));
     }
 
     /// <summary>
