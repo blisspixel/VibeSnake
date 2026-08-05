@@ -13,10 +13,26 @@ from vibesnake.qa.simulation import CoreSimulation
 
 def test_catalog_order_matches_native_first_ids() -> None:
     # Keep aligned with VibeSnake.Rules.AchievementCatalog.Definitions.
-    assert len(DEFINITIONS) == 17
-    assert DEFINITIONS[0].id == "first_bite"
-    assert DEFINITIONS[1].id == "century"
-    assert DEFINITIONS[-1].id == "marathon"
+    expected_ids = (
+        "first_bite",
+        "century",
+        "high_roller",
+        "legend",
+        "just_a_taste",
+        "getting_longer",
+        "growing_strong",
+        "serpent",
+        "combo_starter",
+        "combo_king",
+        "wrap_around",
+        "close_call",
+        "powered_up",
+        "power_hungry",
+        "quick_reflexes",
+        "endurance",
+        "marathon",
+    )
+    assert tuple(definition.id for definition in DEFINITIONS) == expected_ids
     assert index_of("century") == 1
     assert index_of("marathon") == 16
     assert index_of("missing_id") == -1
