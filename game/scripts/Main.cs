@@ -2480,31 +2480,45 @@ public partial class Main : Node2D
             throw new InvalidOperationException("Forced collision did not end the run.");
         }
 
+        if (_replayRecorder is null
+            || !_replayRecorder.TryCompleteStep(deathResult, _run))
+        {
+            throw new InvalidOperationException(
+                "Smoke death path failed to mirror-complete the terminal step: "
+                    + (_replayRecorder?.FailureMessage ?? "missing recorder"));
+        }
+
         _screenState = ScreenState.Ended;
         _structuredLog?.Information(
             "shell",
             "Run ended: " + _run.DeathCause + ".",
             eventCode: "run_dead");
-        FinalizeAndStoreReplay();
-        for (var frame = 0; frame < 300 && (_replayOperation is not null || _queuedReplaySave is not null); frame++)
+        // Smoke path finishes and saves synchronously so the death-restart
+        // contract does not depend on process-frame drain of background save.
+        var recording = _replayRecorder!.Finish(_run);
+        _replayRecorder = null;
+        if (!recording.IsSuccessful || recording.Replay is null || _replayStore is null)
         {
-            // Drain single-flight replay work without waiting on process frames.
-            TryCompleteReplayOperation();
+            throw new InvalidOperationException(
+                "Smoke death path failed to finalize replay: " + recording.Message);
         }
 
-        if (_replayOperation is not null || _queuedReplaySave is not null)
+        _structuredLog?.Information(
+            "replay",
+            "Terminal replay finalized for atomic save.",
+            eventCode: "replay_finalized");
+        var saveCaption = SaveAndVerifyReplay(_replayStore, recording.Replay);
+        if (!saveCaption.StartsWith("REPLAY SAVED", StringComparison.Ordinal))
         {
-            throw new InvalidOperationException("Death path did not finish terminal replay save.");
+            throw new InvalidOperationException(
+                "Smoke death path failed terminal replay save: " + saveCaption);
         }
 
         if (_structuredLog is not null)
         {
             var logText = System.IO.File.ReadAllText(_structuredLog.ActiveLogPath);
-            // Death path always logs run_dead. Replay finalize may be success or
-            // failure depending on whether the smoke path mirror-stepped the recorder.
             if (!logText.Contains("run_dead", StringComparison.Ordinal)
-                || (!logText.Contains("replay_finalized", StringComparison.Ordinal)
-                    && !logText.Contains("replay_finalize_failed", StringComparison.Ordinal)))
+                || !logText.Contains("replay_finalized", StringComparison.Ordinal))
             {
                 throw new InvalidOperationException(
                     "Smoke death path did not write expected structured log event codes.");
