@@ -10,6 +10,7 @@ public sealed record ContentBudgetReport(
     int FileCount,
     int ExportEligibleCount,
     bool InventoryWithinCoreInstalledBudget,
+    bool InventoryWithinCoreWorkingSetBudget,
     bool ExportEligibleWithinCoreCompressedBudget,
     bool ExportEligibleWithinCoreInstalledBudget)
 {
@@ -42,6 +43,8 @@ public sealed record ContentBudgetReport(
             ExportEligibleCount: exportEligibleCount,
             InventoryWithinCoreInstalledBudget:
                 ContentPackBudgets.IsWithinCoreInstalledBudget(inventoryBytes),
+            InventoryWithinCoreWorkingSetBudget:
+                ContentPackBudgets.IsWithinCoreWorkingSetBudget(inventoryBytes),
             ExportEligibleWithinCoreCompressedBudget:
                 ContentPackBudgets.IsWithinCoreCompressedBudget(exportEligibleBytes),
             ExportEligibleWithinCoreInstalledBudget:
