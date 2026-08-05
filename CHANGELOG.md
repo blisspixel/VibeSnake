@@ -6,7 +6,7 @@ Notable player-facing and engineering changes are recorded here. The project is 
 
 ### Added
 
-- Main menu shows permanent achievement unlock count (`UNLOCKS n/total`) from `achievements.json`.
+- Main menu shows rules-local run unlock count (`RUN UNLOCKS n/total`) from `achievements.json`.
 - Inventory gate writes `content-eligibility-evidence-v1` JSON under `TestResults/native` for pack-approval handoffs.
 - Achievements document golden serialization and absolute user-data root rejection coverage.
 
