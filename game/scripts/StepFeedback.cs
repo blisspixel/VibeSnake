@@ -66,6 +66,12 @@ internal readonly record struct StepFeedback(AudioCue? Cue, string? Caption)
                 $"{PowerPresentation.ShortName(spawned)} SIGNAL DETECTED");
         }
 
+        // Achievement candidates outrank pressure/style cues (catalog priority 92).
+        if (TryAchievementCaption(events, out var achievementCaption))
+        {
+            return new StepFeedback(AudioCue.Confirm, achievementCaption);
+        }
+
         // Starvation pressure outranks near-miss style captions (catalog priority).
         if (events.Any(detail => detail.Kind == RunEventKind.StarvationWarning))
         {
@@ -85,6 +91,32 @@ internal readonly record struct StepFeedback(AudioCue? Cue, string? Caption)
         return events.Any(detail => detail.Kind == RunEventKind.AteFood)
             ? new StepFeedback(AudioCue.Food, null)
             : default;
+    }
+
+    private static bool TryAchievementCaption(
+        IReadOnlyList<RunEventDetail> events,
+        out string caption)
+    {
+        foreach (var detail in events)
+        {
+            if (detail.Kind != RunEventKind.AchievementCandidate
+                || detail.Value is not int index)
+            {
+                continue;
+            }
+
+            var definition = AchievementCatalog.DefinitionAt(index);
+            if (definition is null)
+            {
+                continue;
+            }
+
+            caption = "ACHIEVEMENT: " + definition.Name.ToUpperInvariant();
+            return true;
+        }
+
+        caption = string.Empty;
+        return false;
     }
 
     private static bool TryNearMissCaption(

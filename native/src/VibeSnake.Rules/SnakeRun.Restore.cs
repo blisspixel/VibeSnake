@@ -117,6 +117,9 @@ public sealed partial class SnakeRun
             EnableComboExpiredEvent: ReadOptionalBoolean(
                 configElement,
                 "enableComboExpiredEvent"),
+            EnableAchievementCandidates: ReadOptionalBoolean(
+                configElement,
+                "enableAchievementCandidates"),
             StarvationWarningTicks: ReadOptionalInt32(
                 configElement,
                 "starvationWarningTicks",

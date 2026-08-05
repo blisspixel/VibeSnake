@@ -801,8 +801,48 @@ public sealed partial class SnakeRun
 
     private RunStepResult Result(
         RunEvent events,
-        IReadOnlyList<RunEventDetail> orderedEvents) =>
-        new(Tick, events, orderedEvents, Status, DeathCause, ComputeStateHash());
+        IReadOnlyList<RunEventDetail> orderedEvents)
+    {
+        if (Status is RunStatus.Dead or RunStatus.Won)
+        {
+            var mutable = orderedEvents as List<RunEventDetail> ?? orderedEvents.ToList();
+            AppendAchievementCandidates(mutable, ref events);
+            orderedEvents = mutable;
+        }
+
+        return new(Tick, events, orderedEvents, Status, DeathCause, ComputeStateHash());
+    }
+
+    /// <summary>
+    /// Emit one <see cref="RunEventKind.AchievementCandidate"/> per newly earned
+    /// rules-local achievement. Value carries the catalog index for shell lookup.
+    /// Profile unlock persistence remains a shell/progression concern.
+    /// </summary>
+    private void AppendAchievementCandidates(
+        List<RunEventDetail> orderedEvents,
+        ref RunEvent events)
+    {
+        if (!_config.EnableAchievementCandidates)
+        {
+            return;
+        }
+
+        var earned = AchievementCatalog.EvaluateCandidates(ToAchievementMetrics());
+        foreach (var id in earned)
+        {
+            var index = AchievementCatalog.IndexOf(id);
+            if (index < 0)
+            {
+                continue;
+            }
+
+            events |= RunEvent.AchievementCandidate;
+            orderedEvents.Add(
+                new RunEventDetail(
+                    RunEventKind.AchievementCandidate,
+                    Value: index));
+        }
+    }
 
     private byte[] SerializeCanonicalStateBytes()
     {
@@ -845,7 +885,7 @@ public sealed partial class SnakeRun
                 "segmentDetachMaxSegments",
                 _config.SegmentDetachMaxSegments);
             // Omit false to keep legacy canonical hashes stable while flags
-            // default off until shared fixtures regenerate.
+            // default off or match dual-runtime fixture contracts.
             if (_config.EnableNearMiss)
             {
                 writer.WriteBoolean("enableNearMiss", true);
@@ -854,6 +894,11 @@ public sealed partial class SnakeRun
             if (_config.EnableComboExpiredEvent)
             {
                 writer.WriteBoolean("enableComboExpiredEvent", true);
+            }
+
+            if (_config.EnableAchievementCandidates)
+            {
+                writer.WriteBoolean("enableAchievementCandidates", true);
             }
 
             writer.WriteEndObject();

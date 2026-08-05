@@ -669,7 +669,7 @@ public partial class Main : Node2D
 
         _run = _run is { Status: not RunStatus.Running } terminalRun
             ? terminalRun.Restart(_nextSeed++)
-            : SnakeRun.Create(_nextSeed++);
+            : SnakeRun.Create(_nextSeed++, ProductRunConfig());
         _replayRecorder = new RunReplayRecorder(_run);
         _screenState = ScreenState.Running;
         _paused = false;
@@ -681,6 +681,13 @@ public partial class Main : Node2D
         PlayCue(AudioCue.Confirm);
         QueueRedraw();
     }
+
+    /// <summary>
+    /// Product runs enable achievement candidate emission. Shared parity fixtures
+    /// keep the flag off until dual-runtime achievement events are regenerated.
+    /// </summary>
+    private static RunConfig ProductRunConfig() =>
+        new(EnableAchievementCandidates: true);
 
     private void ReturnToMenu()
     {

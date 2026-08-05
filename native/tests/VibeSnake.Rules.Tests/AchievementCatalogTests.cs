@@ -141,4 +141,82 @@ public sealed class AchievementCatalogTests
         Assert.False(metrics.IsTerminal);
         Assert.Equal(wrapRun.SessionWraps, metrics.WrapCount);
     }
+
+    [Fact]
+    public void Terminal_death_emits_achievement_candidate_events()
+    {
+        var run = SnakeRun.CreateForTesting(
+            new RunConfig(
+                Width: 8,
+                Height: 6,
+                StarvationTicks: 100,
+                PowerSpawnIntervalTicks: 0,
+                EnableAchievementCandidates: true),
+            [new GridPoint(1, 1)],
+            Direction.Right,
+            food: new GridPoint(7, 5),
+            hungerTicksRemaining: 1,
+            score: 150,
+            comboCount: 6);
+
+        var result = run.Step();
+
+        Assert.Equal(RunStatus.Dead, run.Status);
+        Assert.Equal(DeathCause.Starvation, run.DeathCause);
+        Assert.Contains(
+            result.OrderedEvents,
+            detail => detail.Kind == RunEventKind.AchievementCandidate);
+        Assert.True(result.Events.HasFlag(RunEvent.AchievementCandidate));
+
+        var firstBiteIndex = AchievementCatalog.IndexOf("first_bite");
+        Assert.True(firstBiteIndex >= 0);
+        Assert.Contains(
+            result.OrderedEvents,
+            detail =>
+                detail.Kind == RunEventKind.AchievementCandidate
+                && detail.Value == firstBiteIndex);
+        Assert.Contains(
+            result.OrderedEvents,
+            detail =>
+                detail.Kind == RunEventKind.AchievementCandidate
+                && detail.Value == AchievementCatalog.IndexOf("century"));
+    }
+
+    [Fact]
+    public void Terminal_death_skips_achievement_candidates_when_flag_default_off()
+    {
+        // Default EnableAchievementCandidates:false keeps dual-runtime parity
+        // fixtures stable until Python also emits achievement_candidate.
+        var run = SnakeRun.CreateForTesting(
+            new RunConfig(
+                Width: 8,
+                Height: 6,
+                StarvationTicks: 100,
+                PowerSpawnIntervalTicks: 0),
+            [new GridPoint(1, 1)],
+            Direction.Right,
+            food: new GridPoint(7, 5),
+            hungerTicksRemaining: 1,
+            score: 150,
+            comboCount: 6);
+
+        var result = run.Step();
+
+        Assert.Equal(RunStatus.Dead, run.Status);
+        Assert.DoesNotContain(
+            result.OrderedEvents,
+            detail => detail.Kind == RunEventKind.AchievementCandidate);
+        Assert.False(result.Events.HasFlag(RunEvent.AchievementCandidate));
+    }
+
+    [Fact]
+    public void IndexOf_and_DefinitionAt_round_trip()
+    {
+        var index = AchievementCatalog.IndexOf("century");
+        Assert.True(index >= 0);
+        Assert.Equal("century", AchievementCatalog.DefinitionAt(index)!.Id);
+        Assert.Equal(-1, AchievementCatalog.IndexOf("missing_id"));
+        Assert.Null(AchievementCatalog.DefinitionAt(-1));
+        Assert.Null(AchievementCatalog.DefinitionAt(10_000));
+    }
 }

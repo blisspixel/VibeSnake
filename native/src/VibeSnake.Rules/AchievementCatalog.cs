@@ -128,4 +128,32 @@ public static class AchievementCatalog
 
         return null;
     }
+
+    /// <summary>
+    /// Zero-based catalog index for <paramref name="id"/>, or -1 when unknown.
+    /// Used as the <see cref="RunEventDetail.Value"/> payload for candidate events.
+    /// </summary>
+    public static int IndexOf(string id)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(id);
+        for (var index = 0; index < Definitions.Count; index++)
+        {
+            if (string.Equals(Definitions[index].Id, id, StringComparison.Ordinal))
+            {
+                return index;
+            }
+        }
+
+        return -1;
+    }
+
+    public static AchievementDefinition? DefinitionAt(int index)
+    {
+        if (index < 0 || index >= Definitions.Count)
+        {
+            return null;
+        }
+
+        return Definitions[index];
+    }
 }
