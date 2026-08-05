@@ -116,6 +116,8 @@ public sealed class ArchitectureBoundaryTests
         "Path.Combine",
         "Path.GetFullPath",
         "Path.GetTemp",
+        "Process.Start",
+        "Process.GetCurrentProcess",
     ];
 
     [Fact]
