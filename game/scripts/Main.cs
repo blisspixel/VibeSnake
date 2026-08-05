@@ -773,12 +773,20 @@ public partial class Main : Node2D
         var recording = recorder.Finish(_run);
         if (!recording.IsSuccessful || recording.Replay is null)
         {
+            _structuredLog?.Warning(
+                "replay",
+                recording.Message,
+                eventCode: "replay_finalize_failed");
             ShowReplayStatus("REPLAY NOT SAVED: " + recording.Message);
             return;
         }
 
         var store = _replayStore;
         var replay = recording.Replay;
+        _structuredLog?.Information(
+            "replay",
+            "Terminal replay finalized for atomic save.",
+            eventCode: "replay_finalized");
         QueueReplaySave(
             () => SaveAndVerifyReplay(store, replay),
             "REPLAY SAVE IN PROGRESS");
