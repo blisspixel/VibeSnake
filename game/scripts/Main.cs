@@ -372,9 +372,23 @@ public partial class Main : Node2D
 
         var controllerLoaded = _inputBindingsStore.LoadOrDefault(
             InputBindingsDocument.ControllerDeviceClass);
-        var controllerDocument = controllerLoaded.IsSuccess && controllerLoaded.Document is not null
-            ? controllerLoaded.Document
-            : InputBindingsDocument.CreateControllerDefaults();
+        InputBindingsDocument controllerDocument;
+        if (controllerLoaded.IsSuccess && controllerLoaded.Document is not null)
+        {
+            controllerDocument = controllerLoaded.Document;
+        }
+        else
+        {
+            controllerDocument = InputBindingsDocument.CreateControllerDefaults();
+            if (!controllerLoaded.IsSuccess)
+            {
+                WriteLocalCrashReport(
+                    "InputBindingsLoad",
+                    new InvalidOperationException(controllerLoaded.Message),
+                    eventCode: "controller_bindings_load_failed");
+            }
+        }
+
         GameActions.ApplyControllerBindings(controllerDocument);
     }
 
