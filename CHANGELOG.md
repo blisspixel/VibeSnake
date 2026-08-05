@@ -13,6 +13,8 @@ Notable player-facing and engineering changes are recorded here. The project is 
 - Optional `configHash` / `configHashAlgorithm` fields on offline crash reports; rules throughput evidence JSON records the effective config hash.
 - Pure `RunScoreIdentity` for fair-score categories using ruleset contract plus effective config hash.
 
+- Master volume step hotkeys (`=` / `-` and keypad equivalents) with clamp, unmute-on-raise, and preference persistence.
+
 ### Fixed
 
 - `InputBindingsDocument.TryRemapAction` preserves fractional axis thresholds instead of rounding them to integers.

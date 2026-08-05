@@ -251,6 +251,13 @@ public partial class Main : Node2D
         QueueRedraw();
     }
 
+    private void ApplyMasterVolumeStep(float delta)
+    {
+        _shellSettings.AdjustMasterVolume(delta);
+        SaveShellSettings();
+        QueueRedraw();
+    }
+
     private Color CanvasBackgroundColor() =>
         _shellSettings.HighContrast
             ? new Color(0.0f, 0.0f, 0.0f)
@@ -457,6 +464,18 @@ public partial class Main : Node2D
             return;
         }
 
+        if (inputEvent.IsActionPressed(GameActions.VolumeUp))
+        {
+            ApplyMasterVolumeStep(ShellSettings.DefaultVolumeStep);
+            return;
+        }
+
+        if (inputEvent.IsActionPressed(GameActions.VolumeDown))
+        {
+            ApplyMasterVolumeStep(-ShellSettings.DefaultVolumeStep);
+            return;
+        }
+
         if (_screenState is ScreenState.Menu or ScreenState.Ended)
         {
             if (inputEvent.IsActionPressed(GameActions.Replay))
@@ -562,7 +581,7 @@ public partial class Main : Node2D
                 DrawLabel("R or Controller North: verify latest replay", new Vector2(46.0f, 378.0f), ScaledFontSize(18), SecondaryTextColor());
                 DrawLabel("Drop one replay file here to verify without changing it", new Vector2(46.0f, 410.0f), ScaledFontSize(18), SecondaryTextColor());
                 DrawLabel(
-                    "F7 mute  F9 contrast  F10 motion  F11 fullscreen  F8 restore bindings",
+                    "F7 mute  -/= volume  F9 contrast  F10 motion  F11 fullscreen  F8 bindings",
                     new Vector2(46.0f, 442.0f),
                     ScaledFontSize(16),
                     SecondaryTextColor());
@@ -1826,6 +1845,20 @@ public partial class Main : Node2D
         if (settings.ToggleFullscreen() || settings.Fullscreen)
         {
             throw new InvalidOperationException("Fullscreen toggle off failed.");
+        }
+
+        settings.MasterVolume = 0.5f;
+        settings.MasterMuted = true;
+        if (Math.Abs(settings.AdjustMasterVolume(ShellSettings.DefaultVolumeStep) - 0.55f) > 0.0001f
+            || settings.MasterMuted)
+        {
+            throw new InvalidOperationException("Master volume step-up unmute contract failed.");
+        }
+
+        if (Math.Abs(settings.AdjustMasterVolume(-1.0f) - 0.0f) > 0.0001f
+            || Math.Abs(settings.AdjustMasterVolume(2.0f) - 1.0f) > 0.0001f)
+        {
+            throw new InvalidOperationException("Master volume clamp contract failed.");
         }
 
         if (_preferencesStore is null || _diagnostics is null)

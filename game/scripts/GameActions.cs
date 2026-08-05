@@ -26,6 +26,8 @@ internal static class GameActions
     public const string ToggleHighContrast = "vibe_toggle_high_contrast";
     public const string ToggleReducedMotion = "vibe_toggle_reduced_motion";
     public const string ToggleFullscreen = "vibe_toggle_fullscreen";
+    public const string VolumeUp = "vibe_volume_up";
+    public const string VolumeDown = "vibe_volume_down";
 
     private static readonly string[] RequiredActions =
     [
@@ -57,6 +59,8 @@ internal static class GameActions
             ["toggle_high_contrast"] = ToggleHighContrast,
             ["toggle_reduced_motion"] = ToggleReducedMotion,
             ["toggle_fullscreen"] = ToggleFullscreen,
+            ["volume_up"] = VolumeUp,
+            ["volume_down"] = VolumeDown,
         };
 
     private static readonly HashSet<string> RuntimeActions = [];
@@ -141,6 +145,16 @@ internal static class GameActions
             ToggleFullscreen,
             0.5f,
             KeyEvent(Key.F11, physical: false));
+        AddAction(
+            VolumeUp,
+            0.5f,
+            KeyEvent(Key.Equal, physical: false),
+            KeyEvent(Key.KpAdd, physical: false));
+        AddAction(
+            VolumeDown,
+            0.5f,
+            KeyEvent(Key.Minus, physical: false),
+            KeyEvent(Key.KpSubtract, physical: false));
     }
 
     /// <summary>

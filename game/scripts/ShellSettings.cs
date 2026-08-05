@@ -128,4 +128,27 @@ internal sealed class ShellSettings
         Fullscreen = !Fullscreen;
         return Fullscreen;
     }
+
+    /// <summary>Default volume step for keyboard accessibility shortcuts.</summary>
+    public const float DefaultVolumeStep = 0.05f;
+
+    /// <summary>
+    /// Adjusts master volume by <paramref name="delta"/>, clamps to 0..1, and
+    /// returns the new volume. Unmutes master when increasing from muted silence.
+    /// </summary>
+    public float AdjustMasterVolume(float delta)
+    {
+        if (float.IsNaN(delta) || float.IsInfinity(delta))
+        {
+            throw new ArgumentOutOfRangeException(nameof(delta));
+        }
+
+        MasterVolume = Math.Clamp(MasterVolume + delta, 0.0f, 1.0f);
+        if (delta > 0.0f && MasterMuted)
+        {
+            MasterMuted = false;
+        }
+
+        return MasterVolume;
+    }
 }
