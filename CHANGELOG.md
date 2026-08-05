@@ -58,6 +58,7 @@ Notable player-facing and engineering changes are recorded here. The project is 
 
 ### Changed
 
+- Native `test_native.ps1` retries Coverlet once after a rebuild when hit-file truncation fails on Windows after a green test run.
 - Documentation snapshot refreshed for public radio inventory, hosted multi-platform CI, and single-`main` repository hygiene.
 - Canonical run state serializes phase-shift and last-stand fields.
 - Godot shell advances rules through cadence-aware accumulation instead of one physics frame per rules step.
