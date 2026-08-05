@@ -33,6 +33,7 @@ Notable player-facing and engineering changes are recorded here. The project is 
 - Godot shell captions and orange HUD tint for the starvation warning band, with headless smoke coverage.
 - Reserved `RunEventKind.ComboExpired` / `combo_expired` catalog entry for upcoming dual-runtime fixture regeneration (state reset remains silent for parity).
 - Reserved `RunEventKind.AchievementCandidate` / `achievement_candidate` catalog entry for progression wiring without emission yet.
+- `LocalDiagnostics.EnsureDiagnosticsDirectory` for in-game open-folder support without network paths.
 - `RulesEventCatalog.PresentationPriority` and `SelectPrimaryKind` for caption selection when multiple events share a step.
 - Native pure C# Phase Shift power contract with collection, timed expiry, body-overlap movement, Shield precedence, canonical restore, and replay participation.
 - Six shared Python-to-C# Phase Shift parity fixtures (`phase_shift_rules_v1.json`) and CI check via `python -m vibesnake.qa.shared_phase_shift_traces --check`.

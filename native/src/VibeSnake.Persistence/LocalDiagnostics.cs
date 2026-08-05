@@ -105,6 +105,16 @@ public sealed class LocalDiagnostics
             .ToArray();
     }
 
+    /// <summary>
+    /// Ensures the diagnostics directory exists and returns its absolute path for
+    /// UI "open folder" actions. Never creates network paths.
+    /// </summary>
+    public string EnsureDiagnosticsDirectory()
+    {
+        Directory.CreateDirectory(DiagnosticsDirectory);
+        return DiagnosticsDirectory;
+    }
+
     private void PruneOldReports()
     {
         var files = Directory.GetFiles(DiagnosticsDirectory, "*" + ReportFileExtension)

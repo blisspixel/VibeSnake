@@ -42,6 +42,25 @@ public sealed class LocalDiagnosticsTests
     }
 
     [Fact]
+    public void EnsureDiagnosticsDirectory_creates_absolute_diagnostics_folder()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "vibesnake-diagnostics-ensure-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(root);
+        try
+        {
+            var diagnostics = new LocalDiagnostics(root);
+            var path = diagnostics.EnsureDiagnosticsDirectory();
+            Assert.True(Directory.Exists(path));
+            Assert.True(Path.IsPathFullyQualified(path));
+            Assert.Equal(diagnostics.DiagnosticsDirectory, path);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
     public void Prunes_reports_beyond_retention_limit()
     {
         var root = Path.Combine(Path.GetTempPath(), "vibesnake-diagnostics-prune-" + Guid.NewGuid().ToString("N"));
