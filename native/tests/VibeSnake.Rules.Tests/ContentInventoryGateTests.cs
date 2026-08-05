@@ -36,6 +36,16 @@ public sealed class ContentInventoryGateTests
         Assert.Equal(114, eligibility.CountsByRightsStatus["cleared"]);
         Assert.True(eligibility.CountsByMediaTypePrefix["audio"] >= 95);
         Assert.True(eligibility.CountsByShipStatus["blocked"] == 106);
+        Assert.Equal(
+            ContentEligibilityReport.DefaultSampleBlockedPathLimit,
+            eligibility.SampleBlockedPaths.Count);
+        Assert.All(
+            eligibility.SampleBlockedPaths,
+            path =>
+            {
+                Assert.False(string.IsNullOrWhiteSpace(path));
+                Assert.False(System.IO.Path.IsPathRooted(path));
+            });
     }
 
     private static string ResolveInventoryPath()

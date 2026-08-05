@@ -13,13 +13,22 @@ public sealed record ContentEligibilityReport(
     int ExcludedCount,
     IReadOnlyDictionary<string, int> CountsByShipStatus,
     IReadOnlyDictionary<string, int> CountsByRightsStatus,
-    IReadOnlyDictionary<string, int> CountsByMediaTypePrefix)
+    IReadOnlyDictionary<string, int> CountsByMediaTypePrefix,
+    IReadOnlyList<string> SampleBlockedPaths)
 {
+    public const int DefaultSampleBlockedPathLimit = 16;
+
     public bool HasAnyExportEligible => ExportEligibleCount > 0;
 
-    public static ContentEligibilityReport FromInventory(ContentInventory inventory)
+    public static ContentEligibilityReport FromInventory(
+        ContentInventory inventory,
+        int sampleBlockedPathLimit = DefaultSampleBlockedPathLimit)
     {
         ArgumentNullException.ThrowIfNull(inventory);
+        if (sampleBlockedPathLimit < 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(sampleBlockedPathLimit));
+        }
 
         var byShip = new Dictionary<string, int>(StringComparer.Ordinal);
         var byRights = new Dictionary<string, int>(StringComparer.Ordinal);
@@ -28,6 +37,7 @@ public sealed record ContentEligibilityReport(
         var excluded = 0;
         var eligible = 0;
         long eligibleBytes = 0;
+        var blockedPaths = new List<string>(sampleBlockedPathLimit);
 
         foreach (var asset in inventory.Assets)
         {
@@ -47,6 +57,10 @@ public sealed record ContentEligibilityReport(
             if (string.Equals(asset.ShipStatus, "blocked", StringComparison.Ordinal))
             {
                 blocked++;
+                if (blockedPaths.Count < sampleBlockedPathLimit)
+                {
+                    blockedPaths.Add(asset.RelativePath);
+                }
             }
             else if (string.Equals(asset.ShipStatus, "excluded", StringComparison.Ordinal))
             {
@@ -62,7 +76,8 @@ public sealed record ContentEligibilityReport(
             ExcludedCount: excluded,
             CountsByShipStatus: byShip,
             CountsByRightsStatus: byRights,
-            CountsByMediaTypePrefix: byMedia);
+            CountsByMediaTypePrefix: byMedia,
+            SampleBlockedPaths: blockedPaths);
     }
 
     private static void Increment(Dictionary<string, int> counts, string key)
