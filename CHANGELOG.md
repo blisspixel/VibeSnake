@@ -6,6 +6,7 @@ Notable player-facing and engineering changes are recorded here. The project is 
 
 ### Added
 
+- Headless smoke asserts structured chievements_load after shell startup unlock restore.
 - Ended-run overlay can show UNLOCK SAVED feedback when permanent unlocks are written.
 - Architecture boundary test locks Rules→Persistence one-way dependency (no cycles with Game).
 

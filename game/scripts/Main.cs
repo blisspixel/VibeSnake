@@ -2326,6 +2326,7 @@ public partial class Main : Node2D
 
         var structuredLogText = System.IO.File.ReadAllText(structuredLogPath);
         if (!structuredLogText.Contains("smoke_session_start", StringComparison.Ordinal)
+            || !structuredLogText.Contains("achievements_load", StringComparison.Ordinal)
             || !structuredLogText.Contains("open_diagnostics", StringComparison.Ordinal)
             || !structuredLogText.Contains("smoke_crash_probe", StringComparison.Ordinal)
             || !structuredLogText.Contains("\"level\":\"Error\"", StringComparison.Ordinal)
