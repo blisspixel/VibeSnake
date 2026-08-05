@@ -43,6 +43,7 @@ Notable player-facing and engineering changes are recorded here. The project is 
 - Shell structured log records `replay_finalized` and `replay_finalize_failed` around terminal replay capture.
 - Shell structured log records `run_start` when a product run is created or restarted, and `run_won` / `run_dead` when it ends; smoke death path mirror-completes the terminal step, saves synchronously, and asserts `run_dead` plus `replay_finalized`.
 - Native and exported player smoke harnesses accept 1-4 isolated replays so storage smoke and death-restart can each leave a verified envelope.
+- Characterization tests lock that mid-run restore does not yet preserve session achievement counters under canonical state schema 2.
 - README screenshot presentation-source fingerprint refreshed after dual-runtime achievement-candidate QA wiring.
 - `InputBindingsDocument.TryRemapAction` preserves fractional axis thresholds instead of rounding them to integers.
 - Multi-stream `RandomStreamBank` for independent gameplay, AI, cosmetic, radio, and copy PCG32 streams derived from one master seed.
