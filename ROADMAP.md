@@ -420,7 +420,7 @@ Complete the pure C# simulation boundary so gameplay defects can be reproduced, 
 - Assign a stable `ruleset_id` and `rules_version`.
 - Hash the effective rules into score and replay metadata.
 - Reject a scored run when rules change after start.
-- **Progress (not closed):** `RulesetIdentity` is `vibesnake-core@4`; `RunConfig.ComputeConfigHash` (`sha256-canonical-runconfig-v1`) and `SnakeRun.ConfigHash` cover every scoring field including near-miss and warning ticks; `RunScoreIdentity` compares fair-score categories by ruleset plus config hash. Replay envelopes store `configHash` / `configHashAlgorithm`; verification rejects restore and mid-step config identity drift (`ConfigIdentityDiverged`). Remaining: deeper ruleset catalog work beyond the single core contract.
+- **Progress (not closed):** `RulesetIdentity` is `vibesnake-core@4`; `RunConfig.ComputeConfigHash` (`sha256-canonical-runconfig-v1`) and `SnakeRun.ConfigHash` cover every scoring field including near-miss, combo-expired, achievement-candidate, and warning ticks; `RunScoreIdentity` compares fair-score categories by ruleset plus config hash (achievement flag separates product vs fixture categories). Replay envelopes store `configHash` / `configHashAlgorithm`; verification rejects restore and mid-step config identity drift (`ConfigIdentityDiverged`); state-machine campaigns assert config-hash stability mid-run. Remaining: deeper multi-ruleset catalog work beyond the single core contract.
 
 #### V040-04: finish the state machine
 
