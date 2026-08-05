@@ -17,6 +17,7 @@ public sealed partial class RunReplay
 
     private readonly IReadOnlyList<ReplayStep> _steps;
     private readonly IReadOnlyList<ReplayCheckpoint> _checkpoints;
+    private readonly bool _writeConfigIdentity;
 
     private RunReplay(
         string initialCanonicalState,
@@ -24,7 +25,10 @@ public sealed partial class RunReplay
         int checkpointInterval,
         IEnumerable<ReplayCheckpoint> checkpoints,
         ReplayOutcome outcome,
-        string? payloadHash = null)
+        string? payloadHash = null,
+        string? configHash = null,
+        string? configHashAlgorithm = null,
+        bool writeConfigIdentity = true)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(initialCanonicalState);
         ArgumentNullException.ThrowIfNull(steps);
@@ -77,6 +81,11 @@ public sealed partial class RunReplay
         CheckpointInterval = checkpointInterval;
         _checkpoints = Array.AsReadOnly(checkpointCopy);
         Outcome = outcome;
+        _writeConfigIdentity = writeConfigIdentity;
+        (ConfigHash, ConfigHashAlgorithm) = ResolveConfigIdentity(
+            initialCanonicalState,
+            configHash,
+            configHashAlgorithm);
         PayloadHash = payloadHash ?? ComputePayloadHash();
         if (!IsLowerHex(PayloadHash, 64))
         {
@@ -100,6 +109,15 @@ public sealed partial class RunReplay
     public string StateHashAlgorithmId => SnakeRun.StateHashAlgorithmId;
 
     public string InitialCanonicalState { get; }
+
+    /// <summary>
+    /// Effective rules configuration digest captured at recording time.
+    /// Verification rejects any restored or mid-run config identity drift.
+    /// </summary>
+    public string ConfigHash { get; }
+
+    /// <summary>Algorithm id for <see cref="ConfigHash"/>.</summary>
+    public string ConfigHashAlgorithm { get; }
 
     public IReadOnlyList<ReplayStep> Steps => _steps;
 
@@ -181,13 +199,18 @@ public sealed partial class RunReplay
         IEnumerable<ReplayStep> steps,
         int checkpointInterval,
         IEnumerable<ReplayCheckpoint> checkpoints,
-        ReplayOutcome outcome) =>
+        ReplayOutcome outcome,
+        string? configHash = null,
+        string? configHashAlgorithm = null) =>
         new(
             initialCanonicalState,
             steps,
             checkpointInterval,
             checkpoints,
-            outcome);
+            outcome,
+            configHash: configHash,
+            configHashAlgorithm: configHashAlgorithm,
+            writeConfigIdentity: true);
 
     public ReplayVerificationResult Verify(
         long maximumWorkUnits = MaximumVerificationWorkUnits)
@@ -208,6 +231,14 @@ public sealed partial class RunReplay
                 ReplayVerificationCode.InvalidInitialState,
                 0,
                 "The initial canonical state cannot be restored.");
+        }
+
+        if (!ConfigIdentityMatches(simulation))
+        {
+            return VerificationFailure(
+                ReplayVerificationCode.ConfigIdentityDiverged,
+                0,
+                "The restored run configuration does not match the replay envelope.");
         }
 
         // Version 4 body length never decreases, so this is a safe lower bound for
@@ -279,6 +310,14 @@ public sealed partial class RunReplay
             }
 
             var result = simulation.Step();
+            if (!ConfigIdentityMatches(simulation))
+            {
+                return VerificationFailure(
+                    ReplayVerificationCode.ConfigIdentityDiverged,
+                    step.StepIndex,
+                    "The run configuration changed during replay verification.");
+            }
+
             if (
                 checkpointIndex < _checkpoints.Count
                 && _checkpoints[checkpointIndex].StepIndex == step.StepIndex)
@@ -343,13 +382,17 @@ public sealed partial class RunReplay
         IEnumerable<ReplayStep> steps,
         int checkpointInterval,
         IEnumerable<ReplayCheckpoint> checkpoints,
-        ReplayOutcome outcome) =>
+        ReplayOutcome outcome,
+        string? configHash = null,
+        string? configHashAlgorithm = null) =>
         CreateRecorded(
             initialCanonicalState,
             steps,
             checkpointInterval,
             checkpoints,
-            outcome);
+            outcome,
+            configHash,
+            configHashAlgorithm);
 
     internal static bool IsStateHash(string? value) => IsLowerHex(value, 16);
 
@@ -445,6 +488,12 @@ public sealed partial class RunReplay
 
             writer.WriteString("rngAlgorithm", RandomAlgorithmId);
             writer.WriteString("stateHashAlgorithm", StateHashAlgorithmId);
+            if (_writeConfigIdentity)
+            {
+                writer.WriteString("configHash", ConfigHash);
+                writer.WriteString("configHashAlgorithm", ConfigHashAlgorithm);
+            }
+
             writer.WriteNumber("checkpointInterval", CheckpointInterval);
             writer.WritePropertyName("initialState");
             writer.WriteRawValue(InitialCanonicalState, skipInputValidation: false);
@@ -496,6 +545,51 @@ public sealed partial class RunReplay
         }
 
         return buffer.WrittenSpan.ToArray();
+    }
+
+    private bool ConfigIdentityMatches(SnakeRun simulation) =>
+        string.Equals(ConfigHash, simulation.ConfigHash, StringComparison.Ordinal)
+        && string.Equals(
+            ConfigHashAlgorithm,
+            simulation.ConfigHashAlgorithm,
+            StringComparison.Ordinal);
+
+    private static (string ConfigHash, string ConfigHashAlgorithm) ResolveConfigIdentity(
+        string initialCanonicalState,
+        string? configHash,
+        string? configHashAlgorithm)
+    {
+        if (configHash is not null || configHashAlgorithm is not null)
+        {
+            if (
+                configHash is null
+                || configHashAlgorithm is null
+                || !IsLowerHex(configHash, 64)
+                || string.IsNullOrWhiteSpace(configHashAlgorithm))
+            {
+                throw new ArgumentException(
+                    "Replay config identity requires a 64-character lowercase hex hash and algorithm id.");
+            }
+
+            return (configHash, configHashAlgorithm);
+        }
+
+        // Derive from the embedded initial state when capture did not pass hashes
+        // explicitly (tests and offline construction). Unrestorable states fall
+        // through to envelope size checks with a stable sentinel identity.
+        try
+        {
+            var restored = SnakeRun.RestoreCanonicalState(initialCanonicalState);
+            return (restored.ConfigHash, restored.ConfigHashAlgorithm);
+        }
+        catch (Exception exception) when (
+            exception is InvalidDataException
+            or JsonException
+            or ArgumentException
+            or FormatException)
+        {
+            return (new string('0', 64), RunConfig.ConfigHashAlgorithmId);
+        }
     }
 
     private static bool IsLowerHex(string? value, int length)

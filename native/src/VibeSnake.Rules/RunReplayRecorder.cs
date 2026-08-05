@@ -223,7 +223,9 @@ public sealed class RunReplayRecorder
                 _steps,
                 _checkpointInterval,
                 _checkpoints,
-                outcome);
+                outcome,
+                _mirror.ConfigHash,
+                _mirror.ConfigHashAlgorithm);
         }
         catch (ArgumentException exception)
         {

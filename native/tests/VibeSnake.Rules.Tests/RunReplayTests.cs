@@ -55,6 +55,37 @@ public sealed class RunReplayTests
         Assert.Equal(
             RunReplay.IntegrityAlgorithmId,
             root.GetProperty("integrity").GetProperty("algorithm").GetString());
+        Assert.Equal(initial.ConfigHash, root.GetProperty("configHash").GetString());
+        Assert.Equal(
+            RunConfig.ConfigHashAlgorithmId,
+            root.GetProperty("configHashAlgorithm").GetString());
+        Assert.Equal(initial.ConfigHash, replay.ConfigHash);
+        Assert.Equal(RunConfig.ConfigHashAlgorithmId, replay.ConfigHashAlgorithm);
+    }
+
+    [Fact]
+    public void Verify_rejects_config_identity_mismatch_on_restore()
+    {
+        var initial = SnakeRun.Create(4242UL, new RunConfig(Width: 10, Height: 8));
+        var valid = RunReplay.Capture(
+            initial,
+            Array.Empty<IReadOnlyList<Direction>>());
+        var mismatched = RunReplay.CreateForTesting(
+            valid.InitialCanonicalState,
+            valid.Steps,
+            valid.CheckpointInterval,
+            valid.Checkpoints,
+            valid.Outcome,
+            configHash: new string('a', 64),
+            configHashAlgorithm: RunConfig.ConfigHashAlgorithmId);
+
+        var verification = mismatched.Verify();
+
+        Assert.False(verification.IsValid);
+        Assert.Equal(
+            ReplayVerificationCode.ConfigIdentityDiverged,
+            verification.Code);
+        Assert.Equal(0, verification.FirstDivergentStep);
     }
 
     [Fact]
@@ -231,6 +262,11 @@ public sealed class RunReplayTests
                 "\"algorithm\":\"sha256-canonical-replay-payload-v1\"",
                 "\"algorithm\":\"unknown-integrity\"",
                 ReplayCompatibilityCode.UnsupportedIntegrityAlgorithm
+            },
+            {
+                "\"configHashAlgorithm\":\"sha256-canonical-runconfig-v1\"",
+                "\"configHashAlgorithm\":\"unknown-config-hash\"",
+                ReplayCompatibilityCode.UnsupportedConfigHashAlgorithm
             },
         };
 

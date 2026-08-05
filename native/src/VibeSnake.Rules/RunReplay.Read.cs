@@ -86,6 +86,40 @@ public sealed partial class RunReplay
                     "The replay state-hash algorithm is not supported.");
             }
 
+            var hasConfigHash = root.TryGetProperty("configHash", out _);
+            var hasConfigHashAlgorithm = root.TryGetProperty("configHashAlgorithm", out _);
+            string? configHash = null;
+            string? configHashAlgorithm = null;
+            var writeConfigIdentity = hasConfigHash || hasConfigHashAlgorithm;
+            if (writeConfigIdentity)
+            {
+                if (!hasConfigHash || !hasConfigHashAlgorithm)
+                {
+                    return Incompatible(
+                        ReplayCompatibilityCode.InvalidPayload,
+                        "Replay config identity fields must both be present when either is set.");
+                }
+
+                configHash = ReadString(root, "configHash");
+                configHashAlgorithm = ReadString(root, "configHashAlgorithm");
+                if (!IsLowerHex(configHash, 64))
+                {
+                    return Incompatible(
+                        ReplayCompatibilityCode.InvalidPayload,
+                        "The replay config hash must be a lowercase SHA-256 digest.");
+                }
+
+                if (!string.Equals(
+                    configHashAlgorithm,
+                    RunConfig.ConfigHashAlgorithmId,
+                    StringComparison.Ordinal))
+                {
+                    return Incompatible(
+                        ReplayCompatibilityCode.UnsupportedConfigHashAlgorithm,
+                        "The replay config-hash algorithm is not supported.");
+                }
+            }
+
             var integrityElement = RequireObject(
                 root.GetProperty("integrity"),
                 "integrity");
@@ -121,7 +155,10 @@ public sealed partial class RunReplay
                 checkpointInterval,
                 checkpoints,
                 outcome,
-                payloadHash);
+                payloadHash,
+                configHash,
+                configHashAlgorithm,
+                writeConfigIdentity);
 
             var expectedPayloadHash = replay.ComputePayloadHash();
             if (!FixedHashEquals(payloadHash, expectedPayloadHash))

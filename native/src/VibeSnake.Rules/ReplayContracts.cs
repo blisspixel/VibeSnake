@@ -12,6 +12,7 @@ public enum ReplayCompatibilityCode : byte
     UnsupportedStateHashAlgorithm = 7,
     UnsupportedIntegrityAlgorithm = 8,
     IntegrityMismatch = 9,
+    UnsupportedConfigHashAlgorithm = 10,
 }
 
 public sealed record ReplayCompatibility(
@@ -34,6 +35,7 @@ public enum ReplayVerificationCode : byte
     ActionsAfterTerminal = 4,
     CheckpointDiverged = 5,
     OutcomeDiverged = 6,
+    ConfigIdentityDiverged = 7,
 }
 
 public sealed record ReplayVerificationResult(

@@ -60,6 +60,7 @@ implement replay rules or parse replay JSON.
 | Rules identity | `vibesnake-core@4` | A different ID or version is rejected before execution |
 | Random algorithm | `pcg-xsh-rr-32-v1` | An unknown algorithm is rejected before execution |
 | State hash | `fnv1a64-canonical-json-v3` | An unknown algorithm is rejected before execution |
+| Config hash | `sha256-canonical-runconfig-v1` | Envelope stores effective `configHash`; verification rejects restore or mid-run identity drift (`ConfigIdentityDiverged`) |
 | Integrity | `sha256-canonical-replay-payload-v1` | A changed payload returns `IntegrityMismatch` |
 | Embedded state | Canonical state schema 2 | Invalid or impossible state returns `InvalidPayload` |
 
