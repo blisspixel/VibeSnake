@@ -35,6 +35,25 @@ public sealed class ContentPackBudgetsTests
     }
 
     [Fact]
+    public void Timing_report_compares_measurements_to_declared_ceilings()
+    {
+        var ok = ContentTimingReport.FromMeasurements(
+            inventoryScanMilliseconds: 100,
+            coldStartMilliseconds: 500);
+        Assert.True(ok.WithinInventoryScanBudget);
+        Assert.True(ok.WithinColdStartBudget);
+
+        var scanSlow = ContentTimingReport.FromMeasurements(
+            inventoryScanMilliseconds: ContentPackBudgets.CoreInventoryScanMillisecondsMaximum + 1,
+            coldStartMilliseconds: 0);
+        Assert.False(scanSlow.WithinInventoryScanBudget);
+        Assert.True(scanSlow.WithinColdStartBudget);
+
+        Assert.Throws<ArgumentOutOfRangeException>(
+            () => ContentTimingReport.FromMeasurements(-1, 0));
+    }
+
+    [Fact]
     public void Budget_report_measures_inventory_totals_without_eligibility_claims()
     {
         var inventory = ContentInventory.Parse(
