@@ -61,6 +61,13 @@ public sealed class ContentEligibilityReportTests
     }
 
     [Fact]
+    public void Null_inventory_is_rejected()
+    {
+        Assert.Throws<ArgumentNullException>(
+            () => ContentEligibilityReport.FromInventory(null!));
+    }
+
+    [Fact]
     public void Zero_sample_limit_returns_empty_blocked_path_list()
     {
         const string json = """
