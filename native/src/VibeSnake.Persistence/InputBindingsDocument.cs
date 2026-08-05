@@ -217,6 +217,83 @@ public sealed record InputBindingsDocument(
 
         return Encoding.UTF8.GetString(buffer.WrittenSpan) + "\n";
     }
+
+    /// <summary>
+    /// Returns a new document with one action remapped to a binding token.
+    /// Does not mutate this instance. Rejects unknown actions, unparsable tokens,
+    /// and bindings already owned by a different action so Confirm, Back, Pause,
+    /// and movement cannot silently steal each other's hardware.
+    /// </summary>
+    public InputBindingsLoadResult TryRemapAction(string action, string bindingToken)
+    {
+        if (string.IsNullOrWhiteSpace(action))
+        {
+            return new InputBindingsLoadResult(
+                InputBindingsLoadCode.InvalidField,
+                "Action name must be non-empty.");
+        }
+
+        var actionName = action.Trim();
+        if (!ActionToBinding.ContainsKey(actionName))
+        {
+            return new InputBindingsLoadResult(
+                InputBindingsLoadCode.InvalidField,
+                $"Unknown action '{actionName}' cannot be remapped.");
+        }
+
+        if (string.IsNullOrWhiteSpace(bindingToken)
+            || !InputBindingToken.TryParse(bindingToken, out var parsed))
+        {
+            return new InputBindingsLoadResult(
+                InputBindingsLoadCode.InvalidField,
+                "Binding token must be a valid key:, button:, or axis: token.");
+        }
+
+        var normalized = NormalizeBindingToken(parsed);
+        if (string.Equals(ActionToBinding[actionName], normalized, StringComparison.Ordinal))
+        {
+            return new InputBindingsLoadResult(
+                InputBindingsLoadCode.Success,
+                "Binding unchanged.",
+                this);
+        }
+
+        foreach (var pair in ActionToBinding)
+        {
+            if (string.Equals(pair.Key, actionName, StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            if (string.Equals(pair.Value, normalized, StringComparison.Ordinal))
+            {
+                return new InputBindingsLoadResult(
+                    InputBindingsLoadCode.Conflict,
+                    $"Binding '{normalized}' is already assigned to action '{pair.Key}'.");
+            }
+        }
+
+        var next = new Dictionary<string, string>(ActionToBinding, StringComparer.Ordinal)
+        {
+            [actionName] = normalized,
+        };
+        var document = new InputBindingsDocument(SchemaVersion, DeviceClass, next);
+        return new InputBindingsLoadResult(
+            InputBindingsLoadCode.Success,
+            $"Action '{actionName}' remapped to '{normalized}'.",
+            document);
+    }
+
+    private static string NormalizeBindingToken(ParsedInputBinding parsed) =>
+        parsed.Kind switch
+        {
+            InputBindingKind.Key => "key:" + parsed.Identifier,
+            InputBindingKind.Button => "button:" + parsed.Identifier,
+            InputBindingKind.Axis => string.Create(
+                System.Globalization.CultureInfo.InvariantCulture,
+                $"axis:{parsed.Identifier}:{parsed.AxisValue:+0;-0;0}"),
+            _ => throw new ArgumentOutOfRangeException(nameof(parsed)),
+        };
 }
 
 public sealed class InputBindingsStore

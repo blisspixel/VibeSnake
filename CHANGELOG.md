@@ -7,6 +7,7 @@ Notable player-facing and engineering changes are recorded here. The project is 
 ### Added
 
 - Pure `RunConfig.ComputeConfigHash` / `SerializeCanonicalConfig` (`sha256-canonical-runconfig-v1`) and `SnakeRun.ConfigHash` for score and replay metadata without altering the step state hash.
+- Pure `InputBindingsDocument.TryRemapAction` for conflict-safe single-action remapping without mutating the source document.
 - Multi-stream `RandomStreamBank` for independent gameplay, AI, cosmetic, radio, and copy PCG32 streams derived from one master seed.
 - Fail-closed native custom AI `PersonalityDocument` validation with schema, trait range, boolean rejection, RGB checks, and filename-scoped errors.
 - Architecture boundary tests that forbid Godot/presentation references from `VibeSnake.Rules` and `VibeSnake.Persistence`.

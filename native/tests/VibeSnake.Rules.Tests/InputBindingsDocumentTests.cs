@@ -110,4 +110,63 @@ public sealed class InputBindingsDocumentTests
         Assert.Equal(first, second);
         Assert.Contains("\"confirm\":", first, StringComparison.Ordinal);
     }
+
+    [Fact]
+    public void TryRemapAction_moves_pause_to_a_free_key()
+    {
+        var original = InputBindingsDocument.CreateKeyboardDefaults();
+        var remapped = original.TryRemapAction("pause", "key:space");
+
+        Assert.True(remapped.IsSuccess);
+        Assert.Equal("key:space", remapped.Document!.ActionToBinding["pause"]);
+        Assert.Equal("key:p", original.ActionToBinding["pause"]);
+        Assert.Equal("key:enter", remapped.Document.ActionToBinding["confirm"]);
+    }
+
+    [Fact]
+    public void TryRemapAction_rejects_binding_owned_by_another_action()
+    {
+        var original = InputBindingsDocument.CreateKeyboardDefaults();
+        var conflict = original.TryRemapAction("pause", "key:enter");
+
+        Assert.Equal(InputBindingsLoadCode.Conflict, conflict.Code);
+        Assert.Null(conflict.Document);
+        Assert.Contains("confirm", conflict.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void TryRemapAction_is_idempotent_for_the_same_binding()
+    {
+        var original = InputBindingsDocument.CreateKeyboardDefaults();
+        var same = original.TryRemapAction("confirm", "key:enter");
+
+        Assert.True(same.IsSuccess);
+        Assert.Same(original, same.Document);
+    }
+
+    [Fact]
+    public void TryRemapAction_rejects_unknown_actions_and_invalid_tokens()
+    {
+        var original = InputBindingsDocument.CreateKeyboardDefaults();
+
+        Assert.Equal(
+            InputBindingsLoadCode.InvalidField,
+            original.TryRemapAction("jump", "key:j").Code);
+        Assert.Equal(
+            InputBindingsLoadCode.InvalidField,
+            original.TryRemapAction("pause", "not-a-token").Code);
+        Assert.Equal(
+            InputBindingsLoadCode.InvalidField,
+            original.TryRemapAction(" ", "key:p").Code);
+    }
+
+    [Fact]
+    public void TryRemapAction_normalizes_key_identifier_case()
+    {
+        var original = InputBindingsDocument.CreateKeyboardDefaults();
+        var remapped = original.TryRemapAction("pause", "key:Space");
+
+        Assert.True(remapped.IsSuccess);
+        Assert.Equal("key:space", remapped.Document!.ActionToBinding["pause"]);
+    }
 }
