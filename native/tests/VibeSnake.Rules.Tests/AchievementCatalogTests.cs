@@ -262,6 +262,33 @@ public sealed class AchievementCatalogTests
     }
 
     [Fact]
+    public void Mid_run_restore_does_not_yet_preserve_session_achievement_counters()
+    {
+        // Documented gap until canonical schema carries session counters.
+        // Continuous product runs do not mid-restore; replay verify rebuilds
+        // counters from the initial state. This test locks current behavior.
+        var run = SnakeRun.CreateForTesting(
+            new RunConfig(
+                Width: 8,
+                Height: 6,
+                StarvationTicks: 200,
+                PowerSpawnIntervalTicks: 0),
+            [new GridPoint(1, 1)],
+            Direction.Right,
+            food: new GridPoint(2, 1),
+            hungerTicksRemaining: 100);
+
+        run.Step();
+        Assert.True(run.SessionFoodEaten >= 1);
+
+        var restored = SnakeRun.RestoreCanonicalState(run.SerializeCanonicalState());
+        Assert.Equal(0, restored.SessionFoodEaten);
+        Assert.Equal(0, restored.SessionWraps);
+        Assert.Equal(0, restored.SessionNearMisses);
+        Assert.Equal(0, restored.SessionPowerupsCollected);
+    }
+
+    [Fact]
     public void Terminal_win_emits_achievement_candidates_once()
     {
         var run = SnakeRun.CreateForTesting(
