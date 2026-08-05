@@ -468,6 +468,7 @@ Complete the pure C# simulation boundary so gameplay defects can be reproduced, 
 - Add architectural tests that forbid Godot, Pygame, filesystem, global random, wall clock, and audio dependencies from the pure rules assembly.
 - Enable branch coverage reporting and define per-namespace gates for the new core.
 - Fail on cyclic project references or a presentation assembly referenced from rules.
+- **Progress (not closed):** Architecture boundary tests forbid Godot/presentation references from Rules and Persistence, forbid Persistence from Rules, ban wall-clock/global-random/env access and HTTP client surface from Rules sources, and ban System.Net.Http from Persistence references. Coverlet line floor 80% with Rules/Persistence reporting. Remaining: explicit filesystem ban refinement for pure Rules, tighter per-namespace branch gates, and expanded static analyzer package policy.
 
 #### V040-10: promote the automated QA laboratory
 

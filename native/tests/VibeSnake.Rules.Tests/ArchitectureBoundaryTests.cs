@@ -11,6 +11,8 @@ public sealed class ArchitectureBoundaryTests
         "GodotSharp",
         "Pygame",
         "System.Drawing",
+        "System.Net.Http",
+        "System.Net.Sockets",
     ];
 
     [Fact]
@@ -53,6 +55,9 @@ public sealed class ArchitectureBoundaryTests
         Assert.DoesNotContain(
             referencedNames,
             name => name.Equals("VibeSnake.Game", StringComparison.Ordinal));
+        Assert.DoesNotContain(
+            referencedNames,
+            name => name.Equals("System.Net.Http", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -71,10 +76,13 @@ public sealed class ArchitectureBoundaryTests
             var text = File.ReadAllText(file);
             if (text.Contains("using Godot", StringComparison.Ordinal)
                 || text.Contains("System.Drawing", StringComparison.Ordinal)
+                || text.Contains("System.Net.Http", StringComparison.Ordinal)
+                || text.Contains("System.Net.Sockets", StringComparison.Ordinal)
                 || text.Contains("System.Random", StringComparison.Ordinal)
                 || text.Contains("DateTime.Now", StringComparison.Ordinal)
                 || text.Contains("DateTime.UtcNow", StringComparison.Ordinal)
-                || text.Contains("Environment.GetEnvironmentVariable", StringComparison.Ordinal))
+                || text.Contains("Environment.GetEnvironmentVariable", StringComparison.Ordinal)
+                || text.Contains("HttpClient", StringComparison.Ordinal))
             {
                 offenders.Add(Path.GetRelativePath(rulesDirectory, file));
             }
