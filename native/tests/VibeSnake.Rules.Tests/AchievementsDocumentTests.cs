@@ -215,4 +215,18 @@ public sealed class AchievementsDocumentTests
         Assert.Equal(AchievementsLoadCode.InvalidJson, result.Code);
         Assert.Null(result.Document);
     }
+
+    [Fact]
+    public void Rejects_null_unlocked_id_entries()
+    {
+        var result = AchievementsDocument.Read(
+            """
+            {
+              "schemaVersion": 1,
+              "unlockedIds": [null]
+            }
+            """);
+        Assert.Equal(AchievementsLoadCode.InvalidField, result.Code);
+        Assert.Null(result.Document);
+    }
 }
