@@ -13,6 +13,15 @@ public sealed class ContentPackBudgetsTests
         Assert.False(ContentPackBudgets.IsWithinCoreCompressedBudget(
             ContentPackBudgets.CoreCompressedBytesMaximum + 1));
         Assert.True(ContentPackBudgets.IsWithinCoreInstalledBudget(1));
+        Assert.True(ContentPackBudgets.IsWithinCoreWorkingSetBudget(
+            ContentPackBudgets.CoreWorkingSetBytesMaximum));
+        Assert.False(ContentPackBudgets.IsWithinCoreWorkingSetBudget(
+            ContentPackBudgets.CoreWorkingSetBytesMaximum + 1));
+        Assert.True(ContentPackBudgets.IsWithinRadioStationCompressedBudget(1));
+        Assert.False(ContentPackBudgets.IsWithinRadioStationCompressedBudget(
+            ContentPackBudgets.RadioStationCompressedBytesMaximum + 1));
+        Assert.True(ContentPackBudgets.IsWithinRadioStationInstalledBudget(0));
+        Assert.False(ContentPackBudgets.IsWithinRadioStationInstalledBudget(-1));
         Assert.True(ContentPackBudgets.IsRadioPackId("vibesnake.radio.ambient"));
         Assert.False(ContentPackBudgets.IsRadioPackId("vibesnake.core"));
         Assert.False(ContentPackBudgets.IsRadioPackId("vibesnake.radio."));

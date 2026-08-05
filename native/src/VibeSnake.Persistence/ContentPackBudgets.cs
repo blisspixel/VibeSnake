@@ -22,6 +22,15 @@ public static class ContentPackBudgets
     public static bool IsWithinCoreInstalledBudget(long bytes) =>
         bytes >= 0 && bytes <= CoreInstalledBytesMaximum;
 
+    public static bool IsWithinCoreWorkingSetBudget(long bytes) =>
+        bytes >= 0 && bytes <= CoreWorkingSetBytesMaximum;
+
+    public static bool IsWithinRadioStationCompressedBudget(long bytes) =>
+        bytes >= 0 && bytes <= RadioStationCompressedBytesMaximum;
+
+    public static bool IsWithinRadioStationInstalledBudget(long bytes) =>
+        bytes >= 0 && bytes <= RadioStationInstalledBytesMaximum;
+
     public static bool IsRadioPackId(string packId) =>
         !string.IsNullOrWhiteSpace(packId)
         && packId.StartsWith(RadioPackIdPrefix, StringComparison.Ordinal)
