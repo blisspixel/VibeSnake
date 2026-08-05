@@ -8,6 +8,10 @@ from vibesnake.core.food import Food
 from vibesnake.core.near_miss import NearMissDetector, NearMissEvent
 from vibesnake.core.scoring import ScoreManager
 from vibesnake.core.snake import Snake
+from vibesnake.qa.achievement_candidates import (
+    RunAchievementMetrics,
+    candidate_event_values,
+)
 from vibesnake.qa.models import StepEvent, StepRecord
 
 
@@ -19,12 +23,21 @@ class CoreSimulation:
     rules engine can be checked against known traces during migration.
     """
 
-    def __init__(self, step_seconds: float = 0.05, *, enable_near_miss: bool = True):
+    def __init__(
+        self,
+        step_seconds: float = 0.05,
+        *,
+        enable_near_miss: bool = True,
+        enable_achievement_candidates: bool = False,
+    ):
         if step_seconds <= 0:
             raise ValueError("step_seconds must be greater than zero")
 
         self.step_seconds = step_seconds
         self.enable_near_miss = enable_near_miss
+        # Default false keeps dual-runtime fixtures stable until shared traces
+        # regenerate with achievement_candidate events.
+        self.enable_achievement_candidates = enable_achievement_candidates
         self.snake = Snake()
         self.food = Food(self.snake.positions_set)
         self.score = ScoreManager()
@@ -36,6 +49,7 @@ class CoreSimulation:
         self.food_eaten = 0
         self.wraps = 0
         self.session_near_misses = 0
+        self.session_max_combo = 0
         self.starvation_seconds = 0.0
         self.starvation_limit_seconds = 30.0
 
@@ -53,6 +67,7 @@ class CoreSimulation:
         combo_before = self.score.combo_count
         self.score.update(self.step_seconds)
         combo_expired = combo_before > 0 and self.score.combo_count == 0
+        self.session_max_combo = max(self.session_max_combo, self.score.combo_count)
         if self.enable_near_miss:
             self.near_miss.update(self.step_seconds)
         previous_direction = self.snake.direction
@@ -113,6 +128,7 @@ class CoreSimulation:
                 speed_bonus=speed_bonus,
                 snake_length=len(self.snake.body),
             )
+            self.session_max_combo = max(self.session_max_combo, self.score.combo_count)
             events.extend(
                 (
                     StepEvent(kind="ate_food", position=self.snake.get_head()),
@@ -213,6 +229,27 @@ class CoreSimulation:
         self.near_miss.add_event(near_miss_event)
         self.session_near_misses += 1
 
+    def _append_achievement_candidates(self, events: list[StepEvent]) -> None:
+        """Emit achievement_candidate events when the product flag is enabled."""
+        if not self.enable_achievement_candidates:
+            return
+        if self.alive and not self.won:
+            return
+
+        metrics = RunAchievementMetrics(
+            score=self.score.base_score,
+            max_combo=self.session_max_combo,
+            length=len(self.snake.body),
+            food_eaten=self.food_eaten,
+            wrap_count=self.wraps,
+            near_misses=self.session_near_misses,
+            powerups_collected=0,
+            survival_ticks=self.step_count,
+            is_terminal=True,
+        )
+        for index in candidate_event_values(metrics):
+            events.append(StepEvent(kind="achievement_candidate", value=index))
+
     def _record(
         self,
         commands: tuple[Direction, ...],
@@ -222,6 +259,9 @@ class CoreSimulation:
         events: tuple[StepEvent, ...],
     ) -> StepRecord:
         """Capture observable state after a step."""
+        mutable_events = list(events)
+        self._append_achievement_candidates(mutable_events)
+        events = tuple(mutable_events)
         return StepRecord(
             step=self.step_count,
             commands=tuple(command.name for command in commands),

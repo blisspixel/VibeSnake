@@ -435,7 +435,7 @@ Complete the pure C# simulation boundary so gameplay defects can be reproduced, 
 - Make feedback and analytics consume events without modifying simulation state.
 - Define event ordering when several events occur in one step.
 - Test that retries or redraws never duplicate events.
-- **Progress (not closed):** `RulesEventCatalog` is the closed wire-name owner; `StarvationWarning` is emitted once at the warning band; `NearMiss` awards are default-on after dual-runtime regen (`EnableNearMiss`, clutch/body through Python `CoreSimulation` + pure C# detector); food precedes near-miss in the same step; `ComboExpired` is default-on (`EnableComboExpiredEvent`); pure `AchievementCatalog` evaluates run-local candidates; terminal `AchievementCandidate` events emit when `EnableAchievementCandidates` is true (default false for dual-runtime parity; product `Main.ProductRunConfig` enables true); shell shows ACHIEVEMENT captions; catalog index is the event Value payload; profile unlock persistence remains a shell/progression concern.
+- **Progress (not closed):** `RulesEventCatalog` is the closed wire-name owner; `StarvationWarning` is emitted once at the warning band; `NearMiss` awards are default-on after dual-runtime regen (`EnableNearMiss`, clutch/body through Python `CoreSimulation` + pure C# detector); food precedes near-miss in the same step; `ComboExpired` is default-on (`EnableComboExpiredEvent`); pure `AchievementCatalog` evaluates run-local candidates; terminal `AchievementCandidate` events emit when `EnableAchievementCandidates` is true (default false for dual-runtime parity; product `Main.ProductRunConfig` enables true); shell shows ACHIEVEMENT captions; catalog index is the event Value payload; Python `CoreSimulation` mirrors gated `achievement_candidate` emission via `qa.achievement_candidates` with matching catalog order; profile unlock persistence remains a shell/progression concern.
 
 #### V040-06: add replay schema version 1
 
@@ -451,6 +451,7 @@ Complete the pure C# simulation boundary so gameplay defects can be reproduced, 
 - Reject booleans where numbers are expected, non-finite values, values outside 0 through 1, invalid RGB values, unknown required semantics, and unreadable files.
 - Clamp only where the schema explicitly promises clamping; otherwise report and skip.
 - Include filename, field, received value, and expected contract in validation output.
+- **Progress (not closed):** Fail-closed native `PersonalityDocument` schema 1 with trait range, boolean rejection, non-finite rejection, RGB checks, path-safe file names, filename-scoped issues, and unit coverage. Remaining: in-shell import UX and player-facing validation report surface.
 
 #### V040-08: replace debug output with diagnostics
 

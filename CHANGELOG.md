@@ -24,6 +24,7 @@ Notable player-facing and engineering changes are recorded here. The project is 
 - Terminal `RunEventKind.AchievementCandidate` emission gated by `RunConfig.EnableAchievementCandidates` (default false for shared-fixture parity; product runs enable true); shell ACHIEVEMENT captions via catalog index; `IndexOf` / `DefinitionAt` helpers.
 - Replay envelopes store `configHash` / `configHashAlgorithm`; verification rejects config identity drift (`ConfigIdentityDiverged`); unsupported config-hash algorithms fail closed on read.
 - Offline `StructuredLocalLog` JSONL writer with `DiagnosticLogLevel` filter, path sanitization, 1 MiB rotation, and shell hooks for session start, diagnostics open, preferences faults, and controller connect/disconnect.
+- Python dual-runtime `qa.achievement_candidates` catalog matching native IDs/order; `CoreSimulation` optional `enable_achievement_candidates` (default false) emits terminal `achievement_candidate` events.
 - `RunStepResult` equality/operator coverage; README screenshot presentation-source fingerprint refresh after dual-runtime QA source changes.
 - Flash-free presentation softens high-intensity captions, lengthens caption dwell, and skips non-critical audio cues while keeping death/victory/pause/confirm.
 - Enabling reduced motion zeros screen-shake intensity so the preference cannot leave residual shake.
