@@ -288,4 +288,11 @@ public sealed class AchievementsDocumentTests
         Assert.Equal(document.UnlockedIds, same.UnlockedIds);
         Assert.Equal(document.SerializeCanonical(), same.SerializeCanonical());
     }
+
+    [Fact]
+    public void Current_schema_version_is_one()
+    {
+        Assert.Equal(1, AchievementsDocument.CurrentSchemaVersion);
+        Assert.Equal("achievements.json", AchievementsDocument.FileName);
+    }
 }
