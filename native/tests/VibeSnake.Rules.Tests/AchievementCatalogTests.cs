@@ -304,6 +304,8 @@ public sealed class AchievementCatalogTests
         Assert.Equal(0, restored.SessionWraps);
         Assert.Equal(0, restored.SessionNearMisses);
         Assert.Equal(0, restored.SessionPowerupsCollected);
+        // SessionMaxCombo falls back to live ComboCount after restore.
+        Assert.Equal(restored.ComboCount, restored.SessionMaxCombo);
     }
 
     [Fact]
