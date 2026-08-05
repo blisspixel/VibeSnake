@@ -466,6 +466,12 @@ public partial class Main : Node2D
         if (_run.Status != RunStatus.Running)
         {
             _screenState = ScreenState.Ended;
+            _structuredLog?.Information(
+                "shell",
+                _run.Status == RunStatus.Won
+                    ? "Run ended: won."
+                    : "Run ended: " + _run.DeathCause + ".",
+                eventCode: _run.Status == RunStatus.Won ? "run_won" : "run_dead");
             PlayCue(
                 _run.Status == RunStatus.Won
                     ? AudioCue.Victory
