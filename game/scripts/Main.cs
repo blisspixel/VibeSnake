@@ -776,6 +776,20 @@ public partial class Main : Node2D
         QueueRedraw();
     }
 
+    /// <summary>
+    /// Opens the local diagnostics directory in the host file manager. No-op in headless.
+    /// </summary>
+    private void OpenDiagnosticsDirectory()
+    {
+        if (_diagnostics is null || DisplayServer.GetName() == "headless")
+        {
+            return;
+        }
+
+        var path = _diagnostics.EnsureDiagnosticsDirectory();
+        OS.ShellOpen(path);
+    }
+
     private static string SanitizeReplayStatus(string message)
     {
         ArgumentNullException.ThrowIfNull(message);
