@@ -138,6 +138,22 @@ public sealed class AchievementsDocumentTests
     }
 
     [Fact]
+    public void Empty_payload_returns_empty_code()
+    {
+        var result = AchievementsDocument.Read("   ");
+        Assert.Equal(AchievementsLoadCode.Empty, result.Code);
+        Assert.Null(result.Document);
+    }
+
+    [Fact]
+    public void Invalid_json_returns_invalid_json_code()
+    {
+        var result = AchievementsDocument.Read("{ not-json");
+        Assert.Equal(AchievementsLoadCode.InvalidJson, result.Code);
+        Assert.Null(result.Document);
+    }
+
+    [Fact]
     public void Rejects_unknown_achievement_ids()
     {
         var result = AchievementsDocument.Read(
