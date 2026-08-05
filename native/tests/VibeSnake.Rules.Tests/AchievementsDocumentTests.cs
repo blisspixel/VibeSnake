@@ -295,4 +295,11 @@ public sealed class AchievementsDocumentTests
         Assert.Equal(1, AchievementsDocument.CurrentSchemaVersion);
         Assert.Equal("achievements.json", AchievementsDocument.FileName);
     }
+
+    [Fact]
+    public void Maximum_unlock_count_is_bounded()
+    {
+        Assert.Equal(256, AchievementsDocument.MaximumUnlockCount);
+        Assert.True(AchievementCatalog.Definitions.Count <= AchievementsDocument.MaximumUnlockCount);
+    }
 }
