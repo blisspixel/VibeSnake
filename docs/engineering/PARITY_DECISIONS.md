@@ -111,6 +111,9 @@ Candidates emit at most once per terminal run in C#. Profile unlock persistence 
 
 Player consequence: live product can celebrate run-local mastery without forcing every migration fixture to absorb unlock events before the dual-runtime harness is ready.
 
+Both runtimes can suppress already-owned IDs: C# via `SnakeRun.ApplyProfileUnlocks` and Python
+`CoreSimulation(already_unlocked_achievements=...)`.
+
 ## PD-010: Session achievement counters enter canonical state schema 3
 
 Status: Resolved as a restore-correctness correction
