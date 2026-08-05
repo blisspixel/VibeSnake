@@ -1711,6 +1711,9 @@ public partial class Main : Node2D
                 "EnsureDiagnosticsDirectory did not return the absolute report parent folder.");
         }
 
+        // Headless no-op path; interactive sessions may open the folder later from UI.
+        OpenDiagnosticsDirectory();
+
         ShellTransitions.EnsureTransition(ShellScreen.Menu, ShellScreen.Running);
         ShellTransitions.EnsureTransition(ShellScreen.Running, ShellScreen.Ended);
         ShellTransitions.EnsureTransition(ShellScreen.Ended, ShellScreen.Running);
