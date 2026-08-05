@@ -9,6 +9,7 @@ This directory contains explicit command-line tools. Runtime code belongs under 
 | `check_source_policy.py` | Executable anti-slop, Unicode, and Python placeholder policy |
 | `lock_python_dependencies.py` | CI and player-runtime hash-lock freshness checks and explicit regeneration |
 | `check_docs.py` | Canonical documentation discovery and relative-link validation |
+| `check_product_version.py` | Align `ProductIdentity.AppVersion` with `pyproject.toml` package version |
 | `capture_readme_screenshots.py` | Isolated current-build README screenshot capture and freshness verification |
 | `visual_generate_badges.py` | Deterministic radio-station badge generation and byte verification |
 | `visual_generate_logo.py` | Preferred brand-logo hash and dimension verification |
