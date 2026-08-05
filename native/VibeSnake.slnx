@@ -11,4 +11,7 @@
   <Folder Name="/tests/">
     <Project Path="tests/VibeSnake.Rules.Tests/VibeSnake.Rules.Tests.csproj" />
   </Folder>
+  <Folder Name="/tools/">
+    <Project Path="tools/ValidateArtifactManifest/ValidateArtifactManifest.csproj" />
+  </Folder>
 </Solution>

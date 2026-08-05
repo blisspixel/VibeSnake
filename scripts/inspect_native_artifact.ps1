@@ -226,6 +226,42 @@ $json = $manifest | ConvertTo-Json -Depth 8
 [System.IO.File]::WriteAllText($manifestPath, $json + [Environment]::NewLine, [Text.UTF8Encoding]::new($false))
 $manifestHash = (Get-FileHash -LiteralPath $manifestPath -Algorithm SHA256).Hash.ToLowerInvariant()
 
+# Pure C# schema-2 validator (ReleaseArtifactManifest) must accept the written document.
+$localDotnetCandidates = @(
+    (Join-Path $repositoryRoot ".dotnet/dotnet.exe"),
+    (Join-Path $repositoryRoot ".dotnet/dotnet")
+)
+$dotnetExecutable = $localDotnetCandidates |
+    Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } |
+    Select-Object -First 1
+if (-not $dotnetExecutable) {
+    $dotnetExecutable = (Get-Command dotnet -ErrorAction Stop).Source
+}
+
+$validatorProject = Join-Path $repositoryRoot "native/tools/ValidateArtifactManifest/ValidateArtifactManifest.csproj"
+$validatorArgs = @(
+    "run",
+    "--project", $validatorProject,
+    "--configuration", "Release",
+    "--no-restore",
+    "--",
+    $manifestPath
+)
+& $dotnetExecutable @validatorArgs
+if ($LASTEXITCODE -ne 0) {
+    # Retry once after restore in case the export host has not built tools yet.
+    & $dotnetExecutable @(
+        "run",
+        "--project", $validatorProject,
+        "--configuration", "Release",
+        "--",
+        $manifestPath
+    )
+    if ($LASTEXITCODE -ne 0) {
+        throw "Pure C# artifact-manifest validation failed for $manifestPath (exit $LASTEXITCODE)."
+    }
+}
+
 if ($env:GITHUB_OUTPUT) {
     "artifact-manifest=$manifestPath" | Out-File -LiteralPath $env:GITHUB_OUTPUT -Encoding utf8 -Append
     "artifact-manifest-sha256=$manifestHash" | Out-File -LiteralPath $env:GITHUB_OUTPUT -Encoding utf8 -Append

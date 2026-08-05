@@ -80,6 +80,39 @@ public sealed record ReleaseArtifactManifest(
         SupportedPlatforms.Contains(Platform, StringComparer.Ordinal);
 
     /// <summary>
+    /// Reads and validates a manifest file path used by export inspection.
+    /// </summary>
+    public static ReleaseArtifactManifestLoadResult LoadFromFile(
+        string path,
+        bool enforceRequiredPayload = true)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            return new ReleaseArtifactManifestLoadResult(
+                ReleaseArtifactManifestLoadCode.Empty,
+                "Artifact manifest path is empty.");
+        }
+
+        try
+        {
+            var json = File.ReadAllText(path);
+            return Parse(json, enforceRequiredPayload);
+        }
+        catch (IOException exception)
+        {
+            return new ReleaseArtifactManifestLoadResult(
+                ReleaseArtifactManifestLoadCode.InvalidField,
+                "Could not read artifact manifest: " + exception.Message);
+        }
+        catch (UnauthorizedAccessException exception)
+        {
+            return new ReleaseArtifactManifestLoadResult(
+                ReleaseArtifactManifestLoadCode.InvalidField,
+                "Could not read artifact manifest: " + exception.Message);
+        }
+    }
+
+    /// <summary>
     /// Pure parse + structural validation. Platform payload patterns are checked
     /// when <paramref name="enforceRequiredPayload"/> is true (default).
     /// </summary>

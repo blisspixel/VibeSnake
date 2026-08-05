@@ -546,7 +546,73 @@ internal static class GameActions
                 key = Key.F8;
                 physical = false;
                 return true;
+            case "f1":
+                key = Key.F1;
+                physical = false;
+                return true;
+            case "f2":
+                key = Key.F2;
+                physical = false;
+                return true;
+            case "f3":
+                key = Key.F3;
+                physical = false;
+                return true;
+            case "f4":
+                key = Key.F4;
+                physical = false;
+                return true;
+            case "f5":
+                key = Key.F5;
+                physical = false;
+                return true;
+            case "f6":
+                key = Key.F6;
+                physical = false;
+                return true;
+            case "f7":
+                key = Key.F7;
+                physical = false;
+                return true;
+            case "f9":
+                key = Key.F9;
+                physical = false;
+                return true;
+            case "f10":
+                key = Key.F10;
+                physical = false;
+                return true;
+            case "f11":
+                key = Key.F11;
+                physical = false;
+                return true;
+            case "f12":
+                key = Key.F12;
+                physical = false;
+                return true;
+            case "tab":
+                key = Key.Tab;
+                physical = false;
+                return true;
             default:
+                // Letter and digit identifiers match Key enum names when single-char lowercase.
+                if (identifier.Length == 1)
+                {
+                    var ch = identifier[0];
+                    if (ch is >= 'a' and <= 'z')
+                    {
+                        key = (Key)((int)Key.A + (ch - 'a'));
+                        return true;
+                    }
+
+                    if (ch is >= '0' and <= '9')
+                    {
+                        key = (Key)((int)Key.Key0 + (ch - '0'));
+                        physical = false;
+                        return true;
+                    }
+                }
+
                 key = Key.None;
                 return false;
         }
@@ -668,4 +734,101 @@ internal static class GameActions
             Axis = axis,
             AxisValue = value,
         };
+
+    /// <summary>
+    /// Formats a pressed keyboard event as a schema-1 <c>key:</c> token for remapping.
+    /// Returns false for modifiers-only and unmapped keys.
+    /// </summary>
+    public static bool TryFormatKeyboardToken(InputEventKey keyEvent, out string token)
+    {
+        token = string.Empty;
+        ArgumentNullException.ThrowIfNull(keyEvent);
+        var key = keyEvent.PhysicalKeycode != Key.None
+            ? keyEvent.PhysicalKeycode
+            : keyEvent.Keycode;
+        if (key is Key.None or Key.Shift or Key.Ctrl or Key.Alt or Key.Meta)
+        {
+            return false;
+        }
+
+        var identifier = key switch
+        {
+            Key.Up => "up",
+            Key.Down => "down",
+            Key.Left => "left",
+            Key.Right => "right",
+            Key.Enter or Key.KpEnter => "enter",
+            Key.Escape => "escape",
+            Key.Space => "space",
+            Key.Tab => "tab",
+            Key.Backspace => "backspace",
+            Key.Delete => "delete",
+            Key.Home => "home",
+            Key.End => "end",
+            Key.Insert => "insert",
+            Key.A => "a",
+            Key.B => "b",
+            Key.C => "c",
+            Key.D => "d",
+            Key.E => "e",
+            Key.F => "f",
+            Key.G => "g",
+            Key.H => "h",
+            Key.I => "i",
+            Key.J => "j",
+            Key.K => "k",
+            Key.L => "l",
+            Key.M => "m",
+            Key.N => "n",
+            Key.O => "o",
+            Key.P => "p",
+            Key.Q => "q",
+            Key.R => "r",
+            Key.S => "s",
+            Key.T => "t",
+            Key.U => "u",
+            Key.V => "v",
+            Key.W => "w",
+            Key.X => "x",
+            Key.Y => "y",
+            Key.Z => "z",
+            Key.Key0 or Key.Kp0 => "0",
+            Key.Key1 or Key.Kp1 => "1",
+            Key.Key2 or Key.Kp2 => "2",
+            Key.Key3 or Key.Kp3 => "3",
+            Key.Key4 or Key.Kp4 => "4",
+            Key.Key5 or Key.Kp5 => "5",
+            Key.Key6 or Key.Kp6 => "6",
+            Key.Key7 or Key.Kp7 => "7",
+            Key.Key8 or Key.Kp8 => "8",
+            Key.Key9 or Key.Kp9 => "9",
+            Key.F1 => "f1",
+            Key.F2 => "f2",
+            Key.F3 => "f3",
+            Key.F4 => "f4",
+            Key.F5 => "f5",
+            Key.F6 => "f6",
+            Key.F7 => "f7",
+            Key.F8 => "f8",
+            Key.F9 => "f9",
+            Key.F10 => "f10",
+            Key.F11 => "f11",
+            Key.F12 => "f12",
+            Key.Minus or Key.KpSubtract => "minus",
+            Key.Equal or Key.KpAdd => "equal",
+            Key.Comma => "comma",
+            Key.Period => "period",
+            Key.Slash => "slash",
+            Key.Semicolon => "semicolon",
+            Key.Apostrophe => "apostrophe",
+            _ => null,
+        };
+        if (identifier is null)
+        {
+            return false;
+        }
+
+        token = "key:" + identifier;
+        return InputBindingToken.TryParse(token, out _);
+    }
 }

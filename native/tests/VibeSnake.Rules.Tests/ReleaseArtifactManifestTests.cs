@@ -192,5 +192,25 @@ public sealed class ReleaseArtifactManifestTests
         Assert.Equal("unknown", ReleaseArtifactManifest.DeclaredInstallerArchiveShape("wasm"));
     }
 
+    [Fact]
+    public void LoadFromFile_round_trips_a_temp_manifest()
+    {
+        var path = Path.Combine(Path.GetTempPath(), "vibesnake-manifest-" + Guid.NewGuid() + ".json");
+        try
+        {
+            File.WriteAllText(path, ValidWindowsJson());
+            var result = ReleaseArtifactManifest.LoadFromFile(path);
+            Assert.True(result.IsSuccess, result.Message);
+            Assert.Equal("windows-x64", result.Manifest!.Platform);
+        }
+        finally
+        {
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
+        }
+    }
+
     private static string Hex(int length, char fill = '0') => new(fill, length);
 }

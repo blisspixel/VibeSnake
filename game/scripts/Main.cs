@@ -47,6 +47,9 @@ public partial class Main : Node2D
         InputBindingsDocument.CreateKeyboardDefaults();
     private readonly ControllerConnectionTracker _controllerConnections = new();
     private string? _controllerCaption;
+    private int _bindingsCursor;
+    private bool _bindingsCapturePending;
+    private string? _bindingsStatusCaption;
 
     private enum ScreenState
     {
@@ -727,13 +730,7 @@ public partial class Main : Node2D
 
         if (_screenState == ScreenState.Bindings)
         {
-            if (inputEvent.IsActionPressed(GameActions.Back)
-                || inputEvent.IsActionPressed(GameActions.BrowseBindings)
-                || inputEvent.IsActionPressed(GameActions.Confirm))
-            {
-                ReturnToMenu();
-            }
-
+            HandleBindingsScreenInput(inputEvent);
             return;
         }
 
@@ -971,6 +968,9 @@ public partial class Main : Node2D
         };
         ShellTransitions.EnsureTransition(from, ShellScreen.Bindings);
         _screenState = ScreenState.Bindings;
+        _bindingsCursor = 0;
+        _bindingsCapturePending = false;
+        _bindingsStatusCaption = "Up/Down select  Confirm remap  Esc back  F8 defaults";
         _structuredLog?.Information(
             "input",
             "Opened schema-1 input bindings browse.",
@@ -979,25 +979,170 @@ public partial class Main : Node2D
         QueueRedraw();
     }
 
+    private IReadOnlyList<string> ListRemappableKeyboardActions() =>
+        _keyboardBindings.ActionToBinding.Keys
+            .Where(static action =>
+                !string.Equals(action, "restore_defaults", StringComparison.Ordinal))
+            .OrderBy(static action => action, StringComparer.Ordinal)
+            .ToArray();
+
+    private void HandleBindingsScreenInput(InputEvent inputEvent)
+    {
+        if (_bindingsCapturePending)
+        {
+            if (inputEvent.IsActionPressed(GameActions.Back)
+                || (inputEvent is InputEventKey { Pressed: true, Echo: false } escapeKey
+                    && escapeKey.Keycode == Key.Escape))
+            {
+                _bindingsCapturePending = false;
+                _bindingsStatusCaption = "Remap cancelled.";
+                PlayCue(AudioCue.Back);
+                QueueRedraw();
+                return;
+            }
+
+            if (inputEvent is InputEventKey { Pressed: true, Echo: false } keyEvent
+                && GameActions.TryFormatKeyboardToken(keyEvent, out var token))
+            {
+                ApplyKeyboardRemap(token);
+            }
+
+            return;
+        }
+
+        if (inputEvent.IsActionPressed(GameActions.MoveUp))
+        {
+            var actions = ListRemappableKeyboardActions();
+            if (actions.Count > 0)
+            {
+                _bindingsCursor = (_bindingsCursor - 1 + actions.Count) % actions.Count;
+                QueueRedraw();
+            }
+
+            return;
+        }
+
+        if (inputEvent.IsActionPressed(GameActions.MoveDown))
+        {
+            var actions = ListRemappableKeyboardActions();
+            if (actions.Count > 0)
+            {
+                _bindingsCursor = (_bindingsCursor + 1) % actions.Count;
+                QueueRedraw();
+            }
+
+            return;
+        }
+
+        if (inputEvent.IsActionPressed(GameActions.Confirm))
+        {
+            var actions = ListRemappableKeyboardActions();
+            if (actions.Count == 0)
+            {
+                return;
+            }
+
+            _bindingsCursor = Math.Clamp(_bindingsCursor, 0, actions.Count - 1);
+            _bindingsCapturePending = true;
+            _bindingsStatusCaption =
+                "Press a key for " + actions[_bindingsCursor].ToUpperInvariant() + " (Esc cancel)";
+            PlayCue(AudioCue.Confirm);
+            QueueRedraw();
+            return;
+        }
+
+        if (inputEvent.IsActionPressed(GameActions.Back)
+            || inputEvent.IsActionPressed(GameActions.BrowseBindings))
+        {
+            ReturnToMenu();
+        }
+    }
+
+    private void ApplyKeyboardRemap(string token)
+    {
+        var actions = ListRemappableKeyboardActions();
+        if (actions.Count == 0)
+        {
+            _bindingsCapturePending = false;
+            return;
+        }
+
+        _bindingsCursor = Math.Clamp(_bindingsCursor, 0, actions.Count - 1);
+        var action = actions[_bindingsCursor];
+        var result = _keyboardBindings.TryRemapAction(action, token);
+        _bindingsCapturePending = false;
+        if (!result.IsSuccess || result.Document is null)
+        {
+            _bindingsStatusCaption = result.Message;
+            PlayCue(AudioCue.Back);
+            QueueRedraw();
+            return;
+        }
+
+        _keyboardBindings = result.Document;
+        if (_inputBindingsStore is not null)
+        {
+            _inputBindingsStore.Save(_keyboardBindings);
+        }
+
+        GameActions.ApplyKeyboardBindings(_keyboardBindings);
+        _bindingsStatusCaption =
+            action.ToUpperInvariant() + " -> " + token + " saved.";
+        _structuredLog?.Information(
+            "input",
+            "Remapped keyboard action " + action + " to " + token + ".",
+            eventCode: "bindings_remap_saved");
+        PlayCue(AudioCue.Confirm);
+        QueueRedraw();
+    }
+
     private void DrawBindingsBrowse()
     {
         DrawLabel("INPUT BINDINGS", new Vector2(42.0f, 100.0f), ScaledFontSize(40), PrimaryTextColor());
         DrawLabel(
-            "Schema 1 logical actions (F8 restores defaults)",
+            _bindingsCapturePending
+                ? "CAPTURE MODE"
+                : "Schema 1 keyboard remap (F8 restores defaults)",
             new Vector2(46.0f, 148.0f),
             ScaledFontSize(18),
             new Color(0.85f, 0.78f, 0.45f));
-
-        var y = 190.0f;
-        DrawLabel("KEYBOARD", new Vector2(46.0f, y), ScaledFontSize(20), PrimaryTextColor());
-        y += 28.0f;
-        foreach (var pair in _keyboardBindings.ActionToBinding.OrderBy(static entry => entry.Key, StringComparer.Ordinal))
+        if (_bindingsStatusCaption is not null)
         {
             DrawLabel(
-                $"{pair.Key.ToUpperInvariant()}  ->  {pair.Value}",
+                _bindingsStatusCaption,
+                new Vector2(46.0f, 172.0f),
+                ScaledFontSize(15),
+                new Color(0.7f, 0.65f, 0.4f));
+        }
+
+        var y = 204.0f;
+        DrawLabel("KEYBOARD", new Vector2(46.0f, y), ScaledFontSize(20), PrimaryTextColor());
+        y += 28.0f;
+        var actions = ListRemappableKeyboardActions();
+        for (var index = 0; index < actions.Count; index++)
+        {
+            var action = actions[index];
+            var token = _keyboardBindings.ActionToBinding[action];
+            var selected = index == _bindingsCursor;
+            var prefix = selected ? (_bindingsCapturePending ? ">?" : ">") : " ";
+            var color = selected
+                ? new Color(1.0f, 0.92f, 0.45f)
+                : Colors.White;
+            DrawLabel(
+                $"{prefix} {action.ToUpperInvariant()}  ->  {token}",
                 new Vector2(60.0f, y),
                 ScaledFontSize(16),
-                Colors.White);
+                color);
+            y += 22.0f;
+        }
+
+        if (_keyboardBindings.ActionToBinding.TryGetValue("restore_defaults", out var restoreToken))
+        {
+            DrawLabel(
+                $"  RESTORE_DEFAULTS  ->  {restoreToken} (not remappable here)",
+                new Vector2(60.0f, y),
+                ScaledFontSize(14),
+                SecondaryTextColor());
             y += 22.0f;
         }
 
@@ -1016,7 +1161,7 @@ public partial class Main : Node2D
         }
 
         DrawLabel(
-            "Esc, B, Confirm, or Controller South/East: return",
+            "Up/Down select  Confirm capture  Esc cancel/back  B close",
             new Vector2(46.0f, Math.Min(y + 16.0f, 680.0f)),
             ScaledFontSize(16),
             SecondaryTextColor());
@@ -2571,10 +2716,42 @@ public partial class Main : Node2D
                 "Structured log missing bindings_browse_open after bindings open.");
         }
 
+        // Pure remap path used by interactive capture (no Godot key event required).
+        var remap = _keyboardBindings.TryRemapAction("pause", "key:space");
+        if (!remap.IsSuccess || remap.Document is null)
+        {
+            throw new InvalidOperationException("Bindings smoke remap to key:space failed.");
+        }
+
+        _keyboardBindings = remap.Document;
+        GameActions.ApplyKeyboardBindings(_keyboardBindings);
+        if (!GameActions.ActionHasKeyboardToken(GameActions.Pause, "key:space"))
+        {
+            throw new InvalidOperationException("Pause InputMap did not receive remapped key:space.");
+        }
+
+        _structuredLog?.Information(
+            "input",
+            "Smoke remapped pause to key:space.",
+            eventCode: "bindings_remap_saved");
+        RestoreInputBindingDefaults();
+
         ReturnToMenu();
         if (_screenState != ScreenState.Menu)
         {
             throw new InvalidOperationException("Bindings browse did not return to menu.");
+        }
+
+        if (_structuredLog is null)
+        {
+            throw new InvalidOperationException("Structured log was not ready for bindings remap smoke.");
+        }
+
+        var remapLogText = System.IO.File.ReadAllText(_structuredLog.ActiveLogPath);
+        if (!remapLogText.Contains("bindings_remap_saved", StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException(
+                "Structured log missing bindings_remap_saved after remap smoke.");
         }
 
         try
