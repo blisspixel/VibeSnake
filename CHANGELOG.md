@@ -42,6 +42,7 @@ Notable player-facing and engineering changes are recorded here. The project is 
 - `ProductIdentity.AppVersion` centralizes the shell product version for crash reports and replays; Godot `*.cs.uid` companions are gitignored.
 - Shell structured log records `replay_finalized` and `replay_finalize_failed` around terminal replay capture.
 - Shell structured log records `run_start` when a product run is created or restarted.
+- README screenshot presentation-source fingerprint refreshed after dual-runtime achievement-candidate QA wiring.
 - `InputBindingsDocument.TryRemapAction` preserves fractional axis thresholds instead of rounding them to integers.
 - Multi-stream `RandomStreamBank` for independent gameplay, AI, cosmetic, radio, and copy PCG32 streams derived from one master seed.
 - Fail-closed native custom AI `PersonalityDocument` validation with schema, trait range, boolean rejection, RGB checks, and filename-scoped errors.
