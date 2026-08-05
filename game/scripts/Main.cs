@@ -2535,6 +2535,16 @@ public partial class Main : Node2D
             throw new InvalidOperationException("Death-screen confirm did not start a fresh run.");
         }
 
+        if (_structuredLog is not null)
+        {
+            var restartLog = System.IO.File.ReadAllText(_structuredLog.ActiveLogPath);
+            if (!restartLog.Contains("run_start", StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException(
+                    "Smoke restart path did not write run_start structured log event.");
+            }
+        }
+
         DispatchSmokeAction(GameActions.Back);
         if (_screenState != ScreenState.Menu || _run is not null)
         {
