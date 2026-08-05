@@ -6,6 +6,7 @@ Notable player-facing and engineering changes are recorded here. The project is 
 
 ### Added
 
+- Python CoreSimulation accepts already_unlocked_achievements to suppress known profile unlocks during dual-runtime experiments.
 - AchievementsDocument.IsUnlocked helper for profile unlock queries.
 - Ended-run overlay shows RUN UNLOCKS progress from permanent profile unlocks.
 - Achievements documents accept schema_version as an alias for schemaVersion on load.

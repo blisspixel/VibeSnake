@@ -29,6 +29,7 @@ class CoreSimulation:
         *,
         enable_near_miss: bool = True,
         enable_achievement_candidates: bool = False,
+        already_unlocked_achievements: frozenset[str] | None = None,
     ):
         if step_seconds <= 0:
             raise ValueError("step_seconds must be greater than zero")
@@ -38,6 +39,12 @@ class CoreSimulation:
         # Default false keeps dual-runtime fixtures stable until shared traces
         # regenerate with achievement_candidate events.
         self.enable_achievement_candidates = enable_achievement_candidates
+        # Optional profile unlock set mirrors SnakeRun.ApplyProfileUnlocks.
+        self.already_unlocked_achievements = (
+            frozenset()
+            if already_unlocked_achievements is None
+            else frozenset(already_unlocked_achievements)
+        )
         self.snake = Snake()
         self.food = Food(self.snake.positions_set)
         self.score = ScoreManager()
@@ -247,7 +254,10 @@ class CoreSimulation:
             survival_ticks=self.step_count,
             is_terminal=True,
         )
-        for index in candidate_event_values(metrics):
+        for index in candidate_event_values(
+            metrics,
+            already_unlocked=self.already_unlocked_achievements,
+        ):
             events.append(StepEvent(kind="achievement_candidate", value=index))
 
     def _record(

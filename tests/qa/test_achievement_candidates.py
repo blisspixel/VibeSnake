@@ -80,3 +80,18 @@ def test_core_simulation_emits_candidates_when_flag_enabled() -> None:
     candidate_values = [event.value for event in record.events if event.kind == "achievement_candidate"]
     assert index_of("first_bite") in candidate_values
     assert index_of("century") in candidate_values
+
+
+def test_core_simulation_suppresses_already_unlocked_candidates() -> None:
+    sim = CoreSimulation(
+        step_seconds=0.05,
+        enable_achievement_candidates=True,
+        already_unlocked_achievements=frozenset({"first_bite"}),
+    )
+    sim.starvation_limit_seconds = 0.05
+    sim.score.base_score = 150
+    record = sim.step(())
+    assert not sim.alive
+    candidate_values = [event.value for event in record.events if event.kind == "achievement_candidate"]
+    assert index_of("first_bite") not in candidate_values
+    assert index_of("century") in candidate_values
