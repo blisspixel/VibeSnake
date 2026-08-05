@@ -116,6 +116,16 @@ public sealed class RunReplayTests
     }
 
     [Fact]
+    public void Recorder_rejects_blank_or_oversized_app_version()
+    {
+        var initial = SnakeRun.Create(58UL);
+        Assert.Throws<ArgumentException>(
+            () => new RunReplayRecorder(initial, appVersion: " "));
+        Assert.Throws<ArgumentException>(
+            () => new RunReplayRecorder(initial, appVersion: new string('x', 65)));
+    }
+
+    [Fact]
     public void Verify_rejects_config_identity_mismatch_on_restore()
     {
         var initial = SnakeRun.Create(4242UL, new RunConfig(Width: 10, Height: 8));
