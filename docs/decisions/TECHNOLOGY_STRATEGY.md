@@ -8,7 +8,7 @@ This is a working architecture decision, not a claim that migration is complete.
 
 The accepted qualification decision is recorded in [ADR 0001](ADR_0001_NATIVE_RUNTIME.md). Cross-language behavior corrections and unresolved differences are recorded in [PARITY_DECISIONS.md](../engineering/PARITY_DECISIONS.md).
 
-As of the 2026-08-01 review, Godot 4.7.1 is the current stable maintenance release and Godot 4 C# supports Windows, Linux, and macOS. The repository pins Godot 4.7.1 Mono commit `a13da4feb`, official editor and .NET export-template hashes, and .NET SDK 10.0.302. .NET 10 is an active LTS release. The project targets `net10.0` and has passed local compilation, 177 native contract tests, shared Python trace parity for the implemented core and Shield scope, real Godot headless smoke, isolated replay storage smoke, and packaged-player qualification on Windows. The Windows debug artifact launches outside the checkout without Python and passes a complete hash inventory. Hosted runs and the macOS and Linux exports remain unverified.
+As of 2026-08-05, Godot 4.7.1 is the pinned stable maintenance release and Godot 4 C# supports Windows, Linux, and macOS. The repository pins Godot 4.7.1 Mono commit `a13da4feb`, official editor and .NET export-template hashes, and .NET SDK 10.0.302. .NET 10 is an active LTS release. The project targets `net10.0` with **445** native contract tests, shared Python→C# parity for movement/core/powers/achievement product-path fixtures, real Godot headless smoke, isolated replay storage, and hosted packaged-player export smokes on **Windows, macOS, and Linux** outside the checkout without Python. Python remains the frozen oracle only; product work continues in pure C# and Godot.
 
 ## Why change from the incumbent
 
@@ -96,7 +96,7 @@ src/vibesnake/
 tests/
 ```
 
-The listed directories now exist. `game/` is the Godot presentation shell, `native/` owns engine-independent C# code and tests, and the existing Python paths remain the behavior reference. Export presets and a Godot-required application solution now define all three desktop targets. Future 0.3 work deepens the application boundary, shared scenario fixtures, differential runner, content tooling, themes, shaders, and core asset pack only when each has an executable contract.
+The listed directories now exist. `game/` is the Godot presentation shell (product surface), `native/` owns engine-independent C# rules/persistence and tests (product kernel), and the existing Python paths remain the **behavior oracle** for dual-runtime fixtures - not a parallel product. Export presets and a Godot-required application solution define all three desktop targets. Remaining 0.3 work deepens the Godot shell, installer/archive shapes, pack export eligibility, and evidence - not new Python gameplay systems.
 
 ## Current qualification evidence
 

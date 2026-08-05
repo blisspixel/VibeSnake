@@ -2,7 +2,7 @@
 
 Status: V030-12 expanded procedures (2026-08-04).
 
-This map assigns every Python reference subsystem to its target C# or Godot owner. During migration, prefer changing one owner. Do not add major new player-facing features to both runtimes.
+This map assigns every Python reference subsystem to its target C# or Godot owner. **Product work lands in the target owner only.** Python is a frozen oracle: do not add major new player-facing features there, and never implement the same feature twice.
 
 ## Ownership matrix
 
@@ -37,7 +37,8 @@ This map assigns every Python reference subsystem to its target C# or Godot owne
 1. Shield, Phase Shift, Last Stand (collision recovery matrix): done
 2. Slow-Mo and Boost (tempo modifiers): done (rules + shell cadence)
 3. Magnet, Bait, Gluttony, Segment Detach: done (rules + shell + shared fixtures)
-4. Presentation polish, radio, progression UI on Godot: **current**
+4. Presentation polish, radio, progression UI on Godot: **current** (achievements browse landed; remapping/glyphs/radio still open)
+5. Installer/archive shapes and first export-eligible packs: **next packaging gates**
 5. Content service and pack allowlists before shipping native asset payloads: next dependency
 
 ## Data migration procedures

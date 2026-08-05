@@ -4,6 +4,10 @@ Notable player-facing and engineering changes are recorded here. The project is 
 
 ## Unreleased
 
+### Changed
+
+- Roadmap, README, release status, technology strategy, and native README now state the product path explicitly: Godot + pure C# ship; Python is a frozen oracle only. Next-work table prioritizes shell depth, packaging, and pack eligibility over further Python feature work.
+
 ### Added
 
 - Dual-runtime `achievement_candidates_rules_v1` fixture and parity suite with the product flag enabled (score candidates, already-unlocked suppression, empty zero-score emission) without flipping default-off core/power corpora (PD-009).
