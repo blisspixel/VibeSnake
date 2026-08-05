@@ -8,6 +8,7 @@ Notable player-facing and engineering changes are recorded here. The project is 
 
 - Pure `RunConfig.ComputeConfigHash` / `SerializeCanonicalConfig` (`sha256-canonical-runconfig-v1`) and `SnakeRun.ConfigHash` for score and replay metadata without altering the step state hash.
 - Pure `InputBindingsDocument.TryRemapAction` for conflict-safe single-action remapping without mutating the source document.
+- Pure `InputBindingsDocument.TrySwapActions` for atomic two-action binding exchange without intermediate conflicts.
 - Shell accessibility hotkeys: F7 master mute, F9 high contrast, F10 reduced motion, F11 fullscreen, each persisting preferences; `ShellSettings` toggle helpers and headless smoke coverage.
 - Pure `ControllerConnectionTracker` with sanitized connect/disconnect captions; shell seeds joypads, shows menu notices, and pauses a run when the last controller disconnects.
 - Optional `configHash` / `configHashAlgorithm` fields on offline crash reports; rules throughput evidence JSON records the effective config hash.

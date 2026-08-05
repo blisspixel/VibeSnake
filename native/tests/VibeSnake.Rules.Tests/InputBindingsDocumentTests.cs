@@ -179,4 +179,28 @@ public sealed class InputBindingsDocumentTests
         Assert.True(remapped.IsSuccess);
         Assert.Equal("axis:left_y:-0.5", remapped.Document!.ActionToBinding["move_up"]);
     }
+
+    [Fact]
+    public void TrySwapActions_exchanges_bindings_without_conflict()
+    {
+        var original = InputBindingsDocument.CreateKeyboardDefaults();
+        var swapped = original.TrySwapActions("pause", "confirm");
+
+        Assert.True(swapped.IsSuccess);
+        Assert.Equal("key:enter", swapped.Document!.ActionToBinding["pause"]);
+        Assert.Equal("key:p", swapped.Document.ActionToBinding["confirm"]);
+        Assert.Equal("key:p", original.ActionToBinding["pause"]);
+    }
+
+    [Fact]
+    public void TrySwapActions_rejects_unknown_or_blank_actions()
+    {
+        var original = InputBindingsDocument.CreateKeyboardDefaults();
+        Assert.Equal(
+            InputBindingsLoadCode.InvalidField,
+            original.TrySwapActions("pause", "jump").Code);
+        Assert.Equal(
+            InputBindingsLoadCode.InvalidField,
+            original.TrySwapActions(" ", "confirm").Code);
+    }
 }

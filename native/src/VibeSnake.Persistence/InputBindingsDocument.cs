@@ -284,6 +284,56 @@ public sealed record InputBindingsDocument(
             document);
     }
 
+    /// <summary>
+    /// Swaps the bindings of two known actions without intermediate conflicts.
+    /// Idempotent when the actions already hold each other's tokens.
+    /// </summary>
+    public InputBindingsLoadResult TrySwapActions(string leftAction, string rightAction)
+    {
+        if (string.IsNullOrWhiteSpace(leftAction) || string.IsNullOrWhiteSpace(rightAction))
+        {
+            return new InputBindingsLoadResult(
+                InputBindingsLoadCode.InvalidField,
+                "Both action names must be non-empty.");
+        }
+
+        var left = leftAction.Trim();
+        var right = rightAction.Trim();
+        if (string.Equals(left, right, StringComparison.Ordinal))
+        {
+            return new InputBindingsLoadResult(
+                InputBindingsLoadCode.Success,
+                "Actions are identical; no swap required.",
+                this);
+        }
+
+        if (!ActionToBinding.TryGetValue(left, out var leftBinding)
+            || !ActionToBinding.TryGetValue(right, out var rightBinding))
+        {
+            return new InputBindingsLoadResult(
+                InputBindingsLoadCode.InvalidField,
+                "Both actions must exist before they can be swapped.");
+        }
+
+        if (string.Equals(leftBinding, rightBinding, StringComparison.Ordinal))
+        {
+            return new InputBindingsLoadResult(
+                InputBindingsLoadCode.Conflict,
+                "Cannot swap actions that already share the same binding token.");
+        }
+
+        var next = new Dictionary<string, string>(ActionToBinding, StringComparer.Ordinal)
+        {
+            [left] = rightBinding,
+            [right] = leftBinding,
+        };
+        var document = new InputBindingsDocument(SchemaVersion, DeviceClass, next);
+        return new InputBindingsLoadResult(
+            InputBindingsLoadCode.Success,
+            $"Swapped bindings for '{left}' and '{right}'.",
+            document);
+    }
+
     private static string NormalizeBindingToken(ParsedInputBinding parsed) =>
         parsed.Kind switch
         {
