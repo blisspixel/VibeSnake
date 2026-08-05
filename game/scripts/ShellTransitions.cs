@@ -11,6 +11,7 @@ internal enum ShellScreen : byte
     Paused = 2,
     Ended = 3,
     Achievements = 4,
+    Bindings = 5,
 }
 
 internal static class ShellTransitions
@@ -20,6 +21,7 @@ internal static class ShellTransitions
         (ShellScreen.Menu, ShellScreen.Running) => true,
         (ShellScreen.Menu, ShellScreen.Menu) => true,
         (ShellScreen.Menu, ShellScreen.Achievements) => true,
+        (ShellScreen.Menu, ShellScreen.Bindings) => true,
         (ShellScreen.Running, ShellScreen.Paused) => true,
         (ShellScreen.Running, ShellScreen.Ended) => true,
         (ShellScreen.Running, ShellScreen.Menu) => true,
@@ -28,8 +30,11 @@ internal static class ShellTransitions
         (ShellScreen.Ended, ShellScreen.Running) => true,
         (ShellScreen.Ended, ShellScreen.Menu) => true,
         (ShellScreen.Ended, ShellScreen.Achievements) => true,
+        (ShellScreen.Ended, ShellScreen.Bindings) => true,
         (ShellScreen.Achievements, ShellScreen.Menu) => true,
         (ShellScreen.Achievements, ShellScreen.Achievements) => true,
+        (ShellScreen.Bindings, ShellScreen.Menu) => true,
+        (ShellScreen.Bindings, ShellScreen.Bindings) => true,
         _ => false,
     };
 

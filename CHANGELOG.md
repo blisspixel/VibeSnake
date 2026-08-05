@@ -10,6 +10,8 @@ Notable player-facing and engineering changes are recorded here. The project is 
 
 ### Added
 
+- Pure `ReleaseArtifactManifest` schema 2 validates native export inspection manifests (platform payload patterns, SHA fields, byte-sum integrity) and declares installer/archive shapes for Windows/Linux portable folders and macOS app-bundle zip (V030-10).
+- Godot bindings browse screen (`B` / right shoulder) lists schema-1 keyboard bindings and controller defaults; smoke covers open/return and `bindings_browse_open`.
 - Dual-runtime `achievement_candidates_rules_v1` fixture and parity suite with the product flag enabled (score candidates, already-unlocked suppression, empty zero-score emission) without flipping default-off core/power corpora (PD-009).
 - Pure `AchievementsBrowseReport` projects the rules-local catalog against permanent unlocks (summary, rarity progress, filtered entries, preview) and drives menu and ended-run unlock captions.
 - Shell achievements browse screen (`U` / left shoulder) lists the full rules-local catalog with unlock markers; smoke covers open/return transitions and `achievements_browse_open`.

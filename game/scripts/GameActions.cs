@@ -33,6 +33,7 @@ internal static class GameActions
     public const string ToggleFlashFree = "vibe_toggle_flash_free";
     public const string OpenDiagnostics = "vibe_open_diagnostics";
     public const string BrowseAchievements = "vibe_browse_achievements";
+    public const string BrowseBindings = "vibe_browse_bindings";
 
     private static readonly string[] RequiredActions =
     [
@@ -71,6 +72,7 @@ internal static class GameActions
             ["toggle_flash_free"] = ToggleFlashFree,
             ["open_diagnostics"] = OpenDiagnostics,
             ["browse_achievements"] = BrowseAchievements,
+            ["browse_bindings"] = BrowseBindings,
         };
 
     private static readonly HashSet<string> RuntimeActions = [];
@@ -186,6 +188,11 @@ internal static class GameActions
             0.5f,
             KeyEvent(Key.U),
             JoyButtonEvent(JoyButton.LeftShoulder));
+        AddAction(
+            BrowseBindings,
+            0.5f,
+            KeyEvent(Key.B),
+            JoyButtonEvent(JoyButton.RightShoulder));
     }
 
     /// <summary>

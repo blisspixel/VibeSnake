@@ -78,4 +78,4 @@ Future native-owned rows (not yet writers in shipping code):
 
 ## Open V030-10 work
 
-Installer and archive shapes, signing separation, release manifest schema, in-game reset/recovery UI, and optional-pack removal UX remain open. This document freezes the directory contract those features must respect.
+Pure C# `ReleaseArtifactManifest` (schema 2) validates export inspection documents and declares installer/archive shapes (`portable-folder` for Windows/Linux, `app-bundle-zip` for macOS). Signing separation, store-channel packaging, in-game reset/recovery UI, and optional-pack removal UX remain open. This document freezes the directory contract those features must respect.

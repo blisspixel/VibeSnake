@@ -35,7 +35,7 @@ See [ROADMAP.md Product path](../../ROADMAP.md#product-path-read-this-first). Sh
 | Python deterministic tests | 466 passing and 3 environment-dependent radio skips on the supported interpreters in CI |
 | Python line coverage | About 87 percent measured with an 80 percent floor enforced by configuration and CI |
 | Native toolchain | Godot 4.7.1 Mono and .NET SDK 10.0.302 pinned and verified |
-| Native contract tests | **445** passing on .NET 10 with an 80 percent line floor per module |
+| Native contract tests | **451** passing on .NET 10 with an 80 percent line floor per module |
 | Cross-language parity | 100 movement cases (25,600 steps), 35 core-rule cases, 8 Shield, 6 Phase Shift, 5 Last Stand, 9 remaining-power, and 4 achievement-candidate product-path cases pass |
 | Godot integration | Headless import plus seeded rules, restoration, logical input with schema-1 InputMap apply, VirtualViewport letterbox draw, multi-bus volume apply, focus-loss pause, audio buses, fourteen fallback cues, full nine-power markers and captions, cadence-aware stepping, achievements load/save and catalog browse, live replay recording, isolated atomic save, and clean shutdown smoke on hosted runners |
 | Native artifacts | Windows, macOS, and Linux player smokes run outside the checkout on matching hosted runners **without Python**; continuous Python reference player-latest packages still publish from `main` |
