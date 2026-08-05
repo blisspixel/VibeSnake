@@ -1678,6 +1678,15 @@ public partial class Main : Node2D
             throw new InvalidOperationException("Diagnostics smoke report was missing or unsanitized.");
         }
 
+        var diagnosticsDirectory = _diagnostics.EnsureDiagnosticsDirectory();
+        if (!System.IO.Directory.Exists(diagnosticsDirectory)
+            || !System.IO.Path.IsPathFullyQualified(diagnosticsDirectory)
+            || !reportPath.StartsWith(diagnosticsDirectory, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException(
+                "EnsureDiagnosticsDirectory did not return the absolute report parent folder.");
+        }
+
         ShellTransitions.EnsureTransition(ShellScreen.Menu, ShellScreen.Running);
         ShellTransitions.EnsureTransition(ShellScreen.Running, ShellScreen.Ended);
         ShellTransitions.EnsureTransition(ShellScreen.Ended, ShellScreen.Running);
