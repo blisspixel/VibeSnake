@@ -101,6 +101,18 @@ public sealed class RunConfigTests
     }
 
     [Fact]
+    public void Config_hash_changes_when_achievement_candidate_flag_changes()
+    {
+        var off = new RunConfig(EnableAchievementCandidates: false).ComputeConfigHash();
+        var on = new RunConfig(EnableAchievementCandidates: true).ComputeConfigHash();
+        Assert.NotEqual(off, on);
+        Assert.Contains(
+            "\"enableAchievementCandidates\":true",
+            new RunConfig(EnableAchievementCandidates: true).SerializeCanonicalConfig(),
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void SnakeRun_exposes_config_hash_matching_the_run_configuration()
     {
         var configuration = new RunConfig(Width: 16, Height: 12, EnableNearMiss: true);
