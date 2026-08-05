@@ -6,6 +6,8 @@ Notable player-facing and engineering changes are recorded here. The project is 
 
 ### Added
 
+- Multi-power synergy and anti-synergy campaign tests for the nine-power portfolio (protection handoffs, cross-family composition, same-kind anti-stack, restore, restart cleanup).
+- Architecture boundary tests ban Console.Write from pure Rules sources.
 - Architecture boundary tests ban Task.Delay from pure Rules sources.
 - Architecture boundary tests ban Thread.Sleep from pure Rules sources.
 - Architecture boundary tests ban Process.Start and GetCurrentProcess from pure Rules sources.
