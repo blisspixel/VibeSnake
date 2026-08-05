@@ -51,7 +51,7 @@ filesystem cannot make exit hang forever. Unexpected tree teardown uses the same
 bounded save-drain policy. The full persistence and replay contract is in
 [REPLAYS.md](../engineering/REPLAYS.md).
 
-Godot owns controller discovery and hot-plug delivery. Because defaults target any joypad rather than startup index zero, a newly connected mapped controller can submit the same actions. Prompt-family switching, connection notices, device-specific fallback mappings, and disconnect testing still remain before 1.0.
+Godot owns controller discovery and hot-plug delivery. Because defaults target any joypad rather than startup index zero, a newly connected mapped controller can submit the same actions. The pure `ControllerConnectionTracker` records connect and disconnect events with sanitized captions; the shell seeds currently connected pads at launch, shows a connection notice on the menu, and pauses a live run when the last controller disconnects. Prompt-family switching, glyphs, device-specific fallback mappings, and multi-controller hardware evidence still remain before 1.0.
 
 ## Remapping and accessibility requirements
 

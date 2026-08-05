@@ -42,6 +42,8 @@ public partial class Main : Node2D
     private InputBindingsStore? _inputBindingsStore;
     private InputBindingsDocument _keyboardBindings =
         InputBindingsDocument.CreateKeyboardDefaults();
+    private readonly ControllerConnectionTracker _controllerConnections = new();
+    private string? _controllerCaption;
 
     private enum ScreenState
     {
@@ -83,6 +85,8 @@ public partial class Main : Node2D
         LoadShellSettings();
         AudioBuses.ApplyShellSettings(_shellSettings);
         LoadInputBindings();
+        SeedControllerConnections();
+        Input.JoyConnectionChanged += OnJoyConnectionChanged;
         _window = GetWindow();
         _window.FilesDropped += OnFilesDropped;
         _window.SizeChanged += OnWindowSizeChanged;
@@ -94,6 +98,42 @@ public partial class Main : Node2D
         }
 
         ApplyWindowModeFromSettings();
+        QueueRedraw();
+    }
+
+    private void SeedControllerConnections()
+    {
+        foreach (var deviceId in Input.GetConnectedJoypads())
+        {
+            _controllerConnections.NoteConnected((int)deviceId, Input.GetJoyName((int)deviceId));
+        }
+    }
+
+    private void OnJoyConnectionChanged(long device, bool connected)
+    {
+        var deviceId = (int)device;
+        ControllerConnectionEvent? connectionEvent = connected
+            ? _controllerConnections.NoteConnected(deviceId, Input.GetJoyName(deviceId))
+            : _controllerConnections.NoteDisconnected(deviceId);
+        if (connectionEvent is null)
+        {
+            return;
+        }
+
+        _controllerCaption = connectionEvent.Value.Caption;
+
+        // Pause a live run when the last controller disconnects so input is not lost.
+        if (
+            connectionEvent.Value.Kind == ControllerConnectionKind.Disconnected
+            && _controllerConnections.ConnectedCount == 0
+            && _screenState == ScreenState.Running
+            && !_paused)
+        {
+            _paused = true;
+            _pausedByFocusLoss = false;
+            PlayCue(AudioCue.Pause);
+        }
+
         QueueRedraw();
     }
 
@@ -372,8 +412,10 @@ public partial class Main : Node2D
         if (_window is not null && IsInstanceValid(_window))
         {
             _window.FilesDropped -= OnFilesDropped;
+            _window.SizeChanged -= OnWindowSizeChanged;
         }
 
+        Input.JoyConnectionChanged -= OnJoyConnectionChanged;
         GameActions.ReleaseRuntimeDefaults();
     }
 
@@ -519,9 +561,23 @@ public partial class Main : Node2D
                 DrawLabel("Enter, Space, or Controller South", new Vector2(46.0f, 336.0f), ScaledFontSize(18), SecondaryTextColor());
                 DrawLabel("R or Controller North: verify latest replay", new Vector2(46.0f, 378.0f), ScaledFontSize(18), SecondaryTextColor());
                 DrawLabel("Drop one replay file here to verify without changing it", new Vector2(46.0f, 410.0f), ScaledFontSize(18), SecondaryTextColor());
+                DrawLabel(
+                    "F7 mute  F9 contrast  F10 motion  F11 fullscreen  F8 restore bindings",
+                    new Vector2(46.0f, 442.0f),
+                    ScaledFontSize(16),
+                    SecondaryTextColor());
+                if (_controllerCaption is not null)
+                {
+                    DrawLabel(
+                        _controllerCaption,
+                        new Vector2(46.0f, 474.0f),
+                        ScaledFontSize(16),
+                        new Color(0.75f, 0.9f, 0.55f));
+                }
+
                 if (_replayStatusCaption is not null)
                 {
-                    DrawLabel(_replayStatusCaption, new Vector2(46.0f, 458.0f), ScaledFontSize(16), new Color(0.46f, 0.94f, 0.96f));
+                    DrawLabel(_replayStatusCaption, new Vector2(46.0f, 506.0f), ScaledFontSize(16), new Color(0.46f, 0.94f, 0.96f));
                 }
 
                 break;
@@ -1809,6 +1865,23 @@ public partial class Main : Node2D
         _shellSettings.ReducedMotion = false;
         _shellSettings.Fullscreen = false;
         SaveShellSettings();
+
+        var controllerTracker = new ControllerConnectionTracker();
+        var connected = controllerTracker.NoteConnected(0, "Smoke Pad");
+        if (connected is null
+            || connected.Value.Kind != ControllerConnectionKind.Connected
+            || controllerTracker.ConnectedCount != 1)
+        {
+            throw new InvalidOperationException("Controller connection tracker connect contract failed.");
+        }
+
+        var disconnected = controllerTracker.NoteDisconnected(0);
+        if (disconnected is null
+            || disconnected.Value.Kind != ControllerConnectionKind.Disconnected
+            || controllerTracker.ConnectedCount != 0)
+        {
+            throw new InvalidOperationException("Controller connection tracker disconnect contract failed.");
+        }
 
         var reportPath = _diagnostics.WriteCrashReport(
             appVersion: "0.2.1",
