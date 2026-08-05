@@ -169,7 +169,11 @@ public sealed class ArchitectureBoundaryTests
                 || text.Contains("System.Net.Http", StringComparison.Ordinal)
                 || text.Contains("System.Net.Sockets", StringComparison.Ordinal)
                 || text.Contains("HttpClient", StringComparison.Ordinal)
-                || text.Contains("WebRequest", StringComparison.Ordinal))
+                || text.Contains("WebRequest", StringComparison.Ordinal)
+                || text.Contains("System.Random", StringComparison.Ordinal)
+                || text.Contains("DateTime.Now", StringComparison.Ordinal)
+                || text.Contains("DateTime.UtcNow", StringComparison.Ordinal)
+                || text.Contains("Environment.GetEnvironmentVariable", StringComparison.Ordinal))
             {
                 offenders.Add(Path.GetRelativePath(persistenceDirectory, file));
             }
