@@ -6,6 +6,7 @@ Notable player-facing and engineering changes are recorded here. The project is 
 
 ### Added
 
+- Restart clears session achievement counters so the next run cannot inherit unlock metrics.
 - Death-cause contract fixtures for SelfCollision, Starvation, and closed None set; state-machine campaigns assert session-counter restore parity.
 - Architecture boundary tests ban filesystem I/O surfaces from pure `VibeSnake.Rules` sources (V040-09).
 - Versioned pure-rules property campaign report producer (`rules-property-campaign-v1`) writing `TestResults/native/property_campaign.json` with seeds, invariants, failure payload, and one-command reproduction (V040-10).

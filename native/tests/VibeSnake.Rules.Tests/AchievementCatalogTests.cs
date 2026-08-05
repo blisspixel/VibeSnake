@@ -280,6 +280,38 @@ public sealed class AchievementCatalogTests
     }
 
     [Fact]
+    public void Restart_clears_session_achievement_counters()
+    {
+        var run = SnakeRun.CreateForTesting(
+            new RunConfig(
+                Width: 8,
+                Height: 6,
+                StarvationTicks: 200,
+                PowerSpawnIntervalTicks: 0),
+            [new GridPoint(1, 1)],
+            Direction.Right,
+            food: new GridPoint(2, 1),
+            hungerTicksRemaining: 100);
+
+        run.Step();
+        Assert.True(run.SessionFoodEaten >= 1);
+
+        // Force terminal, then restart into a fresh run.
+        while (run.Status == RunStatus.Running)
+        {
+            run.Step();
+        }
+
+        var restarted = run.Restart(99UL);
+        Assert.Equal(0, restarted.SessionFoodEaten);
+        Assert.Equal(0, restarted.SessionWraps);
+        Assert.Equal(0, restarted.SessionNearMisses);
+        Assert.Equal(0, restarted.SessionPowerupsCollected);
+        Assert.Equal(0, restarted.SessionMaxCombo);
+        Assert.Equal(RunStatus.Running, restarted.Status);
+    }
+
+    [Fact]
     public void Mid_run_restore_preserves_session_achievement_counters()
     {
         // Schema 3 carries session counters so mid-run restore and checkpoint
