@@ -1263,17 +1263,44 @@ public partial class Main : Node2D
         var feedback = StepFeedback.Resolve(events);
         if (feedback.Cue is { } cue)
         {
-            PlayCue(cue);
+            // Flash-free keeps critical death/victory cues but skips rapid near-miss style tones.
+            if (!_shellSettings.FlashFree
+                || cue is AudioCue.Death or AudioCue.Victory or AudioCue.Pause or AudioCue.Confirm)
+            {
+                PlayCue(cue);
+            }
         }
 
         if (feedback.Caption is { } caption)
         {
-            _feedbackCaption = caption;
+            _feedbackCaption = _shellSettings.FlashFree
+                ? SoftenFlashyCaption(caption)
+                : caption;
             // Reduced motion shortens transient captions without hiding critical recovery text.
-            _feedbackTicksRemaining = _shellSettings.ReducedMotion
-                ? Math.Max(8, FeedbackVisibilityTicks / 2)
-                : FeedbackVisibilityTicks;
+            // Flash-free lengthens captions so information is not conveyed by brief flashes.
+            if (_shellSettings.FlashFree)
+            {
+                _feedbackTicksRemaining = FeedbackVisibilityTicks + 10;
+            }
+            else if (_shellSettings.ReducedMotion)
+            {
+                _feedbackTicksRemaining = Math.Max(8, FeedbackVisibilityTicks / 2);
+            }
+            else
+            {
+                _feedbackTicksRemaining = FeedbackVisibilityTicks;
+            }
         }
+    }
+
+    /// <summary>
+    /// Removes high-intensity punctuation so flash-free mode does not rely on
+    /// rapid visual emphasis. Critical words remain intact.
+    /// </summary>
+    internal static string SoftenFlashyCaption(string caption)
+    {
+        ArgumentNullException.ThrowIfNull(caption);
+        return caption.Replace("!", string.Empty, StringComparison.Ordinal).Trim();
     }
 
     private void DrawLabel(string text, Vector2 position, int fontSize, Color color)
@@ -1948,6 +1975,14 @@ public partial class Main : Node2D
         if (settings.ToggleFlashFree() || settings.FlashFree)
         {
             throw new InvalidOperationException("Flash-free toggle off failed.");
+        }
+
+        if (!string.Equals(
+                SoftenFlashyCaption("+2 STYLE STREAK!"),
+                "+2 STYLE STREAK",
+                StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException("Flash-free caption soften contract failed.");
         }
 
         if (_preferencesStore is null || _diagnostics is null)

@@ -18,6 +18,7 @@ Notable player-facing and engineering changes are recorded here. The project is 
 - Text scale step hotkeys (F5 down, F6 up) with preferences schema clamp (0.85..1.5) and persistence.
 - Flash-free toggle (F4) and open-diagnostics action (F12) for the offline support path.
 - Opt-in `RunConfig.EnableComboExpiredEvent` emits `combo_expired` on combo window elapse (default off for core_rules parity); shell caption recognizes the event.
+- Flash-free presentation softens high-intensity captions, lengthens caption dwell, and skips non-critical audio cues while keeping death/victory/pause/confirm.
 
 ### Fixed
 
