@@ -6,6 +6,7 @@ Notable player-facing and engineering changes are recorded here. The project is 
 
 ### Added
 
+- Main menu previews the first unlocked achievement IDs when any permanent unlocks exist.
 - Achievements documents reject empty-string and null unlockedIds entries.
 - Architecture boundary tests ban wall-clock, global random, and env access from Persistence sources.
 - Python CoreSimulation accepts already_unlocked_achievements to suppress known profile unlocks during dual-runtime experiments.
