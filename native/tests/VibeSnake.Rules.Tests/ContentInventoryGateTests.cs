@@ -24,6 +24,18 @@ public sealed class ContentInventoryGateTests
             Assert.False(System.IO.Path.IsPathRooted(asset.RelativePath));
             Assert.DoesNotContain("..", asset.RelativePath, StringComparison.Ordinal);
         });
+
+        var eligibility = ContentEligibilityReport.FromInventory(inventory);
+        Assert.Equal(inventory.FileCount, eligibility.FileCount);
+        Assert.Equal(0, eligibility.ExportEligibleCount);
+        Assert.Equal(0, eligibility.ExportEligibleBytes);
+        Assert.False(eligibility.HasAnyExportEligible);
+        Assert.Equal(106, eligibility.BlockedCount);
+        Assert.Equal(8, eligibility.ExcludedCount);
+        Assert.Equal(114, eligibility.BlockedCount + eligibility.ExcludedCount);
+        Assert.Equal(114, eligibility.CountsByRightsStatus["cleared"]);
+        Assert.True(eligibility.CountsByMediaTypePrefix["audio"] >= 95);
+        Assert.True(eligibility.CountsByShipStatus["blocked"] == 106);
     }
 
     private static string ResolveInventoryPath()
