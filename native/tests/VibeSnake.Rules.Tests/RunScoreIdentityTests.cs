@@ -49,4 +49,13 @@ public sealed class RunScoreIdentityTests
     {
         Assert.Throws<ArgumentNullException>(() => RunScoreIdentity.FromRun(null!));
     }
+
+    [Fact]
+    public void Score_identity_caption_fields_are_stable_for_support_display()
+    {
+        var identity = RunScoreIdentity.FromRun(SnakeRun.Create(3UL));
+        Assert.StartsWith("vibesnake-core@4", identity.RulesetContractId, StringComparison.Ordinal);
+        Assert.Equal(64, identity.ConfigHash.Length);
+        Assert.True(identity.ConfigHash.Length >= 12);
+    }
 }

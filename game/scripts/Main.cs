@@ -1097,12 +1097,35 @@ public partial class Main : Node2D
 
         if (_screenState == ScreenState.Ended)
         {
-            DrawRect(new Rect2(290.0f, 260.0f, 700.0f, 170.0f), new Color(0.01f, 0.02f, 0.018f, 0.92f));
+            DrawRect(new Rect2(290.0f, 250.0f, 700.0f, 210.0f), new Color(0.01f, 0.02f, 0.018f, 0.92f));
             var ending = snapshot.Status == RunStatus.Won ? "GRID COMPLETE" : snapshot.DeathCause.ToString().ToUpperInvariant();
-            DrawLabel(ending, new Vector2(445.0f, 330.0f), 38, new Color(1.0f, 0.75f, 0.3f));
-            DrawLabel("Confirm to coil again", new Vector2(465.0f, 380.0f), 21, Colors.White);
-            DrawLabel("R or Controller North: verify latest replay", new Vector2(430.0f, 410.0f), 16, new Color(0.58f, 0.7f, 0.64f));
+            DrawLabel(ending, new Vector2(445.0f, 310.0f), 38, new Color(1.0f, 0.75f, 0.3f));
+            DrawLabel("Confirm to coil again", new Vector2(465.0f, 360.0f), 21, Colors.White);
+            DrawLabel("R or Controller North: verify latest replay", new Vector2(430.0f, 390.0f), 16, new Color(0.58f, 0.7f, 0.64f));
+            if (_run is not null)
+            {
+                var identity = RunScoreIdentity.FromRun(_run);
+                DrawLabel(
+                    FormatScoreIdentityCaption(identity),
+                    new Vector2(360.0f, 420.0f),
+                    14,
+                    new Color(0.5f, 0.62f, 0.58f));
+            }
         }
+    }
+
+    /// <summary>
+    /// Compact support caption: ruleset contract, score, and config-hash prefix.
+    /// </summary>
+    internal static string FormatScoreIdentityCaption(RunScoreIdentity identity)
+    {
+        ArgumentNullException.ThrowIfNull(identity);
+        var hashPrefix = identity.ConfigHash.Length >= 12
+            ? identity.ConfigHash[..12]
+            : identity.ConfigHash;
+        return string.Create(
+            System.Globalization.CultureInfo.InvariantCulture,
+            $"{identity.RulesetContractId}  score {identity.Score}  cfg {hashPrefix}");
     }
 
     private void DrawActiveHeadOutlines(RunSnapshot snapshot)
@@ -1875,6 +1898,15 @@ public partial class Main : Node2D
         if (Math.Abs(_shellSettings.MusicVolume - 0.33f) > 0.0001f || !_shellSettings.ReducedMotion)
         {
             throw new InvalidOperationException("Preferences schema 2 did not round-trip through the store.");
+        }
+
+        var scoreIdentity = RunScoreIdentity.FromRun(SnakeRun.Create(99UL));
+        var identityCaption = FormatScoreIdentityCaption(scoreIdentity);
+        if (!identityCaption.Contains("vibesnake-core@4", StringComparison.Ordinal)
+            || !identityCaption.Contains("cfg ", StringComparison.Ordinal)
+            || identityCaption.Length < 20)
+        {
+            throw new InvalidOperationException("Score identity caption contract failed.");
         }
 
         // Production apply paths flip each preference and persist without throwing.
