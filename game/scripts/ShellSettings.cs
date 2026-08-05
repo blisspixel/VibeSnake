@@ -115,10 +115,19 @@ internal sealed class ShellSettings
         return HighContrast;
     }
 
-    /// <summary>Flips reduced-motion presentation and returns the new state.</summary>
+    /// <summary>
+    /// Flips reduced-motion presentation and returns the new state.
+    /// Enabling reduced motion also zeroes screen-shake intensity so motion
+    /// reduction is not undermined by residual shake preference.
+    /// </summary>
     public bool ToggleReducedMotion()
     {
         ReducedMotion = !ReducedMotion;
+        if (ReducedMotion)
+        {
+            ScreenShakeIntensity = 0.0f;
+        }
+
         return ReducedMotion;
     }
 

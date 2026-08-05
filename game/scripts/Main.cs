@@ -1919,7 +1919,10 @@ public partial class Main : Node2D
         }
 
         settings.ReducedMotion = false;
-        if (!settings.ToggleReducedMotion() || !settings.ReducedMotion)
+        settings.ScreenShakeIntensity = 1.0f;
+        if (!settings.ToggleReducedMotion()
+            || !settings.ReducedMotion
+            || settings.ScreenShakeIntensity != 0.0f)
         {
             throw new InvalidOperationException("Reduced motion toggle on failed.");
         }
