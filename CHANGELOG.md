@@ -6,6 +6,7 @@ Notable player-facing and engineering changes are recorded here. The project is 
 
 ### Added
 
+- Inventory gate writes `content-eligibility-evidence-v1` JSON under `TestResults/native` for pack-approval handoffs.
 - Achievements document golden serialization and absolute user-data root rejection coverage.
 
 - Pure `ContentEligibilityReport` summarizes inventory ship, rights, and media-type eligibility breakdowns for pack-approval handoffs while exportEligible remains zero.
