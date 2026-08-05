@@ -165,5 +165,6 @@ artifacts/
 .godot/
 game/.godot/
 *.translation
+*.cs.uid
 
 
