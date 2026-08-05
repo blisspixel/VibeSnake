@@ -41,9 +41,7 @@ class CoreSimulation:
         self.enable_achievement_candidates = enable_achievement_candidates
         # Optional profile unlock set mirrors SnakeRun.ApplyProfileUnlocks.
         self.already_unlocked_achievements = (
-            frozenset()
-            if already_unlocked_achievements is None
-            else frozenset(already_unlocked_achievements)
+            frozenset() if already_unlocked_achievements is None else frozenset(already_unlocked_achievements)
         )
         self.snake = Snake()
         self.food = Food(self.snake.positions_set)
