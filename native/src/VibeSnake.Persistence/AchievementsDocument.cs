@@ -179,7 +179,8 @@ public sealed record AchievementsDocument(
                 $"Achievements schema_version {schemaVersion} is unsupported.");
         }
 
-        if (!root.TryGetProperty("unlockedIds", out var unlockedElement)
+        if ((!root.TryGetProperty("unlockedIds", out var unlockedElement)
+                && !root.TryGetProperty("unlocked_ids", out unlockedElement))
             || unlockedElement.ValueKind != JsonValueKind.Array)
         {
             return new AchievementsLoadResult(

@@ -103,7 +103,7 @@ public sealed class AchievementsDocumentTests
             """
             {
               "schema_version": 1,
-              "unlockedIds": ["first_bite"]
+              "unlocked_ids": ["first_bite"]
             }
             """);
 
