@@ -46,6 +46,11 @@ public sealed record AchievementsDocument(
         new(SchemaVersion: CurrentSchemaVersion, UnlockedIds: Array.Empty<string>());
 
     /// <summary>
+    /// Count of permanently unlocked catalog IDs.
+    /// </summary>
+    public int UnlockedCount => UnlockedIds.Count;
+
+    /// <summary>
     /// Ordered unique unlock set for candidate evaluation.
     /// </summary>
     public IReadOnlySet<string> UnlockedSet =>

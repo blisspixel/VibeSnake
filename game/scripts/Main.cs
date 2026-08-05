@@ -286,7 +286,7 @@ public partial class Main : Node2D
             _achievements = loaded.Document;
             _structuredLog?.Information(
                 "shell",
-                "Loaded " + _achievements.UnlockedIds.Count + " permanent run unlock(s).",
+                "Loaded " + _achievements.UnlockedCount + " permanent run unlock(s).",
                 eventCode: "achievements_load");
             return;
         }
@@ -781,7 +781,7 @@ public partial class Main : Node2D
                 // Rules-local catalog only (profile-lifetime and wall-clock unlocks
                 // remain Python/progression UI scope beyond this pure set).
                 DrawLabel(
-                    $"RUN UNLOCKS {_achievements.UnlockedIds.Count}/{AchievementCatalog.Definitions.Count}",
+                    $"RUN UNLOCKS {_achievements.UnlockedCount}/{AchievementCatalog.Definitions.Count}",
                     new Vector2(46.0f, 270.0f),
                     ScaledFontSize(18),
                     new Color(0.85f, 0.78f, 0.45f));
