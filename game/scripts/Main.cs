@@ -765,27 +765,32 @@ public partial class Main : Node2D
             case ScreenState.Menu:
                 DrawLabel("VIBE SNAKE", new Vector2(42.0f, 190.0f), ScaledFontSize(52), PrimaryTextColor());
                 DrawLabel("Plan the route. Build the vibe. Recover with style.", new Vector2(46.0f, 238.0f), ScaledFontSize(24), Colors.White);
-                DrawLabel("START RUN", new Vector2(46.0f, 300.0f), ScaledFontSize(22), new Color(0.75f, 0.85f, 0.8f));
-                DrawLabel("Enter, Space, or Controller South", new Vector2(46.0f, 336.0f), ScaledFontSize(18), SecondaryTextColor());
-                DrawLabel("R or Controller North: verify latest replay", new Vector2(46.0f, 378.0f), ScaledFontSize(18), SecondaryTextColor());
-                DrawLabel("Drop one replay file here to verify without changing it", new Vector2(46.0f, 410.0f), ScaledFontSize(18), SecondaryTextColor());
+                DrawLabel(
+                    $"UNLOCKS {_achievements.UnlockedIds.Count}/{AchievementCatalog.Definitions.Count}",
+                    new Vector2(46.0f, 270.0f),
+                    ScaledFontSize(18),
+                    new Color(0.85f, 0.78f, 0.45f));
+                DrawLabel("START RUN", new Vector2(46.0f, 310.0f), ScaledFontSize(22), new Color(0.75f, 0.85f, 0.8f));
+                DrawLabel("Enter, Space, or Controller South", new Vector2(46.0f, 346.0f), ScaledFontSize(18), SecondaryTextColor());
+                DrawLabel("R or Controller North: verify latest replay", new Vector2(46.0f, 388.0f), ScaledFontSize(18), SecondaryTextColor());
+                DrawLabel("Drop one replay file here to verify without changing it", new Vector2(46.0f, 420.0f), ScaledFontSize(18), SecondaryTextColor());
                 DrawLabel(
                     "F4 flash  F5/F6 text  F7 mute  -/= vol  F9-F11 a11y  F8 binds  F12 logs",
-                    new Vector2(46.0f, 442.0f),
+                    new Vector2(46.0f, 452.0f),
                     ScaledFontSize(16),
                     SecondaryTextColor());
                 if (_controllerCaption is not null)
                 {
                     DrawLabel(
                         _controllerCaption,
-                        new Vector2(46.0f, 474.0f),
+                        new Vector2(46.0f, 484.0f),
                         ScaledFontSize(16),
                         new Color(0.75f, 0.9f, 0.55f));
                 }
 
                 if (_replayStatusCaption is not null)
                 {
-                    DrawLabel(_replayStatusCaption, new Vector2(46.0f, 506.0f), ScaledFontSize(16), new Color(0.46f, 0.94f, 0.96f));
+                    DrawLabel(_replayStatusCaption, new Vector2(46.0f, 516.0f), ScaledFontSize(16), new Color(0.46f, 0.94f, 0.96f));
                 }
 
                 break;
