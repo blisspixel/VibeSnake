@@ -113,6 +113,20 @@ public sealed class AchievementsDocumentTests
     }
 
     [Fact]
+    public void Rejects_missing_unlocked_ids_array()
+    {
+        var result = AchievementsDocument.Read(
+            """
+            {
+              "schemaVersion": 1
+            }
+            """);
+
+        Assert.Equal(AchievementsLoadCode.InvalidField, result.Code);
+        Assert.Null(result.Document);
+    }
+
+    [Fact]
     public void Rejects_unknown_achievement_ids()
     {
         var result = AchievementsDocument.Read(
