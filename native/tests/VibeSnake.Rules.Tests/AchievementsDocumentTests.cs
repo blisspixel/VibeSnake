@@ -257,4 +257,11 @@ public sealed class AchievementsDocumentTests
         Assert.Equal(AchievementsLoadCode.InvalidField, result.Code);
         Assert.Null(result.Document);
     }
+
+    [Fact]
+    public void WithUnlocks_rejects_null_ids()
+    {
+        var document = AchievementsDocument.CreateDefaults();
+        Assert.Throws<ArgumentNullException>(() => document.WithUnlocks(null!));
+    }
 }
