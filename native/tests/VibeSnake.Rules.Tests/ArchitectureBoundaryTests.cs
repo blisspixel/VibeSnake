@@ -60,6 +60,42 @@ public sealed class ArchitectureBoundaryTests
             name => name.Equals("System.Net.Http", StringComparison.Ordinal));
     }
 
+    private static readonly string[] ForbiddenRulesSourceFragments =
+    [
+        "using Godot",
+        "System.Drawing",
+        "System.Net.Http",
+        "System.Net.Sockets",
+        "System.Random",
+        "DateTime.Now",
+        "DateTime.UtcNow",
+        "Environment.GetEnvironmentVariable",
+        "HttpClient",
+        // Pure rules must not touch the filesystem; Persistence owns I/O.
+        "using System.IO",
+        "File.Open",
+        "File.Read",
+        "File.Write",
+        "File.Create",
+        "File.Delete",
+        "File.Exists",
+        "File.Copy",
+        "File.Move",
+        "Directory.Create",
+        "Directory.Delete",
+        "Directory.Exists",
+        "Directory.Enumerate",
+        "Directory.Get",
+        "FileStream",
+        "StreamReader",
+        "StreamWriter",
+        "FileInfo",
+        "DirectoryInfo",
+        "Path.Combine",
+        "Path.GetFullPath",
+        "Path.GetTemp",
+    ];
+
     [Fact]
     public void Rules_source_tree_does_not_import_forbidden_namespaces()
     {
@@ -74,17 +110,14 @@ public sealed class ArchitectureBoundaryTests
             }
 
             var text = File.ReadAllText(file);
-            if (text.Contains("using Godot", StringComparison.Ordinal)
-                || text.Contains("System.Drawing", StringComparison.Ordinal)
-                || text.Contains("System.Net.Http", StringComparison.Ordinal)
-                || text.Contains("System.Net.Sockets", StringComparison.Ordinal)
-                || text.Contains("System.Random", StringComparison.Ordinal)
-                || text.Contains("DateTime.Now", StringComparison.Ordinal)
-                || text.Contains("DateTime.UtcNow", StringComparison.Ordinal)
-                || text.Contains("Environment.GetEnvironmentVariable", StringComparison.Ordinal)
-                || text.Contains("HttpClient", StringComparison.Ordinal))
+            foreach (var fragment in ForbiddenRulesSourceFragments)
             {
-                offenders.Add(Path.GetRelativePath(rulesDirectory, file));
+                if (text.Contains(fragment, StringComparison.Ordinal))
+                {
+                    offenders.Add(
+                        Path.GetRelativePath(rulesDirectory, file) + " (" + fragment + ")");
+                    break;
+                }
             }
         }
 
