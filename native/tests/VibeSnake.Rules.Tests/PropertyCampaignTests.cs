@@ -19,6 +19,8 @@ public sealed class PropertyCampaignTests
         "state_hash_stable_after_round_trip",
         "config_hash_stable_within_run",
         "death_cause_defined",
+        "pending_directions_within_capacity",
+        "combo_non_negative",
     ];
 
     [Fact]
@@ -268,6 +270,22 @@ public sealed class PropertyCampaignTests
                 run,
                 "death_cause_defined",
                 "dead status without death cause");
+        }
+
+        if (run.PendingDirectionCount < 0
+            || run.PendingDirectionCount > config.MaximumDirectionQueue)
+        {
+            return Fail(
+                seed,
+                operation,
+                run,
+                "pending_directions_within_capacity",
+                $"pending {run.PendingDirectionCount} outside 0..{config.MaximumDirectionQueue}");
+        }
+
+        if (run.ComboCount < 0)
+        {
+            return Fail(seed, operation, run, "combo_non_negative", "combo count negative");
         }
 
         return null;
