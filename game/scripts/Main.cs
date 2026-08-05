@@ -284,6 +284,10 @@ public partial class Main : Node2D
         if (loaded.IsSuccess && loaded.Document is not null)
         {
             _achievements = loaded.Document;
+            _structuredLog?.Information(
+                "shell",
+                "Loaded " + _achievements.UnlockedIds.Count + " permanent run unlock(s).",
+                eventCode: "achievements_load");
             return;
         }
 
