@@ -29,6 +29,26 @@ public sealed class AchievementCatalogTests
     }
 
     [Fact]
+    public void Fully_unlocked_profile_suppresses_all_candidates()
+    {
+        var metrics = new RunAchievementMetrics(
+            Score: 10_000,
+            MaxCombo: 20,
+            Length: 40,
+            FoodEaten: 50,
+            WrapCount: 10,
+            NearMisses: 20,
+            PowerupsCollected: 10,
+            SurvivalTicks: 10_000,
+            IsTerminal: true);
+        var allIds = AchievementCatalog.Definitions
+            .Select(definition => definition.Id)
+            .ToHashSet(StringComparer.Ordinal);
+
+        Assert.Empty(AchievementCatalog.EvaluateCandidates(metrics, alreadyUnlocked: allIds));
+    }
+
+    [Fact]
     public void Terminal_metrics_earn_matching_score_and_length_candidates()
     {
         var metrics = new RunAchievementMetrics(
