@@ -280,6 +280,34 @@ public sealed class AchievementCatalogTests
     }
 
     [Fact]
+    public void Profile_unlocks_suppress_repeated_candidate_emission()
+    {
+        var run = SnakeRun.CreateForTesting(
+            new RunConfig(
+                Width: 2,
+                Height: 2,
+                PowerSpawnIntervalTicks: 0,
+                EnableAchievementCandidates: true),
+            [
+                new GridPoint(0, 0),
+                new GridPoint(1, 0),
+                new GridPoint(1, 1),
+            ],
+            Direction.Left,
+            food: new GridPoint(0, 1),
+            hungerTicksRemaining: 20);
+
+        run.ApplyProfileUnlocks(new HashSet<string>(StringComparer.Ordinal) { "first_bite" });
+        var result = run.Step();
+        Assert.Equal(RunStatus.Won, run.Status);
+        Assert.DoesNotContain(
+            result.OrderedEvents,
+            detail =>
+                detail.Kind == RunEventKind.AchievementCandidate
+                && detail.Value == AchievementCatalog.IndexOf("first_bite"));
+    }
+
+    [Fact]
     public void Restart_clears_session_achievement_counters()
     {
         var run = SnakeRun.CreateForTesting(

@@ -35,6 +35,7 @@ public sealed partial class SnakeRun
     private int _sessionWraps;
     private int _sessionPowerupsCollected;
     private bool _achievementCandidatesEmitted;
+    private IReadOnlySet<string>? _profileUnlockedAchievements;
 
     private SnakeRun(
         RunConfig config,
@@ -229,6 +230,14 @@ public sealed partial class SnakeRun
             PowerupsCollected: SessionPowerupsCollected,
             SurvivalTicks: Tick,
             IsTerminal: Status is RunStatus.Dead or RunStatus.Won);
+
+    /// <summary>
+    /// Optional profile unlock set used only to suppress already-owned
+    /// <see cref="RunEventKind.AchievementCandidate"/> events. Does not affect
+    /// scored state, canonical serialization, or config hash.
+    /// </summary>
+    public void ApplyProfileUnlocks(IReadOnlySet<string>? unlockedIds) =>
+        _profileUnlockedAchievements = unlockedIds;
 
     public int TicksSinceLastFood { get; private set; }
 
@@ -831,7 +840,9 @@ public sealed partial class SnakeRun
         // Emit at most once per terminal run so idle Step() after death cannot
         // re-fire candidate events or captions.
         _achievementCandidatesEmitted = true;
-        var earned = AchievementCatalog.EvaluateCandidates(ToAchievementMetrics());
+        var earned = AchievementCatalog.EvaluateCandidates(
+            ToAchievementMetrics(),
+            alreadyUnlocked: _profileUnlockedAchievements);
         foreach (var id in earned)
         {
             var index = AchievementCatalog.IndexOf(id);

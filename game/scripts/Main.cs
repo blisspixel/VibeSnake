@@ -38,6 +38,8 @@ public partial class Main : Node2D
         VirtualViewport.LogicalHeight);
     private ShellSettings _shellSettings = ShellSettings.CreateDefaults();
     private PreferencesStore? _preferencesStore;
+    private AchievementsStore? _achievementsStore;
+    private AchievementsDocument _achievements = AchievementsDocument.CreateDefaults();
     private LocalDiagnostics? _diagnostics;
     private StructuredLocalLog? _structuredLog;
     private InputBindingsStore? _inputBindingsStore;
@@ -81,10 +83,12 @@ public partial class Main : Node2D
             ?? ProjectSettings.GlobalizePath("user://");
         _replayStore = new ReplayStore(userDataRoot);
         _preferencesStore = new PreferencesStore(userDataRoot);
+        _achievementsStore = new AchievementsStore(userDataRoot);
         _diagnostics = new LocalDiagnostics(userDataRoot);
         _structuredLog = new StructuredLocalLog(userDataRoot);
         _inputBindingsStore = new InputBindingsStore(userDataRoot);
         LoadShellSettings();
+        LoadAchievements();
         AudioBuses.ApplyShellSettings(_shellSettings);
         LoadInputBindings();
         SeedControllerConnections();
@@ -266,6 +270,84 @@ public partial class Main : Node2D
         _shellSettings.Clamp();
         _preferencesStore.Save(_shellSettings.ToDocument());
         AudioBuses.ApplyShellSettings(_shellSettings);
+    }
+
+    private void LoadAchievements()
+    {
+        if (_achievementsStore is null)
+        {
+            _achievements = AchievementsDocument.CreateDefaults();
+            return;
+        }
+
+        var loaded = _achievementsStore.Load();
+        if (loaded.IsSuccess && loaded.Document is not null)
+        {
+            _achievements = loaded.Document;
+            return;
+        }
+
+        _achievements = AchievementsDocument.CreateDefaults();
+        if (loaded.Code is AchievementsLoadCode.UnsupportedSchema
+            or AchievementsLoadCode.InvalidJson
+            or AchievementsLoadCode.InvalidField)
+        {
+            WriteLocalCrashReport(
+                "AchievementsLoad",
+                new InvalidOperationException(loaded.Message),
+                eventCode: "achievements_load_failed");
+        }
+    }
+
+    private void PersistAchievementUnlocks(IReadOnlyList<RunEventDetail> orderedEvents)
+    {
+        if (_achievementsStore is null || orderedEvents.Count == 0)
+        {
+            return;
+        }
+
+        var newlyEarned = new List<string>();
+        foreach (var detail in orderedEvents)
+        {
+            if (detail.Kind != RunEventKind.AchievementCandidate || detail.Value is not int index)
+            {
+                continue;
+            }
+
+            var definition = AchievementCatalog.DefinitionAt(index);
+            if (definition is null)
+            {
+                continue;
+            }
+
+            newlyEarned.Add(definition.Id);
+        }
+
+        if (newlyEarned.Count == 0)
+        {
+            return;
+        }
+
+        try
+        {
+            _achievements = _achievements.WithUnlocks(newlyEarned);
+            _achievementsStore.Save(_achievements);
+            _structuredLog?.Information(
+                "shell",
+                "Persisted " + newlyEarned.Count + " achievement unlock(s).",
+                eventCode: "achievements_unlock_saved");
+        }
+        catch (Exception exception) when (
+            exception is IOException
+            or UnauthorizedAccessException
+            or ArgumentException
+            or InvalidOperationException)
+        {
+            WriteLocalCrashReport(
+                "AchievementsSave",
+                exception,
+                eventCode: "achievements_save_failed");
+        }
     }
 
     private void ApplyMasterMuteToggle()
@@ -466,6 +548,7 @@ public partial class Main : Node2D
         if (_run.Status != RunStatus.Running)
         {
             _screenState = ScreenState.Ended;
+            PersistAchievementUnlocks(result.OrderedEvents);
             _structuredLog?.Information(
                 "shell",
                 _run.Status == RunStatus.Won
@@ -733,6 +816,7 @@ public partial class Main : Node2D
         _run = _run is { Status: not RunStatus.Running } terminalRun
             ? terminalRun.Restart(_nextSeed++)
             : SnakeRun.Create(_nextSeed++, ProductRunConfig());
+        _run.ApplyProfileUnlocks(_achievements.UnlockedSet);
         _replayRecorder = new RunReplayRecorder(_run, appVersion: ProductIdentity.AppVersion);
         _screenState = ScreenState.Running;
         _paused = false;
