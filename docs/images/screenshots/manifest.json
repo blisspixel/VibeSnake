@@ -14,7 +14,7 @@
       "file": "customization.png",
       "height": 720,
       "label": "Customization",
-      "sha256": "4382ecafddcef5d9598a1a2f306d8773599b50f5c7ef5738c6dd2512e2a645a6",
+      "sha256": "c7408679c7edf42a3ea0af63ab710ad861db3066fa02f01233a4a1d4a49e5f46",
       "state": "CUSTOMIZE",
       "width": 1280
     },
@@ -27,5 +27,5 @@
       "width": 1280
     }
   ],
-  "sourceSha256": "bcbb197134398430e308efa22c27ab16b7dfcb5fbd1aad826dcfcc836cc0a9f5"
+  "sourceSha256": "a3765905d7c03564974141a7635faca7f7546150d835a2f677947fad6dddedaf"
 }
