@@ -62,6 +62,8 @@ public sealed class ContentPackBudgetsTests
         Assert.True(report.ExportEligibleWithinCoreInstalledBudget);
         Assert.Equal(150, inventory.TotalBytes);
         Assert.Equal(0, inventory.ExportEligibleBytes);
+        Assert.Equal(2, inventory.CountByMediaTypePrefix("application/"));
+        Assert.Equal(0, inventory.CountByMediaTypePrefix("audio/"));
     }
 
     [Fact]

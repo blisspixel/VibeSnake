@@ -37,6 +37,13 @@ public sealed class ContentInventory
 
     public ContentBudgetReport MeasureBudgets() => ContentBudgetReport.FromInventory(this);
 
+    public int CountByMediaTypePrefix(string mediaTypePrefix)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(mediaTypePrefix);
+        return Assets.Count(asset =>
+            asset.MediaType.StartsWith(mediaTypePrefix, StringComparison.OrdinalIgnoreCase));
+    }
+
     public static ContentInventory Parse(string json)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(json);
