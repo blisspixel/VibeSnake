@@ -96,6 +96,9 @@ internal sealed class ContentService
 
     public ContentBudgetReport MeasureBudgets() => _inventory.MeasureBudgets();
 
+    public int CountByMediaTypePrefix(string mediaTypePrefix) =>
+        _inventory.CountByMediaTypePrefix(mediaTypePrefix);
+
     public IReadOnlyList<ContentInventoryAsset> ListByMediaTypePrefix(string mediaTypePrefix)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(mediaTypePrefix);

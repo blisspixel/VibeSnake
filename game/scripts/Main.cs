@@ -1533,7 +1533,8 @@ public partial class Main : Node2D
                 "Content budget smoke contract failed for the synthetic inventory.");
         }
 
-        if (content.ListByMediaTypePrefix("audio/").Count != 1)
+        if (content.ListByMediaTypePrefix("audio/").Count != 1
+            || content.CountByMediaTypePrefix("audio/") != 1)
         {
             throw new InvalidOperationException(
                 "Content service media-type listing smoke contract failed.");
