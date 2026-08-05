@@ -30,6 +30,8 @@ internal static class GameActions
     public const string VolumeDown = "vibe_volume_down";
     public const string TextScaleUp = "vibe_text_scale_up";
     public const string TextScaleDown = "vibe_text_scale_down";
+    public const string ToggleFlashFree = "vibe_toggle_flash_free";
+    public const string OpenDiagnostics = "vibe_open_diagnostics";
 
     private static readonly string[] RequiredActions =
     [
@@ -65,6 +67,8 @@ internal static class GameActions
             ["volume_down"] = VolumeDown,
             ["text_scale_up"] = TextScaleUp,
             ["text_scale_down"] = TextScaleDown,
+            ["toggle_flash_free"] = ToggleFlashFree,
+            ["open_diagnostics"] = OpenDiagnostics,
         };
 
     private static readonly HashSet<string> RuntimeActions = [];
@@ -167,6 +171,14 @@ internal static class GameActions
             TextScaleDown,
             0.5f,
             KeyEvent(Key.F5, physical: false));
+        AddAction(
+            ToggleFlashFree,
+            0.5f,
+            KeyEvent(Key.F4, physical: false));
+        AddAction(
+            OpenDiagnostics,
+            0.5f,
+            KeyEvent(Key.F12, physical: false));
     }
 
     /// <summary>

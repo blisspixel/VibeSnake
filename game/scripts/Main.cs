@@ -265,6 +265,13 @@ public partial class Main : Node2D
         QueueRedraw();
     }
 
+    private void ApplyFlashFreeToggle()
+    {
+        _shellSettings.ToggleFlashFree();
+        SaveShellSettings();
+        QueueRedraw();
+    }
+
     private Color CanvasBackgroundColor() =>
         _shellSettings.HighContrast
             ? new Color(0.0f, 0.0f, 0.0f)
@@ -495,6 +502,23 @@ public partial class Main : Node2D
             return;
         }
 
+        if (inputEvent.IsActionPressed(GameActions.ToggleFlashFree))
+        {
+            ApplyFlashFreeToggle();
+            return;
+        }
+
+        if (inputEvent.IsActionPressed(GameActions.OpenDiagnostics))
+        {
+            OpenDiagnosticsDirectory();
+            if (_screenState is ScreenState.Menu or ScreenState.Ended)
+            {
+                ShowReplayStatus("DIAGNOSTICS FOLDER READY");
+            }
+
+            return;
+        }
+
         if (_screenState is ScreenState.Menu or ScreenState.Ended)
         {
             if (inputEvent.IsActionPressed(GameActions.Replay))
@@ -600,7 +624,7 @@ public partial class Main : Node2D
                 DrawLabel("R or Controller North: verify latest replay", new Vector2(46.0f, 378.0f), ScaledFontSize(18), SecondaryTextColor());
                 DrawLabel("Drop one replay file here to verify without changing it", new Vector2(46.0f, 410.0f), ScaledFontSize(18), SecondaryTextColor());
                 DrawLabel(
-                    "F5/F6 text  F7 mute  -/= volume  F9 contrast  F10 motion  F11 full  F8 binds",
+                    "F4 flash  F5/F6 text  F7 mute  -/= vol  F9-F11 a11y  F8 binds  F12 logs",
                     new Vector2(46.0f, 442.0f),
                     ScaledFontSize(16),
                     SecondaryTextColor());
@@ -1913,6 +1937,17 @@ public partial class Main : Node2D
             || Math.Abs(settings.AdjustTextScale(-2.0f) - ShellSettings.MinimumTextScale) > 0.0001f)
         {
             throw new InvalidOperationException("Text scale clamp contract failed.");
+        }
+
+        settings.FlashFree = false;
+        if (!settings.ToggleFlashFree() || !settings.FlashFree)
+        {
+            throw new InvalidOperationException("Flash-free toggle on failed.");
+        }
+
+        if (settings.ToggleFlashFree() || settings.FlashFree)
+        {
+            throw new InvalidOperationException("Flash-free toggle off failed.");
         }
 
         if (_preferencesStore is null || _diagnostics is null)

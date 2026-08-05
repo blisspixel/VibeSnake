@@ -26,6 +26,8 @@ Godot submits logical actions to the application boundary. Gameplay rules receiv
 | `vibe_volume_down` | `-` or keypad `-` | Not assigned | Lower master volume by 0.05, clamp to 0.0, and persist |
 | `vibe_text_scale_up` | F6 | Not assigned | Raise text scale by 0.05, clamp to 1.5, and persist |
 | `vibe_text_scale_down` | F5 | Not assigned | Lower text scale by 0.05, clamp to 0.85, and persist |
+| `vibe_toggle_flash_free` | F4 | Not assigned | Toggle flash-free presentation and persist preferences |
+| `vibe_open_diagnostics` | F12 | Not assigned | Ensure and open the local diagnostics folder (headless no-op) |
 
 Controller mappings use the engine's standardized button and axis names and accept any connected controller. The left-stick deadzone is 0.5 in the qualification slice. Shipping deadzones and per-device calibration remain settings work. Accessibility toggles are available on every screen and do not require a dedicated settings menu. Full remapping UI and glyph prompts remain open.
 

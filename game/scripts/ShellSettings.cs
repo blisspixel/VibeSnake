@@ -173,4 +173,11 @@ internal sealed class ShellSettings
         TextScale = Math.Clamp(TextScale + delta, MinimumTextScale, MaximumTextScale);
         return TextScale;
     }
+
+    /// <summary>Flips flash-free presentation and returns the new state.</summary>
+    public bool ToggleFlashFree()
+    {
+        FlashFree = !FlashFree;
+        return FlashFree;
+    }
 }
