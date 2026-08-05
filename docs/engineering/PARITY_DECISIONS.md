@@ -110,3 +110,25 @@ Both runtimes can evaluate a shared rules-local achievement catalog (score, leng
 Candidates emit at most once per terminal run in C#. Profile unlock persistence remains a shell or progression concern outside pure rules. Shared fixtures must not claim achievement-candidate parity until a deliberate regeneration enables the flag on both sides and records the new ordered-event contract.
 
 Player consequence: live product can celebrate run-local mastery without forcing every migration fixture to absorb unlock events before the dual-runtime harness is ready.
+
+## PD-010: Session achievement counters enter canonical state schema 3
+
+Status: Resolved as a restore-correctness correction
+
+Session counters (`sessionFoodEaten`, `sessionWraps`, `sessionNearMisses`,
+`sessionPowerupsCollected`, `sessionMaxCombo`) drive run-local achievement
+candidates. Under schema 2 they lived only in memory, so mid-run restore
+zeroed them and could under-award candidates after checkpoint continuation.
+Continuous product runs that never mid-restore, and offline replay verification
+that rebuilds from the initial state, were unaffected.
+
+Canonical state now uses schema 3 and `fnv1a64-canonical-json-v4` so every
+behavior-affecting field restores and hashes. Rules identity remains
+`vibesnake-core@4` because scored step outcomes, movement, powers, and ordered
+gameplay events are unchanged; only restore completeness for achievement
+metrics advanced. Schema 2 states and prior hash algorithm ids remain intact
+and are rejected as incompatible rather than silently acquiring zeros.
+
+Player consequence: mid-run restore, future checkpoints, and any path that
+continues from serialized state preserve unlock eligibility already earned
+during the run.

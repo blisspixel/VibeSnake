@@ -280,11 +280,10 @@ public sealed class AchievementCatalogTests
     }
 
     [Fact]
-    public void Mid_run_restore_does_not_yet_preserve_session_achievement_counters()
+    public void Mid_run_restore_preserves_session_achievement_counters()
     {
-        // Documented gap until canonical schema carries session counters.
-        // Continuous product runs do not mid-restore; replay verify rebuilds
-        // counters from the initial state. This test locks current behavior.
+        // Schema 3 carries session counters so mid-run restore and checkpoint
+        // continuation keep unlock eligibility without under-awarding.
         var run = SnakeRun.CreateForTesting(
             new RunConfig(
                 Width: 8,
@@ -300,12 +299,12 @@ public sealed class AchievementCatalogTests
         Assert.True(run.SessionFoodEaten >= 1);
 
         var restored = SnakeRun.RestoreCanonicalState(run.SerializeCanonicalState());
-        Assert.Equal(0, restored.SessionFoodEaten);
-        Assert.Equal(0, restored.SessionWraps);
-        Assert.Equal(0, restored.SessionNearMisses);
-        Assert.Equal(0, restored.SessionPowerupsCollected);
-        // SessionMaxCombo falls back to live ComboCount after restore.
-        Assert.Equal(restored.ComboCount, restored.SessionMaxCombo);
+        Assert.Equal(run.SessionFoodEaten, restored.SessionFoodEaten);
+        Assert.Equal(run.SessionWraps, restored.SessionWraps);
+        Assert.Equal(run.SessionNearMisses, restored.SessionNearMisses);
+        Assert.Equal(run.SessionPowerupsCollected, restored.SessionPowerupsCollected);
+        Assert.Equal(run.SessionMaxCombo, restored.SessionMaxCombo);
+        Assert.Equal(run.SerializeCanonicalState(), restored.SerializeCanonicalState());
     }
 
     [Fact]

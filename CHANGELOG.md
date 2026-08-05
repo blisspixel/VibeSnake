@@ -6,6 +6,7 @@ Notable player-facing and engineering changes are recorded here. The project is 
 
 ### Added
 
+- Canonical state schema 3 and `fnv1a64-canonical-json-v4` include session achievement counters (`sessionFoodEaten`, `sessionWraps`, `sessionNearMisses`, `sessionPowerupsCollected`, `sessionMaxCombo`) so mid-run restore preserves unlock eligibility (PD-010). Schema 2 states remain intact and fail compatibility.
 - Pure `RunConfig.ComputeConfigHash` / `SerializeCanonicalConfig` (`sha256-canonical-runconfig-v1`) and `SnakeRun.ConfigHash` for score and replay metadata without altering the step state hash.
 - Pure `InputBindingsDocument.TryRemapAction` for conflict-safe single-action remapping without mutating the source document.
 - Pure `InputBindingsDocument.TrySwapActions` for atomic two-action binding exchange without intermediate conflicts.
@@ -43,7 +44,7 @@ Notable player-facing and engineering changes are recorded here. The project is 
 - Shell structured log records `replay_finalized` and `replay_finalize_failed` around terminal replay capture.
 - Shell structured log records `run_start` when a product run is created or restarted, and `run_won` / `run_dead` when it ends; smoke death path mirror-completes the terminal step, saves synchronously, and asserts `run_dead`, `replay_finalized`, and post-restart `run_start`.
 - Native and exported player smoke harnesses accept 1-4 isolated replays so storage smoke and death-restart can each leave a verified envelope.
-- Characterization tests lock that mid-run restore does not yet preserve session achievement counters under canonical state schema 2.
+- Mid-run restore preserves session achievement counters under canonical state schema 3 (replaces the prior schema 2 characterization gap).
 - CI gates `ProductIdentity.AppVersion` against `pyproject.toml` package version via `scripts/check_product_version.py`.
 - README screenshot presentation-source fingerprint refreshed after dual-runtime achievement-candidate QA wiring.
 - `InputBindingsDocument.TryRemapAction` preserves fractional axis thresholds instead of rounding them to integers.

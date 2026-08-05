@@ -111,11 +111,15 @@ public sealed class SnakeRunRestoreTests
     }
 
     [Theory]
-    [InlineData("\"schemaVersion\":2", "\"schemaVersion\":1")]
+    [InlineData("\"schemaVersion\":3", "\"schemaVersion\":2")]
+    [InlineData("\"schemaVersion\":3", "\"schemaVersion\":1")]
     [InlineData("\"rulesVersion\":4", "\"rulesVersion\":3")]
     [InlineData(
-        "\"fnv1a64-canonical-json-v3\"",
+        "\"fnv1a64-canonical-json-v4\"",
         "\"unsupported-hash\"")]
+    [InlineData(
+        "\"fnv1a64-canonical-json-v4\"",
+        "\"fnv1a64-canonical-json-v3\"")]
     [InlineData("\"pcg-xsh-rr-32-v1\"", "\"unsupported-rng\"")]
     public void Unsupported_contract_identifiers_are_rejected(
         string current,
@@ -258,6 +262,24 @@ public sealed class SnakeRunRestoreTests
             () => SnakeRun.RestoreCanonicalState("{"));
         Assert.Throws<InvalidDataException>(
             () => SnakeRun.RestoreCanonicalState("{}"));
+    }
+
+    [Theory]
+    [InlineData("sessionFoodEaten")]
+    [InlineData("sessionWraps")]
+    [InlineData("sessionNearMisses")]
+    [InlineData("sessionPowerupsCollected")]
+    [InlineData("sessionMaxCombo")]
+    public void Negative_session_counters_are_rejected(string fieldName)
+    {
+        var canonical = SnakeRun.Create(805UL).SerializeCanonicalState();
+        var invalid = ReplaceOnce(
+            canonical,
+            $"\"{fieldName}\":0",
+            $"\"{fieldName}\":-1");
+
+        Assert.Throws<InvalidDataException>(
+            () => SnakeRun.RestoreCanonicalState(invalid));
     }
 
     [Fact]

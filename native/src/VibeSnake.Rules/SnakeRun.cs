@@ -10,8 +10,8 @@ public sealed partial class SnakeRun
 {
     public const string RulesetId = RulesetIdentity.CurrentId;
     public const int RulesVersion = RulesetIdentity.CurrentVersion;
-    public const int CanonicalStateSchemaVersion = 2;
-    public const string StateHashAlgorithmId = "fnv1a64-canonical-json-v3";
+    public const int CanonicalStateSchemaVersion = 3;
+    public const string StateHashAlgorithmId = "fnv1a64-canonical-json-v4";
     public const int MaximumScore = 2_000_000_000;
     public const int MaximumRestorableTick = int.MaxValue - RunReplay.MaximumSteps;
 
@@ -913,6 +913,13 @@ public sealed partial class SnakeRun
             writer.WriteNumber("direction", (byte)Direction);
             writer.WriteNumber("score", Score);
             writer.WriteNumber("comboCount", ComboCount);
+            // Session achievement counters (schema 3). Required so mid-run
+            // restore and checkpoint continuation preserve unlock eligibility.
+            writer.WriteNumber("sessionFoodEaten", _sessionFoodEaten);
+            writer.WriteNumber("sessionWraps", _sessionWraps);
+            writer.WriteNumber("sessionNearMisses", _sessionNearMisses);
+            writer.WriteNumber("sessionPowerupsCollected", _sessionPowerupsCollected);
+            writer.WriteNumber("sessionMaxCombo", _sessionMaxCombo);
             writer.WriteNumber("ticksSinceLastFood", TicksSinceLastFood);
             writer.WriteNumber("hungerTicksRemaining", HungerTicksRemaining);
             writer.WriteNumber("powerSpawnTicksElapsed", PowerSpawnTicksElapsed);

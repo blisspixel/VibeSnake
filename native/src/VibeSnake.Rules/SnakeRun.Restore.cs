@@ -171,6 +171,12 @@ public sealed partial class SnakeRun
             detachedObstacles,
             ReadInt32(root, "detachedObstacleTicksRemaining"),
             pendingDirections);
+        restored.RestoreSessionCounters(
+            ReadNonNegativeInt32(root, "sessionFoodEaten"),
+            ReadNonNegativeInt32(root, "sessionWraps"),
+            ReadNonNegativeInt32(root, "sessionNearMisses"),
+            ReadNonNegativeInt32(root, "sessionPowerupsCollected"),
+            ReadNonNegativeInt32(root, "sessionMaxCombo"));
         restored.ValidateRestoredProductionState();
         // Restored terminal runs already completed candidate emission in life;
         // do not re-fire when idle Step() is called after restore.
@@ -180,6 +186,32 @@ public sealed partial class SnakeRun
         }
 
         return restored;
+    }
+
+    private void RestoreSessionCounters(
+        int sessionFoodEaten,
+        int sessionWraps,
+        int sessionNearMisses,
+        int sessionPowerupsCollected,
+        int sessionMaxCombo)
+    {
+        _sessionFoodEaten = sessionFoodEaten;
+        _sessionWraps = sessionWraps;
+        _sessionNearMisses = sessionNearMisses;
+        _sessionPowerupsCollected = sessionPowerupsCollected;
+        _sessionMaxCombo = sessionMaxCombo;
+    }
+
+    private static int ReadNonNegativeInt32(JsonElement parent, string propertyName)
+    {
+        var value = ReadInt32(parent, propertyName);
+        if (value < 0)
+        {
+            throw new InvalidDataException(
+                $"The {propertyName} value cannot be negative.");
+        }
+
+        return value;
     }
 
     private static JsonElement RequireObject(JsonElement element, string name)

@@ -323,7 +323,7 @@ public sealed class RunReplayTests
                 ReplayCompatibilityCode.UnsupportedRandomAlgorithm
             },
             {
-                "\"stateHashAlgorithm\":\"fnv1a64-canonical-json-v3\"",
+                "\"stateHashAlgorithm\":\"fnv1a64-canonical-json-v4\"",
                 "\"stateHashAlgorithm\":\"unknown-state-hash\"",
                 ReplayCompatibilityCode.UnsupportedStateHashAlgorithm
             },
