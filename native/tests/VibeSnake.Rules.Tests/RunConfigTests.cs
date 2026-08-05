@@ -79,14 +79,25 @@ public sealed class RunConfigTests
     [Fact]
     public void Config_hash_includes_every_field_in_canonical_json()
     {
-        var json = new RunConfig(EnableNearMiss: true).SerializeCanonicalConfig();
+        var json = new RunConfig(
+            EnableNearMiss: true,
+            EnableComboExpiredEvent: true).SerializeCanonicalConfig();
 
         Assert.Contains("\"algorithm\":\"sha256-canonical-runconfig-v1\"", json);
         Assert.Contains("\"rulesetId\":\"vibesnake-core\"", json);
         Assert.Contains("\"rulesVersion\":4", json);
         Assert.Contains("\"enableNearMiss\":true", json);
+        Assert.Contains("\"enableComboExpiredEvent\":true", json);
         Assert.Contains("\"starvationWarningTicks\":200", json);
         Assert.Contains("\"rulesTickMilliseconds\":50", json);
+    }
+
+    [Fact]
+    public void Config_hash_changes_when_combo_expired_flag_changes()
+    {
+        var off = new RunConfig(EnableComboExpiredEvent: false).ComputeConfigHash();
+        var on = new RunConfig(EnableComboExpiredEvent: true).ComputeConfigHash();
+        Assert.NotEqual(off, on);
     }
 
     [Fact]
