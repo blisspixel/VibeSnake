@@ -60,6 +60,28 @@ public sealed class ArchitectureBoundaryTests
             name => name.Equals("System.Net.Http", StringComparison.Ordinal));
     }
 
+    [Fact]
+    public void Rules_and_persistence_form_a_one_way_dependency()
+    {
+        var rulesRefs = typeof(SnakeRun).Assembly.GetReferencedAssemblies()
+            .Select(name => name.Name ?? string.Empty);
+        var persistenceRefs = typeof(ReplayStore).Assembly.GetReferencedAssemblies()
+            .Select(name => name.Name ?? string.Empty);
+
+        Assert.DoesNotContain(
+            rulesRefs,
+            name => name.Equals("VibeSnake.Persistence", StringComparison.Ordinal));
+        Assert.Contains(
+            persistenceRefs,
+            name => name.Equals("VibeSnake.Rules", StringComparison.Ordinal));
+        Assert.DoesNotContain(
+            rulesRefs,
+            name => name.Equals("VibeSnake.Game", StringComparison.Ordinal));
+        Assert.DoesNotContain(
+            persistenceRefs,
+            name => name.Equals("VibeSnake.Game", StringComparison.Ordinal));
+    }
+
     private static readonly string[] ForbiddenRulesSourceFragments =
     [
         "using Godot",
