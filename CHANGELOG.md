@@ -35,6 +35,7 @@ Notable player-facing and engineering changes are recorded here. The project is 
 
 - Terminal `AchievementCandidate` events emit at most once per run; restored terminal states do not re-fire on idle `Step()`.
 - Architecture boundary tests also ban HTTP client and System.Net.Http/Sockets from Rules sources and Persistence assembly references.
+- Generated state-machine campaign covering once-only `AchievementCandidate` emission across terminal idle steps and terminal restore.
 - `InputBindingsDocument.TryRemapAction` preserves fractional axis thresholds instead of rounding them to integers.
 - Multi-stream `RandomStreamBank` for independent gameplay, AI, cosmetic, radio, and copy PCG32 streams derived from one master seed.
 - Fail-closed native custom AI `PersonalityDocument` validation with schema, trait range, boolean rejection, RGB checks, and filename-scoped errors.

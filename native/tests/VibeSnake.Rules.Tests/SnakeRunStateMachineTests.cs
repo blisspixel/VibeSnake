@@ -64,6 +64,58 @@ public sealed class SnakeRunStateMachineTests
         }
     }
 
+    [Theory]
+    [InlineData(7UL)]
+    [InlineData(99UL)]
+    public void Achievement_candidates_emit_once_across_terminal_and_restore(ulong seed)
+    {
+        var commandRandom = new Pcg32(seed, sequence: 4242UL);
+        var config = new RunConfig(
+            Width: 12,
+            Height: 10,
+            StarvationTicks: 80,
+            MaximumDirectionQueue: 3,
+            EnableAchievementCandidates: true);
+        var run = SnakeRun.Create(NextUInt64(commandRandom), config);
+        var sawCandidates = false;
+
+        for (var operation = 0; operation < 256; operation++)
+        {
+            var commandCount = commandRandom.NextInt(4);
+            for (var commandIndex = 0; commandIndex < commandCount; commandIndex++)
+            {
+                run.QueueDirection((Direction)commandRandom.NextInt(4));
+            }
+
+            var result = run.Step();
+            var candidateCount = result.OrderedEvents.Count(
+                detail => detail.Kind == RunEventKind.AchievementCandidate);
+            if (candidateCount > 0)
+            {
+                Assert.False(sawCandidates);
+                Assert.True(result.Events.HasFlag(RunEvent.AchievementCandidate));
+                sawCandidates = true;
+            }
+
+            if (run.Status != RunStatus.Running)
+            {
+                var idle = run.Step();
+                Assert.DoesNotContain(
+                    idle.OrderedEvents,
+                    detail => detail.Kind == RunEventKind.AchievementCandidate);
+
+                var restored = SnakeRun.RestoreCanonicalState(run.SerializeCanonicalState());
+                var afterRestore = restored.Step();
+                Assert.DoesNotContain(
+                    afterRestore.OrderedEvents,
+                    detail => detail.Kind == RunEventKind.AchievementCandidate);
+
+                run = run.Restart(NextUInt64(commandRandom));
+                sawCandidates = false;
+            }
+        }
+    }
+
     private static ulong NextUInt64(Pcg32 random) =>
         ((ulong)random.NextUInt() << 32) | random.NextUInt();
 
