@@ -12,6 +12,10 @@ Notable player-facing and engineering changes are recorded here. The project is 
 - Pure `ControllerConnectionTracker` with sanitized connect/disconnect captions; shell seeds joypads, shows menu notices, and pauses a run when the last controller disconnects.
 - Optional `configHash` / `configHashAlgorithm` fields on offline crash reports; rules throughput evidence JSON records the effective config hash.
 - Pure `RunScoreIdentity` for fair-score categories using ruleset contract plus effective config hash.
+
+### Fixed
+
+- `InputBindingsDocument.TryRemapAction` preserves fractional axis thresholds instead of rounding them to integers.
 - Multi-stream `RandomStreamBank` for independent gameplay, AI, cosmetic, radio, and copy PCG32 streams derived from one master seed.
 - Fail-closed native custom AI `PersonalityDocument` validation with schema, trait range, boolean rejection, RGB checks, and filename-scoped errors.
 - Architecture boundary tests that forbid Godot/presentation references from `VibeSnake.Rules` and `VibeSnake.Persistence`.

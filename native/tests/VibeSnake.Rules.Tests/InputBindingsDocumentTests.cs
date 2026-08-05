@@ -169,4 +169,14 @@ public sealed class InputBindingsDocumentTests
         Assert.True(remapped.IsSuccess);
         Assert.Equal("key:space", remapped.Document!.ActionToBinding["pause"]);
     }
+
+    [Fact]
+    public void TryRemapAction_preserves_fractional_axis_thresholds()
+    {
+        var original = InputBindingsDocument.CreateControllerDefaults();
+        var remapped = original.TryRemapAction("move_up", "axis:left_y:-0.5");
+
+        Assert.True(remapped.IsSuccess);
+        Assert.Equal("axis:left_y:-0.5", remapped.Document!.ActionToBinding["move_up"]);
+    }
 }

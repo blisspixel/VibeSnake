@@ -289,9 +289,10 @@ public sealed record InputBindingsDocument(
         {
             InputBindingKind.Key => "key:" + parsed.Identifier,
             InputBindingKind.Button => "button:" + parsed.Identifier,
+            // Preserve fractional axis thresholds with a signed invariant form.
             InputBindingKind.Axis => string.Create(
                 System.Globalization.CultureInfo.InvariantCulture,
-                $"axis:{parsed.Identifier}:{parsed.AxisValue:+0;-0;0}"),
+                $"axis:{parsed.Identifier}:{(parsed.AxisValue >= 0.0f ? "+" : string.Empty)}{parsed.AxisValue.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture)}"),
             _ => throw new ArgumentOutOfRangeException(nameof(parsed)),
         };
 }
