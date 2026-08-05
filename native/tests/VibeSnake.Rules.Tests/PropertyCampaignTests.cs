@@ -18,6 +18,7 @@ public sealed class PropertyCampaignTests
         "session_counters_survive_restore",
         "state_hash_stable_after_round_trip",
         "config_hash_stable_within_run",
+        "death_cause_defined",
     ];
 
     [Fact]
@@ -237,6 +238,36 @@ public sealed class PropertyCampaignTests
             || run.SessionMaxCombo < 0)
         {
             return Fail(seed, operation, run, "session_counters_non_negative", "negative session counter");
+        }
+
+        if (!Enum.IsDefined(run.DeathCause))
+        {
+            return Fail(
+                seed,
+                operation,
+                run,
+                "death_cause_defined",
+                $"undefined death cause {(byte)run.DeathCause}");
+        }
+
+        if (run.Status == RunStatus.Running && run.DeathCause != DeathCause.None)
+        {
+            return Fail(
+                seed,
+                operation,
+                run,
+                "death_cause_defined",
+                "running status with non-none death cause");
+        }
+
+        if (run.Status == RunStatus.Dead && run.DeathCause == DeathCause.None)
+        {
+            return Fail(
+                seed,
+                operation,
+                run,
+                "death_cause_defined",
+                "dead status without death cause");
         }
 
         return null;

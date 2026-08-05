@@ -6,6 +6,7 @@ Notable player-facing and engineering changes are recorded here. The project is 
 
 ### Added
 
+- Death-cause contract fixtures for SelfCollision, Starvation, and closed None set; state-machine campaigns assert session-counter restore parity.
 - Architecture boundary tests ban filesystem I/O surfaces from pure `VibeSnake.Rules` sources (V040-09).
 - Versioned pure-rules property campaign report producer (`rules-property-campaign-v1`) writing `TestResults/native/property_campaign.json` with seeds, invariants, failure payload, and one-command reproduction (V040-10).
 - Canonical state schema 3 and `fnv1a64-canonical-json-v4` include session achievement counters (`sessionFoodEaten`, `sessionWraps`, `sessionNearMisses`, `sessionPowerupsCollected`, `sessionMaxCombo`) so mid-run restore preserves unlock eligibility (PD-010). Schema 2 states remain intact and fail compatibility.

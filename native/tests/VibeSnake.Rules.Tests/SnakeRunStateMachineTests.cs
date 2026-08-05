@@ -39,12 +39,14 @@ public sealed class SnakeRunStateMachineTests
 
             Assert.Equal(original.Step(), restored.Step());
             AssertEquivalent(original.GetSnapshot(), restored.GetSnapshot());
+            AssertSessionCountersEqual(original, restored);
             Assert.True(
                 original.Score >= previousScore,
                 "Score must be monotonic non-decreasing within a run.");
             Assert.True(original.ComboCount >= 0);
             Assert.True(original.Body.Count >= 1);
             Assert.True(original.Tick >= 0);
+            Assert.True(Enum.IsDefined(original.DeathCause));
             Assert.Equal(fixedConfigHash, original.ConfigHash);
             Assert.Equal(fixedConfigHash, restored.ConfigHash);
             previousScore = original.Score;
@@ -54,6 +56,7 @@ public sealed class SnakeRunStateMachineTests
                 restored = SnakeRun.RestoreCanonicalState(
                     restored.SerializeCanonicalState());
                 AssertEquivalent(original.GetSnapshot(), restored.GetSnapshot());
+                AssertSessionCountersEqual(original, restored);
             }
 
             if (operation % 29 == 0)
@@ -61,16 +64,19 @@ public sealed class SnakeRunStateMachineTests
                 original = SnakeRun.RestoreCanonicalState(
                     original.SerializeCanonicalState());
                 AssertEquivalent(original.GetSnapshot(), restored.GetSnapshot());
+                AssertSessionCountersEqual(original, restored);
             }
 
             if (original.Status != RunStatus.Running)
             {
                 restored = SnakeRun.RestoreCanonicalState(
                     restored.SerializeCanonicalState());
+                AssertSessionCountersEqual(original, restored);
                 var restartSeed = NextUInt64(commandRandom);
                 original = original.Restart(restartSeed);
                 restored = restored.Restart(restartSeed);
                 AssertEquivalent(original.GetSnapshot(), restored.GetSnapshot());
+                AssertSessionCountersEqual(original, restored);
                 previousScore = original.Score;
                 fixedConfigHash = original.ConfigHash;
             }
@@ -165,5 +171,14 @@ public sealed class SnakeRunStateMachineTests
             expected.DetachedObstacleTicksRemaining,
             actual.DetachedObstacleTicksRemaining);
         Assert.Equal(expected.StateHash, actual.StateHash);
+    }
+
+    private static void AssertSessionCountersEqual(SnakeRun expected, SnakeRun actual)
+    {
+        Assert.Equal(expected.SessionFoodEaten, actual.SessionFoodEaten);
+        Assert.Equal(expected.SessionWraps, actual.SessionWraps);
+        Assert.Equal(expected.SessionNearMisses, actual.SessionNearMisses);
+        Assert.Equal(expected.SessionPowerupsCollected, actual.SessionPowerupsCollected);
+        Assert.Equal(expected.SessionMaxCombo, actual.SessionMaxCombo);
     }
 }
