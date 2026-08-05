@@ -52,6 +52,9 @@
     <None Include="..\..\..\tests\fixtures\shared\remaining_powers_rules_v1.json"
           Link="Fixtures\remaining_powers_rules_v1.json"
           CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\..\tests\fixtures\shared\achievement_candidates_rules_v1.json"
+          Link="Fixtures\achievement_candidates_rules_v1.json"
+          CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>
