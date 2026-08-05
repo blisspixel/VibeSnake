@@ -175,6 +175,7 @@ public sealed class PropertyCampaignTests
             Assert.Equal(PropertyCampaignReport.SchemaVersion, root.GetProperty("schema_version").GetInt32());
             Assert.Equal(PropertyCampaignReport.Kind, root.GetProperty("kind").GetString());
             Assert.Equal(seedCount, root.GetProperty("seed_count").GetInt32());
+            Assert.Equal(seedCount, root.GetProperty("seeds").GetArrayLength());
             Assert.Equal(operationsPerSeed, root.GetProperty("operations_per_seed").GetInt32());
             Assert.Equal(
                 SnakeRun.CanonicalStateSchemaVersion,
