@@ -459,7 +459,7 @@ Complete the pure C# simulation boundary so gameplay defects can be reproduced, 
 - Add a local crash report with app version, platform, rules identity, state name, exception, and sanitized stack trace.
 - Add an in-game path to open or copy the diagnostics location.
 - Keep network submission absent in 1.0.
-- **Progress (not closed):** `LocalDiagnostics` crash reports with path sanitization, retention, optional config hash; `EnsureDiagnosticsDirectory` and F12 / interactive open-folder; no network. Structured logging levels and full in-game copy-to-clipboard remain.
+- **Progress (not closed):** `LocalDiagnostics` crash reports with path sanitization, retention, optional config hash; `EnsureDiagnosticsDirectory`; F12 opens folder and copies absolute path to clipboard; no network. Structured logging levels remain.
 
 #### V040-09: strengthen static and structural checks
 

@@ -513,7 +513,7 @@ public partial class Main : Node2D
             OpenDiagnosticsDirectory();
             if (_screenState is ScreenState.Menu or ScreenState.Ended)
             {
-                ShowReplayStatus("DIAGNOSTICS FOLDER READY");
+                ShowReplayStatus("DIAGNOSTICS PATH COPIED");
             }
 
             return;
@@ -948,16 +948,32 @@ public partial class Main : Node2D
     }
 
     /// <summary>
-    /// Opens the local diagnostics directory in the host file manager. No-op in headless.
+    /// Opens the local diagnostics directory in the host file manager and copies
+    /// the absolute path to the clipboard for support. No-op open in headless;
+    /// clipboard still receives the path when the display server allows it.
     /// </summary>
     private void OpenDiagnosticsDirectory()
     {
-        if (_diagnostics is null || DisplayServer.GetName() == "headless")
+        if (_diagnostics is null)
         {
             return;
         }
 
         var path = _diagnostics.EnsureDiagnosticsDirectory();
+        try
+        {
+            DisplayServer.ClipboardSet(path);
+        }
+        catch (Exception)
+        {
+            // Clipboard can fail on locked-down hosts; open still proceeds.
+        }
+
+        if (DisplayServer.GetName() == "headless")
+        {
+            return;
+        }
+
         OS.ShellOpen(path);
     }
 

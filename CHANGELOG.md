@@ -16,7 +16,7 @@ Notable player-facing and engineering changes are recorded here. The project is 
 - Master volume step hotkeys (`=` / `-` and keypad equivalents) with clamp, unmute-on-raise, and preference persistence.
 - Ended-run overlay shows a compact `RunScoreIdentity` support caption (ruleset contract, score, config-hash prefix).
 - Text scale step hotkeys (F5 down, F6 up) with preferences schema clamp (0.85..1.5) and persistence.
-- Flash-free toggle (F4) and open-diagnostics action (F12) for the offline support path.
+- Flash-free toggle (F4) and open-diagnostics action (F12) for the offline support path; F12 also copies the diagnostics absolute path to the clipboard.
 - Opt-in `RunConfig.EnableComboExpiredEvent` emits `combo_expired` on combo window elapse (default off for core_rules parity); shell caption recognizes the event.
 - Flash-free presentation softens high-intensity captions, lengthens caption dwell, and skips non-critical audio cues while keeping death/victory/pause/confirm.
 - Enabling reduced motion zeros screen-shake intensity so the preference cannot leave residual shake.
