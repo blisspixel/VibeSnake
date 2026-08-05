@@ -56,6 +56,8 @@ public sealed class RulesThroughputEvidenceTests
             kind = "rules-throughput-evidence-v1",
             ruleset_id = SnakeRun.RulesetId,
             rules_version = SnakeRun.RulesVersion,
+            config_hash = run.ConfigHash,
+            config_hash_algorithm = run.ConfigHashAlgorithm,
             step_budget = StepBudget,
             steps_executed = steps,
             restarts,
@@ -88,6 +90,14 @@ public sealed class RulesThroughputEvidenceTests
         Assert.True(File.Exists(path));
         Assert.True(createWatch.Elapsed.TotalMilliseconds >= 0.0);
         Assert.Equal(StepBudget, steps);
+        Assert.Matches("^[0-9a-f]{64}$", run.ConfigHash);
+        Assert.Equal(RunConfig.ConfigHashAlgorithmId, run.ConfigHashAlgorithm);
+        using (var document = JsonDocument.Parse(File.ReadAllText(path)))
+        {
+            Assert.Equal(
+                run.ConfigHash,
+                document.RootElement.GetProperty("config_hash").GetString());
+        }
     }
 
     private static string ResolveEvidenceDirectory()

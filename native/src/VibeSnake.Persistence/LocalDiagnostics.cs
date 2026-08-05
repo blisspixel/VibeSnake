@@ -43,7 +43,9 @@ public sealed class LocalDiagnostics
         int rulesVersion,
         string screenState,
         Exception exception,
-        TimeProvider? timeProvider = null)
+        TimeProvider? timeProvider = null,
+        string? configHash = null,
+        string? configHashAlgorithm = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(appVersion);
         ArgumentException.ThrowIfNullOrWhiteSpace(platform);
@@ -51,6 +53,19 @@ public sealed class LocalDiagnostics
         ArgumentException.ThrowIfNullOrWhiteSpace(screenState);
         ArgumentNullException.ThrowIfNull(exception);
         timeProvider ??= TimeProvider.System;
+        if (configHash is not null && !IsLowerHex(configHash, 64))
+        {
+            throw new ArgumentException(
+                "configHash must be a 64-character lowercase hex digest when provided.",
+                nameof(configHash));
+        }
+
+        if (configHashAlgorithm is not null && string.IsNullOrWhiteSpace(configHashAlgorithm))
+        {
+            throw new ArgumentException(
+                "configHashAlgorithm must be non-empty when provided.",
+                nameof(configHashAlgorithm));
+        }
 
         Directory.CreateDirectory(DiagnosticsDirectory);
         var timestamp = timeProvider.GetUtcNow().UtcDateTime;
@@ -68,6 +83,10 @@ public sealed class LocalDiagnostics
             platform = SanitizeToken(platform),
             rulesetId = SanitizeToken(rulesetId),
             rulesVersion,
+            configHash,
+            configHashAlgorithm = string.IsNullOrWhiteSpace(configHashAlgorithm)
+                ? null
+                : SanitizeToken(configHashAlgorithm),
             screenState = SanitizeToken(screenState),
             exceptionType = exception.GetType().FullName ?? exception.GetType().Name,
             message = Truncate(SanitizeMessage(exception.Message), MaximumMessageCharacters),
@@ -170,5 +189,25 @@ public sealed class LocalDiagnostics
             "<path>",
             RegexOptions.CultureInvariant);
         return sanitized;
+    }
+
+    private static bool IsLowerHex(string value, int length)
+    {
+        if (value.Length != length)
+        {
+            return false;
+        }
+
+        foreach (var character in value)
+        {
+            if (
+                (character < '0' || character > '9')
+                && (character < 'a' || character > 'f'))
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 }

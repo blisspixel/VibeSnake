@@ -36,6 +36,58 @@ public sealed class LocalDiagnosticsTests
     }
 
     [Fact]
+    public void Writes_optional_config_hash_metadata()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "vibesnake-diagnostics-hash-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(root);
+        try
+        {
+            var diagnostics = new LocalDiagnostics(root);
+            var configHash = new string('a', 64);
+            var path = diagnostics.WriteCrashReport(
+                appVersion: "0.2.1",
+                platform: "Windows",
+                rulesetId: "vibesnake-core",
+                rulesVersion: 4,
+                screenState: "Running",
+                exception: new InvalidOperationException("probe"),
+                configHash: configHash,
+                configHashAlgorithm: "sha256-canonical-runconfig-v1");
+
+            var text = File.ReadAllText(path);
+            Assert.Contains(configHash, text, StringComparison.Ordinal);
+            Assert.Contains("sha256-canonical-runconfig-v1", text, StringComparison.Ordinal);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void Rejects_invalid_config_hash_shape()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "vibesnake-diagnostics-badhash-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(root);
+        try
+        {
+            var diagnostics = new LocalDiagnostics(root);
+            Assert.Throws<ArgumentException>(() => diagnostics.WriteCrashReport(
+                appVersion: "0.2.1",
+                platform: "Windows",
+                rulesetId: "vibesnake-core",
+                rulesVersion: 4,
+                screenState: "Menu",
+                exception: new InvalidOperationException("probe"),
+                configHash: "not-hex"));
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
     public void Rejects_non_absolute_user_data_root()
     {
         Assert.Throws<ArgumentException>(() => new LocalDiagnostics("relative/path"));

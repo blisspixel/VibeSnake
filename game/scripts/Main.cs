@@ -1883,17 +1883,22 @@ public partial class Main : Node2D
             throw new InvalidOperationException("Controller connection tracker disconnect contract failed.");
         }
 
+        var smokeConfigHash = new RunConfig().ComputeConfigHash();
         var reportPath = _diagnostics.WriteCrashReport(
             appVersion: "0.2.1",
             platform: OS.GetName(),
             rulesetId: SnakeRun.RulesetId,
             rulesVersion: SnakeRun.RulesVersion,
             screenState: "Smoke",
-            exception: new InvalidOperationException("Smoke diagnostics probe under C:\\Users\\example\\x"));
+            exception: new InvalidOperationException("Smoke diagnostics probe under C:\\Users\\example\\x"),
+            configHash: smokeConfigHash,
+            configHashAlgorithm: RunConfig.ConfigHashAlgorithmId);
+        var reportText = System.IO.File.ReadAllText(reportPath);
         if (!System.IO.File.Exists(reportPath)
-            || !System.IO.File.ReadAllText(reportPath).Contains("<path>", StringComparison.Ordinal))
+            || !reportText.Contains("<path>", StringComparison.Ordinal)
+            || !reportText.Contains(smokeConfigHash, StringComparison.Ordinal))
         {
-            throw new InvalidOperationException("Diagnostics smoke report was missing or unsanitized.");
+            throw new InvalidOperationException("Diagnostics smoke report was missing, unsanitized, or missing config hash.");
         }
 
         var diagnosticsDirectory = _diagnostics.EnsureDiagnosticsDirectory();
