@@ -6,6 +6,7 @@ Notable player-facing and engineering changes are recorded here. The project is 
 
 ### Added
 
+- Architecture boundary tests ban Task.Delay from pure Rules sources.
 - Architecture boundary tests ban Thread.Sleep from pure Rules sources.
 - Architecture boundary tests ban Process.Start and GetCurrentProcess from pure Rules sources.
 - Achievements maximum unlock capacity is locked at 256 and verified above catalog size.
