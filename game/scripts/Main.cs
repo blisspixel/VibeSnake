@@ -1540,6 +1540,15 @@ public partial class Main : Node2D
                 "Content service media-type listing smoke contract failed.");
         }
 
+        var timing = ContentTimingReport.FromMeasurements(
+            inventoryScanMilliseconds: 10,
+            coldStartMilliseconds: 20);
+        if (!timing.WithinInventoryScanBudget || !timing.WithinColdStartBudget)
+        {
+            throw new InvalidOperationException(
+                "Content timing smoke must accept sub-ceiling measurements.");
+        }
+
         if (TryResolveCheckoutInventoryPath(out var inventoryPath))
         {
             var live = ContentService.LoadInventoryFile(inventoryPath);
