@@ -2481,6 +2481,10 @@ public partial class Main : Node2D
         }
 
         _screenState = ScreenState.Ended;
+        _structuredLog?.Information(
+            "shell",
+            "Run ended: " + _run.DeathCause + ".",
+            eventCode: "run_dead");
         FinalizeAndStoreReplay();
         for (var frame = 0; frame < 300 && (_replayOperation is not null || _queuedReplaySave is not null); frame++)
         {
@@ -2491,6 +2495,20 @@ public partial class Main : Node2D
         if (_replayOperation is not null || _queuedReplaySave is not null)
         {
             throw new InvalidOperationException("Death path did not finish terminal replay save.");
+        }
+
+        if (_structuredLog is not null)
+        {
+            var logText = System.IO.File.ReadAllText(_structuredLog.ActiveLogPath);
+            // Death path always logs run_dead. Replay finalize may be success or
+            // failure depending on whether the smoke path mirror-stepped the recorder.
+            if (!logText.Contains("run_dead", StringComparison.Ordinal)
+                || (!logText.Contains("replay_finalized", StringComparison.Ordinal)
+                    && !logText.Contains("replay_finalize_failed", StringComparison.Ordinal)))
+            {
+                throw new InvalidOperationException(
+                    "Smoke death path did not write expected structured log event codes.");
+            }
         }
 
         DispatchSmokeAction(GameActions.Confirm);
