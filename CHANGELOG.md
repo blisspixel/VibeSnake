@@ -9,7 +9,7 @@ Notable player-facing and engineering changes are recorded here. The project is 
 - Godot shell loads and saves permanent achievement unlocks; SnakeRun.ApplyProfileUnlocks suppresses already-owned candidates without affecting scores or state hashes.
 - Restart clears session achievement counters so the next run cannot inherit unlock metrics.
 - Death-cause contract fixtures for SelfCollision, Starvation, and closed None set; state-machine campaigns assert session-counter restore parity.
-- Pure AchievementsDocument schema 1 and atomic AchievementsStore for permanent catalog unlock IDs under chievements.json (profile unlock foundation).
+- Pure `AchievementsDocument` schema 1 and atomic `AchievementsStore` for permanent catalog unlock IDs under `achievements.json` (profile unlock foundation).
 - Architecture boundary tests ban filesystem I/O surfaces from pure `VibeSnake.Rules` sources (V040-09).
 - Versioned pure-rules property campaign report producer (`rules-property-campaign-v1`) writing `TestResults/native/property_campaign.json` with seeds, invariants, failure payload, and one-command reproduction (V040-10).
 - Canonical state schema 3 and `fnv1a64-canonical-json-v4` include session achievement counters (`sessionFoodEaten`, `sessionWraps`, `sessionNearMisses`, `sessionPowerupsCollected`, `sessionMaxCombo`) so mid-run restore preserves unlock eligibility (PD-010). Schema 2 states remain intact and fail compatibility.
@@ -119,7 +119,6 @@ Notable player-facing and engineering changes are recorded here. The project is 
 
 ### Added
 
-- Godot shell loads and saves permanent achievement unlocks; SnakeRun.ApplyProfileUnlocks suppresses already-owned candidates without affecting scores or state hashes.
 - Player CLI commands `vibesnake play`, `update`, `status`, `doctor`, and `version`, plus `play.ps1` / `play.sh` / `play.bat` launch helpers.
 - Continuous [player-latest](https://github.com/blisspixel/VibeSnake/releases/tag/player-latest) GitHub release rebuilt from every `main` push with playable source zip, wheels, and checksums.
 - Player-facing install scripts (`install_player.ps1` / `install_player.sh`) and player-build workflow.
@@ -136,7 +135,6 @@ Notable player-facing and engineering changes are recorded here. The project is 
 
 ### Added
 
-- Godot shell loads and saves permanent achievement unlocks; SnakeRun.ApplyProfileUnlocks suppresses already-owned candidates without affecting scores or state hashes.
 - Canonical documentation hub, status report, roadmap, player guide, architecture guide, subsystem references, and release checklist.
 - Detailed capability-gated release plan from 0.3.0 through 1.0.0, including product scope, compatibility policy, acceptance gates, quality growth, risk controls, and primary research references.
 - GitHub Actions quality workflow for Python 3.11 through 3.14.
