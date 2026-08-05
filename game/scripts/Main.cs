@@ -961,7 +961,7 @@ public partial class Main : Node2D
         {
             var marker = entry.Unlocked ? "[*]" : "[ ]";
             var line =
-                $"{marker} {entry.Name.ToUpperInvariant()}  ({entry.Rarity})  —  {entry.Description}";
+                $"{marker} {entry.Name.ToUpperInvariant()}  ({entry.Rarity})  -  {entry.Description}";
             var color = entry.Unlocked
                 ? new Color(0.9f, 0.86f, 0.55f)
                 : new Color(0.55f, 0.6f, 0.58f);
