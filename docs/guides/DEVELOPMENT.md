@@ -105,6 +105,7 @@ python -m ruff format --check src tests scripts
 python -m ruff check src tests scripts
 python scripts/check_source_policy.py
 python scripts/check_docs.py
+python scripts/check_product_version.py
 python scripts/capture_readme_screenshots.py --check
 python scripts/visual_generate_badges.py --check
 python scripts/visual_generate_logo.py --check
