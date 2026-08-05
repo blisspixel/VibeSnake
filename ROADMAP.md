@@ -477,7 +477,7 @@ Complete the pure C# simulation boundary so gameplay defects can be reproduced, 
 - Add exact regression fixtures for all nine powers, collision precedence, full-grid resolution, and every death cause.
 - Emit versioned JSON reports with seed, first divergent step, recent commands, state slice, event slice, hashes, and a one-command reproduction.
 - Retain every unexplained failure seed and promote confirmed defects to the permanent corpus.
-- **Progress (not closed):** Generated native state-machine campaigns (8 seeds x 512 ops) with restore/restart equivalence; achievement-candidate once-only campaign under product flag; shared power/core parity fixtures; divergence bundles; rules throughput evidence JSON. Remaining: full invariant port, property campaigns as first-class report producers, and permanent corpus compaction.
+- **Progress (not closed):** Generated native state-machine campaigns (8 seeds x 512 ops) with restore/restart equivalence and score monotonicity; achievement-candidate once-only campaign under product flag; shared power/core parity fixtures; divergence bundles; rules throughput evidence JSON. Remaining: full invariant port, property campaigns as first-class report producers, and permanent corpus compaction.
 
 #### V040-11: complete the native power portfolio
 

@@ -23,6 +23,7 @@ public sealed class SnakeRunStateMachineTests
         var original = SnakeRun.Create(runSeed, config);
         var restored = SnakeRun.RestoreCanonicalState(
             original.SerializeCanonicalState());
+        var previousScore = original.Score;
 
         for (var operation = 0; operation < 512; operation++)
         {
@@ -37,6 +38,10 @@ public sealed class SnakeRunStateMachineTests
 
             Assert.Equal(original.Step(), restored.Step());
             AssertEquivalent(original.GetSnapshot(), restored.GetSnapshot());
+            Assert.True(
+                original.Score >= previousScore,
+                "Score must be monotonic non-decreasing within a run.");
+            previousScore = original.Score;
 
             if (operation % 11 == 0)
             {
@@ -60,6 +65,7 @@ public sealed class SnakeRunStateMachineTests
                 original = original.Restart(restartSeed);
                 restored = restored.Restart(restartSeed);
                 AssertEquivalent(original.GetSnapshot(), restored.GetSnapshot());
+                previousScore = original.Score;
             }
         }
     }
