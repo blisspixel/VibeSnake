@@ -38,6 +38,7 @@ Notes:
 | `replays/*.vibesnake-replay.json` | `ReplayStore` | Individual verified replay files |
 | `preferences.json` | `PreferencesStore` | Schema 2 multi-bus audio and accessibility settings |
 | `diagnostics/` | `LocalDiagnostics` | Offline crash reports with path sanitization; `EnsureDiagnosticsDirectory()` creates the folder for open-folder UI |
+| `logs/vibesnake.jsonl` | `StructuredLocalLog` | Append-only structured JSONL support log with level filter, path sanitization, 1 MiB rotation, and rotated-file retention |
 | `input/*.input_bindings.json` | `InputBindingsStore` | Logical action bindings by device class |
 
 Future native-owned rows (not yet writers in shipping code):
@@ -45,7 +46,6 @@ Future native-owned rows (not yet writers in shipping code):
 | Relative path | Intended owner | Purpose |
 | --- | --- | --- |
 | `profiles/` | Future profile store | Native profiles after dual-runtime freeze |
-| `logs/` | Future diagnostics | Player-visible support log tails |
 | `screenshots/` | Future capture service | Manual and smoke captures |
 | `packs/` | Future content service | Installed optional packs (never write into the install tree) |
 | `tmp/` | Future services | Short-lived work; safe to delete on start |

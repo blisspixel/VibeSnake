@@ -39,6 +39,7 @@ public partial class Main : Node2D
     private ShellSettings _shellSettings = ShellSettings.CreateDefaults();
     private PreferencesStore? _preferencesStore;
     private LocalDiagnostics? _diagnostics;
+    private StructuredLocalLog? _structuredLog;
     private InputBindingsStore? _inputBindingsStore;
     private InputBindingsDocument _keyboardBindings =
         InputBindingsDocument.CreateKeyboardDefaults();
@@ -81,12 +82,17 @@ public partial class Main : Node2D
         _replayStore = new ReplayStore(userDataRoot);
         _preferencesStore = new PreferencesStore(userDataRoot);
         _diagnostics = new LocalDiagnostics(userDataRoot);
+        _structuredLog = new StructuredLocalLog(userDataRoot);
         _inputBindingsStore = new InputBindingsStore(userDataRoot);
         LoadShellSettings();
         AudioBuses.ApplyShellSettings(_shellSettings);
         LoadInputBindings();
         SeedControllerConnections();
         Input.JoyConnectionChanged += OnJoyConnectionChanged;
+        _structuredLog.Information(
+            "shell",
+            smokeTest ? "Headless smoke session started." : "Interactive shell session started.",
+            eventCode: smokeTest ? "smoke_session_start" : "session_start");
         _window = GetWindow();
         _window.FilesDropped += OnFilesDropped;
         _window.SizeChanged += OnWindowSizeChanged;
@@ -121,6 +127,12 @@ public partial class Main : Node2D
         }
 
         _controllerCaption = connectionEvent.Value.Caption;
+        _structuredLog?.Information(
+            "input",
+            connectionEvent.Value.Caption,
+            eventCode: connectionEvent.Value.Kind == ControllerConnectionKind.Connected
+                ? "controller_connected"
+                : "controller_disconnected");
 
         // Pause a live run when the last controller disconnects so input is not lost.
         if (
@@ -132,6 +144,10 @@ public partial class Main : Node2D
             _paused = true;
             _pausedByFocusLoss = false;
             PlayCue(AudioCue.Pause);
+            _structuredLog?.Warning(
+                "input",
+                "Paused run after last controller disconnected.",
+                eventCode: "controller_disconnect_pause");
         }
 
         QueueRedraw();
@@ -200,6 +216,10 @@ public partial class Main : Node2D
         _shellSettings = ShellSettings.CreateDefaults();
         if (loaded.Code is PreferencesLoadCode.UnsupportedSchema or PreferencesLoadCode.InvalidJson)
         {
+            _structuredLog?.Warning(
+                "preferences",
+                loaded.Message,
+                eventCode: "preferences_load_failed");
             _diagnostics?.WriteCrashReport(
                 appVersion: "0.2.1",
                 platform: OS.GetName(),
@@ -967,6 +987,11 @@ public partial class Main : Node2D
         }
 
         var path = _diagnostics.EnsureDiagnosticsDirectory();
+        _structuredLog?.EnsureLogsDirectory();
+        _structuredLog?.Information(
+            "diagnostics",
+            "Opened local diagnostics directory for support.",
+            eventCode: "open_diagnostics");
         try
         {
             DisplayServer.ClipboardSet(path);
