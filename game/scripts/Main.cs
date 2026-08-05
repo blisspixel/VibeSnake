@@ -785,7 +785,24 @@ public partial class Main : Node2D
                     new Vector2(46.0f, 270.0f),
                     ScaledFontSize(18),
                     new Color(0.85f, 0.78f, 0.45f));
-                DrawLabel("START RUN", new Vector2(46.0f, 310.0f), ScaledFontSize(22), new Color(0.75f, 0.85f, 0.8f));
+                if (_achievements.UnlockedCount > 0)
+                {
+                    var preview = string.Join(
+                        ", ",
+                        _achievements.UnlockedIds.Take(3).Select(static id => id.ToUpperInvariant()));
+                    if (_achievements.UnlockedCount > 3)
+                    {
+                        preview += ", ...";
+                    }
+
+                    DrawLabel(
+                        preview,
+                        new Vector2(46.0f, 292.0f),
+                        ScaledFontSize(14),
+                        new Color(0.7f, 0.65f, 0.4f));
+                }
+
+                DrawLabel("START RUN", new Vector2(46.0f, 318.0f), ScaledFontSize(22), new Color(0.75f, 0.85f, 0.8f));
                 DrawLabel("Enter, Space, or Controller South", new Vector2(46.0f, 346.0f), ScaledFontSize(18), SecondaryTextColor());
                 DrawLabel("R or Controller North: verify latest replay", new Vector2(46.0f, 388.0f), ScaledFontSize(18), SecondaryTextColor());
                 DrawLabel("Drop one replay file here to verify without changing it", new Vector2(46.0f, 420.0f), ScaledFontSize(18), SecondaryTextColor());
