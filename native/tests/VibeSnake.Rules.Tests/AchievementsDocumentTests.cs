@@ -207,4 +207,12 @@ public sealed class AchievementsDocumentTests
         Assert.Contains("century", earned);
         Assert.DoesNotContain("first_bite", earned);
     }
+
+    [Fact]
+    public void Rejects_array_root_as_invalid_json_shape()
+    {
+        var result = AchievementsDocument.Read("[]");
+        Assert.Equal(AchievementsLoadCode.InvalidJson, result.Code);
+        Assert.Null(result.Document);
+    }
 }
