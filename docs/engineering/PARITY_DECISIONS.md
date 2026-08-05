@@ -100,3 +100,13 @@ Random Shield positions are not compared across the Python Mersenne Twister and 
 | `tests/fixtures/shared/shield_rules_v1.json` | Production Python `Snake`, `PowerUpManager`, and `ShieldPowerUp` | C# xUnit parity test | 8 targeted cases covering entry collection, pickup expiry, active countdown and expiry, collision consumption and prevention, expiry-before-collision precedence, starvation bypass, the collision and starvation deadline boundary, normalized state, and ordered power events |
 
 All three fixtures declare `vibesnake-core@4`, state their exact injected-or-normalized randomness policy, and are regenerated and compared byte for byte in Python CI before C# consumes them. A generated change requires the relevant parity entry and a reviewed rules decision.
+
+## PD-009: Achievement candidate events stay product-gated
+
+Status: Open intentional product gate (preserved compatibility for shared fixtures)
+
+Both runtimes can evaluate a shared rules-local achievement catalog (score, length, combo, wraps, near-miss, powers, survival) and emit ordered `achievement_candidate` events with catalog-index payloads. Default configuration leaves emission off so `core_rules_v4` and other dual-runtime fixtures keep exact event lists. The Godot product path enables emission on live runs; Python `CoreSimulation(enable_achievement_candidates=True)` mirrors that path for dual-runtime experiments.
+
+Candidates emit at most once per terminal run in C#. Profile unlock persistence remains a shell or progression concern outside pure rules. Shared fixtures must not claim achievement-candidate parity until a deliberate regeneration enables the flag on both sides and records the new ordered-event contract.
+
+Player consequence: live product can celebrate run-local mastery without forcing every migration fixture to absorb unlock events before the dual-runtime harness is ready.
