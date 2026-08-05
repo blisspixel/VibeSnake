@@ -130,6 +130,22 @@ public sealed class PropertyCampaignTests
                 {
                     run = run.Restart(NextUInt64(commandRandom));
                     restartsExecuted++;
+                    if (
+                        run.SessionFoodEaten != 0
+                        || run.SessionWraps != 0
+                        || run.SessionNearMisses != 0
+                        || run.SessionPowerupsCollected != 0
+                        || run.SessionMaxCombo != 0)
+                    {
+                        firstFailure = Fail(
+                            seed,
+                            operation,
+                            run,
+                            "session_counters_survive_restore",
+                            "restart did not clear session achievement counters");
+                        break;
+                    }
+
                     previousScore = run.Score;
                     fixedConfigHash = run.ConfigHash;
                 }
