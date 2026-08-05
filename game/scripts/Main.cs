@@ -336,6 +336,15 @@ public partial class Main : Node2D
                 "shell",
                 "Persisted " + newlyEarned.Count + " achievement unlock(s).",
                 eventCode: "achievements_unlock_saved");
+            // Surface permanent unlock progress on the ended-run overlay without
+            // replacing the higher-priority ACHIEVEMENT caption from step feedback.
+            if (_feedbackCaption is null || !_feedbackCaption.StartsWith("ACHIEVEMENT", StringComparison.Ordinal))
+            {
+                _feedbackCaption = newlyEarned.Count == 1
+                    ? "UNLOCK SAVED: " + newlyEarned[0].ToUpperInvariant()
+                    : "UNLOCKS SAVED: " + newlyEarned.Count;
+                _feedbackTicksRemaining = FeedbackVisibilityTicks * 2;
+            }
         }
         catch (Exception exception) when (
             exception is IOException
