@@ -1577,7 +1577,11 @@ public partial class Main : Node2D
         if (
             !loaded.IsSuccess
             || loaded.Replay is null
-            || loaded.Replay.Serialize() != recording.Replay.Serialize())
+            || loaded.Replay.Serialize() != recording.Replay.Serialize()
+            || !string.Equals(
+                loaded.Replay.AppVersion,
+                ProductIdentity.AppVersion,
+                StringComparison.Ordinal))
         {
             throw new InvalidOperationException(
                 "Stored replay verification failed: " + loaded.Message);
