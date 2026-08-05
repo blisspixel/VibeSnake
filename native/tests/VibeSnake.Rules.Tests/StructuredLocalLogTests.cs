@@ -101,6 +101,46 @@ public sealed class StructuredLocalLogTests
     }
 
     [Fact]
+    public void Prunes_rotated_files_beyond_retention_limit()
+    {
+        var root = Path.Combine(
+            Path.GetTempPath(),
+            "vibesnake-logs-prune-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(root);
+        try
+        {
+            var log = new StructuredLocalLog(root);
+            Directory.CreateDirectory(log.LogsDirectory);
+            for (var index = 0; index < StructuredLocalLog.MaximumRotatedFiles + 3; index++)
+            {
+                var path = Path.Combine(
+                    log.LogsDirectory,
+                    StructuredLocalLog.RotatedLogFilePrefix
+                        + index.ToString("D2", System.Globalization.CultureInfo.InvariantCulture)
+                        + StructuredLocalLog.RotatedLogFileSuffix);
+                File.WriteAllText(path, "{}\n");
+                File.SetCreationTimeUtc(path, DateTime.UtcNow.AddMinutes(-index));
+            }
+
+            File.WriteAllBytes(
+                log.ActiveLogPath,
+                new byte[StructuredLocalLog.MaximumActiveLogBytes]);
+            log.Warning("shell", "trigger prune", eventCode: "prune");
+
+            var rotated = Directory.GetFiles(
+                log.LogsDirectory,
+                StructuredLocalLog.RotatedLogFilePrefix
+                    + "*"
+                    + StructuredLocalLog.RotatedLogFileSuffix);
+            Assert.True(rotated.Length <= StructuredLocalLog.MaximumRotatedFiles);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
     public void Truncates_oversized_messages()
     {
         var root = Path.Combine(
