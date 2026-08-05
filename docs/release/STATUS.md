@@ -1,6 +1,6 @@
 # Current Status
 
-Snapshot date: 2026-08-04
+Snapshot date: 2026-08-05
 
 ## Executive assessment
 
@@ -39,7 +39,7 @@ The gated 1.0 target remains Godot 4 .NET with deterministic pure C# rules and f
 | Starvation | Working | A 30-second timer, warning state, food rescue, move-then-starve order, Last Stand recovery, death telemetry, and player-run finalization are wired and tested. |
 | Menus and overlays | Working | Twelve game states render headlessly; menu navigation is tested; retro-modern title, settings, and pause chrome with adaptive framing. |
 | Adaptive presentation | Working (Python alpha) | Preferred 4:3 framing, integer pixel scaling, and letterboxing for phone, square, and wide windows through `AdaptiveDisplay`. |
-| Input | Working with native qualification debt | Python alpha covers keyboard, WASD, mouse, and gamepad paths. Native shell centralizes logical keyboard and any-controller movement, confirm, back, pause, replay verification, and quit; schema-1 bindings store applies to the InputMap with opposite-device preservation. Physical hot-plug, glyphs, and remapping UI evidence remain. |
+| Input | Working with native qualification debt | Python alpha covers keyboard, WASD, mouse, and gamepad paths. Native shell centralizes logical keyboard and any-controller movement, confirm, back, pause, replay verification, and quit; schema-1 bindings store applies to the InputMap with opposite-device preservation and pure TryRemapAction conflict checks; accessibility hotkeys cover mute, volume, text scale, contrast, motion, flash-free, fullscreen, and diagnostics open; pure controller connection tracker pauses on last disconnect. Physical multi-controller hardware evidence, glyphs, and full remapping UI remain. |
 | Achievements | Working | Twenty-five achievement conditions evaluate, display, save with the profile, and restore. |
 | Cosmetics | Working | Five cosmetic axes yield 10,800 combinations with versioned, validated, atomic persistence. |
 | Leaderboard | Working | One top-ten repository owns persistence; legacy single-score import is one-time. |
