@@ -260,4 +260,35 @@ public sealed class AchievementCatalogTests
         Assert.Equal(0, AchievementCatalog.IndexOf("first_bite"));
         Assert.Equal(16, AchievementCatalog.IndexOf("marathon"));
     }
+
+    [Fact]
+    public void Terminal_win_emits_achievement_candidates_once()
+    {
+        var run = SnakeRun.CreateForTesting(
+            new RunConfig(
+                Width: 2,
+                Height: 2,
+                PowerSpawnIntervalTicks: 0,
+                EnableAchievementCandidates: true),
+            [
+                new GridPoint(0, 0),
+                new GridPoint(0, 1),
+                new GridPoint(1, 1),
+            ],
+            Direction.Up,
+            food: new GridPoint(1, 0),
+            hungerTicksRemaining: 100,
+            score: 50,
+            comboCount: 0);
+
+        var first = run.Step();
+        Assert.Equal(RunStatus.Won, run.Status);
+        Assert.Contains(
+            first.OrderedEvents,
+            detail => detail.Kind == RunEventKind.AchievementCandidate);
+        var second = run.Step();
+        Assert.DoesNotContain(
+            second.OrderedEvents,
+            detail => detail.Kind == RunEventKind.AchievementCandidate);
+    }
 }
