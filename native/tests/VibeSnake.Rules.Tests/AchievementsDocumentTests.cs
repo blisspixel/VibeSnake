@@ -243,4 +243,18 @@ public sealed class AchievementsDocumentTests
         Assert.Equal(AchievementsLoadCode.InvalidField, result.Code);
         Assert.Null(result.Document);
     }
+
+    [Fact]
+    public void Rejects_whitespace_unlocked_ids()
+    {
+        var result = AchievementsDocument.Read(
+            """
+            {
+              "schemaVersion": 1,
+              "unlockedIds": ["   "]
+            }
+            """);
+        Assert.Equal(AchievementsLoadCode.InvalidField, result.Code);
+        Assert.Null(result.Document);
+    }
 }
