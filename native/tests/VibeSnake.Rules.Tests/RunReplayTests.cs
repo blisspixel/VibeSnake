@@ -123,6 +123,13 @@ public sealed class RunReplayTests
             () => new RunReplayRecorder(initial, appVersion: " "));
         Assert.Throws<ArgumentException>(
             () => new RunReplayRecorder(initial, appVersion: new string('x', 65)));
+        Assert.Throws<ArgumentException>(
+            () => RunReplay.Capture(initial, [[Direction.Up]], appVersion: " "));
+        Assert.Throws<ArgumentException>(
+            () => RunReplay.Capture(
+                initial,
+                [[Direction.Up]],
+                appVersion: new string('x', 65)));
     }
 
     [Fact]
