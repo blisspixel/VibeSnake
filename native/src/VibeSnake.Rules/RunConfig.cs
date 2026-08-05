@@ -1,3 +1,8 @@
+using System.Buffers;
+using System.Security.Cryptography;
+using System.Text;
+using System.Text.Json;
+
 namespace VibeSnake.Rules;
 
 public sealed record RunConfig(
@@ -22,6 +27,13 @@ public sealed record RunConfig(
     bool EnableNearMiss = false,
     int StarvationWarningTicks = 200)
 {
+    /// <summary>
+    /// Algorithm id for <see cref="ComputeConfigHash"/>. Distinct from the run
+    /// state hash so score and replay metadata can identify rules without
+    /// participating in step-by-step state identity.
+    /// </summary>
+    public const string ConfigHashAlgorithmId = "sha256-canonical-runconfig-v1";
+
     public const int RulesTickMilliseconds = 50;
     /// <summary>Default remaining hunger ticks that trigger a starvation warning (10s at 50ms).</summary>
     public const int DefaultStarvationWarningTicks = 200;
@@ -191,5 +203,64 @@ public sealed record RunConfig(
         {
             throw new ArgumentOutOfRangeException(nameof(SegmentDetachMaxSegments));
         }
+    }
+
+    /// <summary>
+    /// Lowercase SHA-256 of the full effective rules configuration, including
+    /// ruleset identity and every field that can change scored behavior.
+    /// Always serializes every field (no omit-defaults) so two equal configs
+    /// always share one hash. Does not include seeds or live run state.
+    /// </summary>
+    public string ComputeConfigHash()
+    {
+        Validate();
+        var payload = SerializeCanonicalConfigBytes();
+        return Convert.ToHexString(SHA256.HashData(payload)).ToLowerInvariant();
+    }
+
+    /// <summary>
+    /// Canonical JSON document for the effective rules configuration.
+    /// Stable field order; suitable for inspection and hashing.
+    /// </summary>
+    public string SerializeCanonicalConfig()
+    {
+        Validate();
+        return Encoding.UTF8.GetString(SerializeCanonicalConfigBytes());
+    }
+
+    private byte[] SerializeCanonicalConfigBytes()
+    {
+        var buffer = new ArrayBufferWriter<byte>();
+        using (var writer = new Utf8JsonWriter(buffer))
+        {
+            writer.WriteStartObject();
+            writer.WriteString("algorithm", ConfigHashAlgorithmId);
+            writer.WriteString("rulesetId", RulesetIdentity.CurrentId);
+            writer.WriteNumber("rulesVersion", RulesetIdentity.CurrentVersion);
+            writer.WriteNumber("width", Width);
+            writer.WriteNumber("height", Height);
+            writer.WriteNumber("rulesTickMilliseconds", RulesTickMilliseconds);
+            writer.WriteNumber("starvationTicks", StarvationTicks);
+            writer.WriteNumber("starvationWarningTicks", StarvationWarningTicks);
+            writer.WriteNumber("maximumDirectionQueue", MaximumDirectionQueue);
+            writer.WriteNumber("foodScore", FoodScore);
+            writer.WriteNumber("comboWindowTicks", ComboWindowTicks);
+            writer.WriteNumber("speedBonusTicks", SpeedBonusTicks);
+            writer.WriteNumber("powerSpawnIntervalTicks", PowerSpawnIntervalTicks);
+            writer.WriteNumber("powerVisibleTicks", PowerVisibleTicks);
+            writer.WriteNumber("shieldDurationTicks", ShieldDurationTicks);
+            writer.WriteNumber("phaseShiftDurationTicks", PhaseShiftDurationTicks);
+            writer.WriteNumber("lastStandRecoveryTicks", LastStandRecoveryTicks);
+            writer.WriteNumber("slowMoDurationTicks", SlowMoDurationTicks);
+            writer.WriteNumber("boostDurationTicks", BoostDurationTicks);
+            writer.WriteNumber("magnetDurationTicks", MagnetDurationTicks);
+            writer.WriteNumber("gluttonyDurationTicks", GluttonyDurationTicks);
+            writer.WriteNumber("segmentDetachObstacleTicks", SegmentDetachObstacleTicks);
+            writer.WriteNumber("segmentDetachMaxSegments", SegmentDetachMaxSegments);
+            writer.WriteBoolean("enableNearMiss", EnableNearMiss);
+            writer.WriteEndObject();
+        }
+
+        return buffer.WrittenSpan.ToArray();
     }
 }

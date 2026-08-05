@@ -261,6 +261,15 @@ public sealed partial class SnakeRun
             MovementCadenceNumerator,
             MovementCadenceDenominator);
 
+    /// <summary>
+    /// Stable hash of the effective rules configuration for this run.
+    /// Safe for score categories and local summaries; not part of the step state hash.
+    /// </summary>
+    public string ConfigHash => _config.ComputeConfigHash();
+
+    /// <summary>Algorithm id for <see cref="ConfigHash"/>.</summary>
+    public string ConfigHashAlgorithm => RunConfig.ConfigHashAlgorithmId;
+
     internal long GetNextStepVerificationWorkUnits()
     {
         if (Status != RunStatus.Running)
