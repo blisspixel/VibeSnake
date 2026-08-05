@@ -71,6 +71,7 @@ An optional ignored local `archive/` may preserve historical production records 
 
 ## Improvements completed since the prior audit
 
+- Native achievements schema 1 profile unlocks, schema 3 session counters, property campaign evidence, and content eligibility reports landed under dual-runtime gates.
 - Moved the project to a flat public GitHub repository with green CI and a single `main` branch.
 - Shipped the eight-station offline radio soundtrack in public source with Apache-2.0 release intent.
 - Added adaptive 4:3-first presentation and retro-modern menu chrome for the Python alpha.
