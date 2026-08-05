@@ -118,6 +118,7 @@ public sealed class ArchitectureBoundaryTests
         "Path.GetTemp",
         "Process.Start",
         "Process.GetCurrentProcess",
+        "Thread.Sleep",
     ];
 
     [Fact]
