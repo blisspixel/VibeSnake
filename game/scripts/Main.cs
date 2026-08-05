@@ -765,8 +765,10 @@ public partial class Main : Node2D
             case ScreenState.Menu:
                 DrawLabel("VIBE SNAKE", new Vector2(42.0f, 190.0f), ScaledFontSize(52), PrimaryTextColor());
                 DrawLabel("Plan the route. Build the vibe. Recover with style.", new Vector2(46.0f, 238.0f), ScaledFontSize(24), Colors.White);
+                // Rules-local catalog only (profile-lifetime and wall-clock unlocks
+                // remain Python/progression UI scope beyond this pure set).
                 DrawLabel(
-                    $"UNLOCKS {_achievements.UnlockedIds.Count}/{AchievementCatalog.Definitions.Count}",
+                    $"RUN UNLOCKS {_achievements.UnlockedIds.Count}/{AchievementCatalog.Definitions.Count}",
                     new Vector2(46.0f, 270.0f),
                     ScaledFontSize(18),
                     new Color(0.85f, 0.78f, 0.45f));
