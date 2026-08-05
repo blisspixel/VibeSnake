@@ -6,6 +6,7 @@ Notable player-facing and engineering changes are recorded here. The project is 
 
 ### Added
 
+- AchievementsDocument.IsUnlocked helper for profile unlock queries.
 - Ended-run overlay shows RUN UNLOCKS progress from permanent profile unlocks.
 - Achievements documents accept schema_version as an alias for schemaVersion on load.
 - Headless smoke asserts structured chievements_load after shell startup unlock restore.
