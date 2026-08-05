@@ -23,8 +23,9 @@ Notable player-facing and engineering changes are recorded here. The project is 
 - Logical `VirtualViewport` 1280x720 letterbox and pointer transform contract for shell scaling.
 - Godot shell draws through `VirtualViewport` letterbox transforms (engine stretch disabled), tracks window resize, and maps window pointers into logical canvas space.
 - Pure `NearMissDetector` for body-proximity tiers, edge ride, clutch eat, style points, and bounded combo windows using fixed rules ticks.
-- `ContentBudgetReport` inventory totals vs declared pack ceilings, plus ContentService packaging resolve codes and media-type listing without loading media.
+- `ContentBudgetReport` inventory totals vs declared pack ceilings (including core working-set membership), plus ContentService packaging resolve codes and media-type listing without loading media.
 - `ContentInventory.CountByMediaTypePrefix` (and ContentService delegation) for pack composition queries.
+- Complete `ContentPackBudgets` predicate helpers for core working-set and radio station compressed/installed ceilings.
 - Shell settings apply multi-bus volume and mute to the Godot Master/Music/SFX/UI buses; high-contrast canvas colors, text scale, and shortened reduced-motion feedback captions.
 - `SnakeRun` can award near-miss score events for body proximity, clutch eats, and boost style points via pure `NearMissDetector` when `RunConfig.EnableNearMiss` is true (default false until shared fixtures regenerate); shell feedback recognizes `RunEventKind.NearMiss`.
 - Interactive Godot sessions apply preferred fullscreen mode from shell settings (headless smoke stays windowed).
