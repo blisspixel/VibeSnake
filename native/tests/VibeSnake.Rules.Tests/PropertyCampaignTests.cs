@@ -16,6 +16,7 @@ public sealed class PropertyCampaignTests
         "food_contract",
         "session_counters_non_negative",
         "session_counters_survive_restore",
+        "session_counters_clear_on_restart",
         "state_hash_stable_after_round_trip",
         "config_hash_stable_within_run",
         "death_cause_defined",
@@ -141,7 +142,7 @@ public sealed class PropertyCampaignTests
                             seed,
                             operation,
                             run,
-                            "session_counters_survive_restore",
+                            "session_counters_clear_on_restart",
                             "restart did not clear session achievement counters");
                         break;
                     }
