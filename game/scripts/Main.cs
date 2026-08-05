@@ -735,6 +735,10 @@ public partial class Main : Node2D
         _feedbackCaption = null;
         _feedbackTicksRemaining = 0;
         _replayStatusCaption = null;
+        _structuredLog?.Information(
+            "shell",
+            "Run started with product configuration.",
+            eventCode: "run_start");
         PlayCue(AudioCue.Confirm);
         QueueRedraw();
     }
