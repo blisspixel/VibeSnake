@@ -2151,6 +2151,27 @@ public partial class Main : Node2D
         // Headless no-op path; interactive sessions may open the folder later from UI.
         OpenDiagnosticsDirectory();
 
+        if (_structuredLog is null)
+        {
+            throw new InvalidOperationException("Structured log was not initialized for smoke.");
+        }
+
+        var structuredLogPath = _structuredLog.ActiveLogPath;
+        if (!System.IO.File.Exists(structuredLogPath))
+        {
+            throw new InvalidOperationException(
+                "Structured session log was not written under user-data logs.");
+        }
+
+        var structuredLogText = System.IO.File.ReadAllText(structuredLogPath);
+        if (!structuredLogText.Contains("smoke_session_start", StringComparison.Ordinal)
+            || !structuredLogText.Contains("open_diagnostics", StringComparison.Ordinal)
+            || !structuredLogText.Contains("\"kind\":\"structured-log\"", StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException(
+                "Structured log missing required smoke event codes or kind marker.");
+        }
+
         ShellTransitions.EnsureTransition(ShellScreen.Menu, ShellScreen.Running);
         ShellTransitions.EnsureTransition(ShellScreen.Running, ShellScreen.Ended);
         ShellTransitions.EnsureTransition(ShellScreen.Ended, ShellScreen.Running);
