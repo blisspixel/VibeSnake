@@ -42,6 +42,9 @@ public sealed class SnakeRunStateMachineTests
             Assert.True(
                 original.Score >= previousScore,
                 "Score must be monotonic non-decreasing within a run.");
+            Assert.True(original.ComboCount >= 0);
+            Assert.True(original.Body.Count >= 1);
+            Assert.True(original.Tick >= 0);
             Assert.Equal(fixedConfigHash, original.ConfigHash);
             Assert.Equal(fixedConfigHash, restored.ConfigHash);
             previousScore = original.Score;
