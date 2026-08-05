@@ -43,6 +43,12 @@ public sealed class AchievementsDocumentTests
     }
 
     [Fact]
+    public void Store_rejects_whitespace_user_data_root()
+    {
+        Assert.Throws<ArgumentException>(() => new AchievementsStore("   "));
+    }
+
+    [Fact]
     public void Round_trips_through_atomic_store()
     {
         var root = Path.Combine(
