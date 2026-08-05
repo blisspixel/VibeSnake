@@ -24,7 +24,7 @@ public sealed record RunConfig(
     int GluttonyDurationTicks = 100,
     int SegmentDetachObstacleTicks = 200,
     int SegmentDetachMaxSegments = 5,
-    bool EnableNearMiss = false,
+    bool EnableNearMiss = true,
     bool EnableComboExpiredEvent = true,
     int StarvationWarningTicks = 200)
 {

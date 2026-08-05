@@ -21,7 +21,7 @@ The gated 1.0 target remains Godot 4 .NET with deterministic pure C# rules and f
 | Python deterministic tests | 466 passing and 3 environment-dependent radio skips on the supported interpreters in CI |
 | Python line coverage | About 87 percent measured with an 80 percent floor enforced by configuration and CI |
 | Native toolchain | Godot 4.7.1 Mono and .NET SDK 10.0.302 pinned and verified |
-| Native contract tests | 343 passing on .NET 10 with an 80 percent line floor per module |
+| Native contract tests | 344 passing on .NET 10 with an 80 percent line floor per module |
 | Cross-language parity | 100 movement cases (25,600 steps), 35 targeted core-rule cases, 8 Shield, 6 Phase Shift, 5 Last Stand, and 9 remaining-power cases pass |
 | Godot integration | Headless import plus seeded rules, restoration, logical input with schema-1 InputMap apply, VirtualViewport letterbox draw, multi-bus volume apply, focus-loss pause, audio buses, fourteen fallback cues, full nine-power markers and captions, cadence-aware stepping, live replay recording, isolated atomic save, and clean shutdown smoke on hosted runners |
 | Native artifacts | Windows, macOS, and Linux player smokes run outside the checkout on matching hosted runners; continuous Python player-latest packages publish from `main` |
@@ -35,7 +35,7 @@ The gated 1.0 target remains Godot 4 .NET with deterministic pure C# rules and f
 | System | Status | Evidence and qualification |
 | --- | --- | --- |
 | Core movement | Working | Four-direction movement, queued input, self-collision, phase overlap, and edge wrapping are implemented and tested. |
-| Scoring | Working | Base points, speed bonus, length bonus, bonus points, and smoothly interpolated 1x to 10x combos are implemented. Native near-miss awards exist behind `RunConfig.EnableNearMiss` (default off until shared fixtures regenerate). |
+| Scoring | Working | Base points, speed bonus, length bonus, bonus points, and smoothly interpolated 1x to 10x combos are implemented. Native near-miss awards are on by default via `RunConfig.EnableNearMiss` after dual-runtime fixture regen. |
 | Starvation | Working | A 30-second timer, warning state, food rescue, move-then-starve order, Last Stand recovery, death telemetry, and player-run finalization are wired and tested. |
 | Menus and overlays | Working | Twelve game states render headlessly; menu navigation is tested; retro-modern title, settings, and pause chrome with adaptive framing. |
 | Adaptive presentation | Working (Python alpha) | Preferred 4:3 framing, integer pixel scaling, and letterboxing for phone, square, and wide windows through `AdaptiveDisplay`. |

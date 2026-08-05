@@ -3,11 +3,10 @@ namespace VibeSnake.Rules.Tests;
 public sealed class SnakeRunNearMissTests
 {
     [Fact]
-    public void Default_create_disables_near_miss_scoring()
+    public void Default_create_enables_near_miss_scoring()
     {
-        // Create uses RunConfig defaults (EnableNearMiss false). A critical clutch
-        // eat must not emit near-miss events until the flag is opted in.
-        var gated = SnakeRun.CreateForTesting(
+        Assert.True(new RunConfig().EnableNearMiss);
+        var enabled = SnakeRun.CreateForTesting(
             new RunConfig(
                 Width: 16,
                 Height: 10,
@@ -18,11 +17,31 @@ public sealed class SnakeRunNearMissTests
             Direction.Right,
             food: new GridPoint(8, 5),
             hungerTicksRemaining: 5);
+        var result = enabled.Step();
+        Assert.Contains(result.OrderedEvents, detail => detail.Kind == RunEventKind.AteFood);
+        Assert.Contains(result.OrderedEvents, detail => detail.Kind == RunEventKind.NearMiss);
+        Assert.Equal(1, enabled.SessionNearMisses);
+    }
+
+    [Fact]
+    public void Near_miss_scoring_can_be_disabled()
+    {
+        var gated = SnakeRun.CreateForTesting(
+            new RunConfig(
+                Width: 16,
+                Height: 10,
+                StarvationTicks: 100,
+                PowerSpawnIntervalTicks: 0,
+                PowerVisibleTicks: 4,
+                EnableNearMiss: false),
+            [new GridPoint(5, 5), new GridPoint(6, 5), new GridPoint(7, 5)],
+            Direction.Right,
+            food: new GridPoint(8, 5),
+            hungerTicksRemaining: 5);
         var result = gated.Step();
         Assert.Contains(result.OrderedEvents, detail => detail.Kind == RunEventKind.AteFood);
         Assert.DoesNotContain(result.OrderedEvents, detail => detail.Kind == RunEventKind.NearMiss);
         Assert.Equal(0, gated.SessionNearMisses);
-        Assert.False(new RunConfig().EnableNearMiss);
     }
 
     [Fact]

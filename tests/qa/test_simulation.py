@@ -57,7 +57,11 @@ def test_food_on_exact_starvation_deadline_rescues_the_run():
         "ate_food",
         "score_changed",
         "hunger_reset",
+        "score_changed",
+        "near_miss",
     ]
+    assert record.events[-1].value == 1
+    assert simulation.session_near_misses == 1
 
 
 def test_starvation_deadline_moves_before_death():

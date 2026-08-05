@@ -92,12 +92,14 @@ public sealed class SnakeRunTests
     [Fact]
     public void Eating_grows_scores_and_resets_hunger_before_starvation()
     {
-        var config = new RunConfig(Width: 5, Height: 4, StarvationTicks: 7, FoodScore: 25);
+        // Keep hunger above the clutch near-miss band (30 ticks) so this case
+        // isolates growth scoring without food near-miss awards.
+        var config = new RunConfig(Width: 5, Height: 4, StarvationTicks: 60, FoodScore: 25);
         var run = CreateRun(
             body: [new GridPoint(1, 1)],
             direction: Direction.Right,
             food: new GridPoint(2, 1),
-            hungerTicksRemaining: 1,
+            hungerTicksRemaining: 60,
             config: config);
 
         var result = run.Step();
@@ -106,7 +108,7 @@ public sealed class SnakeRunTests
         Assert.Equal(45, run.Score);
         Assert.Equal(1, run.ComboCount);
         Assert.Equal(0, run.TicksSinceLastFood);
-        Assert.Equal(7, run.HungerTicksRemaining);
+        Assert.Equal(60, run.HungerTicksRemaining);
         Assert.Equal(RunStatus.Running, run.Status);
         Assert.True(result.Events.HasFlag(RunEvent.AteFood));
         Assert.DoesNotContain(run.Food!.Value, run.Body);
@@ -115,7 +117,7 @@ public sealed class SnakeRunTests
                 new RunEventDetail(RunEventKind.Moved, Position: new GridPoint(2, 1)),
                 new RunEventDetail(RunEventKind.AteFood, Position: new GridPoint(2, 1)),
                 new RunEventDetail(RunEventKind.ScoreChanged, Value: 45),
-                new RunEventDetail(RunEventKind.HungerReset, Value: 7),
+                new RunEventDetail(RunEventKind.HungerReset, Value: 60),
             ],
             result.OrderedEvents);
     }
@@ -346,10 +348,10 @@ public sealed class SnakeRunTests
             body: [new GridPoint(1, 1)],
             direction: Direction.Right,
             food: new GridPoint(4, 3));
-        const string expected = """{"schemaVersion":2,"rulesVersion":4,"hashAlgorithm":"fnv1a64-canonical-json-v3","rngAlgorithm":"pcg-xsh-rr-32-v1","config":{"width":5,"height":4,"rulesTickMilliseconds":50,"starvationTicks":100,"maximumDirectionQueue":3,"foodScore":10,"comboWindowTicks":60,"speedBonusTicks":30,"powerSpawnIntervalTicks":300,"powerVisibleTicks":120,"shieldDurationTicks":100,"phaseShiftDurationTicks":100,"lastStandRecoveryTicks":60,"slowMoDurationTicks":120,"boostDurationTicks":80,"magnetDurationTicks":120,"gluttonyDurationTicks":100,"segmentDetachObstacleTicks":200,"segmentDetachMaxSegments":5,"enableComboExpiredEvent":true},"tick":0,"status":0,"deathCause":0,"direction":1,"score":0,"comboCount":0,"ticksSinceLastFood":0,"hungerTicksRemaining":100,"powerSpawnTicksElapsed":0,"shieldTicksRemaining":0,"phaseShiftTicksRemaining":0,"lastStandHeld":false,"lastStandRecoveryTicksRemaining":0,"slowMoTicksRemaining":0,"boostTicksRemaining":0,"magnetTicksRemaining":0,"gluttonyTicksRemaining":0,"detachedObstacleTicksRemaining":0,"baitPosition":null,"detachedObstacles":[],"powerPickup":null,"random":{"state":"1","increment":"109"},"food":{"x":4,"y":3},"body":[{"x":1,"y":1}],"pendingDirections":[]}""";
+        const string expected = """{"schemaVersion":2,"rulesVersion":4,"hashAlgorithm":"fnv1a64-canonical-json-v3","rngAlgorithm":"pcg-xsh-rr-32-v1","config":{"width":5,"height":4,"rulesTickMilliseconds":50,"starvationTicks":100,"maximumDirectionQueue":3,"foodScore":10,"comboWindowTicks":60,"speedBonusTicks":30,"powerSpawnIntervalTicks":300,"powerVisibleTicks":120,"shieldDurationTicks":100,"phaseShiftDurationTicks":100,"lastStandRecoveryTicks":60,"slowMoDurationTicks":120,"boostDurationTicks":80,"magnetDurationTicks":120,"gluttonyDurationTicks":100,"segmentDetachObstacleTicks":200,"segmentDetachMaxSegments":5,"enableNearMiss":true,"enableComboExpiredEvent":true},"tick":0,"status":0,"deathCause":0,"direction":1,"score":0,"comboCount":0,"ticksSinceLastFood":0,"hungerTicksRemaining":100,"powerSpawnTicksElapsed":0,"shieldTicksRemaining":0,"phaseShiftTicksRemaining":0,"lastStandHeld":false,"lastStandRecoveryTicksRemaining":0,"slowMoTicksRemaining":0,"boostTicksRemaining":0,"magnetTicksRemaining":0,"gluttonyTicksRemaining":0,"detachedObstacleTicksRemaining":0,"baitPosition":null,"detachedObstacles":[],"powerPickup":null,"random":{"state":"1","increment":"109"},"food":{"x":4,"y":3},"body":[{"x":1,"y":1}],"pendingDirections":[]}""";
 
         Assert.Equal(expected, run.SerializeCanonicalState());
-        Assert.Equal("e435dd2b6a2ed89a", run.ComputeStateHash());
+        Assert.Equal("e949c6c54abf9239", run.ComputeStateHash());
     }
 
     [Fact]

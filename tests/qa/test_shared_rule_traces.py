@@ -88,6 +88,11 @@ def test_checked_in_rule_fixture_matches_production_rules():
     assert cases["horizontal-wrap"]["expected"]["food_unchanged"] is True
     assert cases["horizontal-wrap"]["expected"]["random_use"] == "unchanged"
     assert cases["starvation-deadline-food-rescue"]["expected"]["won"] is False
+    assert cases["starvation-deadline-food-rescue"]["expected"]["score"] == 19
+    assert cases["starvation-deadline-food-rescue"]["expected"]["events"][-1] == {
+        "kind": "near_miss",
+        "value": 1,
+    }
     assert cases["starvation-deadline-death"]["expected"]["events"][-1] == {
         "kind": "died",
         "position": [6, 5],

@@ -47,6 +47,7 @@ public sealed class SharedRuleTraceParityTests
             FoodScore: fixtureConfig.FoodScore,
             ComboWindowTicks: fixtureConfig.ComboWindowTicks,
             SpeedBonusTicks: fixtureConfig.SpeedBonusTicks,
+            EnableNearMiss: true,
             EnableComboExpiredEvent: true);
         var initial = traceCase.Initial;
         var run = SnakeRun.CreateForTesting(

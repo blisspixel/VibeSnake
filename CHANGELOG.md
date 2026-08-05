@@ -19,6 +19,7 @@ Notable player-facing and engineering changes are recorded here. The project is 
 - Text scale step hotkeys (F5 down, F6 up) with preferences schema clamp (0.85..1.5) and persistence.
 - Flash-free toggle (F4) and open-diagnostics action (F12) for the offline support path; F12 also copies the diagnostics absolute path to the clipboard.
 - Dual-runtime `combo_expired` event: Python `CoreSimulation` emits it in native order; `EnableComboExpiredEvent` defaults true; regenerated `core_rules_v4` (35 cases) and golden state hash.
+- Dual-runtime near-miss scoring: `CoreSimulation` applies clutch/body near-miss through the production detector; `EnableNearMiss` defaults true; `core_rules_v4` includes clutch on deadline food rescue.
 - `RunStepResult` equality/operator coverage; README screenshot presentation-source fingerprint refresh after dual-runtime QA source changes.
 - Flash-free presentation softens high-intensity captions, lengthens caption dwell, and skips non-critical audio cues while keeping death/victory/pause/confirm.
 - Enabling reduced motion zeros screen-shake intensity so the preference cannot leave residual shake.

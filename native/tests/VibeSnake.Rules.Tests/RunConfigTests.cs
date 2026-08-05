@@ -67,13 +67,13 @@ public sealed class RunConfigTests
     {
         var baseline = new RunConfig().ComputeConfigHash();
         var wider = new RunConfig(Width: 32).ComputeConfigHash();
-        var nearMiss = new RunConfig(EnableNearMiss: true).ComputeConfigHash();
+        var nearMissOff = new RunConfig(EnableNearMiss: false).ComputeConfigHash();
         var foodScore = new RunConfig(FoodScore: 11).ComputeConfigHash();
 
         Assert.NotEqual(baseline, wider);
-        Assert.NotEqual(baseline, nearMiss);
+        Assert.NotEqual(baseline, nearMissOff);
         Assert.NotEqual(baseline, foodScore);
-        Assert.NotEqual(wider, nearMiss);
+        Assert.NotEqual(wider, nearMissOff);
     }
 
     [Fact]
