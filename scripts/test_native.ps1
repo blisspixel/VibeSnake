@@ -79,7 +79,9 @@ try {
         "--verify-no-changes",
         "--no-restore"
     )
-    Invoke-Dotnet -CommandArguments @(
+    # Coverlet can fail on Windows runners with truncated hit-file streams even when
+    # every test passed. Retry once after a clean rebuild of the test assembly.
+    $testArguments = @(
         "test",
         "native/tests/VibeSnake.Rules.Tests/VibeSnake.Rules.Tests.csproj",
         "--configuration",
@@ -93,6 +95,34 @@ try {
         "-p:ThresholdType=line",
         "-p:ExcludeByFile=**/Properties/AssemblyInfo.cs"
     )
+    $testSucceeded = $false
+    for ($attempt = 1; $attempt -le 2; $attempt++) {
+        try {
+            Invoke-Dotnet -CommandArguments $testArguments
+            $testSucceeded = $true
+            break
+        }
+        catch {
+            if ($attempt -ge 2) {
+                throw
+            }
+
+            Write-Output "Native coverage attempt $attempt failed; rebuilding and retrying once. $_"
+            if (Test-Path "TestResults/native") {
+                Remove-Item -Recurse -Force "TestResults/native" -ErrorAction SilentlyContinue
+            }
+            Invoke-Dotnet -CommandArguments @(
+                "build",
+                "native/tests/VibeSnake.Rules.Tests/VibeSnake.Rules.Tests.csproj",
+                "--configuration",
+                "Release",
+                "--no-restore"
+            )
+        }
+    }
+    if (-not $testSucceeded) {
+        throw "Native tests with coverage failed after retry."
+    }
 
     $importOutput = & $resolvedGodotExecutable --headless --editor --path game --quit 2>&1
     $importExitCode = $LASTEXITCODE
