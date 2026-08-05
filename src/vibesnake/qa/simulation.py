@@ -202,11 +202,7 @@ class CoreSimulation:
             self.score.add_bonus_score(bonus)
             events.append(StepEvent(kind="score_changed", value=bonus))
 
-        position = (
-            None
-            if near_miss_event.position == (-1, -1)
-            else near_miss_event.position
-        )
+        position = None if near_miss_event.position == (-1, -1) else near_miss_event.position
         events.append(
             StepEvent(
                 kind="near_miss",
