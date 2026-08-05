@@ -114,6 +114,9 @@ public sealed partial class SnakeRun
                 configElement,
                 "segmentDetachMaxSegments"),
             EnableNearMiss: ReadOptionalBoolean(configElement, "enableNearMiss"),
+            EnableComboExpiredEvent: ReadOptionalBoolean(
+                configElement,
+                "enableComboExpiredEvent"),
             StarvationWarningTicks: ReadOptionalInt32(
                 configElement,
                 "starvationWarningTicks",

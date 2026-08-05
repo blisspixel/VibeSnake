@@ -460,9 +460,9 @@ public sealed partial class SnakeRun
         }
 
         Tick = checked(Tick + 1);
-        AdvanceComboClock();
-        _nearMiss.AdvanceTicks(1);
         var events = RunEvent.None;
+        AdvanceComboClock(orderedEvents, ref events);
+        _nearMiss.AdvanceTicks(1);
         AdvancePowerLifecycle(ref events, orderedEvents);
         ApplyMagnetPull();
         var unwrappedHead = Head.Add(Direction.Offset());
@@ -806,11 +806,16 @@ public sealed partial class SnakeRun
             writer.WriteNumber(
                 "segmentDetachMaxSegments",
                 _config.SegmentDetachMaxSegments);
-            // Omit false to keep legacy canonical hashes stable while the flag
-            // defaults off until shared fixtures regenerate with near-miss.
+            // Omit false to keep legacy canonical hashes stable while flags
+            // default off until shared fixtures regenerate.
             if (_config.EnableNearMiss)
             {
                 writer.WriteBoolean("enableNearMiss", true);
+            }
+
+            if (_config.EnableComboExpiredEvent)
+            {
+                writer.WriteBoolean("enableComboExpiredEvent", true);
             }
 
             writer.WriteEndObject();
@@ -1364,15 +1369,21 @@ public sealed partial class SnakeRun
         return detachCount;
     }
 
-    private void AdvanceComboClock()
+    private void AdvanceComboClock(
+        List<RunEventDetail> orderedEvents,
+        ref RunEvent events)
     {
         TicksSinceLastFood = checked(TicksSinceLastFood + 1);
         if (TicksSinceLastFood > _config.ComboWindowTicks && ComboCount > 0)
         {
-            // ComboCount reset remains silent until shared core_rules fixtures
-            // include combo_expired events (V040-05). Kind is reserved in
-            // RulesEventCatalog for the upcoming dual-runtime regen.
+            // Default silent reset preserves core_rules parity. When
+            // EnableComboExpiredEvent is true, emit for dual-runtime regen paths.
             ComboCount = 0;
+            if (_config.EnableComboExpiredEvent)
+            {
+                events |= RunEvent.ComboExpired;
+                orderedEvents.Add(new RunEventDetail(RunEventKind.ComboExpired, Value: 0));
+            }
         }
     }
 

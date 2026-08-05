@@ -25,6 +25,7 @@ public sealed record RunConfig(
     int SegmentDetachObstacleTicks = 200,
     int SegmentDetachMaxSegments = 5,
     bool EnableNearMiss = false,
+    bool EnableComboExpiredEvent = false,
     int StarvationWarningTicks = 200)
 {
     /// <summary>
@@ -258,6 +259,7 @@ public sealed record RunConfig(
             writer.WriteNumber("segmentDetachObstacleTicks", SegmentDetachObstacleTicks);
             writer.WriteNumber("segmentDetachMaxSegments", SegmentDetachMaxSegments);
             writer.WriteBoolean("enableNearMiss", EnableNearMiss);
+            writer.WriteBoolean("enableComboExpiredEvent", EnableComboExpiredEvent);
             writer.WriteEndObject();
         }
 
