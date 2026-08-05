@@ -93,7 +93,43 @@ public sealed class ArchitectureBoundaryTests
             "Rules sources contain forbidden dependencies: " + string.Join(", ", offenders));
     }
 
-    private static string ResolveRulesSourceDirectory()
+    [Fact]
+    public void Persistence_source_tree_does_not_import_network_clients()
+    {
+        var persistenceDirectory = ResolveSourceDirectory("VibeSnake.Persistence");
+        var offenders = new List<string>();
+        foreach (var file in Directory.EnumerateFiles(
+            persistenceDirectory,
+            "*.cs",
+            SearchOption.AllDirectories))
+        {
+            if (file.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.Ordinal)
+                || file.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            var text = File.ReadAllText(file);
+            if (text.Contains("using Godot", StringComparison.Ordinal)
+                || text.Contains("System.Net.Http", StringComparison.Ordinal)
+                || text.Contains("System.Net.Sockets", StringComparison.Ordinal)
+                || text.Contains("HttpClient", StringComparison.Ordinal)
+                || text.Contains("WebRequest", StringComparison.Ordinal))
+            {
+                offenders.Add(Path.GetRelativePath(persistenceDirectory, file));
+            }
+        }
+
+        Assert.True(
+            offenders.Count == 0,
+            "Persistence sources contain network client surfaces: "
+                + string.Join(", ", offenders));
+    }
+
+    private static string ResolveRulesSourceDirectory() =>
+        ResolveSourceDirectory("VibeSnake.Rules");
+
+    private static string ResolveSourceDirectory(string projectName)
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);
         while (directory is not null)
@@ -102,7 +138,7 @@ public sealed class ArchitectureBoundaryTests
                 directory.FullName,
                 "native",
                 "src",
-                "VibeSnake.Rules");
+                projectName);
             if (Directory.Exists(candidate))
             {
                 return candidate;
@@ -111,6 +147,7 @@ public sealed class ArchitectureBoundaryTests
             directory = directory.Parent;
         }
 
-        throw new DirectoryNotFoundException("Could not locate native/src/VibeSnake.Rules.");
+        throw new DirectoryNotFoundException(
+            "Could not locate native/src/" + projectName + ".");
     }
 }
