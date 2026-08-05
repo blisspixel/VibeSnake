@@ -184,8 +184,13 @@ public sealed class PropertyCampaignTests
                 SnakeRun.StateHashAlgorithmId,
                 root.GetProperty("engine").GetProperty("state_hash_algorithm").GetString());
             Assert.True(root.GetProperty("steps_executed").GetInt32() > 0);
+            Assert.Equal(restoresExecuted, root.GetProperty("restores_executed").GetInt32());
+            Assert.Equal(restartsExecuted, root.GetProperty("restarts_executed").GetInt32());
             Assert.Contains(
                 "score_non_decreasing",
+                root.GetProperty("invariants_checked").EnumerateArray().Select(e => e.GetString()));
+            Assert.Contains(
+                "session_counters_clear_on_restart",
                 root.GetProperty("invariants_checked").EnumerateArray().Select(e => e.GetString()));
         }
 
@@ -193,6 +198,7 @@ public sealed class PropertyCampaignTests
         Assert.True(result.Passed);
         Assert.True(stepsExecuted >= seedCount);
         Assert.True(restoresExecuted > 0);
+        Assert.True(restartsExecuted > 0);
     }
 
     private static PropertyCampaignFailure? CheckInvariants(
