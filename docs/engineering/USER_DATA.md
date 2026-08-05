@@ -37,6 +37,7 @@ Notes:
 | `replays/.vibesnake-replay-store.lock` | `ReplayStore` | Cross-process store lock |
 | `replays/*.vibesnake-replay.json` | `ReplayStore` | Individual verified replay files |
 | `preferences.json` | `PreferencesStore` | Schema 2 multi-bus audio and accessibility settings |
+| `achievements.json` | `AchievementsStore` | Schema 1 permanent unlock IDs for rules-local achievement candidates |
 | `diagnostics/` | `LocalDiagnostics` | Offline crash reports with path sanitization; `EnsureDiagnosticsDirectory()` creates the folder for open-folder UI |
 | `logs/vibesnake.jsonl` | `StructuredLocalLog` | Append-only structured JSONL support log with level filter, path sanitization, 1 MiB rotation, and rotated-file retention |
 | `input/*.input_bindings.json` | `InputBindingsStore` | Logical action bindings by device class |

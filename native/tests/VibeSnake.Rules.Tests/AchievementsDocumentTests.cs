@@ -1,0 +1,129 @@
+using VibeSnake.Persistence;
+
+namespace VibeSnake.Rules.Tests;
+
+public sealed class AchievementsDocumentTests
+{
+    [Fact]
+    public void Defaults_have_empty_unlock_set()
+    {
+        var document = AchievementsDocument.CreateDefaults();
+        Assert.Equal(1, document.SchemaVersion);
+        Assert.Empty(document.UnlockedIds);
+        Assert.Empty(document.UnlockedSet);
+    }
+
+    [Fact]
+    public void Round_trips_through_atomic_store()
+    {
+        var root = Path.Combine(
+            Path.GetTempPath(),
+            "vibesnake-achievements-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(root);
+        try
+        {
+            var store = new AchievementsStore(root);
+            var document = AchievementsDocument.CreateDefaults()
+                .WithUnlocks(["first_bite", "century"]);
+            store.Save(document);
+
+            var loaded = store.Load();
+            Assert.True(loaded.IsSuccess);
+            Assert.NotNull(loaded.Document);
+            Assert.Equal(
+                new[] { "century", "first_bite" },
+                loaded.Document.UnlockedIds);
+            Assert.Equal(
+                document.SerializeCanonical(),
+                loaded.Document.SerializeCanonical());
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void Missing_file_loads_defaults()
+    {
+        var root = Path.Combine(
+            Path.GetTempPath(),
+            "vibesnake-achievements-missing-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(root);
+        try
+        {
+            var loaded = new AchievementsStore(root).Load();
+            Assert.True(loaded.IsSuccess);
+            Assert.NotNull(loaded.Document);
+            Assert.Empty(loaded.Document.UnlockedIds);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void Rejects_future_schema_without_document()
+    {
+        var result = AchievementsDocument.Read(
+            """
+            {
+              "schemaVersion": 99,
+              "unlockedIds": []
+            }
+            """);
+
+        Assert.Equal(AchievementsLoadCode.UnsupportedSchema, result.Code);
+        Assert.Null(result.Document);
+    }
+
+    [Fact]
+    public void Rejects_unknown_achievement_ids()
+    {
+        var result = AchievementsDocument.Read(
+            """
+            {
+              "schemaVersion": 1,
+              "unlockedIds": ["first_bite", "not_a_real_achievement"]
+            }
+            """);
+
+        Assert.Equal(AchievementsLoadCode.InvalidField, result.Code);
+        Assert.Null(result.Document);
+        Assert.Contains("Unknown achievement id", result.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void WithUnlocks_dedupes_sorts_and_rejects_unknown()
+    {
+        var document = AchievementsDocument.CreateDefaults()
+            .WithUnlocks(["first_bite"]);
+        var merged = document.WithUnlocks(["century", "first_bite"]);
+        Assert.Equal(new[] { "century", "first_bite" }, merged.UnlockedIds);
+        Assert.Throws<ArgumentException>(
+            () => document.WithUnlocks(["totally_fake"]));
+    }
+
+    [Fact]
+    public void EvaluateCandidates_skips_already_unlocked_profile_ids()
+    {
+        var metrics = new RunAchievementMetrics(
+            Score: 150,
+            MaxCombo: 1,
+            Length: 2,
+            FoodEaten: 2,
+            WrapCount: 0,
+            NearMisses: 0,
+            PowerupsCollected: 0,
+            SurvivalTicks: 10,
+            IsTerminal: true);
+
+        var unlocked = AchievementsDocument.CreateDefaults()
+            .WithUnlocks(["first_bite"])
+            .UnlockedSet;
+        var earned = AchievementCatalog.EvaluateCandidates(metrics, unlocked);
+        Assert.Contains("century", earned);
+        Assert.DoesNotContain("first_bite", earned);
+    }
+}
