@@ -31,6 +31,12 @@ public static class ContentPackBudgets
     public static bool IsWithinRadioStationInstalledBudget(long bytes) =>
         bytes >= 0 && bytes <= RadioStationInstalledBytesMaximum;
 
+    public static bool IsWithinCoreInventoryScanBudget(int milliseconds) =>
+        milliseconds >= 0 && milliseconds <= CoreInventoryScanMillisecondsMaximum;
+
+    public static bool IsWithinCoreColdStartBudget(int milliseconds) =>
+        milliseconds >= 0 && milliseconds <= CoreColdStartMillisecondsMaximum;
+
     public static bool IsRadioPackId(string packId) =>
         !string.IsNullOrWhiteSpace(packId)
         && packId.StartsWith(RadioPackIdPrefix, StringComparison.Ordinal)
