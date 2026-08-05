@@ -25,7 +25,7 @@ public sealed record RunConfig(
     int SegmentDetachObstacleTicks = 200,
     int SegmentDetachMaxSegments = 5,
     bool EnableNearMiss = false,
-    bool EnableComboExpiredEvent = false,
+    bool EnableComboExpiredEvent = true,
     int StarvationWarningTicks = 200)
 {
     /// <summary>

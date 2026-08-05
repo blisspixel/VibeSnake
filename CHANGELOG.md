@@ -18,7 +18,7 @@ Notable player-facing and engineering changes are recorded here. The project is 
 - Ended-run overlay shows a compact `RunScoreIdentity` support caption (ruleset contract, score, config-hash prefix).
 - Text scale step hotkeys (F5 down, F6 up) with preferences schema clamp (0.85..1.5) and persistence.
 - Flash-free toggle (F4) and open-diagnostics action (F12) for the offline support path; F12 also copies the diagnostics absolute path to the clipboard.
-- Opt-in `RunConfig.EnableComboExpiredEvent` emits `combo_expired` on combo window elapse (default off for core_rules parity); shell caption recognizes the event.
+- Dual-runtime `combo_expired` event: Python `CoreSimulation` emits it in native order; `EnableComboExpiredEvent` defaults true; regenerated `core_rules_v4` (35 cases) and golden state hash.
 - Flash-free presentation softens high-intensity captions, lengthens caption dwell, and skips non-critical audio cues while keeping death/victory/pause/confirm.
 - Enabling reduced motion zeros screen-shake intensity so the preference cannot leave residual shake.
 - `ShellSettings.EffectiveScreenShakeIntensity` forces zero under reduced motion or flash-free for future camera effects.

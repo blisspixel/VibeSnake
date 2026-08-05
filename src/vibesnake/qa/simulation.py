@@ -46,7 +46,9 @@ class CoreSimulation:
 
         next_starvation_seconds = self.starvation_seconds + self.step_seconds
         starvation_expired = next_starvation_seconds >= self.starvation_limit_seconds
+        combo_before = self.score.combo_count
         self.score.update(self.step_seconds)
+        combo_expired = combo_before > 0 and self.score.combo_count == 0
         previous_direction = self.snake.direction
         next_head = self.snake.peek_next_head()
         ate_food = self.food.position is not None and next_head == self.food.position
@@ -62,6 +64,10 @@ class CoreSimulation:
                     direction=self.snake.direction.name,
                 )
             )
+
+        # Match native order: direction change, then combo_expired, then movement.
+        if combo_expired:
+            events.append(StepEvent(kind="combo_expired", value=0))
 
         if wrapped:
             self.wraps += 1

@@ -46,7 +46,8 @@ public sealed class SharedRuleTraceParityTests
             MaximumDirectionQueue: fixtureConfig.MaximumDirectionQueue,
             FoodScore: fixtureConfig.FoodScore,
             ComboWindowTicks: fixtureConfig.ComboWindowTicks,
-            SpeedBonusTicks: fixtureConfig.SpeedBonusTicks);
+            SpeedBonusTicks: fixtureConfig.SpeedBonusTicks,
+            EnableComboExpiredEvent: true);
         var initial = traceCase.Initial;
         var run = SnakeRun.CreateForTesting(
             config,

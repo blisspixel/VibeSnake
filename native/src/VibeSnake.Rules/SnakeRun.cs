@@ -1376,8 +1376,8 @@ public sealed partial class SnakeRun
         TicksSinceLastFood = checked(TicksSinceLastFood + 1);
         if (TicksSinceLastFood > _config.ComboWindowTicks && ComboCount > 0)
         {
-            // Default silent reset preserves core_rules parity. When
-            // EnableComboExpiredEvent is true, emit for dual-runtime regen paths.
+            // Combo window clear emits combo_expired when enabled (default true after
+            // core_rules dual-runtime regeneration). Disable only for legacy fixtures.
             ComboCount = 0;
             if (_config.EnableComboExpiredEvent)
             {

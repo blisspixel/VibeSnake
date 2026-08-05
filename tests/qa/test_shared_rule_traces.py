@@ -71,7 +71,16 @@ def test_checked_in_rule_fixture_matches_production_rules():
     assert cases["queue-capacity"]["command_acceptance"] == [True, True, True, False, False]
     assert cases["speed-bonus-last-eligible-tick"]["expected"]["events"][2]["value"] == 18
     assert cases["speed-bonus-exact-boundary"]["expected"]["events"][2]["value"] == 13
-    assert cases["expired-combo-late-food-no-speed-bonus"]["expected"]["events"][2]["value"] == 13
+    assert cases["expired-combo-late-food-no-speed-bonus"]["expected"]["events"][0] == {
+        "kind": "combo_expired",
+        "value": 0,
+    }
+    assert cases["expired-combo-late-food-no-speed-bonus"]["expected"]["events"][3]["value"] == 13
+    assert cases["combo-window-expired-no-food"]["expected"]["events"][0] == {
+        "kind": "combo_expired",
+        "value": 0,
+    }
+    assert cases["combo-window-expired-no-food"]["expected"]["combo"] == 0
     assert cases["score-saturation-near-cap"]["expected"]["events"][2]["value"] == 1
     assert cases["score-at-cap"]["expected"]["events"][2]["value"] == 0
     assert cases["score-at-cap"]["expected"]["score"] == 2_000_000_000
