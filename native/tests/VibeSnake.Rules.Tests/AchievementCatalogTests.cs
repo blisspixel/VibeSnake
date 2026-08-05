@@ -249,4 +249,15 @@ public sealed class AchievementCatalogTests
         Assert.Null(AchievementCatalog.DefinitionAt(-1));
         Assert.Null(AchievementCatalog.DefinitionAt(10_000));
     }
+
+    [Fact]
+    public void Catalog_size_and_order_match_dual_runtime_contract()
+    {
+        // Keep aligned with vibesnake.qa.achievement_candidates.DEFINITIONS.
+        Assert.Equal(17, AchievementCatalog.Definitions.Count);
+        Assert.Equal("first_bite", AchievementCatalog.Definitions[0].Id);
+        Assert.Equal("marathon", AchievementCatalog.Definitions[^1].Id);
+        Assert.Equal(0, AchievementCatalog.IndexOf("first_bite"));
+        Assert.Equal(16, AchievementCatalog.IndexOf("marathon"));
+    }
 }
