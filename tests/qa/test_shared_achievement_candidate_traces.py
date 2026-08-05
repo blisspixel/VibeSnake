@@ -8,9 +8,7 @@ from vibesnake.qa.shared_achievement_candidate_traces import (
     check_fixture,
 )
 
-FIXTURE_PATH = (
-    Path(__file__).parents[1] / "fixtures" / "shared" / "achievement_candidates_rules_v1.json"
-)
+FIXTURE_PATH = Path(__file__).parents[1] / "fixtures" / "shared" / "achievement_candidates_rules_v1.json"
 
 
 def test_checked_in_achievement_candidate_fixture_matches_production():

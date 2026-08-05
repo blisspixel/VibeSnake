@@ -116,10 +116,7 @@ def main(argv: list[str] | None = None) -> int:
     with temporary_logger_level("vibesnake", logging.WARNING):
         parser = argparse.ArgumentParser(
             prog="python -m vibesnake.qa.shared_achievement_candidate_traces",
-            description=(
-                "Generate achievement_candidate dual-runtime traces "
-                "(product flag enabled)."
-            ),
+            description=("Generate achievement_candidate dual-runtime traces (product flag enabled)."),
         )
         parser.add_argument("--output", type=Path, default=DEFAULT_FIXTURE_PATH)
         parser.add_argument("--check", action="store_true")
@@ -128,19 +125,14 @@ def main(argv: list[str] | None = None) -> int:
 
         if args.check:
             if check_fixture(args.output, fixture):
-                print(
-                    "Shared achievement-candidate fixture passed: "
-                    f"{fixture['case_count']} targeted cases"
-                )
+                print(f"Shared achievement-candidate fixture passed: {fixture['case_count']} targeted cases")
                 return 0
             print(f"Shared achievement-candidate fixture drift: {args.output}")
             return 1
 
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output.write_text(fixture_json(fixture), encoding="utf-8")
-        print(
-            f"Wrote {args.output} ({fixture['case_count']} achievement-candidate cases)"
-        )
+        print(f"Wrote {args.output} ({fixture['case_count']} achievement-candidate cases)")
         return 0
 
 
@@ -183,17 +175,11 @@ def _execute_specification(specification: dict[str, Any]) -> dict[str, Any]:
     simulation.snake.positions_set = set(body)
     simulation.snake.direction = Direction[initial["direction"]]
     simulation.snake.next_directions.clear()
-    simulation.food.position = (
-        tuple(initial["food"]) if initial["food"] is not None else None
-    )
+    simulation.food.position = tuple(initial["food"]) if initial["food"] is not None else None
     simulation.score.base_score = initial["score"]
     simulation.score.combo_count = initial["combo"]
-    simulation.score.time_since_last_food = (
-        initial["ticks_since_last_food"] * simulation.step_seconds
-    )
-    simulation.starvation_seconds = (
-        initial["starvation_ticks_elapsed"] * simulation.step_seconds
-    )
+    simulation.score.time_since_last_food = initial["ticks_since_last_food"] * simulation.step_seconds
+    simulation.starvation_seconds = initial["starvation_ticks_elapsed"] * simulation.step_seconds
 
     record = simulation.step(())
     normalized_death_cause = {
