@@ -57,6 +57,15 @@ public sealed record AchievementsDocument(
         new HashSet<string>(UnlockedIds, StringComparer.Ordinal);
 
     /// <summary>
+    /// Returns true when <paramref name="id"/> is permanently unlocked.
+    /// </summary>
+    public bool IsUnlocked(string id)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(id);
+        return UnlockedSet.Contains(id);
+    }
+
+    /// <summary>
     /// Returns a document with additional catalog IDs merged in sorted order.
     /// Unknown IDs are rejected so corrupt progression cannot invent unlocks.
     /// </summary>

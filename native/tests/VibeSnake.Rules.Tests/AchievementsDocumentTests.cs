@@ -12,6 +12,17 @@ public sealed class AchievementsDocumentTests
         Assert.Empty(document.UnlockedIds);
         Assert.Empty(document.UnlockedSet);
         Assert.Equal(0, document.UnlockedCount);
+        Assert.False(document.IsUnlocked("first_bite"));
+        Assert.Throws<ArgumentException>(() => document.IsUnlocked(" "));
+    }
+
+    [Fact]
+    public void IsUnlocked_reports_merged_ids()
+    {
+        var document = AchievementsDocument.CreateDefaults()
+            .WithUnlocks(["first_bite"]);
+        Assert.True(document.IsUnlocked("first_bite"));
+        Assert.False(document.IsUnlocked("century"));
     }
 
     [Fact]
