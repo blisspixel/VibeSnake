@@ -6,6 +6,7 @@ Notable player-facing and engineering changes are recorded here. The project is 
 
 ### Added
 
+- Ended-run overlay can show UNLOCK SAVED feedback when permanent unlocks are written.
 - Architecture boundary test locks Rules→Persistence one-way dependency (no cycles with Game).
 
 - Main menu shows rules-local run unlock count (`RUN UNLOCKS n/total`) from `achievements.json`.
