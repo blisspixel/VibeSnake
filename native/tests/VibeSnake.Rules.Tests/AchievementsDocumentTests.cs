@@ -11,6 +11,7 @@ public sealed class AchievementsDocumentTests
         Assert.Equal(1, document.SchemaVersion);
         Assert.Empty(document.UnlockedIds);
         Assert.Empty(document.UnlockedSet);
+        Assert.Equal(0, document.UnlockedCount);
     }
 
     [Fact]
