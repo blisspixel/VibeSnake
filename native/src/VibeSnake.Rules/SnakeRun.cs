@@ -30,6 +30,10 @@ public sealed partial class SnakeRun
     private readonly NearMissDetector _nearMiss = new();
     private readonly ulong? _masterSeed;
     private int _sessionNearMisses;
+    private int _sessionMaxCombo;
+    private int _sessionFoodEaten;
+    private int _sessionWraps;
+    private int _sessionPowerupsCollected;
 
     private SnakeRun(
         RunConfig config,
@@ -197,6 +201,33 @@ public sealed partial class SnakeRun
     /// Rewarded near-miss events in the current run (warnings excluded).
     /// </summary>
     public int SessionNearMisses => _sessionNearMisses;
+
+    /// <summary>Peak combo count reached this run (including the current combo).</summary>
+    public int SessionMaxCombo => Math.Max(_sessionMaxCombo, ComboCount);
+
+    /// <summary>Food items collected this run.</summary>
+    public int SessionFoodEaten => _sessionFoodEaten;
+
+    /// <summary>Successful edge wraps this run.</summary>
+    public int SessionWraps => _sessionWraps;
+
+    /// <summary>Power-ups collected this run.</summary>
+    public int SessionPowerupsCollected => _sessionPowerupsCollected;
+
+    /// <summary>
+    /// Build achievement metrics from the current run. Safe at any status.
+    /// </summary>
+    public RunAchievementMetrics ToAchievementMetrics() =>
+        new(
+            Score: Score,
+            MaxCombo: SessionMaxCombo,
+            Length: _body.Count,
+            FoodEaten: SessionFoodEaten,
+            WrapCount: SessionWraps,
+            NearMisses: SessionNearMisses,
+            PowerupsCollected: SessionPowerupsCollected,
+            SurvivalTicks: Tick,
+            IsTerminal: Status is RunStatus.Dead or RunStatus.Won);
 
     public int TicksSinceLastFood { get; private set; }
 
@@ -550,6 +581,7 @@ public sealed partial class SnakeRun
         orderedEvents.Add(new RunEventDetail(RunEventKind.Moved, Position: nextHead));
         if (wrapped)
         {
+            _sessionWraps = checked(_sessionWraps + 1);
             orderedEvents.Add(new RunEventDetail(RunEventKind.Wrapped, Position: nextHead));
         }
 
@@ -561,6 +593,12 @@ public sealed partial class SnakeRun
             var awardedPoints = (int)Math.Min((long)points, MaximumScore - (long)Score);
             Score += awardedPoints;
             ComboCount++;
+            _sessionFoodEaten = checked(_sessionFoodEaten + 1);
+            if (ComboCount > _sessionMaxCombo)
+            {
+                _sessionMaxCombo = ComboCount;
+            }
+
             TicksSinceLastFood = 0;
             HungerTicksRemaining = _config.StarvationTicks;
             events |= RunEvent.AteFood;
@@ -1246,6 +1284,7 @@ public sealed partial class SnakeRun
         }
 
         PowerPickup = null;
+        _sessionPowerupsCollected = checked(_sessionPowerupsCollected + 1);
         events |= RunEvent.PowerCollected;
         orderedEvents.Add(
             new RunEventDetail(

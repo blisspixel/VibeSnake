@@ -435,7 +435,7 @@ Complete the pure C# simulation boundary so gameplay defects can be reproduced, 
 - Make feedback and analytics consume events without modifying simulation state.
 - Define event ordering when several events occur in one step.
 - Test that retries or redraws never duplicate events.
-- **Progress (not closed):** `RulesEventCatalog` is the closed wire-name owner; `StarvationWarning` is emitted once at the warning band; `NearMiss` awards are default-on after dual-runtime regen (`EnableNearMiss`, clutch/body through Python `CoreSimulation` + pure C# detector); food precedes near-miss in the same step; `ComboExpired` is default-on (`EnableComboExpiredEvent`); `AchievementCandidate` remains reserved without emission until progression wiring lands.
+- **Progress (not closed):** `RulesEventCatalog` is the closed wire-name owner; `StarvationWarning` is emitted once at the warning band; `NearMiss` awards are default-on after dual-runtime regen (`EnableNearMiss`, clutch/body through Python `CoreSimulation` + pure C# detector); food precedes near-miss in the same step; `ComboExpired` is default-on (`EnableComboExpiredEvent`); pure `AchievementCatalog` evaluates run-local candidates (score, length, combo, wraps, near-miss, powers, survival) without profile persistence or event emission yet.
 
 #### V040-06: add replay schema version 1
 

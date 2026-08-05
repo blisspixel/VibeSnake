@@ -145,6 +145,86 @@ public sealed class PersonalityDocumentTests
         Assert.Contains(missing.Issues!, issue => issue.Field == "name");
     }
 
+    [Fact]
+    public void Rejects_blank_strings_and_non_finite_traits()
+    {
+        var blank = PersonalityDocument.Read(
+            """
+            {
+              "name": "   ",
+              "description": "ok",
+              "aggression": 0.1,
+              "risk_tolerance": 0.1,
+              "patience": 0.1,
+              "greed": 0.1,
+              "chaos": 0.1,
+              "power_up_priority": 0.1,
+              "color": [1, 2, 3]
+            }
+            """);
+        Assert.False(blank.IsSuccess);
+        Assert.Contains(blank.Issues!, issue => issue.Field == "name");
+
+        var nan = PersonalityDocument.Read(
+            """
+            {
+              "name": "NaN",
+              "description": "bad trait",
+              "aggression": "NaN",
+              "risk_tolerance": 0.1,
+              "patience": 0.1,
+              "greed": 0.1,
+              "chaos": 0.1,
+              "power_up_priority": 0.1,
+              "color": [1, 2, 3]
+            }
+            """);
+        Assert.False(nan.IsSuccess);
+        Assert.Contains(nan.Issues!, issue => issue.Field == "aggression");
+    }
+
+    [Fact]
+    public void Rejects_path_traversal_and_missing_files()
+    {
+        // File name containing ".." is rejected before open.
+        Assert.Equal(
+            PersonalityLoadCode.PathUnsafe,
+            PersonalityDocument.ReadFile("evil..name.json").Code);
+        Assert.Equal(
+            PersonalityLoadCode.PathUnsafe,
+            PersonalityDocument.ReadFile("not-a-json-file").Code);
+
+        var missingPath = Path.Combine(
+            Path.GetTempPath(),
+            "vibesnake-missing-" + Guid.NewGuid().ToString("N") + ".json");
+        Assert.Equal(
+            PersonalityLoadCode.IoError,
+            PersonalityDocument.ReadFile(missingPath).Code);
+    }
+
+    [Fact]
+    public void Accepts_explicit_schema_version_one()
+    {
+        var result = PersonalityDocument.Read(
+            """
+            {
+              "schemaVersion": 1,
+              "name": "Schema One",
+              "description": "Explicit schema",
+              "aggression": 0.2,
+              "risk_tolerance": 0.3,
+              "patience": 0.4,
+              "greed": 0.5,
+              "chaos": 0.6,
+              "power_up_priority": 0.7,
+              "color": [10, 20, 30]
+            }
+            """);
+        Assert.True(result.IsSuccess);
+        Assert.Equal(1, result.Document!.SchemaVersion);
+        Assert.Equal(0.6, result.Document.Chaos);
+    }
+
     private static string? ResolveExamplePath()
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);
