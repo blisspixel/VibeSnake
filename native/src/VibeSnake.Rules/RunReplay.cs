@@ -155,7 +155,8 @@ public sealed partial class RunReplay
     public static RunReplay Capture(
         SnakeRun initialRun,
         IEnumerable<IReadOnlyList<Direction>> commandsByStep,
-        int checkpointInterval = DefaultCheckpointInterval)
+        int checkpointInterval = DefaultCheckpointInterval,
+        string? appVersion = null)
     {
         ArgumentNullException.ThrowIfNull(initialRun);
         ArgumentNullException.ThrowIfNull(commandsByStep);
@@ -168,7 +169,10 @@ public sealed partial class RunReplay
 
         var initialCanonicalState = initialRun.SerializeCanonicalState();
         var simulation = SnakeRun.RestoreCanonicalState(initialCanonicalState);
-        var recorder = new RunReplayRecorder(simulation, checkpointInterval);
+        var recorder = new RunReplayRecorder(
+            simulation,
+            checkpointInterval,
+            appVersion);
 
         foreach (var commands in commandsByStep)
         {
