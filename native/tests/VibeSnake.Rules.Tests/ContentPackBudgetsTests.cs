@@ -91,6 +91,9 @@ public sealed class ContentPackBudgetsTests
         // Full inventory may exceed the core installed ceiling while radio remains optional.
         Assert.Equal(inventory.TotalBytes, report.InventoryBytes);
         Assert.True(report.InventoryBytes > 0);
+        Assert.Equal(
+            ContentPackBudgets.IsWithinCoreWorkingSetBudget(report.InventoryBytes),
+            report.InventoryWithinCoreWorkingSetBudget);
     }
 
     private static string ResolveInventoryPath()
