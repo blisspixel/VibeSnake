@@ -97,6 +97,22 @@ public sealed class AchievementsDocumentTests
     }
 
     [Fact]
+    public void Accepts_snake_case_schema_version_alias()
+    {
+        var result = AchievementsDocument.Read(
+            """
+            {
+              "schema_version": 1,
+              "unlockedIds": ["first_bite"]
+            }
+            """);
+
+        Assert.True(result.IsSuccess);
+        Assert.NotNull(result.Document);
+        Assert.Equal(new[] { "first_bite" }, result.Document.UnlockedIds);
+    }
+
+    [Fact]
     public void Rejects_unknown_achievement_ids()
     {
         var result = AchievementsDocument.Read(

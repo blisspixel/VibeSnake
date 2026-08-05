@@ -155,7 +155,8 @@ public sealed record AchievementsDocument(
 
     private static AchievementsLoadResult ReadObject(JsonElement root)
     {
-        if (!root.TryGetProperty("schemaVersion", out var schemaElement)
+        if ((!root.TryGetProperty("schemaVersion", out var schemaElement)
+                && !root.TryGetProperty("schema_version", out schemaElement))
             || schemaElement.ValueKind != JsonValueKind.Number
             || !schemaElement.TryGetInt32(out var schemaVersion))
         {
