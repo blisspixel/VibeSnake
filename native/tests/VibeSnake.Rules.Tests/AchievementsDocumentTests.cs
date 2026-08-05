@@ -14,6 +14,23 @@ public sealed class AchievementsDocumentTests
     }
 
     [Fact]
+    public void Canonical_serialization_is_stable_and_sorted()
+    {
+        var document = AchievementsDocument.CreateDefaults()
+            .WithUnlocks(["wrap_around", "first_bite", "century"]);
+        const string expected =
+            """{"schemaVersion":1,"unlockedIds":["century","first_bite","wrap_around"]}""";
+        Assert.Equal(expected, document.SerializeCanonical());
+        Assert.True(AchievementsDocument.Read(expected).IsSuccess);
+    }
+
+    [Fact]
+    public void Store_rejects_relative_user_data_root()
+    {
+        Assert.Throws<ArgumentException>(() => new AchievementsStore("relative/root"));
+    }
+
+    [Fact]
     public void Round_trips_through_atomic_store()
     {
         var root = Path.Combine(

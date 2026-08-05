@@ -6,6 +6,8 @@ Notable player-facing and engineering changes are recorded here. The project is 
 
 ### Added
 
+- Achievements document golden serialization and absolute user-data root rejection coverage.
+
 - Pure `ContentEligibilityReport` summarizes inventory ship, rights, and media-type eligibility breakdowns for pack-approval handoffs while exportEligible remains zero.
 
 - Godot shell loads and saves permanent achievement unlocks; SnakeRun.ApplyProfileUnlocks suppresses already-owned candidates without affecting scores or state hashes.
