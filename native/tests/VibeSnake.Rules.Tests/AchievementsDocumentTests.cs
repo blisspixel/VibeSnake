@@ -264,4 +264,18 @@ public sealed class AchievementsDocumentTests
         var document = AchievementsDocument.CreateDefaults();
         Assert.Throws<ArgumentNullException>(() => document.WithUnlocks(null!));
     }
+
+    [Fact]
+    public void Rejects_numeric_unlocked_ids_container()
+    {
+        var result = AchievementsDocument.Read(
+            """
+            {
+              "schemaVersion": 1,
+              "unlockedIds": 3
+            }
+            """);
+        Assert.Equal(AchievementsLoadCode.InvalidField, result.Code);
+        Assert.Null(result.Document);
+    }
 }
