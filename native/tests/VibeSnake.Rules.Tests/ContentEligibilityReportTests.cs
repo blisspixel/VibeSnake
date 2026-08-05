@@ -59,4 +59,33 @@ public sealed class ContentEligibilityReportTests
         Assert.Equal(1, report.CountsByMediaTypePrefix["audio"]);
         Assert.Equal(1, report.CountsByRightsStatus["unknown"]);
     }
+
+    [Fact]
+    public void Zero_sample_limit_returns_empty_blocked_path_list()
+    {
+        const string json = """
+        {
+          "schemaVersion": 1,
+          "fileCount": 1,
+          "assets": [
+            {
+              "id": "b",
+              "path": "b.mp3",
+              "mediaType": "audio/mpeg",
+              "bytes": 20,
+              "sha256": "11",
+              "exportEligible": false,
+              "shipStatus": "blocked",
+              "rights": { "status": "cleared" }
+            }
+          ]
+        }
+        """;
+        var inventory = ContentInventory.Parse(json);
+        var report = ContentEligibilityReport.FromInventory(inventory, sampleBlockedPathLimit: 0);
+        Assert.Equal(1, report.BlockedCount);
+        Assert.Empty(report.SampleBlockedPaths);
+        Assert.Throws<ArgumentOutOfRangeException>(
+            () => ContentEligibilityReport.FromInventory(inventory, sampleBlockedPathLimit: -1));
+    }
 }
