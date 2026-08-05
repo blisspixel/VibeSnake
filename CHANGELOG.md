@@ -38,6 +38,7 @@ Notable player-facing and engineering changes are recorded here. The project is 
 - Generated state-machine campaign covering once-only `AchievementCandidate` emission across terminal idle steps and terminal restore.
 - Shell `WriteLocalCrashReport` helper pairs structured Error log lines with offline crash reports; smoke asserts `smoke_crash_probe`.
 - Controller input-binding load faults write the same offline crash report and structured Error path as keyboard load faults.
+- Replay envelopes accept optional shell-supplied `appVersion` on capture (product and smoke recorders pass `0.2.1`); legacy envelopes without the field remain readable.
 - `InputBindingsDocument.TryRemapAction` preserves fractional axis thresholds instead of rounding them to integers.
 - Multi-stream `RandomStreamBank` for independent gameplay, AI, cosmetic, radio, and copy PCG32 streams derived from one master seed.
 - Fail-closed native custom AI `PersonalityDocument` validation with schema, trait range, boolean rejection, RGB checks, and filename-scoped errors.

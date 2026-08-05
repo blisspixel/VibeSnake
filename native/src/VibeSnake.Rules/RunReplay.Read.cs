@@ -44,6 +44,18 @@ public sealed partial class RunReplay
                     "The replay kind is not supported.");
             }
 
+            string? appVersion = null;
+            if (root.TryGetProperty("appVersion", out var appVersionElement))
+            {
+                appVersion = appVersionElement.GetString();
+                if (string.IsNullOrWhiteSpace(appVersion) || appVersion.Length > 64)
+                {
+                    return Incompatible(
+                        ReplayCompatibilityCode.InvalidPayload,
+                        "The replay appVersion is empty or exceeds 64 characters.");
+                }
+            }
+
             var rulesetElement = RequireObject(root.GetProperty("ruleset"), "ruleset");
             var rulesetId = ReadString(rulesetElement, "id");
             if (!string.Equals(
@@ -158,7 +170,8 @@ public sealed partial class RunReplay
                 payloadHash,
                 configHash,
                 configHashAlgorithm,
-                writeConfigIdentity);
+                writeConfigIdentity,
+                appVersion);
 
             var expectedPayloadHash = replay.ComputePayloadHash();
             if (!FixedHashEquals(payloadHash, expectedPayloadHash))

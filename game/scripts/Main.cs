@@ -727,7 +727,7 @@ public partial class Main : Node2D
         _run = _run is { Status: not RunStatus.Running } terminalRun
             ? terminalRun.Restart(_nextSeed++)
             : SnakeRun.Create(_nextSeed++, ProductRunConfig());
-        _replayRecorder = new RunReplayRecorder(_run);
+        _replayRecorder = new RunReplayRecorder(_run, appVersion: "0.2.1");
         _screenState = ScreenState.Running;
         _paused = false;
         _pausedByFocusLoss = false;
@@ -1529,7 +1529,7 @@ public partial class Main : Node2D
         var live = SnakeRun.Create(
             SmokeSeed + 1,
             new RunConfig(StarvationTicks: 2));
-        var recorder = new RunReplayRecorder(live, checkpointInterval: 1);
+        var recorder = new RunReplayRecorder(live, checkpointInterval: 1, appVersion: "0.2.1");
         IReadOnlyList<RulesDirection>[] commandsByStep =
         [
             [RulesDirection.Left, RulesDirection.Up],
@@ -2447,7 +2447,7 @@ public partial class Main : Node2D
             RulesDirection.Down,
             food: new GridPoint(6, 4),
             hungerTicksRemaining: 100);
-        _replayRecorder = new RunReplayRecorder(_run);
+        _replayRecorder = new RunReplayRecorder(_run, appVersion: "0.2.1");
 
         var deathResult = _run.Step();
         if (

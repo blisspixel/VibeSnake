@@ -64,6 +64,28 @@ public sealed class RunReplayTests
     }
 
     [Fact]
+    public void Capture_with_recorder_app_version_round_trips()
+    {
+        var initial = SnakeRun.Create(55UL);
+        var recorder = new RunReplayRecorder(initial, checkpointInterval: 1, appVersion: "0.2.1");
+        Assert.True(recorder.TryRecordCommand(Direction.Up));
+        initial.QueueDirection(Direction.Up);
+        var result = initial.Step();
+        Assert.True(recorder.TryCompleteStep(result, initial));
+        var finalized = recorder.Finish(initial);
+        Assert.True(finalized.IsSuccessful);
+        Assert.NotNull(finalized.Replay);
+        Assert.Equal("0.2.1", finalized.Replay.AppVersion);
+
+        var serialized = finalized.Replay.Serialize();
+        var read = RunReplay.Read(serialized);
+        Assert.True(read.Compatibility.IsCompatible);
+        Assert.Equal("0.2.1", read.Replay!.AppVersion);
+        using var document = JsonDocument.Parse(serialized);
+        Assert.Equal("0.2.1", document.RootElement.GetProperty("appVersion").GetString());
+    }
+
+    [Fact]
     public void Verify_rejects_config_identity_mismatch_on_restore()
     {
         var initial = SnakeRun.Create(4242UL, new RunConfig(Width: 10, Height: 8));

@@ -30,6 +30,7 @@ public sealed class RunReplayRecorder
     private readonly string _initialCanonicalState;
     private readonly SnakeRun _mirror;
     private readonly int _checkpointInterval;
+    private readonly string? _appVersion;
     private readonly List<Direction> _pendingCommands = [];
     private readonly List<ReplayStep> _steps = [];
     private readonly List<ReplayCheckpoint> _checkpoints;
@@ -37,7 +38,8 @@ public sealed class RunReplayRecorder
 
     public RunReplayRecorder(
         SnakeRun liveRun,
-        int checkpointInterval = RunReplay.DefaultCheckpointInterval)
+        int checkpointInterval = RunReplay.DefaultCheckpointInterval,
+        string? appVersion = null)
     {
         ArgumentNullException.ThrowIfNull(liveRun);
         if (liveRun.Status != RunStatus.Running)
@@ -52,9 +54,18 @@ public sealed class RunReplayRecorder
             throw new ArgumentOutOfRangeException(nameof(checkpointInterval));
         }
 
+        if (appVersion is not null
+            && (string.IsNullOrWhiteSpace(appVersion) || appVersion.Length > 64))
+        {
+            throw new ArgumentException(
+                "appVersion must be non-empty and at most 64 characters when provided.",
+                nameof(appVersion));
+        }
+
         _initialCanonicalState = liveRun.SerializeCanonicalState();
         _mirror = SnakeRun.RestoreCanonicalState(_initialCanonicalState);
         _checkpointInterval = checkpointInterval;
+        _appVersion = appVersion?.Trim();
         _checkpoints = [new ReplayCheckpoint(0, _mirror.ComputeStateHash())];
     }
 
@@ -225,7 +236,8 @@ public sealed class RunReplayRecorder
                 _checkpoints,
                 outcome,
                 _mirror.ConfigHash,
-                _mirror.ConfigHashAlgorithm);
+                _mirror.ConfigHashAlgorithm,
+                _appVersion);
         }
         catch (ArgumentException exception)
         {

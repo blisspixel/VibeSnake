@@ -28,7 +28,8 @@ public sealed partial class RunReplay
         string? payloadHash = null,
         string? configHash = null,
         string? configHashAlgorithm = null,
-        bool writeConfigIdentity = true)
+        bool writeConfigIdentity = true,
+        string? appVersion = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(initialCanonicalState);
         ArgumentNullException.ThrowIfNull(steps);
@@ -82,6 +83,22 @@ public sealed partial class RunReplay
         _checkpoints = Array.AsReadOnly(checkpointCopy);
         Outcome = outcome;
         _writeConfigIdentity = writeConfigIdentity;
+        if (appVersion is not null)
+        {
+            if (string.IsNullOrWhiteSpace(appVersion) || appVersion.Length > 64)
+            {
+                throw new ArgumentException(
+                    "Replay appVersion must be non-empty and at most 64 characters when provided.",
+                    nameof(appVersion));
+            }
+
+            AppVersion = appVersion.Trim();
+        }
+        else
+        {
+            AppVersion = null;
+        }
+
         (ConfigHash, ConfigHashAlgorithm) = ResolveConfigIdentity(
             initialCanonicalState,
             configHash,
@@ -109,6 +126,12 @@ public sealed partial class RunReplay
     public string StateHashAlgorithmId => SnakeRun.StateHashAlgorithmId;
 
     public string InitialCanonicalState { get; }
+
+    /// <summary>
+    /// Optional application version string supplied by the shell at capture time.
+    /// Absent on legacy envelopes; not used for rules determinism.
+    /// </summary>
+    public string? AppVersion { get; }
 
     /// <summary>
     /// Effective rules configuration digest captured at recording time.
@@ -201,7 +224,8 @@ public sealed partial class RunReplay
         IEnumerable<ReplayCheckpoint> checkpoints,
         ReplayOutcome outcome,
         string? configHash = null,
-        string? configHashAlgorithm = null) =>
+        string? configHashAlgorithm = null,
+        string? appVersion = null) =>
         new(
             initialCanonicalState,
             steps,
@@ -210,7 +234,8 @@ public sealed partial class RunReplay
             outcome,
             configHash: configHash,
             configHashAlgorithm: configHashAlgorithm,
-            writeConfigIdentity: true);
+            writeConfigIdentity: true,
+            appVersion: appVersion);
 
     public ReplayVerificationResult Verify(
         long maximumWorkUnits = MaximumVerificationWorkUnits)
@@ -384,7 +409,8 @@ public sealed partial class RunReplay
         IEnumerable<ReplayCheckpoint> checkpoints,
         ReplayOutcome outcome,
         string? configHash = null,
-        string? configHashAlgorithm = null) =>
+        string? configHashAlgorithm = null,
+        string? appVersion = null) =>
         CreateRecorded(
             initialCanonicalState,
             steps,
@@ -392,7 +418,8 @@ public sealed partial class RunReplay
             checkpoints,
             outcome,
             configHash,
-            configHashAlgorithm);
+            configHashAlgorithm,
+            appVersion);
 
     internal static bool IsStateHash(string? value) => IsLowerHex(value, 16);
 
@@ -480,6 +507,10 @@ public sealed partial class RunReplay
             writer.WriteStartObject();
             writer.WriteNumber("schemaVersion", SchemaVersion);
             writer.WriteString("kind", Kind);
+            if (AppVersion is not null)
+            {
+                writer.WriteString("appVersion", AppVersion);
+            }
 
             writer.WriteStartObject("ruleset");
             writer.WriteString("id", Ruleset.Id);

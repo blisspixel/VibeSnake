@@ -21,7 +21,7 @@ The gated 1.0 target remains Godot 4 .NET with deterministic pure C# rules and f
 | Python deterministic tests | 466 passing and 3 environment-dependent radio skips on the supported interpreters in CI |
 | Python line coverage | About 87 percent measured with an 80 percent floor enforced by configuration and CI |
 | Native toolchain | Godot 4.7.1 Mono and .NET SDK 10.0.302 pinned and verified |
-| Native contract tests | 373 passing on .NET 10 with an 80 percent line floor per module |
+| Native contract tests | 374 passing on .NET 10 with an 80 percent line floor per module |
 | Cross-language parity | 100 movement cases (25,600 steps), 35 targeted core-rule cases, 8 Shield, 6 Phase Shift, 5 Last Stand, and 9 remaining-power cases pass |
 | Godot integration | Headless import plus seeded rules, restoration, logical input with schema-1 InputMap apply, VirtualViewport letterbox draw, multi-bus volume apply, focus-loss pause, audio buses, fourteen fallback cues, full nine-power markers and captions, cadence-aware stepping, live replay recording, isolated atomic save, and clean shutdown smoke on hosted runners |
 | Native artifacts | Windows, macOS, and Linux player smokes run outside the checkout on matching hosted runners; continuous Python player-latest packages publish from `main` |
