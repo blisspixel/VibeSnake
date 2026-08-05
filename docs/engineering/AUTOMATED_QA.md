@@ -22,7 +22,7 @@ It currently provides:
 - Strict canonical-state restoration with schema 3, rules, RNG, geometry, command-queue, session achievement counters, and terminal-state validation under `fnv1a64-canonical-json-v4`.
 - Generated native state-machine campaigns spanning eight seeds and 512 operations per seed, with command abuse, repeated restoration, session-counter parity, terminal restoration, and restart equivalence checks.
 - Versioned pure-rules property campaign report (`rules-property-campaign-v1` / `property_campaign.json`) and inventory eligibility evidence (`content-eligibility-evidence-v1` / `content_eligibility.json`).
-- Schema 1 `AchievementsDocument` / `AchievementsStore` profile unlocks with shell load/save and `ApplyProfileUnlocks` candidate suppression.
+- Schema 1 `AchievementsDocument` / `AchievementsStore` profile unlocks with shell load/save and `ApplyProfileUnlocks` candidate suppression; Python `CoreSimulation` accepts `already_unlocked_achievements` for dual-runtime experiments.
 - Logical Godot keyboard and any-controller actions, focus-loss pause safety, audio-bus registration, fallback-cue execution, typed Shield feedback priority, and clean headless shutdown checks.
 - A deterministic public content inventory with path safety, strict classification, SHA-256 hashes, bounded JSON, MPEG structural, and decoded PNG integrity, duplicate reporting, rights state, export eligibility, and release-blocker output. Export eligibility remains zero until pack quality and credit gates pass.
 - A 51-package universal Python lock with exact SHA-256 hashes and an input digest, locked NuGet restore with transitive vulnerability audit, full-tree Ruff format and lint gates, and an executable anti-slop policy over active source and canonical docs.
