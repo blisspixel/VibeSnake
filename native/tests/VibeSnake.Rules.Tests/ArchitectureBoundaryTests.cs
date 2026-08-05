@@ -120,6 +120,7 @@ public sealed class ArchitectureBoundaryTests
         "Process.GetCurrentProcess",
         "Thread.Sleep",
         "Task.Delay",
+        "Console.Write",
     ];
 
     [Fact]
