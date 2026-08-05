@@ -15,6 +15,7 @@ Notable player-facing and engineering changes are recorded here. The project is 
 
 - Master volume step hotkeys (`=` / `-` and keypad equivalents) with clamp, unmute-on-raise, and preference persistence.
 - Ended-run overlay shows a compact `RunScoreIdentity` support caption (ruleset contract, score, config-hash prefix).
+- Text scale step hotkeys (F5 down, F6 up) with preferences schema clamp (0.85..1.5) and persistence.
 
 ### Fixed
 

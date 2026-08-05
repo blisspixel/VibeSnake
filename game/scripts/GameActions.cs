@@ -28,6 +28,8 @@ internal static class GameActions
     public const string ToggleFullscreen = "vibe_toggle_fullscreen";
     public const string VolumeUp = "vibe_volume_up";
     public const string VolumeDown = "vibe_volume_down";
+    public const string TextScaleUp = "vibe_text_scale_up";
+    public const string TextScaleDown = "vibe_text_scale_down";
 
     private static readonly string[] RequiredActions =
     [
@@ -61,6 +63,8 @@ internal static class GameActions
             ["toggle_fullscreen"] = ToggleFullscreen,
             ["volume_up"] = VolumeUp,
             ["volume_down"] = VolumeDown,
+            ["text_scale_up"] = TextScaleUp,
+            ["text_scale_down"] = TextScaleDown,
         };
 
     private static readonly HashSet<string> RuntimeActions = [];
@@ -155,6 +159,14 @@ internal static class GameActions
             0.5f,
             KeyEvent(Key.Minus, physical: false),
             KeyEvent(Key.KpSubtract, physical: false));
+        AddAction(
+            TextScaleUp,
+            0.5f,
+            KeyEvent(Key.F6, physical: false));
+        AddAction(
+            TextScaleDown,
+            0.5f,
+            KeyEvent(Key.F5, physical: false));
     }
 
     /// <summary>

@@ -132,6 +132,13 @@ internal sealed class ShellSettings
     /// <summary>Default volume step for keyboard accessibility shortcuts.</summary>
     public const float DefaultVolumeStep = 0.05f;
 
+    /// <summary>Default text-scale step for keyboard accessibility shortcuts.</summary>
+    public const float DefaultTextScaleStep = 0.05f;
+
+    public const float MinimumTextScale = 0.85f;
+
+    public const float MaximumTextScale = 1.5f;
+
     /// <summary>
     /// Adjusts master volume by <paramref name="delta"/>, clamps to 0..1, and
     /// returns the new volume. Unmutes master when increasing from muted silence.
@@ -150,5 +157,20 @@ internal sealed class ShellSettings
         }
 
         return MasterVolume;
+    }
+
+    /// <summary>
+    /// Adjusts text scale by <paramref name="delta"/> and clamps to the
+    /// preferences schema range (0.85..1.5).
+    /// </summary>
+    public float AdjustTextScale(float delta)
+    {
+        if (float.IsNaN(delta) || float.IsInfinity(delta))
+        {
+            throw new ArgumentOutOfRangeException(nameof(delta));
+        }
+
+        TextScale = Math.Clamp(TextScale + delta, MinimumTextScale, MaximumTextScale);
+        return TextScale;
     }
 }
