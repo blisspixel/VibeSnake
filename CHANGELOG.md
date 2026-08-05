@@ -20,6 +20,7 @@ Notable player-facing and engineering changes are recorded here. The project is 
 - Opt-in `RunConfig.EnableComboExpiredEvent` emits `combo_expired` on combo window elapse (default off for core_rules parity); shell caption recognizes the event.
 - Flash-free presentation softens high-intensity captions, lengthens caption dwell, and skips non-critical audio cues while keeping death/victory/pause/confirm.
 - Enabling reduced motion zeros screen-shake intensity so the preference cannot leave residual shake.
+- `ShellSettings.EffectiveScreenShakeIntensity` forces zero under reduced motion or flash-free for future camera effects.
 
 ### Fixed
 

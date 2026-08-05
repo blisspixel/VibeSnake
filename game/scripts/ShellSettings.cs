@@ -101,6 +101,13 @@ internal sealed class ShellSettings
     public float EffectiveUiVolume() =>
         MasterMuted || UiMuted ? 0.0f : MasterVolume * UiVolume;
 
+    /// <summary>
+    /// Screen-shake scale after accessibility gates. Reduced motion and
+    /// flash-free both force zero so later camera effects cannot ignore prefs.
+    /// </summary>
+    public float EffectiveScreenShakeIntensity() =>
+        ReducedMotion || FlashFree ? 0.0f : ScreenShakeIntensity;
+
     /// <summary>Flips master mute and returns the new muted state.</summary>
     public bool ToggleMasterMute()
     {

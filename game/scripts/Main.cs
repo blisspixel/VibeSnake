@@ -1988,6 +1988,27 @@ public partial class Main : Node2D
             throw new InvalidOperationException("Flash-free caption soften contract failed.");
         }
 
+        settings.ScreenShakeIntensity = 0.8f;
+        settings.ReducedMotion = false;
+        settings.FlashFree = false;
+        if (Math.Abs(settings.EffectiveScreenShakeIntensity() - 0.8f) > 0.0001f)
+        {
+            throw new InvalidOperationException("Effective screen shake without a11y gates failed.");
+        }
+
+        settings.FlashFree = true;
+        if (settings.EffectiveScreenShakeIntensity() != 0.0f)
+        {
+            throw new InvalidOperationException("Flash-free must force effective screen shake to zero.");
+        }
+
+        settings.FlashFree = false;
+        settings.ReducedMotion = true;
+        if (settings.EffectiveScreenShakeIntensity() != 0.0f)
+        {
+            throw new InvalidOperationException("Reduced motion must force effective screen shake to zero.");
+        }
+
         if (_preferencesStore is null || _diagnostics is null)
         {
             throw new InvalidOperationException("Preferences and diagnostics services were not ready.");
