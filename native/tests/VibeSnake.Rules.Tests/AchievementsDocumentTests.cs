@@ -278,4 +278,14 @@ public sealed class AchievementsDocumentTests
         Assert.Equal(AchievementsLoadCode.InvalidField, result.Code);
         Assert.Null(result.Document);
     }
+
+    [Fact]
+    public void WithUnlocks_empty_sequence_preserves_existing_ids()
+    {
+        var document = AchievementsDocument.CreateDefaults()
+            .WithUnlocks(["first_bite"]);
+        var same = document.WithUnlocks(Array.Empty<string>());
+        Assert.Equal(document.UnlockedIds, same.UnlockedIds);
+        Assert.Equal(document.SerializeCanonical(), same.SerializeCanonical());
+    }
 }
