@@ -1,3 +1,4 @@
+using System.Text.Json;
 using VibeSnake.Persistence;
 
 namespace VibeSnake.Rules.Tests;
@@ -46,6 +47,76 @@ public sealed class ContentInventoryGateTests
                 Assert.False(string.IsNullOrWhiteSpace(path));
                 Assert.False(System.IO.Path.IsPathRooted(path));
             });
+
+        var evidencePath = WriteEligibilityEvidence(eligibility);
+        Assert.True(File.Exists(evidencePath));
+        using var document = JsonDocument.Parse(File.ReadAllText(evidencePath));
+        var root = document.RootElement;
+        Assert.Equal(1, root.GetProperty("schema_version").GetInt32());
+        Assert.Equal("content-eligibility-evidence-v1", root.GetProperty("kind").GetString());
+        Assert.Equal(0, root.GetProperty("export_eligible_count").GetInt32());
+        Assert.Equal(106, root.GetProperty("blocked_count").GetInt32());
+    }
+
+    private static string WriteEligibilityEvidence(ContentEligibilityReport report)
+    {
+        var directory = ResolveEvidenceDirectory();
+        Directory.CreateDirectory(directory);
+        var path = Path.Combine(directory, "content_eligibility.json");
+        var payload = new
+        {
+            schema_version = 1,
+            kind = "content-eligibility-evidence-v1",
+            report.FileCount,
+            report.ExportEligibleCount,
+            report.ExportEligibleBytes,
+            report.BlockedCount,
+            report.ExcludedCount,
+            report.HasAnyExportEligible,
+            report.CountsByShipStatus,
+            report.CountsByRightsStatus,
+            report.CountsByMediaTypePrefix,
+            report.SampleBlockedPaths,
+            notes = new[]
+            {
+                "Published inventory classification only.",
+                "exportEligible remains zero until human pack approval.",
+            },
+        };
+        File.WriteAllText(
+            path,
+            JsonSerializer.Serialize(
+                payload,
+                new JsonSerializerOptions
+                {
+                    WriteIndented = true,
+                    PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
+                }) + "\n");
+        return path;
+    }
+
+    private static string ResolveEvidenceDirectory()
+    {
+        var configured = Environment.GetEnvironmentVariable("VIBESNAKE_EVIDENCE_DIR");
+        if (!string.IsNullOrWhiteSpace(configured))
+        {
+            return Path.GetFullPath(configured);
+        }
+
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+        while (directory is not null)
+        {
+            var roadmap = Path.Combine(directory.FullName, "ROADMAP.md");
+            var solution = Path.Combine(directory.FullName, "native", "VibeSnake.slnx");
+            if (File.Exists(roadmap) && File.Exists(solution))
+            {
+                return Path.Combine(directory.FullName, "TestResults", "native");
+            }
+
+            directory = directory.Parent;
+        }
+
+        return Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "TestResults", "native"));
     }
 
     private static string ResolveInventoryPath()
