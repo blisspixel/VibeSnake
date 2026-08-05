@@ -6,6 +6,7 @@ Notable player-facing and engineering changes are recorded here. The project is 
 
 ### Added
 
+- Ended-run overlay shows RUN UNLOCKS progress from permanent profile unlocks.
 - Achievements documents accept schema_version as an alias for schemaVersion on load.
 - Headless smoke asserts structured chievements_load after shell startup unlock restore.
 - Ended-run overlay can show UNLOCK SAVED feedback when permanent unlocks are written.
