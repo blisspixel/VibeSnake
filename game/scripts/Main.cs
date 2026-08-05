@@ -216,18 +216,44 @@ public partial class Main : Node2D
         _shellSettings = ShellSettings.CreateDefaults();
         if (loaded.Code is PreferencesLoadCode.UnsupportedSchema or PreferencesLoadCode.InvalidJson)
         {
-            _structuredLog?.Warning(
-                "preferences",
-                loaded.Message,
+            WriteLocalCrashReport(
+                "SettingsLoad",
+                new InvalidOperationException(loaded.Message),
                 eventCode: "preferences_load_failed");
-            _diagnostics?.WriteCrashReport(
-                appVersion: "0.2.1",
-                platform: OS.GetName(),
-                rulesetId: SnakeRun.RulesetId,
-                rulesVersion: SnakeRun.RulesVersion,
-                screenState: "SettingsLoad",
-                exception: new InvalidOperationException(loaded.Message));
         }
+    }
+
+    /// <summary>
+    /// Writes a sanitized offline crash report and a structured log Error line.
+    /// Returns null when diagnostics are unavailable (early init edge cases).
+    /// </summary>
+    private string? WriteLocalCrashReport(
+        string screenState,
+        Exception exception,
+        string? eventCode = "crash_report",
+        string? configHash = null,
+        string? configHashAlgorithm = null)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(screenState);
+        ArgumentNullException.ThrowIfNull(exception);
+        _structuredLog?.Error(
+            "diagnostics",
+            exception.Message,
+            eventCode: eventCode);
+        if (_diagnostics is null)
+        {
+            return null;
+        }
+
+        return _diagnostics.WriteCrashReport(
+            appVersion: "0.2.1",
+            platform: OS.GetName(),
+            rulesetId: SnakeRun.RulesetId,
+            rulesVersion: SnakeRun.RulesVersion,
+            screenState: screenState,
+            exception: exception,
+            configHash: configHash,
+            configHashAlgorithm: configHashAlgorithm);
     }
 
     private void SaveShellSettings()
@@ -336,13 +362,10 @@ public partial class Main : Node2D
         else
         {
             _keyboardBindings = InputBindingsDocument.CreateKeyboardDefaults();
-            _diagnostics?.WriteCrashReport(
-                appVersion: "0.2.1",
-                platform: OS.GetName(),
-                rulesetId: SnakeRun.RulesetId,
-                rulesVersion: SnakeRun.RulesVersion,
-                screenState: "InputBindingsLoad",
-                exception: new InvalidOperationException(loaded.Message));
+            WriteLocalCrashReport(
+                "InputBindingsLoad",
+                new InvalidOperationException(loaded.Message),
+                eventCode: "input_bindings_load_failed");
         }
 
         GameActions.ApplyKeyboardBindings(_keyboardBindings);
@@ -2122,15 +2145,13 @@ public partial class Main : Node2D
         }
 
         var smokeConfigHash = new RunConfig().ComputeConfigHash();
-        var reportPath = _diagnostics.WriteCrashReport(
-            appVersion: "0.2.1",
-            platform: OS.GetName(),
-            rulesetId: SnakeRun.RulesetId,
-            rulesVersion: SnakeRun.RulesVersion,
-            screenState: "Smoke",
-            exception: new InvalidOperationException("Smoke diagnostics probe under C:\\Users\\example\\x"),
+        var reportPath = WriteLocalCrashReport(
+            "Smoke",
+            new InvalidOperationException("Smoke diagnostics probe under C:\\Users\\example\\x"),
+            eventCode: "smoke_crash_probe",
             configHash: smokeConfigHash,
-            configHashAlgorithm: RunConfig.ConfigHashAlgorithmId);
+            configHashAlgorithm: RunConfig.ConfigHashAlgorithmId)
+            ?? throw new InvalidOperationException("Smoke crash report path was not produced.");
         var reportText = System.IO.File.ReadAllText(reportPath);
         if (!System.IO.File.Exists(reportPath)
             || !reportText.Contains("<path>", StringComparison.Ordinal)
@@ -2166,6 +2187,8 @@ public partial class Main : Node2D
         var structuredLogText = System.IO.File.ReadAllText(structuredLogPath);
         if (!structuredLogText.Contains("smoke_session_start", StringComparison.Ordinal)
             || !structuredLogText.Contains("open_diagnostics", StringComparison.Ordinal)
+            || !structuredLogText.Contains("smoke_crash_probe", StringComparison.Ordinal)
+            || !structuredLogText.Contains("\"level\":\"Error\"", StringComparison.Ordinal)
             || !structuredLogText.Contains("\"kind\":\"structured-log\"", StringComparison.Ordinal))
         {
             throw new InvalidOperationException(
