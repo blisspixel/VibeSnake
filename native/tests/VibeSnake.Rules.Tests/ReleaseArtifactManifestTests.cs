@@ -212,5 +212,20 @@ public sealed class ReleaseArtifactManifestTests
         }
     }
 
+    [Fact]
+    public void Accepts_powershell_style_whole_number_doubles()
+    {
+        // Measure-Object Sum + ConvertTo-Json emits totalBytes/bytes as 15.0 style doubles.
+        var json = ValidWindowsJson()
+            .Replace("\"fileCount\": 5", "\"fileCount\": 5.0")
+            .Replace("\"totalBytes\": 15", "\"totalBytes\": 15.0")
+            .Replace("\"bytes\": 3", "\"bytes\": 3.0");
+        var result = ReleaseArtifactManifest.Parse(json);
+        Assert.True(result.IsSuccess, result.Message);
+        Assert.Equal(5, result.Manifest!.FileCount);
+        Assert.Equal(15, result.Manifest.TotalBytes);
+        Assert.All(result.Manifest.Files, entry => Assert.Equal(3, entry.Bytes));
+    }
+
     private static string Hex(int length, char fill = '0') => new(fill, length);
 }

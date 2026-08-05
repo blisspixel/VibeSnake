@@ -389,17 +389,53 @@ public sealed record ReleaseArtifactManifest(
     private static bool TryGetInt(JsonElement root, string name, out int value)
     {
         value = 0;
-        return root.TryGetProperty(name, out var element)
-            && element.ValueKind == JsonValueKind.Number
-            && element.TryGetInt32(out value);
+        if (!root.TryGetProperty(name, out var element)
+            || element.ValueKind != JsonValueKind.Number)
+        {
+            return false;
+        }
+
+        if (element.TryGetInt32(out value))
+        {
+            return true;
+        }
+
+        // PowerShell ConvertTo-Json often emits whole numbers as doubles (e.g. 12.0).
+        if (element.TryGetDouble(out var floating)
+            && floating is >= int.MinValue and <= int.MaxValue
+            && Math.Abs(floating - Math.Round(floating)) < 1e-9)
+        {
+            value = (int)Math.Round(floating);
+            return true;
+        }
+
+        return false;
     }
 
     private static bool TryGetLong(JsonElement root, string name, out long value)
     {
         value = 0;
-        return root.TryGetProperty(name, out var element)
-            && element.ValueKind == JsonValueKind.Number
-            && element.TryGetInt64(out value);
+        if (!root.TryGetProperty(name, out var element)
+            || element.ValueKind != JsonValueKind.Number)
+        {
+            return false;
+        }
+
+        if (element.TryGetInt64(out value))
+        {
+            return true;
+        }
+
+        // PowerShell ConvertTo-Json often emits whole numbers as doubles (e.g. 12.0).
+        if (element.TryGetDouble(out var floating)
+            && floating is >= long.MinValue and <= long.MaxValue
+            && Math.Abs(floating - Math.Round(floating)) < 1e-9)
+        {
+            value = (long)Math.Round(floating);
+            return true;
+        }
+
+        return false;
     }
 
     private static bool TryGetString(JsonElement root, string name, out string value)
