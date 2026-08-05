@@ -41,7 +41,8 @@ Notable player-facing and engineering changes are recorded here. The project is 
 - Replay envelopes accept optional shell-supplied `appVersion` on capture (product and smoke recorders pass `ProductIdentity.AppVersion`); legacy envelopes without the field remain readable; smoke asserts stored replays retain the version.
 - `ProductIdentity.AppVersion` centralizes the shell product version for crash reports and replays; Godot `*.cs.uid` companions are gitignored.
 - Shell structured log records `replay_finalized` and `replay_finalize_failed` around terminal replay capture.
-- Shell structured log records `run_start` when a product run is created or restarted, and `run_won` / `run_dead` when it ends; smoke death path asserts `run_dead` and a replay finalize outcome code.
+- Shell structured log records `run_start` when a product run is created or restarted, and `run_won` / `run_dead` when it ends; smoke death path mirror-completes the terminal step, saves synchronously, and asserts `run_dead` plus `replay_finalized`.
+- Native and exported player smoke harnesses accept 1-4 isolated replays so storage smoke and death-restart can each leave a verified envelope.
 - README screenshot presentation-source fingerprint refreshed after dual-runtime achievement-candidate QA wiring.
 - `InputBindingsDocument.TryRemapAction` preserves fractional axis thresholds instead of rounding them to integers.
 - Multi-stream `RandomStreamBank` for independent gameplay, AI, cosmetic, radio, and copy PCG32 streams derived from one master seed.
