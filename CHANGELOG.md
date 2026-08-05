@@ -6,6 +6,7 @@ Notable player-facing and engineering changes are recorded here. The project is 
 
 ### Added
 
+- Architecture boundary tests ban Process.Start and GetCurrentProcess from pure Rules sources.
 - Achievements maximum unlock capacity is locked at 256 and verified above catalog size.
 - Main menu previews the first unlocked achievement IDs when any permanent unlocks exist.
 - Achievements documents reject empty-string and null unlockedIds entries.
