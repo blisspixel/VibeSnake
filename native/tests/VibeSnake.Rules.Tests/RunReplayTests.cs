@@ -101,6 +101,21 @@ public sealed class RunReplayTests
     }
 
     [Fact]
+    public void Offline_Capture_omits_app_version_when_not_supplied()
+    {
+        var initial = SnakeRun.Create(57UL);
+        var replay = RunReplay.Capture(
+            initial,
+            [[Direction.Up]],
+            checkpointInterval: 1);
+
+        Assert.Null(replay.AppVersion);
+        using var document = JsonDocument.Parse(replay.Serialize());
+        Assert.False(document.RootElement.TryGetProperty("appVersion", out _));
+        Assert.Null(RunReplay.Read(replay.Serialize()).Replay!.AppVersion);
+    }
+
+    [Fact]
     public void Verify_rejects_config_identity_mismatch_on_restore()
     {
         var initial = SnakeRun.Create(4242UL, new RunConfig(Width: 10, Height: 8));
