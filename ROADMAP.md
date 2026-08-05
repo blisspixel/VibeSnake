@@ -487,6 +487,7 @@ Complete the pure C# simulation boundary so gameplay defects can be reproduced, 
 - Port Segment Detach through canonical obstacle ownership, spawn exclusion, expiry, replay, and restart cleanup.
 - Give every instance a stable ID and emit offer, spawn, collection, activation, duration, expiry, consumption, recovery, and death-adjacent events where applicable.
 - Keep visual telegraphs, particles, audio, captions, and camera behavior outside the rules assembly as subscribers to those events.
+- **Progress (not closed):** All nine powers have pure C# lifecycle contracts, unit coverage, Godot presentation and cadence for Slow-Mo/Boost, and shared dual-runtime fixtures (Shield, Phase Shift, Last Stand, remaining six). Remaining: deeper synergy anti-synergy campaigns, permanent corpus compaction, and human recovery-feel observation.
 
 ### 0.4.0 acceptance gate
 

@@ -45,6 +45,20 @@ public sealed class RunScoreIdentityTests
     }
 
     [Fact]
+    public void Achievement_candidate_flag_separates_product_score_category()
+    {
+        // Product runs enable candidates; default fixtures leave them off.
+        // Fair-score categories must not mix those configurations.
+        var fixture = RunScoreIdentity.FromRun(
+            SnakeRun.Create(1UL, new RunConfig(EnableAchievementCandidates: false)));
+        var product = RunScoreIdentity.FromRun(
+            SnakeRun.Create(1UL, new RunConfig(EnableAchievementCandidates: true)));
+
+        Assert.False(fixture.IsSameScoreCategory(product));
+        Assert.NotEqual(fixture.ConfigHash, product.ConfigHash);
+    }
+
+    [Fact]
     public void FromRun_rejects_null()
     {
         Assert.Throws<ArgumentNullException>(() => RunScoreIdentity.FromRun(null!));
