@@ -6,6 +6,7 @@ Notable player-facing and engineering changes are recorded here. The project is 
 
 ### Added
 
+- Achievements documents reject empty-string and null unlockedIds entries.
 - Architecture boundary tests ban wall-clock, global random, and env access from Persistence sources.
 - Python CoreSimulation accepts already_unlocked_achievements to suppress known profile unlocks during dual-runtime experiments.
 - AchievementsDocument.IsUnlocked helper for profile unlock queries.
