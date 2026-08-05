@@ -183,6 +183,36 @@ public sealed class AchievementCatalogTests
     }
 
     [Fact]
+    public void Terminal_step_emits_achievement_candidates_only_once()
+    {
+        var run = SnakeRun.CreateForTesting(
+            new RunConfig(
+                Width: 8,
+                Height: 6,
+                StarvationTicks: 100,
+                PowerSpawnIntervalTicks: 0,
+                EnableAchievementCandidates: true),
+            [new GridPoint(1, 1)],
+            Direction.Right,
+            food: new GridPoint(7, 5),
+            hungerTicksRemaining: 1,
+            score: 150,
+            comboCount: 6);
+
+        var first = run.Step();
+        var second = run.Step();
+
+        Assert.Equal(RunStatus.Dead, run.Status);
+        Assert.Contains(
+            first.OrderedEvents,
+            detail => detail.Kind == RunEventKind.AchievementCandidate);
+        Assert.DoesNotContain(
+            second.OrderedEvents,
+            detail => detail.Kind == RunEventKind.AchievementCandidate);
+        Assert.False(second.Events.HasFlag(RunEvent.AchievementCandidate));
+    }
+
+    [Fact]
     public void Terminal_death_skips_achievement_candidates_when_flag_default_off()
     {
         // Default EnableAchievementCandidates:false keeps dual-runtime parity

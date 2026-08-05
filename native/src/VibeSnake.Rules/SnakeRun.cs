@@ -34,6 +34,7 @@ public sealed partial class SnakeRun
     private int _sessionFoodEaten;
     private int _sessionWraps;
     private int _sessionPowerupsCollected;
+    private bool _achievementCandidatesEmitted;
 
     private SnakeRun(
         RunConfig config,
@@ -822,11 +823,14 @@ public sealed partial class SnakeRun
         List<RunEventDetail> orderedEvents,
         ref RunEvent events)
     {
-        if (!_config.EnableAchievementCandidates)
+        if (!_config.EnableAchievementCandidates || _achievementCandidatesEmitted)
         {
             return;
         }
 
+        // Emit at most once per terminal run so idle Step() after death cannot
+        // re-fire candidate events or captions.
+        _achievementCandidatesEmitted = true;
         var earned = AchievementCatalog.EvaluateCandidates(ToAchievementMetrics());
         foreach (var id in earned)
         {

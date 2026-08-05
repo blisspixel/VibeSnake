@@ -172,6 +172,13 @@ public sealed partial class SnakeRun
             ReadInt32(root, "detachedObstacleTicksRemaining"),
             pendingDirections);
         restored.ValidateRestoredProductionState();
+        // Restored terminal runs already completed candidate emission in life;
+        // do not re-fire when idle Step() is called after restore.
+        if (restored.Status is RunStatus.Dead or RunStatus.Won)
+        {
+            restored._achievementCandidatesEmitted = true;
+        }
+
         return restored;
     }
 
