@@ -1347,17 +1347,22 @@ public partial class Main : Node2D
 
         if (_screenState == ScreenState.Ended)
         {
-            DrawRect(new Rect2(290.0f, 250.0f, 700.0f, 210.0f), new Color(0.01f, 0.02f, 0.018f, 0.92f));
+            DrawRect(new Rect2(290.0f, 240.0f, 700.0f, 230.0f), new Color(0.01f, 0.02f, 0.018f, 0.92f));
             var ending = snapshot.Status == RunStatus.Won ? "GRID COMPLETE" : snapshot.DeathCause.ToString().ToUpperInvariant();
-            DrawLabel(ending, new Vector2(445.0f, 310.0f), 38, new Color(1.0f, 0.75f, 0.3f));
-            DrawLabel("Confirm to coil again", new Vector2(465.0f, 360.0f), 21, Colors.White);
-            DrawLabel("R or Controller North: verify latest replay", new Vector2(430.0f, 390.0f), 16, new Color(0.58f, 0.7f, 0.64f));
+            DrawLabel(ending, new Vector2(445.0f, 300.0f), 38, new Color(1.0f, 0.75f, 0.3f));
+            DrawLabel(
+                $"RUN UNLOCKS {_achievements.UnlockedCount}/{AchievementCatalog.Definitions.Count}",
+                new Vector2(470.0f, 345.0f),
+                16,
+                new Color(0.85f, 0.78f, 0.45f));
+            DrawLabel("Confirm to coil again", new Vector2(465.0f, 375.0f), 21, Colors.White);
+            DrawLabel("R or Controller North: verify latest replay", new Vector2(430.0f, 405.0f), 16, new Color(0.58f, 0.7f, 0.64f));
             if (_run is not null)
             {
                 var identity = RunScoreIdentity.FromRun(_run);
                 DrawLabel(
                     FormatScoreIdentityCaption(identity),
-                    new Vector2(360.0f, 420.0f),
+                    new Vector2(360.0f, 435.0f),
                     14,
                     new Color(0.5f, 0.62f, 0.58f));
             }
