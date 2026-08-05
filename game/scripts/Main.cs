@@ -780,42 +780,45 @@ public partial class Main : Node2D
                 DrawLabel("Plan the route. Build the vibe. Recover with style.", new Vector2(46.0f, 238.0f), ScaledFontSize(24), Colors.White);
                 // Rules-local catalog only (profile-lifetime and wall-clock unlocks
                 // remain Python/progression UI scope beyond this pure set).
+                var browse = AchievementsBrowseReport.FromUnlocks(_achievements.UnlockedIds);
                 DrawLabel(
-                    $"RUN UNLOCKS {_achievements.UnlockedCount}/{AchievementCatalog.Definitions.Count}",
+                    browse.FormatSummaryLine(),
                     new Vector2(46.0f, 270.0f),
                     ScaledFontSize(18),
                     new Color(0.85f, 0.78f, 0.45f));
-                if (_achievements.UnlockedCount > 0)
+                if (browse.HasAnyUnlock)
                 {
-                    var preview = string.Join(
-                        ", ",
-                        _achievements.UnlockedIds.Take(3).Select(static id => id.ToUpperInvariant()));
-                    if (_achievements.UnlockedCount > 3)
-                    {
-                        preview += ", ...";
-                    }
-
                     DrawLabel(
-                        preview,
+                        browse.FormatUnlockedPreview(limit: 3),
                         new Vector2(46.0f, 292.0f),
                         ScaledFontSize(14),
                         new Color(0.7f, 0.65f, 0.4f));
                 }
 
-                DrawLabel("START RUN", new Vector2(46.0f, 318.0f), ScaledFontSize(22), new Color(0.75f, 0.85f, 0.8f));
-                DrawLabel("Enter, Space, or Controller South", new Vector2(46.0f, 346.0f), ScaledFontSize(18), SecondaryTextColor());
-                DrawLabel("R or Controller North: verify latest replay", new Vector2(46.0f, 388.0f), ScaledFontSize(18), SecondaryTextColor());
-                DrawLabel("Drop one replay file here to verify without changing it", new Vector2(46.0f, 420.0f), ScaledFontSize(18), SecondaryTextColor());
+                var rarityCaption = string.Join("  ", browse.FormatRarityProgressLines());
+                if (!string.IsNullOrEmpty(rarityCaption))
+                {
+                    DrawLabel(
+                        rarityCaption,
+                        new Vector2(46.0f, 310.0f),
+                        ScaledFontSize(13),
+                        new Color(0.62f, 0.58f, 0.36f));
+                }
+
+                DrawLabel("START RUN", new Vector2(46.0f, 334.0f), ScaledFontSize(22), new Color(0.75f, 0.85f, 0.8f));
+                DrawLabel("Enter, Space, or Controller South", new Vector2(46.0f, 362.0f), ScaledFontSize(18), SecondaryTextColor());
+                DrawLabel("R or Controller North: verify latest replay", new Vector2(46.0f, 404.0f), ScaledFontSize(18), SecondaryTextColor());
+                DrawLabel("Drop one replay file here to verify without changing it", new Vector2(46.0f, 436.0f), ScaledFontSize(18), SecondaryTextColor());
                 DrawLabel(
                     "F4 flash  F5/F6 text  F7 mute  -/= vol  F9-F11 a11y  F8 binds  F12 logs",
-                    new Vector2(46.0f, 452.0f),
+                    new Vector2(46.0f, 468.0f),
                     ScaledFontSize(16),
                     SecondaryTextColor());
                 if (_controllerCaption is not null)
                 {
                     DrawLabel(
                         _controllerCaption,
-                        new Vector2(46.0f, 484.0f),
+                        new Vector2(46.0f, 500.0f),
                         ScaledFontSize(16),
                         new Color(0.75f, 0.9f, 0.55f));
                 }
@@ -1367,8 +1370,9 @@ public partial class Main : Node2D
             DrawRect(new Rect2(290.0f, 240.0f, 700.0f, 230.0f), new Color(0.01f, 0.02f, 0.018f, 0.92f));
             var ending = snapshot.Status == RunStatus.Won ? "GRID COMPLETE" : snapshot.DeathCause.ToString().ToUpperInvariant();
             DrawLabel(ending, new Vector2(445.0f, 300.0f), 38, new Color(1.0f, 0.75f, 0.3f));
+            var endedBrowse = AchievementsBrowseReport.FromUnlocks(_achievements.UnlockedIds);
             DrawLabel(
-                $"RUN UNLOCKS {_achievements.UnlockedCount}/{AchievementCatalog.Definitions.Count}",
+                endedBrowse.FormatSummaryLine(),
                 new Vector2(470.0f, 345.0f),
                 16,
                 new Color(0.85f, 0.78f, 0.45f));
