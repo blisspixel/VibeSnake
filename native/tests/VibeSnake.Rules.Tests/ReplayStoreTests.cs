@@ -1,4 +1,5 @@
 using System.Text;
+using System.Text.Json;
 using VibeSnake.Persistence;
 
 namespace VibeSnake.Rules.Tests;
@@ -181,6 +182,20 @@ public sealed class ReplayStoreTests
         Assert.True(latest.IsSuccess, latest.Message);
         Assert.Equal(laterSave.FileName, latest.FileName);
         Assert.Equal(secondReplay.PayloadHash, latest.Replay?.PayloadHash);
+
+        File.WriteAllText(
+            Path.Combine(earlier.ReplayDirectory, "manual.vibesnake-replay.json"),
+            "not a generated replay name",
+            new UTF8Encoding(false));
+        var listed = earlier.ListStored();
+        Assert.True(listed.IsSuccess, listed.Message);
+        Assert.Equal(ReplayListCode.Listed, listed.Code);
+        Assert.Equal(2, listed.Replays.Count);
+        Assert.Equal(laterSave.FileName, listed.Replays[0].FileName);
+        Assert.Equal("2026-08-01T02:00:00.000Z", listed.Replays[0].StoredAtUtc);
+        Assert.Equal(secondReplay.PayloadHash, listed.Replays[0].PayloadHash);
+        Assert.True(listed.Replays[0].FileBytes > 0);
+        Assert.Equal(firstReplay.PayloadHash, listed.Replays[1].PayloadHash);
     }
 
     [Fact]
@@ -190,6 +205,8 @@ public sealed class ReplayStoreTests
         var store = new ReplayStore(temporary.Path);
 
         Assert.Equal(ReplayLoadCode.NotFound, store.LoadLatest().Code);
+        Assert.True(store.ListStored().IsSuccess);
+        Assert.Empty(store.ListStored().Replays);
         Assert.Equal(ReplayLoadCode.NotFound, store.Load("missing.vibesnake-replay.json").Code);
         Assert.Equal(ReplayLoadCode.InvalidName, store.Load("../escape.vibesnake-replay.json").Code);
         Assert.Equal(ReplayLoadCode.InvalidName, store.Load("stream:escape.vibesnake-replay.json").Code);
@@ -287,6 +304,7 @@ public sealed class ReplayStoreTests
         Assert.Equal(ReplayLoadCode.IoFailure, load.Code);
         Assert.False(load.IsSuccess);
         Assert.Equal(ReplayLoadCode.IoFailure, store.LoadLatest().Code);
+        Assert.Equal(ReplayListCode.IoFailure, store.ListStored().Code);
     }
 
     [Fact]
@@ -398,6 +416,7 @@ public sealed class ReplayStoreTests
         var overflowName = $"20260102T000000000Z_{ReplayStore.MaximumStoredReplays:x64}{ReplayStore.ReplayFileExtension}";
         File.WriteAllBytes(Path.Combine(store.ReplayDirectory, overflowName), []);
         Assert.Equal(ReplayLoadCode.CapacityExceeded, store.LoadLatest().Code);
+        Assert.Equal(ReplayListCode.CapacityExceeded, store.ListStored().Code);
     }
 
     [Fact]
@@ -421,6 +440,483 @@ public sealed class ReplayStoreTests
         Assert.Single(Directory.GetFiles(
             store.ReplayDirectory,
             $"*{ReplayStore.ReplayFileExtension}"));
+
+        using (var stream = File.Open(existing, FileMode.Open, FileAccess.Write, FileShare.None))
+        {
+            stream.SetLength(ReplayStore.MaximumStoredReplayBytes + 1L);
+        }
+
+        Assert.Equal(ReplayListCode.CapacityExceeded, store.ListStored().Code);
+    }
+
+    [Fact]
+    public void Browser_inspects_complete_metadata_and_distinguishes_replay_states()
+    {
+        using var temporary = new TemporaryDirectory("replay browser states");
+        var store = new ReplayStore(
+            temporary.Path,
+            new FixedTimeProvider(
+                new DateTimeOffset(2026, 8, 8, 1, 2, 3, 4, TimeSpan.Zero)));
+        IReadOnlyList<Direction>[] commands = [[Direction.Up], [Direction.Left]];
+        var verifiedReplay = RunReplay.Capture(
+            SnakeRun.Create(901UL, RunModeCatalog.CreateConfig(RunModeCatalog.Vibe)),
+            commands,
+            checkpointInterval: 1,
+            appVersion: "0.2.1",
+            capturedAtUtc: "2026-08-07T23:59:58.123Z");
+        var saved = store.Save(verifiedReplay);
+        Assert.True(saved.IsSuccess, saved.Message);
+        Directory.CreateDirectory(store.ReplayDirectory);
+        WriteGeneratedReplay(
+            store,
+            1,
+            verifiedReplay.Serialize().Replace(
+                "\"schemaVersion\":1",
+                "\"schemaVersion\":2",
+                StringComparison.Ordinal));
+        WriteGeneratedReplay(
+            store,
+            2,
+            verifiedReplay.Serialize().Replace(
+                "\"commands\":[0]",
+                "\"commands\":[1]",
+                StringComparison.Ordinal));
+        WriteGeneratedReplay(store, 3, "{");
+
+        var result = store.BrowseStored();
+
+        Assert.True(result.IsSuccess, result.Message);
+        Assert.Equal(4, result.Replays.Count);
+        var verified = Assert.Single(result.Replays, entry => entry.IsPlayable);
+        Assert.Equal(ReplayBrowserState.Verified, verified.State);
+        Assert.Equal(nameof(ReplayVerificationCode.Verified), verified.StatusCode);
+        Assert.Equal("2026-08-08T01:02:03.004Z", verified.StoredAtUtc);
+        Assert.Equal("2026-08-07T23:59:58.123Z", verified.DisplayedAtUtc);
+        Assert.Equal(RunModeCatalog.VibeId, verified.ModeId);
+        Assert.Equal(RunModeCatalog.CurrentModeVersion, verified.ModeVersion);
+        Assert.Equal(RulesetIdentity.CurrentId, verified.RulesetId);
+        Assert.Equal(RulesetIdentity.CurrentVersion, verified.RulesVersion);
+        Assert.Equal(verifiedReplay.Outcome.Score, verified.Score);
+        Assert.Equal(901UL, verified.GameplaySeed);
+        Assert.Equal(2, verified.StepCount);
+        Assert.Contains(
+            result.Replays,
+            entry => entry.State == ReplayBrowserState.Incompatible
+                && entry.StatusCode == nameof(ReplayCompatibilityCode.UnsupportedSchema));
+        Assert.Contains(
+            result.Replays,
+            entry => entry.State == ReplayBrowserState.Modified
+                && entry.StatusCode == nameof(ReplayCompatibilityCode.IntegrityMismatch));
+        Assert.Contains(
+            result.Replays,
+            entry => entry.State == ReplayBrowserState.Unreadable
+                && entry.StatusCode == nameof(ReplayCompatibilityCode.InvalidPayload));
+    }
+
+    [Fact]
+    public void Browser_and_id_load_report_empty_invalid_missing_and_capacity_failures()
+    {
+        using var temporary = new TemporaryDirectory("replay browser boundaries");
+        var store = new ReplayStore(temporary.Path);
+
+        var empty = store.BrowseStored();
+        Assert.True(empty.IsSuccess);
+        Assert.Empty(empty.Replays);
+        Assert.Equal(
+            ReplayLoadCode.InvalidName,
+            store.LoadByReplayId("not-a-replay-id").Code);
+        Assert.Equal(
+            ReplayLoadCode.NotFound,
+            store.LoadByReplayId(new string('0', 64)).Code);
+
+        Directory.CreateDirectory(store.ReplayDirectory);
+        for (var index = 0; index <= ReplayStore.MaximumStoredReplays; index++)
+        {
+            WriteGeneratedReplay(store, index, string.Empty);
+        }
+
+        var overflow = store.BrowseStored();
+        Assert.False(overflow.IsSuccess);
+        Assert.Equal(ReplayListCode.CapacityExceeded, overflow.Code);
+        Assert.Equal(
+            ReplayLoadCode.CapacityExceeded,
+            store.LoadByReplayId(new string('0', 64)).Code);
+    }
+
+    [Fact]
+    public void Export_is_verified_atomic_idempotent_bounded_and_source_preserving()
+    {
+        using var temporary = new TemporaryDirectory("replay export");
+        var store = new ReplayStore(
+            temporary.Path,
+            new FixedTimeProvider(
+                new DateTimeOffset(2026, 8, 8, 2, 3, 4, 5, TimeSpan.Zero)));
+        var replay = CreateReplay(902UL);
+        var saved = store.Save(replay);
+        Assert.True(saved.IsSuccess, saved.Message);
+        var sourcePath = Path.Combine(store.ReplayDirectory, saved.FileName!);
+        var sourceBefore = File.ReadAllBytes(sourcePath);
+
+        var first = store.Export(replay.PayloadHash);
+        var second = store.Export(replay.PayloadHash);
+
+        Assert.Equal(ReplayExportCode.Exported, first.Code);
+        Assert.Equal(ReplayExportCode.AlreadyExists, second.Code);
+        Assert.True(first.IsSuccess);
+        Assert.True(second.IsSuccess);
+        Assert.Equal(first.FileName, second.FileName);
+        Assert.Equal(replay.PayloadHash, first.PayloadHash);
+        Assert.NotNull(first.FileName);
+        Assert.Matches(
+            "^replay_20260808T020304005Z_[0-9a-f]{64}\\.vibesnake-replay\\.json$",
+            first.FileName);
+        var exportedPath = Path.Combine(store.ReplayExportDirectory, first.FileName);
+        Assert.Equal(replay.Serialize(), File.ReadAllText(exportedPath));
+        Assert.True(store.InspectExternal(exportedPath).IsSuccess);
+        Assert.Equal(sourceBefore, File.ReadAllBytes(sourcePath));
+        Assert.Empty(Directory.GetFiles(store.ReplayExportDirectory, "*.tmp-*"));
+
+        Assert.Equal(
+            ReplayExportCode.InvalidReplayId,
+            store.Export("invalid").Code);
+        Assert.Equal(
+            ReplayExportCode.NotFound,
+            store.Export(new string('f', 64)).Code);
+
+        File.WriteAllText(exportedPath, "different", new UTF8Encoding(false));
+        Assert.Equal(ReplayExportCode.IoFailure, store.Export(replay.PayloadHash).Code);
+        Assert.Equal("different", File.ReadAllText(exportedPath));
+    }
+
+    [Fact]
+    public void Export_rejects_unverified_busy_capacity_and_unavailable_roots()
+    {
+        using (var invalidDirectory = new TemporaryDirectory("invalid replay export"))
+        {
+            var store = new ReplayStore(invalidDirectory.Path);
+            Directory.CreateDirectory(store.ReplayDirectory);
+            var replayId = 1.ToString("x64", System.Globalization.CultureInfo.InvariantCulture);
+            WriteGeneratedReplay(store, 1, "{");
+            Assert.Equal(ReplayExportCode.ReplayUnavailable, store.Export(replayId).Code);
+        }
+
+        using (var busyDirectory = new TemporaryDirectory("busy replay export"))
+        {
+            var store = new ReplayStore(
+                busyDirectory.Path,
+                storeLockWait: TimeSpan.FromMilliseconds(20));
+            var replay = CreateReplay(903UL);
+            Assert.True(store.Save(replay).IsSuccess);
+            using var heldLock = new FileStream(
+                Path.Combine(store.ReplayDirectory, ReplayStore.StoreLockFileName),
+                FileMode.OpenOrCreate,
+                FileAccess.ReadWrite,
+                FileShare.None);
+            Assert.Equal(ReplayExportCode.Busy, store.Export(replay.PayloadHash).Code);
+        }
+
+        using (var capacityDirectory = new TemporaryDirectory("full replay exports"))
+        {
+            var store = new ReplayStore(capacityDirectory.Path);
+            var replay = CreateReplay(904UL);
+            Assert.True(store.Save(replay).IsSuccess);
+            Directory.CreateDirectory(store.ReplayExportDirectory);
+            for (var index = 0; index < ReplayStore.MaximumReplayExports; index++)
+            {
+                File.WriteAllBytes(
+                    Path.Combine(
+                        store.ReplayExportDirectory,
+                        $"replay_{index:000}_{index:x64}{ReplayStore.ReplayFileExtension}"),
+                    []);
+            }
+
+            Assert.Equal(
+                ReplayExportCode.CapacityReached,
+                store.Export(replay.PayloadHash).Code);
+        }
+
+        using var unavailableDirectory = new TemporaryDirectory("unavailable replay exports");
+        var unavailableStore = new ReplayStore(unavailableDirectory.Path);
+        var unavailableReplay = CreateReplay(905UL);
+        Assert.True(unavailableStore.Save(unavailableReplay).IsSuccess);
+        File.WriteAllText(
+            unavailableStore.ReplayExportDirectory,
+            "occupied",
+            new UTF8Encoding(false));
+        Assert.Equal(
+            ReplayExportCode.IoFailure,
+            unavailableStore.Export(unavailableReplay.PayloadHash).Code);
+    }
+
+    [Fact]
+    public void Capture_summary_is_closed_versioned_deterministic_and_privacy_safe()
+    {
+        IReadOnlyList<Direction>[] commands = [[Direction.Up], [Direction.Left]];
+        var replay = RunReplay.Capture(
+            SnakeRun.Create(906UL),
+            commands,
+            checkpointInterval: 1,
+            appVersion: "0.2.1-replay",
+            capturedAtUtc: "2026-08-08T02:03:04.005Z");
+
+        var first = ReplayCaptureSummary.Create(replay, "0.2.1");
+        var second = ReplayCaptureSummary.Create(replay, "0.2.1");
+        var payload = first.Serialize();
+
+        Assert.Equal(payload, second.Serialize());
+        Assert.Equal(ReplayCaptureSummary.CurrentSchemaVersion, first.SchemaVersion);
+        Assert.Equal(ReplayCaptureSummary.KindId, first.Kind);
+        Assert.Equal("0.2.1", first.ExportingAppVersion);
+        Assert.Equal("0.2.1-replay", first.ReplayAppVersion);
+        Assert.Equal(SnakeRun.RulesetId, first.RulesetId);
+        Assert.Equal(SnakeRun.RulesVersion, first.RulesVersion);
+        Assert.Equal(RunModeCatalog.VibeId, first.ModeId);
+        Assert.Equal(RunModeCatalog.CurrentModeVersion, first.ModeVersion);
+        Assert.Equal(RunModeCatalog.VibeFixedScoreCategoryId, first.ScoreCategoryId);
+        Assert.Equal(replay.PayloadHash, first.ReplayPayloadHash);
+        Assert.Equal(906UL, first.GameplaySeed);
+        Assert.False(first.ContainsPlayerIdentity);
+        Assert.False(first.ContainsPrivatePaths);
+        Assert.DoesNotContain("user://", payload, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("C:\\", payload, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("playerName", payload, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("displayName", payload, StringComparison.OrdinalIgnoreCase);
+
+        using var document = JsonDocument.Parse(payload);
+        string[] expectedFields =
+        [
+            "schemaVersion",
+            "kind",
+            "exportingAppVersion",
+            "replayAppVersion",
+            "rulesetId",
+            "rulesVersion",
+            "modeId",
+            "modeVersion",
+            "scoreCategoryId",
+            "configHashAlgorithm",
+            "configHash",
+            "stateHashAlgorithm",
+            "replayIntegrityAlgorithm",
+            "replayPayloadHash",
+            "capturedAtUtc",
+            "gameplaySeed",
+            "stepCount",
+            "finalTick",
+            "status",
+            "deathCause",
+            "score",
+            "finalStateHash",
+            "containsPlayerIdentity",
+            "containsPrivatePaths",
+        ];
+        Assert.Equal(
+            expectedFields,
+            document.RootElement.EnumerateObject().Select(property => property.Name));
+        Assert.Throws<ArgumentNullException>(() =>
+            ReplayCaptureSummary.Create(null!, "0.2.1"));
+        Assert.Throws<ArgumentException>(() =>
+            ReplayCaptureSummary.Create(replay, "bad version/with/path"));
+        Assert.Throws<ArgumentException>(() =>
+            ReplayCaptureSummary.Create(CreateDivergentReplay(), "0.2.1"));
+    }
+
+    [Fact]
+    public void Capture_summary_export_is_atomic_idempotent_bounded_and_non_overwriting()
+    {
+        using var temporary = new TemporaryDirectory("capture summary export");
+        var store = new ReplayStore(temporary.Path);
+        var replay = CreateReplay(907UL);
+        Assert.True(store.Save(replay).IsSuccess);
+
+        var first = store.ExportCaptureSummary(replay.PayloadHash, "0.2.1");
+        var second = store.ExportCaptureSummary(replay.PayloadHash, "0.2.1");
+
+        Assert.Equal(ReplayCaptureSummaryExportCode.Exported, first.Code);
+        Assert.Equal(ReplayCaptureSummaryExportCode.AlreadyExists, second.Code);
+        Assert.True(first.IsSuccess);
+        Assert.True(second.IsSuccess);
+        Assert.Equal(first.FileName, second.FileName);
+        Assert.Matches("^[0-9a-f]{64}$", first.Sha256);
+        Assert.Matches(
+            "^run-summary_[0-9a-f]{64}\\.vibesnake-run-summary\\.json$",
+            first.FileName);
+        var path = Path.Combine(store.ReplayExportDirectory, first.FileName!);
+        var original = File.ReadAllText(path);
+        Assert.Equal(
+            ReplayCaptureSummary.KindId,
+            JsonDocument.Parse(original).RootElement.GetProperty("kind").GetString());
+        Assert.Empty(Directory.GetFiles(store.ReplayExportDirectory, "*.tmp-*"));
+
+        File.WriteAllText(path, "different", new UTF8Encoding(false));
+        var conflict = store.ExportCaptureSummary(replay.PayloadHash, "0.2.1");
+        Assert.Equal(ReplayCaptureSummaryExportCode.IoFailure, conflict.Code);
+        Assert.Equal("different", File.ReadAllText(path));
+        Assert.Equal(
+            ReplayCaptureSummaryExportCode.InvalidReplayId,
+            store.ExportCaptureSummary("invalid", "0.2.1").Code);
+        Assert.Equal(
+            ReplayCaptureSummaryExportCode.NotFound,
+            store.ExportCaptureSummary(new string('f', 64), "0.2.1").Code);
+        Assert.Throws<ArgumentException>(() =>
+            store.ExportCaptureSummary(replay.PayloadHash, " "));
+    }
+
+    [Fact]
+    public void Capture_summary_export_fails_closed_for_unavailable_busy_and_full_stores()
+    {
+        using (var invalidDirectory = new TemporaryDirectory("invalid capture summary"))
+        {
+            var store = new ReplayStore(invalidDirectory.Path);
+            Directory.CreateDirectory(store.ReplayDirectory);
+            var replayId = 1.ToString("x64", System.Globalization.CultureInfo.InvariantCulture);
+            WriteGeneratedReplay(store, 1, "{");
+            Assert.Equal(
+                ReplayCaptureSummaryExportCode.ReplayUnavailable,
+                store.ExportCaptureSummary(replayId, "0.2.1").Code);
+        }
+
+        using (var busyDirectory = new TemporaryDirectory("busy capture summary"))
+        {
+            var store = new ReplayStore(
+                busyDirectory.Path,
+                storeLockWait: TimeSpan.FromMilliseconds(20));
+            var replay = CreateReplay(908UL);
+            Assert.True(store.Save(replay).IsSuccess);
+            using var heldLock = new FileStream(
+                Path.Combine(store.ReplayDirectory, ReplayStore.StoreLockFileName),
+                FileMode.OpenOrCreate,
+                FileAccess.ReadWrite,
+                FileShare.None);
+            Assert.Equal(
+                ReplayCaptureSummaryExportCode.Busy,
+                store.ExportCaptureSummary(replay.PayloadHash, "0.2.1").Code);
+        }
+
+        using (var capacityDirectory = new TemporaryDirectory("full capture summaries"))
+        {
+            var store = new ReplayStore(capacityDirectory.Path);
+            var replay = CreateReplay(909UL);
+            Assert.True(store.Save(replay).IsSuccess);
+            Directory.CreateDirectory(store.ReplayExportDirectory);
+            for (var index = 0; index < ReplayStore.MaximumCaptureSummaryExports; index++)
+            {
+                File.WriteAllBytes(
+                    Path.Combine(
+                        store.ReplayExportDirectory,
+                        $"run-summary_{index:x64}{ReplayStore.CaptureSummaryFileExtension}"),
+                    []);
+            }
+
+            Assert.Equal(
+                ReplayCaptureSummaryExportCode.CapacityReached,
+                store.ExportCaptureSummary(replay.PayloadHash, "0.2.1").Code);
+        }
+
+        using var unavailableDirectory = new TemporaryDirectory("unavailable capture summary");
+        var unavailableStore = new ReplayStore(unavailableDirectory.Path);
+        var unavailableReplay = CreateReplay(910UL);
+        Assert.True(unavailableStore.Save(unavailableReplay).IsSuccess);
+        File.WriteAllText(
+            unavailableStore.ReplayExportDirectory,
+            "occupied",
+            new UTF8Encoding(false));
+        Assert.Equal(
+            ReplayCaptureSummaryExportCode.IoFailure,
+            unavailableStore.ExportCaptureSummary(unavailableReplay.PayloadHash, "0.2.1").Code);
+    }
+
+    [Fact]
+    public void Deletion_requires_exact_fresh_consent_and_preserves_exports()
+    {
+        using var temporary = new TemporaryDirectory("replay delete consent");
+        var store = new ReplayStore(
+            temporary.Path,
+            new FixedTimeProvider(
+                new DateTimeOffset(2026, 8, 8, 3, 4, 5, 6, TimeSpan.Zero)));
+        var replay = CreateReplay(906UL);
+        var saved = store.Save(replay);
+        Assert.True(saved.IsSuccess, saved.Message);
+        var exported = store.Export(replay.PayloadHash);
+        Assert.True(exported.IsSuccess, exported.Message);
+        var storedPath = Path.Combine(store.ReplayDirectory, saved.FileName!);
+        var exportPath = Path.Combine(store.ReplayExportDirectory, exported.FileName!);
+
+        var planned = store.PlanDeletion(replay.PayloadHash);
+
+        Assert.True(planned.IsSuccess, planned.Message);
+        Assert.NotNull(planned.Plan);
+        Assert.True(File.Exists(storedPath));
+        Assert.Contains("Permanently delete", planned.Plan.ConfirmationText, StringComparison.Ordinal);
+        Assert.Equal(
+            ReplayDeletionPlanCode.InvalidReplayId,
+            store.PlanDeletion("invalid").Code);
+        Assert.Equal(
+            ReplayDeletionPlanCode.NotFound,
+            store.PlanDeletion(new string('f', 64)).Code);
+
+        var invalidPlan = planned.Plan with { ContentSha256 = "invalid" };
+        Assert.Equal(ReplayDeleteCode.InvalidPlan, store.Delete(invalidPlan).Code);
+        Assert.True(File.Exists(storedPath));
+
+        var bytes = File.ReadAllBytes(storedPath);
+        bytes[^1] = bytes[^1] == (byte)'\n' ? (byte)' ' : (byte)'\n';
+        File.WriteAllBytes(storedPath, bytes);
+        Assert.Equal(
+            ReplayDeleteCode.ChangedSinceConsent,
+            store.Delete(planned.Plan).Code);
+        Assert.True(File.Exists(storedPath));
+
+        var refreshed = store.PlanDeletion(replay.PayloadHash);
+        Assert.True(refreshed.IsSuccess, refreshed.Message);
+        var deleted = store.Delete(refreshed.Plan!);
+        Assert.True(deleted.IsSuccess, deleted.Message);
+        Assert.False(File.Exists(storedPath));
+        Assert.True(File.Exists(exportPath));
+        Assert.Equal(
+            ReplayDeleteCode.NotFound,
+            store.Delete(refreshed.Plan!).Code);
+    }
+
+    [Fact]
+    public void Deletion_reports_busy_missing_and_unavailable_storage_without_mutation()
+    {
+        using (var missingDirectory = new TemporaryDirectory("missing replay deletion"))
+        {
+            var store = new ReplayStore(missingDirectory.Path);
+            var plan = new ReplayDeletionPlan(
+                new string('1', 64),
+                "2026-08-08T00:00:00.000Z",
+                0,
+                new string('2', 64),
+                "confirm");
+            Assert.Equal(ReplayDeleteCode.NotFound, store.Delete(plan).Code);
+        }
+
+        using (var busyDirectory = new TemporaryDirectory("busy replay deletion"))
+        {
+            var store = new ReplayStore(
+                busyDirectory.Path,
+                storeLockWait: TimeSpan.FromMilliseconds(20));
+            var replay = CreateReplay(907UL);
+            Assert.True(store.Save(replay).IsSuccess);
+            var plan = store.PlanDeletion(replay.PayloadHash).Plan!;
+            using var heldLock = new FileStream(
+                Path.Combine(store.ReplayDirectory, ReplayStore.StoreLockFileName),
+                FileMode.OpenOrCreate,
+                FileAccess.ReadWrite,
+                FileShare.None);
+            Assert.Equal(ReplayDeleteCode.Busy, store.Delete(plan).Code);
+            Assert.True(store.LoadByReplayId(replay.PayloadHash).IsSuccess);
+        }
+
+        using var unavailableDirectory = new TemporaryDirectory("unavailable replay deletion");
+        var rootFile = Path.Combine(unavailableDirectory.Path, "root-file");
+        File.WriteAllText(rootFile, "occupied", new UTF8Encoding(false));
+        var unavailableStore = new ReplayStore(rootFile);
+        Assert.Equal(
+            ReplayDeletionPlanCode.IoFailure,
+            unavailableStore.PlanDeletion(new string('1', 64)).Code);
     }
 
     [Fact]
@@ -439,6 +935,11 @@ public sealed class ReplayStoreTests
         var store = new ReplayStore(temporary.Path);
         Assert.Throws<ArgumentNullException>(() => store.Save(null!));
         Assert.Throws<ArgumentException>(() => store.Load(" "));
+        Assert.Throws<ArgumentException>(() => store.LoadByReplayId(" "));
+        Assert.Throws<ArgumentException>(() => store.Export(" "));
+        Assert.Throws<ArgumentException>(() => store.ExportCaptureSummary(" ", "0.2.1"));
+        Assert.Throws<ArgumentException>(() => store.PlanDeletion(" "));
+        Assert.Throws<ArgumentNullException>(() => store.Delete(null!));
         Assert.Throws<ArgumentException>(() => store.InspectExternal(" "));
     }
 
@@ -499,6 +1000,25 @@ public sealed class ReplayStoreTests
                 new ReplayCheckpoint(finalCheckpoint.StepIndex, alternateHash),
             ],
             valid.Outcome);
+    }
+
+    private static void WriteGeneratedReplay(
+        ReplayStore store,
+        int index,
+        string payload)
+    {
+        var timestamp = new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero)
+            .AddMilliseconds(index)
+            .ToString(
+                "yyyyMMdd'T'HHmmssfff'Z'",
+                System.Globalization.CultureInfo.InvariantCulture);
+        var replayId = index.ToString("x64", System.Globalization.CultureInfo.InvariantCulture);
+        File.WriteAllText(
+            Path.Combine(
+                store.ReplayDirectory,
+                $"{timestamp}_{replayId}{ReplayStore.ReplayFileExtension}"),
+            payload,
+            new UTF8Encoding(false));
     }
 
     private static string ReplaceOnce(

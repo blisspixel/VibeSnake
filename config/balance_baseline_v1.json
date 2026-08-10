@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "kind": "vibesnake-observed-balance-baseline-v1",
+  "classification": "ai-simulation-observation",
+  "reviewed": true,
+  "maximumStepsPerRun": 900,
+  "runCount": 2700,
+  "observedDistributionSha256": "b535409a0b76a6ce5911497de1de76107f59b70516137cf9a83c8dc02da0f792",
+  "observedEvidence": "TestResults/native/balance_baselines.json",
+  "humanTargetRanges": []
+}

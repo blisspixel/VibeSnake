@@ -78,15 +78,34 @@ Tour rewards are expression, context, and new authored challenges. They never ch
 
 Automatic qualification checks schema validity, reachability, dependency cycles, impossible goals, duplicate rewards, grind outliers, rules-category contamination, save migration, deterministic replay, rival equality, and complete localization and caption IDs. Human review later judges motivation, attachment, rivalry appeal, and whether the next event is inviting. Missing human evidence remains visible but does not pause reversible implementation.
 
-## Leaderboard
+## Native V080-04 foundation
+
+The Godot product now implements the automated progression foundation in pure C# and Godot:
+
+- Twenty goals span mastery, discovery, and identity lanes plus early, middle, and mastery pacing. Every row shows exact current/target progress, the exact requirement, Vibe and rules identity, and its expression reward. One next goal can be highlighted without changing other progress.
+- Only the exact canonical normal-human run context can merge terminal run metrics. AI, replay, tutorial, practice, seeded-challenge, modified, and forged lookalike contexts are rejected. There are no completed-run-count goals.
+- Eight curated cosmetic sets replace the theoretical combination count for the native product path. Every locked set maps to one exact Tour event requirement and `0/1` or `1/1` progress. The selected set and up to five unique saved loadouts persist. Patterns, eyes, accessories, head markers, and trails are presentation-only; trail opacity is capped at 50 percent.
+- The Broadcast Tour contains twelve fixed-seed event cards across Local Frequency, District Relay, Regional Coil, and Crown Broadcast. Dependency branches are finite. Every card has canonical mode/rules/score identity, rival and station references, a primary goal, optional style goal, exact expression reward, copy IDs, noncompetitive practice, deterministic replay recording, and immediate same-seed rematch.
+- Tour practice cannot update personal bests, score history, ordinary achievement unlocks, local playtest summaries, or normal-human run metrics. A completed primary goal updates only dependency-closed Tour state, exact earned expression rewards, and derived cosmetic/goal progress.
+- Schema-1 `progression.json` rejects unknown and duplicate fields, oversized data, impossible metric counts, out-of-order Tour completion, forged reward IDs, unearned known rewards, locked selected/saved sets, and mismatched derived counts. Writes use same-directory temporary replacement.
+
+`progression-qualification-v1` covers raw keyboard and controller goal highlighting, Tour browsing/start/return, locked-event rejection, fixed-seed practice isolation, cosmetic selection/loadout persistence, bounded reduced-motion notifications, catalog validation, canonical context references, and rules hash isolation. It deliberately reports `pending-zero-reviewed-human-sessions`: AI and deterministic fixtures do not set human pacing targets.
+
+## Python reference leaderboard
 
 [HighScoreTable](../../src/vibesnake/core/high_scores.py) is the sole leaderboard repository. It stores up to ten validated entries with name, score, and timestamp in descending order in `high_scores.json`. The HUD reads from that repository and does not write a separate score file.
 
 Older checkouts may contain `highscore.json`, which held one HUD score. On first eligible load, `HighScoreTable` imports that entry, merges it with the canonical top ten, and records the completed import in `high_scores.json`. The legacy file is never modified and is not imported again.
 
+## Native local scores
+
+The Godot product stores current competitive personal bests in schema-2 `personal_bests.json` and bounded top-ten history in schema-1 `score_history.json`. Every row is separated by rules version, mode, run purpose, seed category, score category, difficulty policy, DDA state and policy, and full config identity. Normal human and seeded challenge scores are competitive but never share a category. Tutorial, practice, AI, replay, modified, and legacy rows cannot update a current personal best.
+
+Keyboard V or Down and controller Down open Local Scores. Existing personal bests seed history idempotently. Players who want their frozen Python top ten can copy `high_scores.json` to the native `user://imports/high_scores.json` inbox, choose import with R or controller North, and confirm. The importer accepts at most ten schema-1 rows within 64 KiB, records the source SHA-256, does not modify the source, and will not run twice. Because the old file lacks modern rules metadata, imported rows remain visibly noncompetitive under `Legacy 0.2`.
+
 ## Save files and ownership
 
-Every active save document uses schema version 1:
+The frozen Python reference save documents use schema version 1:
 
 | File | Owner | Purpose |
 | --- | --- | --- |
@@ -96,6 +115,15 @@ Every active save document uses schema version 1:
 | `preferences.json` | `UserSettings` | Sound enabled state, master volume, and fullscreen preference |
 
 `highscore.json` is a read-only legacy import source, not an active save document.
+
+Native score ownership is separate:
+
+| File | Owner | Purpose |
+| --- | --- | --- |
+| `personal_bests.json` | `PersonalBestStore` | Schema-2 exact-category personal bests; schema 1 migrates visibly to `Legacy 0.2` |
+| `score_history.json` | `ScoreHistoryStore` | Schema-1 top ten per exact category and completed Python-import marker |
+| `progression.json` | `ProgressionStore` | Schema-1 exact human goals, highlighted goal, selected/saved cosmetic sets, earned expression rewards, and dependency-closed Broadcast Tour completion |
+| `imports/high_scores.json` | Player | Optional read-only Python import source; never reset or modified by native code |
 
 ## Save locations
 
@@ -113,7 +141,7 @@ On first normal launch, known save files in the former project `data/` directory
 
 ## Durability and compatibility
 
-All four repositories share the primitives in [json_store.py](../../src/vibesnake/data/json_store.py):
+All four Python repositories share the primitives in [json_store.py](../../src/vibesnake/data/json_store.py):
 
 - Writes go to a temporary file in the destination directory, are flushed to disk, and replace the previous document atomically.
 - Unreadable or structurally invalid JSON is copied to a non-overwriting `.corrupt.bak` file before defaults are used.
@@ -123,8 +151,10 @@ All four repositories share the primitives in [json_store.py](../../src/vibesnak
 
 Migration, corruption, future-version, isolation, and failed-write behavior are covered in [test_persistence.py](../../tests/core/test_persistence.py) and [test_paths.py](../../tests/core/test_paths.py).
 
+Native score writes use strict bounded parsing and atomic temporary-file replacement. The Local Scores reset category backs up, verifies, removes, and restores `personal_bests.json` and `score_history.json` together while leaving the player-supplied import source alone.
+
 ## Remaining player-facing work
 
-The data layer is durable, but recovery is still technical rather than friendly. Before a public release, add an in-game reset confirmation and a recovery screen that explains when a `.corrupt.bak` file was created. Those tasks are tracked in [ROADMAP.md](../../ROADMAP.md).
+The native product has separated reset confirmation and verified recovery. Human review of recovery wording and real platform file browsers remains before public release. The Python reference recovery path remains technical and frozen except for release-blocking fixes.
 
-Progression also needs its target experience implemented. Build the three goal lanes and Broadcast Tour, replace empty repetition with authored challenges, curate cosmetic sets, and validate every retained set at quiet and maximum effect intensity. No unlock may add survival power, daily obligation, or paid randomness. See [FUN_DESIGN.md](FUN_DESIGN.md#progression-without-grind) and the [world and broadcast bible](WORLD_BIBLE.md#broadcast-tour-progression).
+The automated target experience is implemented. Remaining V080-04 acceptance is human: review real run distributions and unlock order, check quiet and maximum-effect cosmetics on retained platform pixels, judge whether goals motivate interesting play, and assess attachment, rivalry appeal, post-run momentum, and rematch desire. No AI distribution may substitute for that evidence. No unlock may add survival power, daily obligation, or paid randomness. See [FUN_DESIGN.md](FUN_DESIGN.md#progression-without-grind) and the [world and broadcast bible](WORLD_BIBLE.md#broadcast-tour-progression).

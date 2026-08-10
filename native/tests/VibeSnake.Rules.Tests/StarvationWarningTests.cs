@@ -20,6 +20,8 @@ public sealed class StarvationWarningTests
 
         var first = run.Step();
         Assert.Equal(3, run.HungerTicksRemaining);
+        Assert.Equal(10, run.GetSnapshot().HungerMaximumTicks);
+        Assert.Equal(3, run.GetSnapshot().HungerWarningTicks);
         Assert.True(first.Events.HasFlag(RunEvent.StarvationWarning));
         Assert.Contains(
             first.OrderedEvents,

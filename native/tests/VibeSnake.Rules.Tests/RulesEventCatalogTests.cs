@@ -78,4 +78,13 @@ public sealed class RulesEventCatalogTests
                 RunEventKind.AteFood,
             ]));
     }
+
+    [Fact]
+    public void Unknown_event_kinds_are_non_primary_but_have_no_wire_identity()
+    {
+        var unknown = (RunEventKind)255;
+        Assert.False(RulesEventCatalog.IsKnown(unknown));
+        Assert.Equal(0, RulesEventCatalog.PresentationPriority(unknown));
+        Assert.Throws<ArgumentOutOfRangeException>(() => RulesEventCatalog.ToWireName(unknown));
+    }
 }

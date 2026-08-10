@@ -4,6 +4,8 @@ Vibe Snake is an alpha under active development.
 
 - Check the [player guide](docs/guides/PLAYER_GUIDE.md) for controls and setup.
 - Check [current status](docs/release/STATUS.md) before reporting a known gap.
+- Check [known issues](docs/release/KNOWN_ISSUES.md) and the [recovery guide](docs/guides/RECOVERY.md) before changing player data.
+- Review the [privacy statement](PRIVACY.md) before sharing logs or diagnostics.
 - Report vulnerabilities only through [SECURITY.md](SECURITY.md).
 
 Public support, issue, play-feedback, and enhancement intake is currently closed

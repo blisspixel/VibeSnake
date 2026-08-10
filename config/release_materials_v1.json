@@ -1,0 +1,87 @@
+{
+  "schemaVersion": 1,
+  "kind": "vibesnake-release-materials-v1",
+  "status": "foundation-qualified-candidate-pending",
+  "requiredDocumentPaths": [
+    "README.md",
+    "docs/guides/PLAYER_GUIDE.md",
+    "docs/guides/ACCESSIBILITY.md",
+    "PRIVACY.md",
+    "SUPPORT.md",
+    "docs/guides/RECOVERY.md",
+    "docs/release/KNOWN_ISSUES.md",
+    "THIRD_PARTY_NOTICES.md",
+    "CREDITS.md",
+    "CHANGELOG.md"
+  ],
+  "artifactPlatforms": [
+    "windows-x64",
+    "macos-universal",
+    "linux-x64"
+  ],
+  "inputDeviceIds": [
+    "keyboard",
+    "mouse",
+    "xbox-layout-controller",
+    "playstation-layout-controller"
+  ],
+  "screenshotRoles": [
+    "main-menu",
+    "classic-gameplay",
+    "vibe-gameplay",
+    "controls-remapping",
+    "accessibility-settings",
+    "spectator-and-replay"
+  ],
+  "videoRoles": [
+    "gameplay-overview",
+    "accessibility-and-input"
+  ],
+  "marketingClaimIds": [
+    "native-three-platform-player",
+    "offline-core-play",
+    "keyboard-mouse-controller",
+    "nine-integrated-powers",
+    "accessibility-features",
+    "local-save-recovery",
+    "optional-pack-boundary",
+    "no-account-required"
+  ],
+  "offlineBehaviorValue": "core-play-requires-no-account-or-network",
+  "requiredCandidateFields": [
+    "schemaVersion",
+    "kind",
+    "sourceRevision",
+    "appVersion",
+    "artifactManifestSha256ByPlatform",
+    "downloadBytesByPlatform",
+    "installedBytesByPlatform",
+    "supportedOperatingSystemsByPlatform",
+    "inputDeviceIds",
+    "inputEvidencePathsByDevice",
+    "offlineBehavior",
+    "saveLocationsByPlatform",
+    "coreContentBytes",
+    "optionalContentBytes",
+    "documentationSha256",
+    "screenshotPathsByRole",
+    "videoPathsByRole",
+    "retainedFileSha256",
+    "marketingClaims"
+  ],
+  "requiredMarketingClaimFields": [
+    "claimId",
+    "statement",
+    "evidencePaths"
+  ],
+  "releaseRules": [
+    "Every required document is nonempty and hash-bound to the exact candidate record.",
+    "Operating-system support and download and installed sizes are stated separately for every artifact platform.",
+    "Keyboard, mouse, Xbox-layout controller, and PlayStation-layout controller claims link to retained physical evidence.",
+    "Core and optional content sizes are stated separately and match the candidate manifests.",
+    "Offline behavior and platform save locations are published exactly.",
+    "Every screenshot and video role is captured from the exact candidate and retained as a nonempty file.",
+    "Every permitted marketing claim is nonempty, evidence-linked, and bound to the candidate revision.",
+    "Pending, reference-player, qualification-only, or unapproved-content evidence cannot be presented as a final candidate claim."
+  ]
+}

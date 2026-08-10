@@ -16,6 +16,8 @@ public sealed class SnakeRunTests
         Assert.Equal(RunStatus.Running, snapshot.Status);
         Assert.Equal(DeathCause.None, snapshot.DeathCause);
         Assert.Equal(600, snapshot.HungerTicksRemaining);
+        Assert.Equal(600, snapshot.HungerMaximumTicks);
+        Assert.Equal(200, snapshot.HungerWarningTicks);
         Assert.Equal(0, snapshot.Score);
         Assert.Equal(0, snapshot.ComboCount);
         Assert.Equal(1.0, snapshot.ComboMultiplier);

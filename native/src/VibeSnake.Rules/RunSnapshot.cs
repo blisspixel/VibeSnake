@@ -13,6 +13,8 @@ public sealed record RunSnapshot(
     double ComboMultiplier,
     int TicksSinceLastFood,
     int HungerTicksRemaining,
+    int HungerMaximumTicks,
+    int HungerWarningTicks,
     PowerPickup? PowerPickup,
     int PowerSpawnTicksElapsed,
     int ShieldTicksRemaining,
@@ -26,7 +28,10 @@ public sealed record RunSnapshot(
     GridPoint? BaitPosition,
     IReadOnlyList<GridPoint> DetachedObstacles,
     int DetachedObstacleTicksRemaining,
-    string StateHash)
+    string StateHash,
+    AdaptiveDifficultyState AdaptiveDifficultyState = AdaptiveDifficultyState.Disabled,
+    string AdaptivePolicyId = AdaptiveDifficultyPolicy.DisabledPolicyId,
+    bool AdaptationEnabled = false)
 {
     public GridPoint Head => Body[^1];
 

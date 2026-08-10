@@ -39,6 +39,14 @@ The complete canonical breakdown is generated in `summary` inside
 `config/content_inventory.json`. Current policy separates reference core
 material, radio tracks, radio artwork, and development-only material.
 
+## V080-05 curation handoff
+
+[content_curation_v1.json](../../config/content_curation_v1.json) is the exact review queue over the current inventory policy. It accounts for all 95 runtime-radio asset IDs once across the eight canonical stations and separates pending, approved, and rejected decisions without moving or deleting source files. Candidate inventories range from 11 to 13 tracks per station. Qualification confirms zero duplicate radio bytes, zero temporary/test filename tokens, cleared rights, structural MPEG integrity, and distinct station names, inclusion rules, hosts, and visual identities.
+
+This automated pass is not listening approval. `content-curation-qualification-v1` truthfully retains zero approved radio tracks, zero authored core-music candidates, zero full-decode evidence, zero loudness evidence, zero human listening reviews, zero production manifests, and zero export-eligible files. A track moves from pending only after retained technical and listening evidence exists; the policy and generated inventory then receive a separately reviewed, narrow approval change.
+
+`ContentCreditsDocument` implements `content-credits-v1`. It takes exact validated content-pack manifests and deterministically produces a human-readable credits and third-party notices document with stable pack, credit, and file ordering. It writes no timestamp or machine path and rejects missing core, duplicate pack IDs, unknown credit references, and oversized output. No production notices document is generated yet because no production manifest is approved.
+
 ## Policy contract
 
 Every asset must match exactly one policy rule. A rule defines:

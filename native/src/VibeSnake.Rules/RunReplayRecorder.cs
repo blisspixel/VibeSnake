@@ -31,6 +31,9 @@ public sealed class RunReplayRecorder
     private readonly SnakeRun _mirror;
     private readonly int _checkpointInterval;
     private readonly string? _appVersion;
+    private readonly string? _capturedAtUtc;
+    private readonly ulong? _gameplaySeed;
+    private readonly ulong? _aiSeed;
     private readonly List<Direction> _pendingCommands = [];
     private readonly List<ReplayStep> _steps = [];
     private readonly List<ReplayCheckpoint> _checkpoints;
@@ -39,7 +42,8 @@ public sealed class RunReplayRecorder
     public RunReplayRecorder(
         SnakeRun liveRun,
         int checkpointInterval = RunReplay.DefaultCheckpointInterval,
-        string? appVersion = null)
+        string? appVersion = null,
+        string? capturedAtUtc = null)
     {
         ArgumentNullException.ThrowIfNull(liveRun);
         if (liveRun.Status != RunStatus.Running)
@@ -66,6 +70,27 @@ public sealed class RunReplayRecorder
         _mirror = SnakeRun.RestoreCanonicalState(_initialCanonicalState);
         _checkpointInterval = checkpointInterval;
         _appVersion = appVersion?.Trim();
+        if (capturedAtUtc is not null)
+        {
+            if (!RunReplay.IsCanonicalCaptureTimestamp(capturedAtUtc))
+            {
+                throw new ArgumentException(
+                    "capturedAtUtc must use canonical UTC millisecond format.",
+                    nameof(capturedAtUtc));
+            }
+
+            if (liveRun.MasterSeed is not { } masterSeed)
+            {
+                throw new ArgumentException(
+                    "Replay capture metadata requires a run with a known master seed.",
+                    nameof(liveRun));
+            }
+
+            _capturedAtUtc = capturedAtUtc;
+            _gameplaySeed = masterSeed;
+            _aiSeed = masterSeed;
+        }
+
         _checkpoints = [new ReplayCheckpoint(0, _mirror.ComputeStateHash())];
     }
 
@@ -237,7 +262,11 @@ public sealed class RunReplayRecorder
                 outcome,
                 _mirror.ConfigHash,
                 _mirror.ConfigHashAlgorithm,
-                _appVersion);
+                _appVersion,
+                _capturedAtUtc,
+                _gameplaySeed,
+                _aiSeed,
+                writeCaptureMetadata: _capturedAtUtc is not null);
         }
         catch (ArgumentException exception)
         {

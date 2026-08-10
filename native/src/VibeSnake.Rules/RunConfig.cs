@@ -27,14 +27,23 @@ public sealed record RunConfig(
     bool EnableNearMiss = true,
     bool EnableComboExpiredEvent = true,
     bool EnableAchievementCandidates = false,
-    int StarvationWarningTicks = 200)
+    int StarvationWarningTicks = 200,
+    string ModeId = RunModeCatalog.VibeId,
+    int ModeVersion = RunModeCatalog.CurrentModeVersion,
+    bool EnableStarvation = true,
+    bool EnableComboScoring = true,
+    bool EnableSpeedScoreBonus = true,
+    bool EnableLengthScoreBonus = true,
+    bool EnableAdaptation = false,
+    string AdaptivePolicyId = AdaptiveDifficultyPolicy.DisabledPolicyId,
+    bool EnablePowerDecisionOffers = false)
 {
     /// <summary>
     /// Algorithm id for <see cref="ComputeConfigHash"/>. Distinct from the run
     /// state hash so score and replay metadata can identify rules without
     /// participating in step-by-step state identity.
     /// </summary>
-    public const string ConfigHashAlgorithmId = "sha256-canonical-runconfig-v1";
+    public const string ConfigHashAlgorithmId = "sha256-canonical-runconfig-v3";
 
     public const int RulesTickMilliseconds = 50;
     /// <summary>Default remaining hunger ticks that trigger a starvation warning (10s at 50ms).</summary>
@@ -58,6 +67,56 @@ public sealed record RunConfig(
 
     internal void Validate()
     {
+        if (!RunModeCatalog.IsSupportedIdentity(ModeId, ModeVersion))
+        {
+            throw new ArgumentException(
+                $"Unsupported run mode identity {ModeId}@{ModeVersion}.",
+                nameof(ModeId));
+        }
+
+        if (string.IsNullOrWhiteSpace(AdaptivePolicyId))
+        {
+            throw new ArgumentException(
+                "The adaptive policy identity must not be blank.",
+                nameof(AdaptivePolicyId));
+        }
+
+        if (string.Equals(ModeId, RunModeCatalog.ClassicId, StringComparison.Ordinal))
+        {
+            if (EnableAdaptation
+                || !string.Equals(
+                    AdaptivePolicyId,
+                    AdaptiveDifficultyPolicy.DisabledPolicyId,
+                    StringComparison.Ordinal))
+            {
+                throw new ArgumentException(
+                    "Classic requires adaptation to remain disabled with policy 'none'.",
+                    nameof(EnableAdaptation));
+            }
+        }
+        else if (EnableAdaptation)
+        {
+            if (!EnableStarvation
+                || !string.Equals(
+                    AdaptivePolicyId,
+                    AdaptiveDifficultyPolicy.CurrentPolicyId,
+                    StringComparison.Ordinal))
+            {
+                throw new ArgumentException(
+                    "Enabled Vibe adaptation requires starvation and the current adaptive policy.",
+                    nameof(EnableAdaptation));
+            }
+        }
+        else if (!string.Equals(
+            AdaptivePolicyId,
+            AdaptiveDifficultyPolicy.DisabledPolicyId,
+            StringComparison.Ordinal))
+        {
+            throw new ArgumentException(
+                "Disabled adaptation requires policy 'none'.",
+                nameof(AdaptivePolicyId));
+        }
+
         if (Width < 2)
         {
             throw new ArgumentOutOfRangeException(nameof(Width), "The grid must be at least two cells wide.");
@@ -210,8 +269,9 @@ public sealed record RunConfig(
     /// <summary>
     /// Lowercase SHA-256 of the full effective rules configuration, including
     /// ruleset identity and every field that can change scored behavior.
-    /// Always serializes every field (no omit-defaults) so two equal configs
-    /// always share one hash. Does not include seeds or live run state.
+    /// Serializes every established field. The compatibility-off power offer
+    /// flag is omitted to preserve frozen fixture hashes; enabling it writes an
+    /// explicit true value. Does not include seeds or live run state.
     /// </summary>
     public string ComputeConfigHash()
     {
@@ -239,6 +299,8 @@ public sealed record RunConfig(
             writer.WriteString("algorithm", ConfigHashAlgorithmId);
             writer.WriteString("rulesetId", RulesetIdentity.CurrentId);
             writer.WriteNumber("rulesVersion", RulesetIdentity.CurrentVersion);
+            writer.WriteString("modeId", ModeId);
+            writer.WriteNumber("modeVersion", ModeVersion);
             writer.WriteNumber("width", Width);
             writer.WriteNumber("height", Height);
             writer.WriteNumber("rulesTickMilliseconds", RulesTickMilliseconds);
@@ -262,6 +324,16 @@ public sealed record RunConfig(
             writer.WriteBoolean("enableNearMiss", EnableNearMiss);
             writer.WriteBoolean("enableComboExpiredEvent", EnableComboExpiredEvent);
             writer.WriteBoolean("enableAchievementCandidates", EnableAchievementCandidates);
+            writer.WriteBoolean("enableStarvation", EnableStarvation);
+            writer.WriteBoolean("enableComboScoring", EnableComboScoring);
+            writer.WriteBoolean("enableSpeedScoreBonus", EnableSpeedScoreBonus);
+            writer.WriteBoolean("enableLengthScoreBonus", EnableLengthScoreBonus);
+            writer.WriteBoolean("enableAdaptation", EnableAdaptation);
+            writer.WriteString("adaptivePolicyId", AdaptivePolicyId);
+            if (EnablePowerDecisionOffers)
+            {
+                writer.WriteBoolean("enablePowerDecisionOffers", true);
+            }
             writer.WriteEndObject();
         }
 

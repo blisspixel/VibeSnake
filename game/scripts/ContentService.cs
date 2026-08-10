@@ -96,6 +96,28 @@ internal sealed class ContentService
 
     public ContentBudgetReport MeasureBudgets() => _inventory.MeasureBudgets();
 
+    public ContentPackManifest ValidatePackManifest(string json) =>
+        ContentPackManifest.Parse(json, _inventory);
+
+    public ContentPackSetResolution ResolvePackSet(
+        string coreJson,
+        IReadOnlyList<string> optionalJsonDocuments,
+        string gameVersion) =>
+        ContentPackResolver.Resolve(
+            coreJson,
+            optionalJsonDocuments,
+            _inventory,
+            gameVersion);
+
+    public OptionalPackAssetReadResult ReadInstalledOptionalAsset(
+        OptionalPackStore store,
+        string packId,
+        string assetId)
+    {
+        ArgumentNullException.ThrowIfNull(store);
+        return store.ReadAsset(packId, assetId, _inventory);
+    }
+
     public int CountByMediaTypePrefix(string mediaTypePrefix) =>
         _inventory.CountByMediaTypePrefix(mediaTypePrefix);
 

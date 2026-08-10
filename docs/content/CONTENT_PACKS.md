@@ -4,7 +4,7 @@
 
 Vibe Snake must remain fully playable offline while allowing its large radio library to ship separately. The implemented schema 1 contract defines one required core pack and zero or more optional station packs. It validates identity, compatibility, dependencies, exact file metadata, cleared rights, credits, station track order, and the approved source-inventory allowlist before any content is loaded.
 
-The contract and optional-pack resolver are implemented and tested. No real source asset or release pack is approved yet. The current source inventory deliberately reports zero export-eligible files, so a production manifest cannot pass this validator until file-level rights and quality review are complete.
+The contract and optional-pack resolver are implemented and tested in both the Python qualification oracle and the pure C# product path. The Godot content service uses the native parser and resolver. No real source asset or release pack is approved yet. The current source inventory deliberately reports zero export-eligible files, so a production manifest cannot pass either validator until file-level rights and quality review are complete.
 
 ## Authorities
 
@@ -13,10 +13,17 @@ The contract and optional-pack resolver are implemented and tested. No real sour
 | [packs.py](../../src/vibesnake/content/packs.py) | Schema 1 structure, inventory matching, compatibility, dependency, core, radio, and resolution rules |
 | [content_packs.py](../../scripts/content_packs.py) | Build-time qualification command for canonical manifests |
 | [test_content_packs.py](../../tests/qa/test_content_packs.py) | Normal, malformed, unsafe, incomplete, tampered, incompatible, missing, and duplicate-pack contracts |
+| [ContentPackManifest.cs](../../native/src/VibeSnake.Persistence/ContentPackManifest.cs) | Pure C# bounded schema, canonical encoding, allowlist, metadata, rights, and radio validation |
+| [ContentPackResolver.cs](../../native/src/VibeSnake.Persistence/ContentPackResolver.cs) | Pure C# compatibility decisions and core-safe optional-pack isolation |
+| [OptionalPackStore.cs](../../native/src/VibeSnake.Persistence/OptionalPackStore.cs) | User-data-only installed-pack validation, recoverable quarantine, and revalidated restore |
+| [ContentPackManifestTests.cs](../../native/tests/VibeSnake.Rules.Tests/ContentPackManifestTests.cs) | Native schema, canonical, range, tamper, duplicate, and isolation contracts |
+| [OptionalPackStoreTests.cs](../../native/tests/VibeSnake.Rules.Tests/OptionalPackStoreTests.cs) | Native filesystem allowlist, hash, stale-consent, quarantine, restore, and player-data separation contracts |
+| [ContentService.cs](../../game/scripts/ContentService.cs) | Godot-facing inventory, manifest, and pack-set boundary |
 | [content_inventory.json](../../config/content_inventory.json) | Exact source file hashes, sizes, policy state, rights state, and export eligibility |
 | [CONTENT_PIPELINE.md](CONTENT_PIPELINE.md) | Source classification, rights review, media integrity, and approval workflow |
+| [CREATOR_CONTENT.md](CREATOR_CONTENT.md) | Creator-facing commands, schemas, examples, error codes, compatibility, and collision rules |
 
-The Python validator is the executable qualification reference for 0.3. The native content service will implement the same observable contract before player assets enter Godot exports.
+The Python validator remains the frozen qualification oracle. The native implementation owns product runtime decisions and matches the same observable schema and compatibility codes before player assets enter Godot exports.
 
 ## Boundary
 
@@ -52,6 +59,8 @@ Each radio pack has kind `radio` and ID `vibesnake.radio.<station-id>`. It depen
 - A player-facing station name.
 - An ordered, unique list of track asset IDs.
 - Track entries that resolve to `audio/mpeg` files with role `radio-track`.
+
+Canonical station IDs use lowercase underscore names, such as `flow_signal`. Pack IDs use the corresponding filesystem-safe hyphen slug, such as `vibesnake.radio.flow-signal`; validation rejects any pair that does not match under that exact conversion.
 
 A station pack may later include approved badges, stingers, host segments, or metadata files outside `trackIds`, but every file still belongs to the same exact inventory allowlist and rights record.
 
@@ -119,7 +128,13 @@ Structurally valid manifests receive an actionable compatibility result before f
 | `invalid-pack` | An optional document fails schema, inventory, rights, hash, or station validation |
 | `core-unavailable` | Optional content cannot load because the required core is incompatible |
 
-The pack-set resolver treats an invalid core as fatal. It evaluates optional documents independently. Missing optional content is normal, and malformed, incompatible, duplicate, or tampered optional content is reported and skipped while a compatible core stays ready.
+The pack-set resolver treats an invalid core as fatal. It evaluates optional documents independently. Missing or removed optional content is normal, and malformed, incompatible, duplicate, or tampered optional content is reported and skipped while a compatible core stays ready. Removal requires an immutable, version-bound consent token that can target only one optional radio pack and has no save, profile, achievement, preference, or replay deletion capability.
+
+`OptionalPackStore` accepts only canonical radio manifests under an absolute user-data root. It rejects links and reparse points, bounds active and quarantined pack counts plus per-pack entries, requires the directory name to equal the pack ID, requires the complete manifest file allowlist with no extra file, and verifies every size and SHA-256 before exposing an installed pack. A requested asset is returned only as at most 32 MiB of bytes plus manifest media metadata after complete pack validation and a second size/hash check; callers never receive a machine path.
+
+Confirmation moves the selected pack on the same volume into `packs/.removed/`; it does not recursively delete content. Quarantine inspection reconstructs version-bound receipts only from a valid canonical manifest and payload, so recovery remains available after restart. Restore revalidates the complete pack before moving it back. Tampered quarantine stays in place and cannot be restored. Invalid packs remain isolated, stale consent cannot move a changed pack, and a store lock serializes lifecycle operations.
+
+`core-only-offline-v1` evidence exercises resolution states and the real filesystem lifecycle through Godot smoke. It requires validated installation, bounded asset reads, recoverable quarantine, receipt rediscovery, revalidated restore, unchanged player data, and launch, menu, run, critical feedback, settings, content-pack browse, death, restart, and recovery without optional content.
 
 ## Integrity and trust boundary
 
@@ -161,4 +176,4 @@ No production command can pass today because no inventory entry is export eligib
 
 ## Completion gate
 
-V030-09 is complete only when the strict contract is implemented in the native content service, one approved core manifest passes and supports the entire offline vertical slice, at least one approved station manifest passes independently, export inspection consumes the same allowlists, removal and tamper states are exercised, actual size and performance evidence is retained, and player-facing errors explain recovery without exposing machine paths.
+V030-09 is complete only when one human-approved core manifest passes and supports the entire offline vertical slice, at least one approved station manifest passes independently, export inspection consumes those production allowlists and generated credits, actual size and performance evidence is retained, and player-facing removal and recovery UI explains failures without exposing machine paths. The strict native contract, core-only automated vertical slice, optional absence/removal/tamper/incompatibility/duplicate isolation, and recoverable installed-pack lifecycle are complete.

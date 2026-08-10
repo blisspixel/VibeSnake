@@ -1,0 +1,83 @@
+{
+  "schemaVersion": 1,
+  "kind": "vibesnake-stable-promotion-v1",
+  "status": "guard-qualified-promotion-pending",
+  "stableVersion": "1.0.0",
+  "stableTag": "1.0.0",
+  "artifactPlatforms": [
+    "windows-x64",
+    "macos-universal",
+    "linux-x64"
+  ],
+  "upstreamDecisionIds": [
+    "release-matrix",
+    "manual-product-matrix",
+    "external-validation",
+    "release-materials",
+    "release-rehearsal",
+    "content-approval",
+    "hardware-performance",
+    "accessibility-human-review",
+    "human-playtest",
+    "platform-signing"
+  ],
+  "preservedEvidenceCategories": [
+    "build-logs",
+    "manifests",
+    "sbom",
+    "checksums",
+    "migration-fixtures",
+    "previous-artifacts",
+    "support-record"
+  ],
+  "stableContractAcknowledgements": [
+    "patch-releases-preserve-scored-rules-unless-a-disclosed-correctness-or-exploit-fix-requires-change",
+    "save-migrations-remain-nondestructive-and-tested",
+    "existing-score-categories-retain-rules-identity",
+    "removed-content-remains-visible-as-missing-or-incompatible",
+    "accessibility-support-is-regression-tested",
+    "offline-core-play-requires-no-account-or-network"
+  ],
+  "requiredRecordFields": [
+    "schemaVersion",
+    "kind",
+    "sourceRevision",
+    "appVersion",
+    "tagName",
+    "tagObjectRevision",
+    "protectedWorkflowRunId",
+    "artifactSha256ByPlatform",
+    "artifactPathsByPlatform",
+    "manifestSha256ByPlatform",
+    "manifestPathsByPlatform",
+    "provenanceSha256ByPlatform",
+    "provenancePathsByPlatform",
+    "checksumPathsByPlatform",
+    "optionalPackSha256",
+    "optionalPackPath",
+    "optionalPackManifestSha256",
+    "optionalPackManifestPath",
+    "upstreamDecisionPathsById",
+    "publicInstallResults",
+    "preservedEvidencePathsByCategory",
+    "stableContractAcknowledgements",
+    "retainedFileSha256"
+  ],
+  "requiredPublicInstallFields": [
+    "platformId",
+    "result",
+    "installedArtifactSha256",
+    "smokeStateHash",
+    "evidencePaths"
+  ],
+  "releaseRules": [
+    "The protected workflow rebuilds from tag 1.0.0 at the exact reviewed source revision.",
+    "All ten upstream decisions pass and explicitly accept release for the same source revision.",
+    "All three public artifacts, manifests, provenance bundles, and checksum files are retained and hash-verified.",
+    "The exact approved optional pack and manifest are retained and hash-verified separately from the core player.",
+    "One public-file install and deterministic smoke passes on every platform using the published artifact bytes.",
+    "Build logs, manifests, SBOM, checksums, migration fixtures, previous artifacts, and support records are preserved.",
+    "The stable compatibility contract is acknowledged exactly and cannot be weakened during promotion.",
+    "Renaming, copying, or manually uploading qualification artifacts cannot satisfy stable promotion."
+  ]
+}

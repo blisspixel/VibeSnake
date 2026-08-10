@@ -73,6 +73,33 @@ public sealed record ReleaseArtifactManifest(
 
     public static readonly string[] SupportedBuildModes = ["Debug", "Release"];
 
+    private static readonly string[] RootFields =
+    [
+        "schemaVersion",
+        "product",
+        "platform",
+        "buildMode",
+        "sourceRevision",
+        "godotVersion",
+        "godotCommit",
+        "godotArchiveSha512",
+        "godotExecutableSha256",
+        "dotnetSdk",
+        "smokeStateHash",
+        "fileCount",
+        "totalBytes",
+        "files",
+        "containerEntries",
+    ];
+
+    private static readonly string[] EntryFields =
+    [
+        "path",
+        "bytes",
+        "sha256",
+        "compressedBytes",
+    ];
+
     /// <summary>
     /// True when the platform is a first-class desktop ship target.
     /// </summary>
@@ -147,6 +174,12 @@ public sealed record ReleaseArtifactManifest(
             }
 
             var root = document.RootElement;
+            var fieldError = ValidateKnownFields(root, RootFields, "Artifact manifest");
+            if (fieldError is not null)
+            {
+                return FailField(fieldError);
+            }
+
             if (!TryGetInt(root, "schemaVersion", out var schemaVersion))
             {
                 return FailField("schemaVersion must be an integer.");
@@ -486,6 +519,16 @@ public sealed record ReleaseArtifactManifest(
                 return false;
             }
 
+            var fieldError = ValidateKnownFields(
+                element,
+                EntryFields,
+                propertyName + " entry");
+            if (fieldError is not null)
+            {
+                error = fieldError;
+                return false;
+            }
+
             if (!TryGetString(element, "path", out var path) || string.IsNullOrWhiteSpace(path))
             {
                 error = propertyName + " entry path is required.";
@@ -537,6 +580,28 @@ public sealed record ReleaseArtifactManifest(
         }
 
         return true;
+    }
+
+    private static string? ValidateKnownFields(
+        JsonElement element,
+        IReadOnlyCollection<string> allowed,
+        string location)
+    {
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var property in element.EnumerateObject())
+        {
+            if (!seen.Add(property.Name))
+            {
+                return location + " contains duplicate field " + property.Name + ".";
+            }
+
+            if (!allowed.Contains(property.Name, StringComparer.Ordinal))
+            {
+                return location + " contains unknown field " + property.Name + ".";
+            }
+        }
+
+        return null;
     }
 
     private static bool IsHex(string value, int expectedLength)

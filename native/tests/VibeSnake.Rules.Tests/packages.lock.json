@@ -105,6 +105,12 @@
           "xunit.extensibility.core": "[2.9.3]"
         }
       },
+      "validatecreatorcontent": {
+        "type": "Project",
+        "dependencies": {
+          "VibeSnake.Persistence": "[1.0.0, )"
+        }
+      },
       "vibesnake.persistence": {
         "type": "Project",
         "dependencies": {

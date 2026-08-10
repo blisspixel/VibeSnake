@@ -206,6 +206,8 @@ Rival dossiers, track notes, station histories, themed set descriptions, tour ev
 
 Long transcripts, institutional histories, timelines, disputed interpretations of the Great Molt, and hidden relationships live in an optional archive. They never interrupt a run or carry required instructions.
 
+Implementation status: the native offline Coil Archive now has 41 schema-bound entries across Surface, Discoverable, and Archive depth. It covers every station, rival, and mutation at the surface; six discoverable content kinds; and four archive content kinds. Copy, entity, continuity, unlock, safety, keyboard, controller, rules-isolation, and progression-isolation checks are automated. Canon, tone, humor, platform layout, and curiosity pacing still require human review before release approval.
+
 ## Content record contract
 
 Every authored narrative item needs:

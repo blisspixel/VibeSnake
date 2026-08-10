@@ -227,4 +227,41 @@ public sealed class NearMissDetectorTests
         Assert.Empty(detector.RecentEvents);
         Assert.NotNull(detector.CheckBodyProximity(new GridPoint(10, 10), body, 10));
     }
+
+    [Fact]
+    public void Constructor_and_tick_boundaries_fail_closed_and_preserve_live_events()
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(() => new NearMissDetector(-1, 1));
+        Assert.Throws<ArgumentOutOfRangeException>(() => new NearMissDetector(0, 0));
+
+        var detector = new NearMissDetector(cooldownTicks: 2, eventTimeoutTicks: 3);
+        detector.TrackEvent(
+            new NearMissEvent(
+                NearMissKind.StylePoints,
+                null,
+                1,
+                "ZOOMING!",
+                IsWarning: false));
+        Assert.Single(detector.RecentEvents);
+        detector.AdvanceTicks(0);
+        Assert.Single(detector.RecentEvents);
+        detector.AdvanceTicks(1);
+        Assert.Single(detector.RecentEvents);
+        detector.AdvanceTicks(2);
+        Assert.Empty(detector.RecentEvents);
+        Assert.Throws<ArgumentOutOfRangeException>(() => detector.AdvanceTicks(-1));
+    }
+
+    [Fact]
+    public void Edge_and_clutch_validation_cover_both_dimension_and_hunger_boundaries()
+    {
+        var detector = new NearMissDetector();
+        Assert.Throws<ArgumentOutOfRangeException>(() => detector.CheckEdgeRide(
+            new GridPoint(0, 0), Direction.Right, 1, gridWidth: 1, gridHeight: 2));
+        Assert.Throws<ArgumentOutOfRangeException>(() => detector.CheckEdgeRide(
+            new GridPoint(0, 0), Direction.Right, 1, gridWidth: 2, gridHeight: 1));
+        Assert.Null(detector.CheckEdgeRide(
+            new GridPoint(0, 0), Direction.Right, 0, gridWidth: 2, gridHeight: 2));
+        Assert.Throws<ArgumentOutOfRangeException>(() => detector.CheckClutchEat(-1));
+    }
 }

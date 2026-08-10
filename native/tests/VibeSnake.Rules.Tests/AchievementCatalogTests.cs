@@ -3,6 +3,35 @@ namespace VibeSnake.Rules.Tests;
 public sealed class AchievementCatalogTests
 {
     [Fact]
+    public void Current_catalog_explicitly_limits_run_local_unlocks_to_vibe()
+    {
+        Assert.All(
+            AchievementCatalog.Definitions,
+            definition => Assert.Equal(
+                AchievementModeEligibility.Vibe,
+                definition.ModeEligibility));
+
+        var terminal = new RunAchievementMetrics(
+            Score: 10_000,
+            MaxCombo: 100,
+            Length: 100,
+            FoodEaten: 100,
+            WrapCount: 100,
+            NearMisses: 100,
+            PowerupsCollected: 100,
+            SurvivalTicks: 10_000,
+            IsTerminal: true);
+        Assert.Empty(
+            AchievementCatalog.EvaluateCandidates(
+                terminal,
+                modeId: RunModeCatalog.ClassicId));
+        Assert.NotEmpty(
+            AchievementCatalog.EvaluateCandidates(
+                terminal,
+                modeId: RunModeCatalog.VibeId));
+    }
+
+    [Fact]
     public void Definitions_are_unique_and_match_condition_keys()
     {
         var ids = AchievementCatalog.Definitions.Select(definition => definition.Id).ToArray();

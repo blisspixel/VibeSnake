@@ -98,6 +98,14 @@ celerybeat.pid
 
 # Environments
 .env*
+*.pfx
+*.p12
+*.pem
+*.key
+*.p8
+*.jks
+*.keystore
+id_rsa*
 .venv
 env/
 venv/

@@ -1,0 +1,59 @@
+{
+  "compatibility": {
+    "gameVersion": {
+      "minInclusive": "1.0.0",
+      "maxExclusive": "2.0.0"
+    },
+    "ruleset": {
+      "id": "vibesnake-core",
+      "minInclusive": 4,
+      "maxExclusive": 5
+    }
+  },
+  "credits": [
+    {
+      "attribution": "Example Creator",
+      "id": "example-rights",
+      "license": "SPDX-LICENSE-IDENTIFIER",
+      "reviewEvidence": "Replace with the retained rights review reference.",
+      "source": "Replace with the exact source or authorship record."
+    }
+  ],
+  "dependencies": [
+    {
+      "id": "vibesnake.core",
+      "maxExclusive": "2.0.0",
+      "minInclusive": "1.0.0"
+    }
+  ],
+  "description": "Illustrative optional station pack. Replace every placeholder.",
+  "displayName": "Example Signal",
+  "files": [
+    {
+      "bytes": 123456,
+      "creditId": "example-rights",
+      "id": "asset:audio/radio/example-signal/route-one.mp3",
+      "mediaType": "audio/mpeg",
+      "path": "audio/radio/example-signal/route-one.mp3",
+      "role": "radio-track",
+      "runtimeUse": "optional",
+      "sha256": "1111111111111111111111111111111111111111111111111111111111111111"
+    }
+  ],
+  "id": "vibesnake.radio.example-signal",
+  "inventory": {
+    "assetRoot": "assets",
+    "policySha256": "0000000000000000000000000000000000000000000000000000000000000000",
+    "schemaVersion": 1
+  },
+  "kind": "radio",
+  "radio": {
+    "stationId": "example_signal",
+    "stationName": "Example Signal",
+    "trackIds": [
+      "asset:audio/radio/example-signal/route-one.mp3"
+    ]
+  },
+  "schemaVersion": 1,
+  "version": "1.0.0"
+}

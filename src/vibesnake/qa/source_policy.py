@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import ast
 from dataclasses import dataclass
+import os
 from pathlib import Path
 import re
 from typing import Iterable
@@ -52,14 +53,22 @@ _TEXT_SUFFIXES = {
 }
 _EXCLUDED_PARTS = {
     ".agent",
+    ".dotnet",
     ".git",
     ".godot",
     ".mypy_cache",
     ".pytest_cache",
     ".ruff_cache",
+    ".tools",
+    ".venv",
     "__pycache__",
     "bin",
     "obj",
+    "TestResults",
+    "artifacts",
+    "build",
+    "dist",
+    "venv",
 }
 _MARKER_EXEMPTIONS = {Path("docs/engineering/CODE_QUALITY_STANDARDS.md")}
 _FORBIDDEN_MARKERS = tuple("".join(parts) for parts in (("TO", "DO"), ("FIX", "ME"), ("HA", "CK"), ("X", "XX")))
@@ -67,6 +76,7 @@ _MARKER_PATTERN = re.compile(
     rf"\b(?:{'|'.join(re.escape(marker) for marker in _FORBIDDEN_MARKERS)})\b",
     re.IGNORECASE,
 )
+_FORBIDDEN_CREDENTIAL_SUFFIXES = {".p12", ".p8", ".pem", ".pfx", ".jks", ".keystore", ".key"}
 
 
 @dataclass(frozen=True, order=True)
@@ -151,6 +161,30 @@ def inspect_repository(repository_root: Path) -> tuple[PolicyViolation, ...]:
     """Inspect active source and canonical docs without mutating the repository."""
     root = repository_root.resolve()
     violations: list[PolicyViolation] = []
+    credential_candidates: set[Path] = set()
+    for current, directory_names, file_names in os.walk(root):
+        current_path = Path(current)
+        relative_directory = current_path.relative_to(root)
+        directory_names[:] = [
+            name
+            for name in directory_names
+            if name not in _EXCLUDED_PARTS
+            and not (relative_directory == Path("docs") and name in {"archive", "research"})
+        ]
+        credential_candidates.update(current_path / name for name in file_names)
+    for path in sorted(credential_candidates):
+        relative_path = path.relative_to(root)
+        if _is_excluded(relative_path):
+            continue
+        lower_name = path.name.lower()
+        if (
+            path.suffix.lower() in _FORBIDDEN_CREDENTIAL_SUFFIXES
+            or lower_name == ".env"
+            or lower_name.startswith(".env.")
+            or lower_name == "id_rsa"
+            or lower_name.startswith("id_rsa.")
+        ):
+            violations.append(PolicyViolation(relative_path, 1, "credential or signing material is forbidden"))
     for path in policy_files(root):
         relative_path = path.relative_to(root)
         try:

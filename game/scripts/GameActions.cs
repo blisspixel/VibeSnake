@@ -1,5 +1,6 @@
 using Godot;
 using VibeSnake.Persistence;
+using RulesDirection = VibeSnake.Rules.Direction;
 
 namespace VibeSnake.Game;
 
@@ -11,6 +12,7 @@ namespace VibeSnake.Game;
 internal static class GameActions
 {
     private const int AnyJoypadDevice = -1;
+    private const float ControllerCaptureThreshold = 0.75f;
 
     public const string MoveUp = "vibe_move_up";
     public const string MoveRight = "vibe_move_right";
@@ -33,7 +35,13 @@ internal static class GameActions
     public const string ToggleFlashFree = "vibe_toggle_flash_free";
     public const string OpenDiagnostics = "vibe_open_diagnostics";
     public const string BrowseAchievements = "vibe_browse_achievements";
+    public const string BrowseScores = "vibe_browse_scores";
     public const string BrowseBindings = "vibe_browse_bindings";
+    public const string BrowseContentPacks = "vibe_browse_content_packs";
+    public const string BrowseSettings = "vibe_browse_settings";
+    public const string BrowseSpectator = "vibe_browse_spectator";
+    public const string Help = "vibe_help";
+    public const string CycleRadio = "vibe_cycle_radio";
 
     private static readonly string[] RequiredActions =
     [
@@ -45,7 +53,18 @@ internal static class GameActions
         Back,
         Pause,
         Replay,
+        Help,
+        BrowseSettings,
+        CycleRadio,
         Quit,
+    ];
+
+    private static readonly string[] GameplayDirectionActions =
+    [
+        MoveUp,
+        MoveRight,
+        MoveDown,
+        MoveLeft,
     ];
 
     private static readonly Dictionary<string, string> LogicalToRuntime =
@@ -73,6 +92,10 @@ internal static class GameActions
             ["open_diagnostics"] = OpenDiagnostics,
             ["browse_achievements"] = BrowseAchievements,
             ["browse_bindings"] = BrowseBindings,
+            ["browse_content_packs"] = BrowseContentPacks,
+            ["browse_settings"] = BrowseSettings,
+            ["help"] = Help,
+            ["cycle_radio"] = CycleRadio,
         };
 
     private static readonly HashSet<string> RuntimeActions = [];
@@ -189,10 +212,38 @@ internal static class GameActions
             KeyEvent(Key.U),
             JoyButtonEvent(JoyButton.LeftShoulder));
         AddAction(
+            BrowseScores,
+            0.5f,
+            KeyEvent(Key.V));
+        AddAction(
             BrowseBindings,
             0.5f,
             KeyEvent(Key.B),
             JoyButtonEvent(JoyButton.RightShoulder));
+        AddAction(
+            BrowseContentPacks,
+            0.5f,
+            KeyEvent(Key.C),
+            JoyButtonEvent(JoyButton.X));
+        AddAction(
+            BrowseSettings,
+            0.5f,
+            KeyEvent(Key.F1, physical: false),
+            JoyButtonEvent(JoyButton.Start));
+        AddAction(
+            BrowseSpectator,
+            0.5f,
+            KeyEvent(Key.L));
+        AddAction(
+            Help,
+            0.5f,
+            KeyEvent(Key.H),
+            JoyButtonEvent(JoyButton.LeftStick));
+        AddAction(
+            CycleRadio,
+            0.5f,
+            KeyEvent(Key.J),
+            JoyButtonEvent(JoyButton.RightStick));
     }
 
     /// <summary>
@@ -222,7 +273,7 @@ internal static class GameActions
             }
 
             if (!InputBindingToken.TryParse(pair.Value, out var parsed)
-                || parsed.Kind != InputBindingKind.Key)
+                || !InputBindingToken.IsSupportedKeyboardBinding(parsed))
             {
                 throw new InvalidOperationException(
                     "Keyboard binding token is invalid for action " + pair.Key + ": " + pair.Value);
@@ -253,6 +304,7 @@ internal static class GameActions
         }
 
         EnsureActionSlotsExist();
+        var usedControllerBindings = new HashSet<string>(StringComparer.Ordinal);
         foreach (var pair in document.ActionToBinding)
         {
             if (!LogicalToRuntime.TryGetValue(pair.Key, out var action))
@@ -261,20 +313,95 @@ internal static class GameActions
             }
 
             if (!InputBindingToken.TryParse(pair.Value, out var parsed)
-                || (parsed.Kind is not (InputBindingKind.Button or InputBindingKind.Axis)))
+                || !InputBindingToken.IsSupportedControllerBinding(parsed))
             {
                 throw new InvalidOperationException(
                     "Controller binding token is invalid for action " + pair.Key + ": " + pair.Value);
             }
 
+            usedControllerBindings.Add(InputBindingToken.GetConflictKey(parsed));
             ReplaceJoypadEvents(action, pair.Value);
         }
 
-        ApplySecondaryControllerAxes();
+        ApplySecondaryControllerAxes(usedControllerBindings);
     }
 
     public static bool TryMapLogicalAction(string logicalAction, out string runtimeAction) =>
         LogicalToRuntime.TryGetValue(logicalAction, out runtimeAction!);
+
+    /// <summary>
+    /// Applies one bounded stick deadzone to every gameplay direction. Button
+    /// events, including the D-pad fallback, remain digital Godot InputMap events.
+    /// </summary>
+    public static void ApplyGameplayDeadzone(float deadzone)
+    {
+        if (float.IsNaN(deadzone)
+            || float.IsInfinity(deadzone)
+            || deadzone < PreferencesDocument.MinimumControllerDeadzone
+            || deadzone > PreferencesDocument.MaximumControllerDeadzone)
+        {
+            throw new ArgumentOutOfRangeException(nameof(deadzone));
+        }
+
+        EnsureDefaults();
+        foreach (var action in GameplayDirectionActions)
+        {
+            InputMap.ActionSetDeadzone(action, deadzone);
+        }
+    }
+
+    public static float GetGameplayDeadzone()
+    {
+        EnsureDefaults();
+        var deadzone = InputMap.ActionGetDeadzone(MoveUp);
+        foreach (var action in GameplayDirectionActions)
+        {
+            if (Math.Abs(InputMap.ActionGetDeadzone(action) - deadzone) > 0.0001f)
+            {
+                throw new InvalidOperationException(
+                    "Gameplay direction actions do not share one controller deadzone.");
+            }
+        }
+
+        return deadzone;
+    }
+
+    /// <summary>
+    /// Maps one physical or synthetic Godot input event through the active
+    /// InputMap into the direction vocabulary consumed by the rules kernel.
+    /// </summary>
+    public static bool TryMapDirectionInput(
+        InputEvent inputEvent,
+        out RulesDirection direction)
+    {
+        ArgumentNullException.ThrowIfNull(inputEvent);
+        if (inputEvent.IsActionPressed(MoveUp))
+        {
+            direction = RulesDirection.Up;
+            return true;
+        }
+
+        if (inputEvent.IsActionPressed(MoveRight))
+        {
+            direction = RulesDirection.Right;
+            return true;
+        }
+
+        if (inputEvent.IsActionPressed(MoveDown))
+        {
+            direction = RulesDirection.Down;
+            return true;
+        }
+
+        if (inputEvent.IsActionPressed(MoveLeft))
+        {
+            direction = RulesDirection.Left;
+            return true;
+        }
+
+        direction = default;
+        return false;
+    }
 
     public static void AssertDefaultsRegistered()
     {
@@ -319,6 +446,38 @@ internal static class GameActions
                 }
             }
             else if (keyEvent.Keycode == key)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    public static bool ActionHasControllerToken(string runtimeAction, string token)
+    {
+        if (!InputMap.HasAction(runtimeAction)
+            || !InputBindingToken.TryParse(token, out var parsed)
+            || !InputBindingToken.IsSupportedControllerBinding(parsed))
+        {
+            return false;
+        }
+
+        foreach (var inputEvent in InputMap.ActionGetEvents(runtimeAction))
+        {
+            if (parsed.Kind == InputBindingKind.Button
+                && inputEvent is InputEventJoypadButton buttonEvent
+                && TryMapButton(parsed.Identifier, out var button)
+                && buttonEvent.ButtonIndex == button)
+            {
+                return true;
+            }
+
+            if (parsed.Kind == InputBindingKind.Axis
+                && inputEvent is InputEventJoypadMotion motionEvent
+                && TryMapAxis(parsed.Identifier, out var axis)
+                && motionEvent.Axis == axis
+                && Math.Abs(motionEvent.AxisValue - parsed.AxisValue) < 0.01f)
             {
                 return true;
             }
@@ -434,18 +593,23 @@ internal static class GameActions
         }
     }
 
-    private static void ApplySecondaryControllerAxes()
+    private static void ApplySecondaryControllerAxes(HashSet<string> usedControllerBindings)
     {
         // Stick axes remain available unless a remap already owns LeftX/LeftY events.
-        EnsureAxis(MoveUp, JoyAxis.LeftY, -1.0f);
-        EnsureAxis(MoveDown, JoyAxis.LeftY, 1.0f);
-        EnsureAxis(MoveLeft, JoyAxis.LeftX, -1.0f);
-        EnsureAxis(MoveRight, JoyAxis.LeftX, 1.0f);
+        EnsureAxis(MoveUp, JoyAxis.LeftY, -1.0f, "axis:left_y:-", usedControllerBindings);
+        EnsureAxis(MoveDown, JoyAxis.LeftY, 1.0f, "axis:left_y:+", usedControllerBindings);
+        EnsureAxis(MoveLeft, JoyAxis.LeftX, -1.0f, "axis:left_x:-", usedControllerBindings);
+        EnsureAxis(MoveRight, JoyAxis.LeftX, 1.0f, "axis:left_x:+", usedControllerBindings);
     }
 
-    private static void EnsureAxis(string action, JoyAxis axis, float value)
+    private static void EnsureAxis(
+        string action,
+        JoyAxis axis,
+        float value,
+        string token,
+        HashSet<string> usedControllerBindings)
     {
-        if (!InputMap.HasAction(action))
+        if (!InputMap.HasAction(action) || usedControllerBindings.Contains(token))
         {
             return;
         }
@@ -594,6 +758,54 @@ internal static class GameActions
                 key = Key.Tab;
                 physical = false;
                 return true;
+            case "backspace":
+                key = Key.Backspace;
+                physical = false;
+                return true;
+            case "delete":
+                key = Key.Delete;
+                physical = false;
+                return true;
+            case "home":
+                key = Key.Home;
+                physical = false;
+                return true;
+            case "end":
+                key = Key.End;
+                physical = false;
+                return true;
+            case "insert":
+                key = Key.Insert;
+                physical = false;
+                return true;
+            case "minus":
+                key = Key.Minus;
+                physical = false;
+                return true;
+            case "equal":
+                key = Key.Equal;
+                physical = false;
+                return true;
+            case "comma":
+                key = Key.Comma;
+                physical = false;
+                return true;
+            case "period":
+                key = Key.Period;
+                physical = false;
+                return true;
+            case "slash":
+                key = Key.Slash;
+                physical = false;
+                return true;
+            case "semicolon":
+                key = Key.Semicolon;
+                physical = false;
+                return true;
+            case "apostrophe":
+                key = Key.Apostrophe;
+                physical = false;
+                return true;
             default:
                 // Letter and digit identifiers match Key enum names when single-char lowercase.
                 if (identifier.Length == 1)
@@ -657,6 +869,39 @@ internal static class GameActions
             case "back":
                 button = JoyButton.Back;
                 return true;
+            case "guide":
+                button = JoyButton.Guide;
+                return true;
+            case "left_stick":
+                button = JoyButton.LeftStick;
+                return true;
+            case "right_stick":
+                button = JoyButton.RightStick;
+                return true;
+            case "left_shoulder":
+                button = JoyButton.LeftShoulder;
+                return true;
+            case "right_shoulder":
+                button = JoyButton.RightShoulder;
+                return true;
+            case "misc1":
+                button = JoyButton.Misc1;
+                return true;
+            case "paddle1":
+                button = JoyButton.Paddle1;
+                return true;
+            case "paddle2":
+                button = JoyButton.Paddle2;
+                return true;
+            case "paddle3":
+                button = JoyButton.Paddle3;
+                return true;
+            case "paddle4":
+                button = JoyButton.Paddle4;
+                return true;
+            case "touchpad":
+                button = JoyButton.Touchpad;
+                return true;
             default:
                 button = JoyButton.Invalid;
                 return false;
@@ -678,6 +923,12 @@ internal static class GameActions
                 return true;
             case "right_y":
                 axis = JoyAxis.RightY;
+                return true;
+            case "left_trigger":
+                axis = JoyAxis.TriggerLeft;
+                return true;
+            case "right_trigger":
+                axis = JoyAxis.TriggerRight;
                 return true;
             default:
                 axis = JoyAxis.Invalid;
@@ -831,4 +1082,78 @@ internal static class GameActions
         token = "key:" + identifier;
         return InputBindingToken.TryParse(token, out _);
     }
+
+    /// <summary>
+    /// Formats a deliberate controller button or axis event as a schema-1 token.
+    /// Low-amplitude motion is ignored so passive stick drift cannot capture a binding.
+    /// </summary>
+    public static bool TryFormatControllerToken(InputEvent inputEvent, out string token)
+    {
+        ArgumentNullException.ThrowIfNull(inputEvent);
+        token = string.Empty;
+        string? identifier = inputEvent switch
+        {
+            InputEventJoypadButton { Pressed: true } buttonEvent =>
+                FormatJoyButtonIdentifier(buttonEvent.ButtonIndex),
+            InputEventJoypadMotion motionEvent
+                when Math.Abs(motionEvent.AxisValue) >= ControllerCaptureThreshold =>
+                FormatJoyAxisIdentifier(motionEvent.Axis),
+            _ => null,
+        };
+        if (identifier is null)
+        {
+            return false;
+        }
+
+        if (inputEvent is InputEventJoypadButton)
+        {
+            token = "button:" + identifier;
+        }
+        else if (inputEvent is InputEventJoypadMotion motionEvent)
+        {
+            token = "axis:" + identifier + (motionEvent.AxisValue < 0.0f ? ":-1" : ":+1");
+        }
+
+        return InputBindingToken.TryParse(token, out var parsed)
+            && InputBindingToken.IsSupportedControllerBinding(parsed);
+    }
+
+    private static string? FormatJoyButtonIdentifier(JoyButton button) =>
+        button switch
+        {
+            JoyButton.A => "south",
+            JoyButton.B => "east",
+            JoyButton.X => "west",
+            JoyButton.Y => "north",
+            JoyButton.Back => "select",
+            JoyButton.Guide => "guide",
+            JoyButton.Start => "start",
+            JoyButton.LeftStick => "left_stick",
+            JoyButton.RightStick => "right_stick",
+            JoyButton.LeftShoulder => "left_shoulder",
+            JoyButton.RightShoulder => "right_shoulder",
+            JoyButton.DpadUp => "dpad_up",
+            JoyButton.DpadDown => "dpad_down",
+            JoyButton.DpadLeft => "dpad_left",
+            JoyButton.DpadRight => "dpad_right",
+            JoyButton.Misc1 => "misc1",
+            JoyButton.Paddle1 => "paddle1",
+            JoyButton.Paddle2 => "paddle2",
+            JoyButton.Paddle3 => "paddle3",
+            JoyButton.Paddle4 => "paddle4",
+            JoyButton.Touchpad => "touchpad",
+            _ => null,
+        };
+
+    private static string? FormatJoyAxisIdentifier(JoyAxis axis) =>
+        axis switch
+        {
+            JoyAxis.LeftX => "left_x",
+            JoyAxis.LeftY => "left_y",
+            JoyAxis.RightX => "right_x",
+            JoyAxis.RightY => "right_y",
+            JoyAxis.TriggerLeft => "left_trigger",
+            JoyAxis.TriggerRight => "right_trigger",
+            _ => null,
+        };
 }

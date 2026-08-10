@@ -1,0 +1,69 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vibesnake.example/schemas/personality.schema1.json",
+  "title": "Vibe Snake custom AI personality schema 1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "name",
+    "description",
+    "aggression",
+    "risk_tolerance",
+    "patience",
+    "greed",
+    "chaos",
+    "power_up_priority",
+    "color"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": 1
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 48
+    },
+    "description": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 192
+    },
+    "aggression": {
+      "$ref": "#/$defs/trait"
+    },
+    "risk_tolerance": {
+      "$ref": "#/$defs/trait"
+    },
+    "patience": {
+      "$ref": "#/$defs/trait"
+    },
+    "greed": {
+      "$ref": "#/$defs/trait"
+    },
+    "chaos": {
+      "$ref": "#/$defs/trait"
+    },
+    "power_up_priority": {
+      "$ref": "#/$defs/trait"
+    },
+    "color": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 255
+      }
+    }
+  },
+  "$defs": {
+    "trait": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    }
+  }
+}

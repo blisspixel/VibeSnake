@@ -308,6 +308,25 @@ public sealed partial class SnakeRun
     /// </summary>
     public string ConfigHash => _config.ComputeConfigHash();
 
+    /// <summary>Immutable effective configuration, including stable mode identity.</summary>
+    public RunConfig Configuration => _config;
+
+    /// <summary>Closed product-mode contract for this run.</summary>
+    public RunModeDefinition Mode => RunModeCatalog.Get(_config.ModeId, _config.ModeVersion);
+
+    /// <summary>Fair-score category including the active DDA contract.</summary>
+    public string ScoreCategoryId => RunModeCatalog.GetScoreCategoryId(_config);
+
+    /// <summary>
+    /// Player-visible adaptive state and the bounded hunger drain for the next step.
+    /// </summary>
+    public AdaptiveDifficultyDecision AdaptiveDifficulty =>
+        AdaptiveDifficultyPolicy.Evaluate(
+            _config,
+            Tick == int.MaxValue ? Tick : Tick + 1,
+            ComboCount,
+            HungerTicksRemaining);
+
     /// <summary>Algorithm id for <see cref="ConfigHash"/>.</summary>
     public string ConfigHashAlgorithm => RunConfig.ConfigHashAlgorithmId;
 
@@ -513,10 +532,17 @@ public sealed partial class SnakeRun
         var ateFood = Food == nextHead;
         var grows = ateFood && !HasGluttony;
         var movesOntoDepartingTail = !grows && nextHead == _body[0];
-        if (!ateFood)
+        if (!ateFood && _config.EnableStarvation)
         {
             var hungerBefore = HungerTicksRemaining;
-            HungerTicksRemaining = Math.Max(0, HungerTicksRemaining - 1);
+            var adaptiveDecision = AdaptiveDifficultyPolicy.Evaluate(
+                _config,
+                Tick,
+                ComboCount,
+                HungerTicksRemaining);
+            HungerTicksRemaining = Math.Max(
+                0,
+                HungerTicksRemaining - adaptiveDecision.HungerDrainTicks);
             TryEmitStarvationWarning(hungerBefore, orderedEvents, ref events);
         }
 
@@ -602,7 +628,14 @@ public sealed partial class SnakeRun
             var points = CalculateFoodPoints(_body.Count);
             var awardedPoints = (int)Math.Min((long)points, MaximumScore - (long)Score);
             Score += awardedPoints;
-            ComboCount++;
+            if (_config.EnableComboScoring)
+            {
+                ComboCount++;
+            }
+            else
+            {
+                ComboCount = 0;
+            }
             _sessionFoodEaten = checked(_sessionFoodEaten + 1);
             if (ComboCount > _sessionMaxCombo)
             {
@@ -617,10 +650,13 @@ public sealed partial class SnakeRun
                 new RunEventDetail(
                     RunEventKind.ScoreChanged,
                     Value: awardedPoints));
-            orderedEvents.Add(
-                new RunEventDetail(
-                    RunEventKind.HungerReset,
-                    Value: _config.StarvationTicks));
+            if (_config.EnableStarvation)
+            {
+                orderedEvents.Add(
+                    new RunEventDetail(
+                        RunEventKind.HungerReset,
+                        Value: _config.StarvationTicks));
+            }
 
             ApplyFoodNearMisses(hungerBeforeEat, ref events, orderedEvents);
 
@@ -765,6 +801,7 @@ public sealed partial class SnakeRun
 
     public RunSnapshot GetSnapshot()
     {
+        var adaptiveDifficulty = AdaptiveDifficulty;
         return new RunSnapshot(
             Tick,
             Status,
@@ -778,6 +815,8 @@ public sealed partial class SnakeRun
             ComboMultiplier,
             TicksSinceLastFood,
             HungerTicksRemaining,
+            _config.StarvationTicks,
+            _config.StarvationWarningTicks,
             PowerPickup,
             PowerSpawnTicksElapsed,
             ShieldTicksRemaining,
@@ -791,7 +830,10 @@ public sealed partial class SnakeRun
             BaitPosition,
             _detachedObstaclesView,
             DetachedObstacleTicksRemaining,
-            ComputeStateHash());
+            ComputeStateHash(),
+            adaptiveDifficulty.State,
+            _config.AdaptivePolicyId,
+            _config.EnableAdaptation);
     }
 
     public string ComputeStateHash()
@@ -842,7 +884,8 @@ public sealed partial class SnakeRun
         _achievementCandidatesEmitted = true;
         var earned = AchievementCatalog.EvaluateCandidates(
             ToAchievementMetrics(),
-            alreadyUnlocked: _profileUnlockedAchievements);
+            alreadyUnlocked: _profileUnlockedAchievements,
+            modeId: _config.ModeId);
         foreach (var id in earned)
         {
             var index = AchievementCatalog.IndexOf(id);
@@ -874,6 +917,13 @@ public sealed partial class SnakeRun
             writer.WriteNumber("width", _config.Width);
             writer.WriteNumber("height", _config.Height);
             writer.WriteNumber("rulesTickMilliseconds", RunConfig.RulesTickMilliseconds);
+            if (!string.Equals(_config.ModeId, RunModeCatalog.VibeId, StringComparison.Ordinal)
+                || _config.ModeVersion != RunModeCatalog.CurrentModeVersion)
+            {
+                writer.WriteString("modeId", _config.ModeId);
+                writer.WriteNumber("modeVersion", _config.ModeVersion);
+            }
+
             writer.WriteNumber("starvationTicks", _config.StarvationTicks);
             if (_config.StarvationWarningTicks != RunConfig.DefaultStarvationWarningTicks)
             {
@@ -914,6 +964,37 @@ public sealed partial class SnakeRun
             if (_config.EnableAchievementCandidates)
             {
                 writer.WriteBoolean("enableAchievementCandidates", true);
+            }
+
+            if (!_config.EnableStarvation)
+            {
+                writer.WriteBoolean("enableStarvation", false);
+            }
+
+            if (!_config.EnableComboScoring)
+            {
+                writer.WriteBoolean("enableComboScoring", false);
+            }
+
+            if (!_config.EnableSpeedScoreBonus)
+            {
+                writer.WriteBoolean("enableSpeedScoreBonus", false);
+            }
+
+            if (!_config.EnableLengthScoreBonus)
+            {
+                writer.WriteBoolean("enableLengthScoreBonus", false);
+            }
+
+            if (_config.EnableAdaptation)
+            {
+                writer.WriteBoolean("enableAdaptation", true);
+                writer.WriteString("adaptivePolicyId", _config.AdaptivePolicyId);
+            }
+
+            if (_config.EnablePowerDecisionOffers)
+            {
+                writer.WriteBoolean("enablePowerDecisionOffers", true);
             }
 
             writer.WriteEndObject();
@@ -1229,7 +1310,7 @@ public sealed partial class SnakeRun
         ref RunEvent events,
         ICollection<RunEventDetail> orderedEvents)
     {
-        if (HungerTicksRemaining > 0)
+        if (!_config.EnableStarvation || HungerTicksRemaining > 0)
         {
             return;
         }
@@ -1318,7 +1399,7 @@ public sealed partial class SnakeRun
         if (
             PowerSpawnTicksElapsed < _config.PowerSpawnIntervalTicks
             || PowerPickup is not null
-            || HasShield)
+            || (!_config.EnablePowerDecisionOffers && HasShield))
         {
             return;
         }
@@ -1479,6 +1560,13 @@ public sealed partial class SnakeRun
         List<RunEventDetail> orderedEvents,
         ref RunEvent events)
     {
+        if (!_config.EnableComboScoring)
+        {
+            TicksSinceLastFood = 0;
+            ComboCount = 0;
+            return;
+        }
+
         TicksSinceLastFood = checked(TicksSinceLastFood + 1);
         if (TicksSinceLastFood > _config.ComboWindowTicks && ComboCount > 0)
         {
@@ -1496,14 +1584,16 @@ public sealed partial class SnakeRun
     private int CalculateFoodPoints(int snakeLength)
     {
         var nextComboCount = ComboCount + 1;
-        var points = (int)(_config.FoodScore * CalculateComboMultiplier(nextComboCount));
+        var points = _config.EnableComboScoring
+            ? (int)(_config.FoodScore * CalculateComboMultiplier(nextComboCount))
+            : _config.FoodScore;
 
-        if (TicksSinceLastFood < _config.SpeedBonusTicks)
+        if (_config.EnableSpeedScoreBonus && TicksSinceLastFood < _config.SpeedBonusTicks)
         {
             points = checked(points + (int)(_config.FoodScore * 0.5));
         }
 
-        if (snakeLength > 10)
+        if (_config.EnableLengthScoreBonus && snakeLength > 10)
         {
             points = checked(points + (int)((snakeLength - 10) * Math.Log(snakeLength) / 2.0));
         }
@@ -1656,6 +1746,18 @@ public sealed partial class SnakeRun
 
     private PowerPickup? SpawnPower(GridPoint reservedDestination)
     {
+        var offerKind = PowerKind.Shield;
+        if (_config.EnablePowerDecisionOffers)
+        {
+            var eligibleOffers = PowerDecisionCatalog.EligibleOffers(ActivePowerKinds());
+            if (eligibleOffers.Count == 0)
+            {
+                return null;
+            }
+
+            offerKind = eligibleOffers[_random.NextInt(eligibleOffers.Count)];
+        }
+
         var freeCellCount = 0;
         for (var y = 0; y < _config.Height; y++)
         {
@@ -1689,7 +1791,7 @@ public sealed partial class SnakeRun
                 if (freeCellIndex == targetFreeCell)
                 {
                     return new PowerPickup(
-                        PowerKind.Shield,
+                        offerKind,
                         candidate,
                         _config.PowerVisibleTicks);
                 }
@@ -1699,6 +1801,57 @@ public sealed partial class SnakeRun
         }
 
         throw new InvalidOperationException("The free-cell count did not match power spawn occupancy.");
+    }
+
+    private IReadOnlyList<PowerKind> ActivePowerKinds()
+    {
+        var active = new List<PowerKind>(9);
+        if (HasShield)
+        {
+            active.Add(PowerKind.Shield);
+        }
+
+        if (HasPhaseShift)
+        {
+            active.Add(PowerKind.PhaseShift);
+        }
+
+        if (LastStandHeld || HasLastStandRecovery)
+        {
+            active.Add(PowerKind.LastStand);
+        }
+
+        if (HasSlowMo)
+        {
+            active.Add(PowerKind.SlowMo);
+        }
+
+        if (HasBoost)
+        {
+            active.Add(PowerKind.Boost);
+        }
+
+        if (HasMagnet)
+        {
+            active.Add(PowerKind.Magnet);
+        }
+
+        if (HasBait)
+        {
+            active.Add(PowerKind.Bait);
+        }
+
+        if (HasGluttony)
+        {
+            active.Add(PowerKind.Gluttony);
+        }
+
+        if (HasDetachedObstacles)
+        {
+            active.Add(PowerKind.SegmentDetach);
+        }
+
+        return active;
     }
 
     private bool IsPowerSpawnCellBlocked(
@@ -1841,6 +1994,15 @@ public sealed partial class SnakeRun
         {
             throw new ArgumentException(
                 "A second Bait pickup cannot coexist with an active bait marker.",
+                nameof(PowerPickup));
+        }
+
+        if (_config.EnablePowerDecisionOffers
+            && PowerPickup is { } offeredPickup
+            && !PowerDecisionCatalog.IsEligibleOffer(offeredPickup.Kind, ActivePowerKinds()))
+        {
+            throw new ArgumentException(
+                "A power pickup cannot be tactically redundant with active product-mode powers.",
                 nameof(PowerPickup));
         }
     }

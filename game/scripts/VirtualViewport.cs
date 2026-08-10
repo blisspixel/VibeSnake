@@ -33,23 +33,45 @@ internal sealed class VirtualViewport
 
     public void Resize(float windowWidth, float windowHeight)
     {
-        if (windowWidth <= 0.0f || windowHeight <= 0.0f)
+        Resize(windowWidth, windowHeight, windowWidth, windowHeight);
+    }
+
+    public void Resize(
+        float windowWidth,
+        float windowHeight,
+        float preferredFrameWidth,
+        float preferredFrameHeight)
+    {
+        if (windowWidth <= 0.0f
+            || windowHeight <= 0.0f
+            || preferredFrameWidth <= 0.0f
+            || preferredFrameHeight <= 0.0f)
         {
             throw new ArgumentOutOfRangeException(
                 nameof(windowWidth),
-                "Window dimensions must be positive.");
+                "Window and preferred frame dimensions must be positive.");
         }
 
         WindowWidth = Math.Max(windowWidth, MinimumWindowWidth);
         WindowHeight = Math.Max(windowHeight, MinimumWindowHeight);
 
-        var scaleX = WindowWidth / LogicalWidth;
-        var scaleY = WindowHeight / LogicalHeight;
+        var preferredAspect = preferredFrameWidth / preferredFrameHeight;
+        var windowAspect = WindowWidth / WindowHeight;
+        var frameWidth = windowAspect > preferredAspect
+            ? WindowHeight * preferredAspect
+            : WindowWidth;
+        var frameHeight = windowAspect > preferredAspect
+            ? WindowHeight
+            : WindowWidth / preferredAspect;
+        var frameOffsetX = (WindowWidth - frameWidth) * 0.5f;
+        var frameOffsetY = (WindowHeight - frameHeight) * 0.5f;
+        var scaleX = frameWidth / LogicalWidth;
+        var scaleY = frameHeight / LogicalHeight;
         Scale = Math.Min(scaleX, scaleY);
         var drawnWidth = LogicalWidth * Scale;
         var drawnHeight = LogicalHeight * Scale;
-        OffsetX = (WindowWidth - drawnWidth) * 0.5f;
-        OffsetY = (WindowHeight - drawnHeight) * 0.5f;
+        OffsetX = frameOffsetX + ((frameWidth - drawnWidth) * 0.5f);
+        OffsetY = frameOffsetY + ((frameHeight - drawnHeight) * 0.5f);
         DestinationRect = new Rect2(OffsetX, OffsetY, drawnWidth, drawnHeight);
     }
 

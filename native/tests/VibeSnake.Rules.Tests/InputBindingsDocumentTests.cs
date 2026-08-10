@@ -38,6 +38,7 @@ public sealed class InputBindingsDocumentTests
             """);
 
         Assert.Equal(InputBindingsLoadCode.Conflict, result.Code);
+        Assert.Equal("confirm", result.ConflictingAction);
     }
 
     [Fact]
@@ -59,6 +60,34 @@ public sealed class InputBindingsDocumentTests
             Assert.Equal(
                 InputBindingsDocument.ControllerDeviceClass,
                 controllerDefaults.Document!.DeviceClass);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void Store_rejects_invalid_publicly_constructed_documents()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "vibesnake-input-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(root);
+        try
+        {
+            var actions = new Dictionary<string, string>(
+                InputBindingsDocument.CreateKeyboardDefaults().ActionToBinding,
+                StringComparer.Ordinal)
+            {
+                ["pause"] = "button:west",
+            };
+            var invalid = new InputBindingsDocument(
+                InputBindingsDocument.CurrentSchemaVersion,
+                InputBindingsDocument.KeyboardDeviceClass,
+                actions);
+
+            var store = new InputBindingsStore(root);
+            Assert.Throws<InvalidOperationException>(() => store.Save(invalid));
+            Assert.False(File.Exists(store.PathForDeviceClass(invalid.DeviceClass)));
         }
         finally
         {
@@ -131,6 +160,7 @@ public sealed class InputBindingsDocumentTests
 
         Assert.Equal(InputBindingsLoadCode.Conflict, conflict.Code);
         Assert.Null(conflict.Document);
+        Assert.Equal("confirm", conflict.ConflictingAction);
         Assert.Contains("confirm", conflict.Message, StringComparison.Ordinal);
     }
 
@@ -181,6 +211,55 @@ public sealed class InputBindingsDocumentTests
     }
 
     [Fact]
+    public void TryRemapAction_rejects_overlapping_axis_thresholds()
+    {
+        var controller = InputBindingsDocument.CreateControllerDefaults();
+        var first = controller.TryRemapAction("move_up", "axis:left_y:-0.5");
+        Assert.True(first.IsSuccess);
+
+        var conflict = first.Document!.TryRemapAction("pause", "axis:left_y:-1");
+        Assert.Equal(InputBindingsLoadCode.Conflict, conflict.Code);
+        Assert.Equal("move_up", conflict.ConflictingAction);
+        Assert.Contains("move_up", conflict.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void TryRemapAction_rejects_cross_device_and_unsupported_tokens()
+    {
+        var keyboard = InputBindingsDocument.CreateKeyboardDefaults();
+        var controller = InputBindingsDocument.CreateControllerDefaults();
+
+        Assert.Equal(
+            InputBindingsLoadCode.InvalidField,
+            keyboard.TryRemapAction("pause", "button:west").Code);
+        Assert.Equal(
+            InputBindingsLoadCode.InvalidField,
+            controller.TryRemapAction("pause", "key:space").Code);
+        Assert.Equal(
+            InputBindingsLoadCode.InvalidField,
+            controller.TryRemapAction("pause", "button:unknown").Code);
+        Assert.Equal(
+            InputBindingsLoadCode.Conflict,
+            controller.TryRemapAction("pause", "button:a").Code);
+    }
+
+    [Fact]
+    public void Read_rejects_unsupported_device_classes_and_binding_vocabularies()
+    {
+        var unsupportedDevice = InputBindingsDocument.Read(
+            InputBindingsDocument.CreateKeyboardDefaults()
+                .SerializeCanonical()
+                .Replace("\"keyboard\"", "\"mouse\"", StringComparison.Ordinal));
+        Assert.Equal(InputBindingsLoadCode.InvalidField, unsupportedDevice.Code);
+
+        var wrongBindingKind = InputBindingsDocument.Read(
+            InputBindingsDocument.CreateKeyboardDefaults()
+                .SerializeCanonical()
+                .Replace("\"key:p\"", "\"button:west\"", StringComparison.Ordinal));
+        Assert.Equal(InputBindingsLoadCode.InvalidField, wrongBindingKind.Code);
+    }
+
+    [Fact]
     public void TrySwapActions_exchanges_bindings_without_conflict()
     {
         var original = InputBindingsDocument.CreateKeyboardDefaults();
@@ -202,5 +281,96 @@ public sealed class InputBindingsDocumentTests
         Assert.Equal(
             InputBindingsLoadCode.InvalidField,
             original.TrySwapActions(" ", "confirm").Code);
+    }
+
+    [Fact]
+    public void Read_rejects_malformed_root_schema_device_and_actions_fields()
+    {
+        Assert.Equal(
+            InputBindingsLoadCode.InvalidField,
+            InputBindingsDocument.Read("[]").Code);
+
+        foreach (var json in new[]
+        {
+            """{ "deviceClass": "keyboard", "actions": {} }""",
+            """{ "schemaVersion": "1", "deviceClass": "keyboard", "actions": {} }""",
+            """{ "schemaVersion": 1.5, "deviceClass": "keyboard", "actions": {} }""",
+            """{ "schemaVersion": 1, "actions": {} }""",
+            """{ "schemaVersion": 1, "deviceClass": 1, "actions": {} }""",
+            """{ "schemaVersion": 1, "deviceClass": " ", "actions": {} }""",
+            """{ "schemaVersion": 1, "deviceClass": "keyboard" }""",
+            """{ "schemaVersion": 1, "deviceClass": "keyboard", "actions": [] }""",
+            """{ "schemaVersion": 1, "deviceClass": "keyboard", "actions": { "confirm": 1 } }""",
+            """{ "schemaVersion": 1, "deviceClass": "keyboard", "actions": { "confirm": " " } }""",
+        })
+        {
+            Assert.Equal(InputBindingsLoadCode.InvalidField, InputBindingsDocument.Read(json).Code);
+        }
+    }
+
+    [Fact]
+    public void Read_rejects_duplicate_action_names_before_binding_conflicts()
+    {
+        var json = InputBindingsDocument.CreateKeyboardDefaults()
+            .SerializeCanonical()
+            .Replace(
+                "\"confirm\":\"key:enter\"",
+                "\"confirm\":\"key:enter\",\"confirm\":\"key:space\"",
+                StringComparison.Ordinal);
+
+        Assert.Equal(InputBindingsLoadCode.InvalidField, InputBindingsDocument.Read(json).Code);
+    }
+
+    [Fact]
+    public void Swap_handles_identical_actions_and_duplicate_public_binding_state()
+    {
+        var defaults = InputBindingsDocument.CreateKeyboardDefaults();
+        var identical = defaults.TrySwapActions("confirm", "confirm");
+        Assert.True(identical.IsSuccess);
+        Assert.Same(defaults, identical.Document);
+
+        var duplicateActions = new Dictionary<string, string>(
+            defaults.ActionToBinding,
+            StringComparer.Ordinal)
+        {
+            ["back"] = "key:enter",
+        };
+        var duplicateDocument = defaults with { ActionToBinding = duplicateActions };
+        Assert.Equal(
+            InputBindingsLoadCode.Conflict,
+            duplicateDocument.TrySwapActions("confirm", "back").Code);
+    }
+
+    [Fact]
+    public void Store_sanitizes_device_file_names_and_uses_keyboard_fallback_defaults()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "vibesnake-input-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            var store = new InputBindingsStore(root);
+            Assert.EndsWith(
+                "mouse__.input_bindings.json",
+                store.PathForDeviceClass("mouse?!"),
+                StringComparison.Ordinal);
+            Assert.Equal(
+                InputBindingsDocument.KeyboardDeviceClass,
+                store.LoadOrDefault("mouse").Document!.DeviceClass);
+
+            var unsupportedDocument = InputBindingsDocument.CreateKeyboardDefaults() with
+            {
+                DeviceClass = "mouse",
+            };
+            Assert.Equal(
+                InputBindingsLoadCode.InvalidField,
+                unsupportedDocument.TryRemapAction("pause", "key:space").Code);
+            Assert.False(new InputBindingsLoadResult(InputBindingsLoadCode.Success, "missing").IsSuccess);
+        }
+        finally
+        {
+            if (Directory.Exists(root))
+            {
+                Directory.Delete(root, recursive: true);
+            }
+        }
     }
 }

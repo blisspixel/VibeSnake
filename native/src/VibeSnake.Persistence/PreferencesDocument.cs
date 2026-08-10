@@ -5,8 +5,8 @@ using System.Text.Json;
 namespace VibeSnake.Persistence;
 
 /// <summary>
-/// Versioned player preferences document (schema 2) for multi-bus audio and
-/// accessibility settings. Schema 1 single-volume files migrate on load.
+/// Versioned player preferences document (schema 7) for gameplay, multi-bus
+/// audio, accessibility, and controller settings. Older schemas migrate on load.
 /// </summary>
 public enum PreferencesLoadCode : byte
 {
@@ -42,10 +42,26 @@ public sealed record PreferencesDocument(
     bool HighContrast,
     float TextScale,
     float ScreenShakeIntensity,
-    bool FlashFree)
+    bool FlashFree,
+    float ControllerDeadzone,
+    bool MonoOutput,
+    bool VibeAdaptationEnabled,
+    bool LocalPlaytestSummariesEnabled,
+    string WindowMode,
+    string WindowSizePreset)
 {
-    public const int CurrentSchemaVersion = 2;
+    public const int CurrentSchemaVersion = 7;
     public const string FileName = "preferences.json";
+    public const string WindowedMode = "windowed";
+    public const string BorderlessMode = "borderless";
+    public const string ExclusiveFullscreenMode = "exclusive-fullscreen";
+    public const string ClassicWindowSize = "classic-4-3";
+    public const string HdWindowSize = "hd-16-9";
+    public const string DesktopWindowSize = "desktop-16-10";
+    public const string FullHdWindowSize = "full-hd-16-9";
+    public const float MinimumControllerDeadzone = 0.1f;
+    public const float MaximumControllerDeadzone = 0.9f;
+    public const float DefaultControllerDeadzone = 0.5f;
 
     public static PreferencesDocument CreateDefaults() => new(
         SchemaVersion: CurrentSchemaVersion,
@@ -62,7 +78,13 @@ public sealed record PreferencesDocument(
         HighContrast: false,
         TextScale: 1.0f,
         ScreenShakeIntensity: 1.0f,
-        FlashFree: false);
+        FlashFree: false,
+        ControllerDeadzone: DefaultControllerDeadzone,
+        MonoOutput: false,
+        VibeAdaptationEnabled: true,
+        LocalPlaytestSummariesEnabled: false,
+        WindowMode: WindowedMode,
+        WindowSizePreset: HdWindowSize);
 
     public PreferencesDocument Clamped() => this with
     {
@@ -72,6 +94,13 @@ public sealed record PreferencesDocument(
         UiVolume = Clamp01(UiVolume),
         TextScale = Math.Clamp(TextScale, 0.85f, 1.5f),
         ScreenShakeIntensity = Clamp01(ScreenShakeIntensity),
+        ControllerDeadzone = Math.Clamp(
+            ControllerDeadzone,
+            MinimumControllerDeadzone,
+            MaximumControllerDeadzone),
+        WindowMode = NormalizeWindowMode(WindowMode, Fullscreen),
+        WindowSizePreset = NormalizeWindowSizePreset(WindowSizePreset),
+        Fullscreen = NormalizeWindowMode(WindowMode, Fullscreen) != WindowedMode,
     };
 
     public static PreferencesLoadResult Read(string json)
@@ -142,10 +171,56 @@ public sealed record PreferencesDocument(
                         MigrateFromSchema1(root).Clamped());
                 }
 
+                if (schemaVersion == 2)
+                {
+                    return new PreferencesLoadResult(
+                        PreferencesLoadCode.Success,
+                        "Preferences migrated from schema 2.",
+                        ReadSchema2(root).Clamped());
+                }
+
+                if (schemaVersion == 3)
+                {
+                    return new PreferencesLoadResult(
+                        PreferencesLoadCode.Success,
+                        "Preferences migrated from schema 3.",
+                        ReadSchema3(root).Clamped());
+                }
+
+                if (schemaVersion == 4)
+                {
+                    return new PreferencesLoadResult(
+                        PreferencesLoadCode.Success,
+                        "Preferences migrated from schema 4.",
+                        ReadSchema4(root).Clamped());
+                }
+
+                if (schemaVersion == 5)
+                {
+                    return new PreferencesLoadResult(
+                        PreferencesLoadCode.Success,
+                        "Preferences migrated from schema 5.",
+                        ReadSchema5(root).Clamped());
+                }
+
+                if (schemaVersion == 6)
+                {
+                    var migrated = ReadSchema6(root);
+                    return new PreferencesLoadResult(
+                        PreferencesLoadCode.Success,
+                        "Preferences migrated from schema 6.",
+                        (migrated with
+                        {
+                            WindowMode = migrated.Fullscreen
+                                ? BorderlessMode
+                                : WindowedMode,
+                        }).Clamped());
+                }
+
                 return new PreferencesLoadResult(
                     PreferencesLoadCode.Success,
                     "Preferences document is valid.",
-                    ReadSchema2(root).Clamped());
+                    ReadSchema7(root).Clamped());
             }
             catch (InvalidDataException exception)
             {
@@ -178,6 +253,14 @@ public sealed record PreferencesDocument(
             writer.WriteNumber("textScale", clamped.TextScale);
             writer.WriteNumber("screenShakeIntensity", clamped.ScreenShakeIntensity);
             writer.WriteBoolean("flashFree", clamped.FlashFree);
+            writer.WriteNumber("controllerDeadzone", clamped.ControllerDeadzone);
+            writer.WriteBoolean("monoOutput", clamped.MonoOutput);
+            writer.WriteBoolean("vibeAdaptationEnabled", clamped.VibeAdaptationEnabled);
+            writer.WriteBoolean(
+                "localPlaytestSummariesEnabled",
+                clamped.LocalPlaytestSummariesEnabled);
+            writer.WriteString("windowMode", clamped.WindowMode);
+            writer.WriteString("windowSizePreset", clamped.WindowSizePreset);
             writer.WriteEndObject();
         }
 
@@ -251,7 +334,55 @@ public sealed record PreferencesDocument(
         HighContrast: ReadBool(root, "highContrast"),
         TextScale: ReadFloat(root, "textScale"),
         ScreenShakeIntensity: ReadFloat(root, "screenShakeIntensity"),
-        FlashFree: ReadBool(root, "flashFree"));
+        FlashFree: ReadBool(root, "flashFree"),
+        ControllerDeadzone: DefaultControllerDeadzone,
+        MonoOutput: false,
+        VibeAdaptationEnabled: true,
+        LocalPlaytestSummariesEnabled: false,
+        WindowMode: WindowedMode,
+        WindowSizePreset: ClassicWindowSize);
+
+    private static PreferencesDocument ReadSchema3(JsonElement root) =>
+        ReadSchema2(root) with
+        {
+            ControllerDeadzone = ReadFloat(root, "controllerDeadzone"),
+        };
+
+    private static PreferencesDocument ReadSchema4(JsonElement root) =>
+        ReadSchema3(root) with
+        {
+            MonoOutput = ReadBool(root, "monoOutput"),
+        };
+
+    private static PreferencesDocument ReadSchema5(JsonElement root) =>
+        ReadSchema4(root) with
+        {
+            VibeAdaptationEnabled = ReadBool(
+                root,
+                "vibeAdaptationEnabled",
+                defaultValue: true),
+        };
+
+    private static PreferencesDocument ReadSchema6(JsonElement root) =>
+        ReadSchema5(root) with
+        {
+            LocalPlaytestSummariesEnabled = ReadBool(
+                root,
+                "localPlaytestSummariesEnabled"),
+        };
+
+    private static PreferencesDocument ReadSchema7(JsonElement root) =>
+        ReadSchema6(root) with
+        {
+            WindowMode = ReadChoice(
+                root,
+                "windowMode",
+                [WindowedMode, BorderlessMode, ExclusiveFullscreenMode]),
+            WindowSizePreset = ReadChoice(
+                root,
+                "windowSizePreset",
+                [ClassicWindowSize, HdWindowSize, DesktopWindowSize, FullHdWindowSize]),
+        };
 
     private static float ReadFloat(JsonElement root, string field)
     {
@@ -284,6 +415,41 @@ public sealed record PreferencesDocument(
         return element.GetBoolean();
     }
 
+    private static string ReadChoice(
+        JsonElement root,
+        string field,
+        IReadOnlyCollection<string> allowed)
+    {
+        if (!root.TryGetProperty(field, out var element)
+            || element.ValueKind != JsonValueKind.String)
+        {
+            throw new InvalidDataException(
+                $"Preferences field '{field}' must be a string.");
+        }
+
+        var value = element.GetString();
+        if (value is null || !allowed.Contains(value, StringComparer.Ordinal))
+        {
+            throw new InvalidDataException(
+                $"Preferences field '{field}' is not a supported value.");
+        }
+
+        return value;
+    }
+
+    private static string NormalizeWindowMode(string? value, bool fullscreen) => value switch
+    {
+        WindowedMode when fullscreen => BorderlessMode,
+        WindowedMode or BorderlessMode or ExclusiveFullscreenMode => value,
+        _ => fullscreen ? BorderlessMode : WindowedMode,
+    };
+
+    private static string NormalizeWindowSizePreset(string? value) => value switch
+    {
+        ClassicWindowSize or HdWindowSize or DesktopWindowSize or FullHdWindowSize => value,
+        _ => ClassicWindowSize,
+    };
+
     private static float Clamp01(float value) => Math.Clamp(value, 0.0f, 1.0f);
 }
 
@@ -292,9 +458,19 @@ public sealed record PreferencesDocument(
 /// </summary>
 public sealed class PreferencesStore
 {
+    private readonly IPreferencesWriteOperations _writeOperations;
+
     public PreferencesStore(string userDataRoot)
+        : this(userDataRoot, PhysicalPreferencesWriteOperations.Instance)
+    {
+    }
+
+    internal PreferencesStore(
+        string userDataRoot,
+        IPreferencesWriteOperations writeOperations)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(userDataRoot);
+        ArgumentNullException.ThrowIfNull(writeOperations);
         if (!Path.IsPathFullyQualified(userDataRoot))
         {
             throw new ArgumentException(
@@ -304,6 +480,7 @@ public sealed class PreferencesStore
 
         UserDataRoot = Path.GetFullPath(userDataRoot);
         PreferencesPath = Path.Combine(UserDataRoot, PreferencesDocument.FileName);
+        _writeOperations = writeOperations;
     }
 
     public string UserDataRoot { get; }
@@ -335,13 +512,39 @@ public sealed class PreferencesStore
     public void Save(PreferencesDocument document)
     {
         ArgumentNullException.ThrowIfNull(document);
-        Directory.CreateDirectory(UserDataRoot);
+        _writeOperations.CreateDirectory(UserDataRoot);
         var payload = document.Clamped() with { SchemaVersion = PreferencesDocument.CurrentSchemaVersion };
         var temporaryPath = PreferencesPath + ".tmp";
-        File.WriteAllText(
+        _writeOperations.WriteAllText(
             temporaryPath,
             payload.SerializeCanonical(),
             new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
-        File.Move(temporaryPath, PreferencesPath, overwrite: true);
+        _writeOperations.Move(temporaryPath, PreferencesPath, overwrite: true);
     }
+}
+
+internal interface IPreferencesWriteOperations
+{
+    void CreateDirectory(string path);
+
+    void WriteAllText(string path, string contents, Encoding encoding);
+
+    void Move(string sourcePath, string destinationPath, bool overwrite);
+}
+
+internal sealed class PhysicalPreferencesWriteOperations : IPreferencesWriteOperations
+{
+    public static PhysicalPreferencesWriteOperations Instance { get; } = new();
+
+    private PhysicalPreferencesWriteOperations()
+    {
+    }
+
+    public void CreateDirectory(string path) => Directory.CreateDirectory(path);
+
+    public void WriteAllText(string path, string contents, Encoding encoding) =>
+        File.WriteAllText(path, contents, encoding);
+
+    public void Move(string sourcePath, string destinationPath, bool overwrite) =>
+        File.Move(sourcePath, destinationPath, overwrite);
 }

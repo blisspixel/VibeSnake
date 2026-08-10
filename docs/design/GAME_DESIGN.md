@@ -57,7 +57,7 @@ Progression outside the run should invite another attempt without making a fresh
 - Starvation warning begins at 20 seconds.
 - Starvation occurs at 30 seconds.
 - Food resets the timer.
-- The target balance range in telemetry is 20 to 40 percent starvation deaths, but that target has not been validated through structured playtests.
+- No human score, survival, food-rate, death-rate, combo, or power target is accepted yet. [Observed AI baselines](BALANCE_BASELINES.md) remain descriptive, and privacy-bounded [local playtest summaries](PLAYTEST_SUMMARIES.md) require structured human review before they can support a target.
 
 ### Scoring and mastery
 
@@ -93,10 +93,22 @@ AI channels provide entertainment, simulation, strategy learning, and offline ri
 
 ## Modes
 
-The current product has one primary human ruleset and an AI spectator mode. The recommended next modes are:
+The native product has two human modes over one versioned pure C# rules engine:
 
-1. Classic: movement, food, growth, and self-collision with minimal meta systems.
-2. Vibe: starvation, combos, near misses, power-ups, progression, and the full presentation layer. A versioned adaptive policy is optional future scope, not part of the current ruleset.
+1. Classic: movement, wrapping, food, growth, fixed cadence, self-collision, pause, and fixed 10-point food scoring. It has no starvation, combo or bonus scoring, near misses, powers, progression candidates, or DDA.
+2. Vibe: starvation, combos, near misses, power-ups, progression, full feedback, and disclosed adaptive policy `vibe-bounded-hunger-v1`.
+
+Classic scores use `classic-standard-v1`. Vibe DDA-on scores use `vibe-standard-v1-dda-on`; the player can disable adaptation in Gameplay settings for an unranked Vibe run, which uses `vibe-standard-v1-dda-off`. These categories are never compared.
+
+### Vibe adaptive policy
+
+The policy is deterministic and stateless. Its only inputs are the effective run config, rules tick, combo, and remaining hunger. It never reads profile history, wall-clock time, presentation state, input device, or hidden telemetry. Hunger drain is its only output:
+
+- Support: while hunger is in the warning band and combo is 0 through 2, hunger drains by one on every second rules step.
+- Standard: hunger drains by one on every rules step.
+- Pressure: at combo 10 or higher outside the warning band, hunger drains by one normally and by two on every fourth rules step.
+
+The exact drain bound is zero through two ticks per rules step. The HUD shows `DDA [+] SUPPORT`, `DDA [=] STANDARD`, `DDA [!] PRESSURE`, or `DDA [=] OFF`; score metadata records mode, difficulty policy, score category, enabled state, policy, and captured adaptive state. Config hashes and replay restoration bind the policy. Current native run-local achievements explicitly require Vibe; V070-08 will audit every achievement against both modes rather than silently changing eligibility.
 
 A daily challenge should wait until seeded randomness and versioned rule sets are implemented.
 
@@ -109,7 +121,6 @@ A daily challenge should wait until seeded randomness and versioned rule sets ar
 
 ## Open design questions
 
-- Should DDA be enabled in scored modes?
 - Which rights-cleared, curated subset of the local 338,592,122-byte review library should form the small core pack, with any larger approved catalog delivered only through optional packs?
 - Which run metrics are useful enough to collect locally, and what consent model would apply to any future upload?
 

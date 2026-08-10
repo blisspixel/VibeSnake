@@ -22,7 +22,8 @@ public enum InputBindingsLoadCode : byte
 public sealed record InputBindingsLoadResult(
     InputBindingsLoadCode Code,
     string Message,
-    InputBindingsDocument? Document = null)
+    InputBindingsDocument? Document = null,
+    string? ConflictingAction = null)
 {
     public bool IsSuccess => Code == InputBindingsLoadCode.Success && Document is not null;
 }
@@ -134,6 +135,14 @@ public sealed record InputBindingsDocument(
                     "deviceClass must be a non-empty string.");
             }
 
+            var deviceClass = deviceElement.GetString()!.Trim();
+            if (deviceClass is not (KeyboardDeviceClass or ControllerDeviceClass))
+            {
+                return new InputBindingsLoadResult(
+                    InputBindingsLoadCode.InvalidField,
+                    $"deviceClass '{deviceClass}' is unsupported.");
+            }
+
             if (!root.TryGetProperty("actions", out var actionsElement)
                 || actionsElement.ValueKind != JsonValueKind.Object)
             {
@@ -155,18 +164,29 @@ public sealed record InputBindingsDocument(
                 }
 
                 var binding = property.Value.GetString()!.Trim();
-                if (!actions.TryAdd(property.Name, binding))
+                if (!InputBindingToken.TryParse(binding, out var parsed)
+                    || !IsBindingSupported(deviceClass, parsed))
+                {
+                    return new InputBindingsLoadResult(
+                        InputBindingsLoadCode.InvalidField,
+                        $"Action '{property.Name}' has an unsupported {deviceClass} binding '{binding}'.");
+                }
+
+                var normalizedBinding = NormalizeBindingToken(parsed);
+                if (!actions.TryAdd(property.Name, normalizedBinding))
                 {
                     return new InputBindingsLoadResult(
                         InputBindingsLoadCode.InvalidField,
                         $"Duplicate action '{property.Name}'.");
                 }
 
-                if (!reverse.TryAdd(binding, property.Name))
+                var conflictKey = InputBindingToken.GetConflictKey(parsed);
+                if (!reverse.TryAdd(conflictKey, property.Name))
                 {
                     return new InputBindingsLoadResult(
                         InputBindingsLoadCode.Conflict,
-                        $"Binding '{binding}' is assigned to more than one action.");
+                        $"Binding '{normalizedBinding}' is assigned to more than one action.",
+                        ConflictingAction: reverse[conflictKey]);
                 }
             }
 
@@ -180,19 +200,12 @@ public sealed record InputBindingsDocument(
                 }
             }
 
-            if (!actions.ContainsKey("confirm") || !actions.ContainsKey("back"))
-            {
-                return new InputBindingsLoadResult(
-                    InputBindingsLoadCode.MissingRequiredAction,
-                    "Confirm and Back bindings are mandatory escape hatches.");
-            }
-
             return new InputBindingsLoadResult(
                 InputBindingsLoadCode.Success,
                 "Input bindings document is valid.",
                 new InputBindingsDocument(
                     schemaVersion,
-                    deviceElement.GetString()!.Trim(),
+                    deviceClass,
                     actions));
         }
     }
@@ -249,6 +262,13 @@ public sealed record InputBindingsDocument(
                 "Binding token must be a valid key:, button:, or axis: token.");
         }
 
+        if (!IsBindingSupported(DeviceClass, parsed))
+        {
+            return new InputBindingsLoadResult(
+                InputBindingsLoadCode.InvalidField,
+                $"Binding token is not supported for deviceClass '{DeviceClass}'.");
+        }
+
         var normalized = NormalizeBindingToken(parsed);
         if (string.Equals(ActionToBinding[actionName], normalized, StringComparison.Ordinal))
         {
@@ -265,11 +285,16 @@ public sealed record InputBindingsDocument(
                 continue;
             }
 
-            if (string.Equals(pair.Value, normalized, StringComparison.Ordinal))
+            if (InputBindingToken.TryParse(pair.Value, out var existing)
+                && string.Equals(
+                    InputBindingToken.GetConflictKey(existing),
+                    InputBindingToken.GetConflictKey(parsed),
+                    StringComparison.Ordinal))
             {
                 return new InputBindingsLoadResult(
                     InputBindingsLoadCode.Conflict,
-                    $"Binding '{normalized}' is already assigned to action '{pair.Key}'.");
+                    $"Binding '{normalized}' is already assigned to action '{pair.Key}'.",
+                    ConflictingAction: pair.Key);
             }
         }
 
@@ -337,13 +362,21 @@ public sealed record InputBindingsDocument(
     private static string NormalizeBindingToken(ParsedInputBinding parsed) =>
         parsed.Kind switch
         {
-            InputBindingKind.Key => "key:" + parsed.Identifier,
-            InputBindingKind.Button => "button:" + parsed.Identifier,
+            InputBindingKind.Key or InputBindingKind.Button =>
+                InputBindingToken.GetConflictKey(parsed),
             // Preserve fractional axis thresholds with a signed invariant form.
             InputBindingKind.Axis => string.Create(
                 System.Globalization.CultureInfo.InvariantCulture,
                 $"axis:{parsed.Identifier}:{(parsed.AxisValue >= 0.0f ? "+" : string.Empty)}{parsed.AxisValue.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture)}"),
             _ => throw new ArgumentOutOfRangeException(nameof(parsed)),
+        };
+
+    private static bool IsBindingSupported(string deviceClass, ParsedInputBinding parsed) =>
+        deviceClass switch
+        {
+            KeyboardDeviceClass => InputBindingToken.IsSupportedKeyboardBinding(parsed),
+            ControllerDeviceClass => InputBindingToken.IsSupportedControllerBinding(parsed),
+            _ => false,
         };
 }
 
@@ -410,12 +443,19 @@ public sealed class InputBindingsStore
     public void Save(InputBindingsDocument document)
     {
         ArgumentNullException.ThrowIfNull(document);
+        var validation = InputBindingsDocument.Read(document.SerializeCanonical());
+        if (!validation.IsSuccess || validation.Document is null)
+        {
+            throw new InvalidOperationException(
+                "Input bindings cannot be saved: " + validation.Message);
+        }
+
         Directory.CreateDirectory(BindingsDirectory);
         var path = PathForDeviceClass(document.DeviceClass);
         var temporaryPath = path + ".tmp";
         File.WriteAllText(
             temporaryPath,
-            document.SerializeCanonical(),
+            validation.Document.SerializeCanonical(),
             new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
         File.Move(temporaryPath, path, overwrite: true);
     }

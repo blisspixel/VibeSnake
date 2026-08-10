@@ -5,7 +5,7 @@ namespace VibeSnake.Rules.Tests;
 public sealed class ControllerConnectionTrackerTests
 {
     [Fact]
-    public void Notes_connect_then_disconnect_with_stable_captions()
+    public void Notes_connect_then_disconnect_without_owning_presentation_copy()
     {
         var tracker = new ControllerConnectionTracker();
         var connected = tracker.NoteConnected(0, "Xbox Controller");
@@ -14,7 +14,6 @@ public sealed class ControllerConnectionTrackerTests
         Assert.Equal(ControllerConnectionKind.Connected, connected.Value.Kind);
         Assert.Equal(0, connected.Value.DeviceId);
         Assert.Equal("Xbox Controller", connected.Value.DeviceName);
-        Assert.Equal("CONTROLLER CONNECTED: Xbox Controller", connected.Value.Caption);
         Assert.True(tracker.IsConnected(0));
         Assert.Equal(1, tracker.ConnectedCount);
 
@@ -23,7 +22,7 @@ public sealed class ControllerConnectionTrackerTests
         var disconnected = tracker.NoteDisconnected(0);
         Assert.NotNull(disconnected);
         Assert.Equal(ControllerConnectionKind.Disconnected, disconnected.Value.Kind);
-        Assert.Equal("CONTROLLER DISCONNECTED: Xbox Controller", disconnected.Value.Caption);
+        Assert.Equal("Xbox Controller", disconnected.Value.DeviceName);
         Assert.False(tracker.IsConnected(0));
         Assert.Equal(0, tracker.ConnectedCount);
         Assert.Null(tracker.NoteDisconnected(0));

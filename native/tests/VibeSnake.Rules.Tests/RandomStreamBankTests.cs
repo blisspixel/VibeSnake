@@ -42,6 +42,18 @@ public sealed class RandomStreamBankTests
     }
 
     [Fact]
+    public void Get_routes_every_named_stream_and_rejects_unknown_values()
+    {
+        var bank = new RandomStreamBank(55UL);
+        Assert.Same(bank.Gameplay, bank.Get(RandomStreamKind.Gameplay));
+        Assert.Same(bank.Ai, bank.Get(RandomStreamKind.Ai));
+        Assert.Same(bank.Cosmetic, bank.Get(RandomStreamKind.Cosmetic));
+        Assert.Same(bank.Radio, bank.Get(RandomStreamKind.Radio));
+        Assert.Same(bank.Copy, bank.Get(RandomStreamKind.Copy));
+        Assert.Throws<ArgumentOutOfRangeException>(() => bank.Get((RandomStreamKind)255));
+    }
+
+    [Fact]
     public void Snake_run_create_preserves_master_seed_and_matches_stream_bank_gameplay()
     {
         const ulong seed = 777001UL;

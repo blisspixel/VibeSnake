@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "kind": "vibesnake-balance-experiment-registry-v1",
+  "status": "targets-pending-human-review",
+  "eligibleBalanceFamilies": [
+    "starvation",
+    "speed",
+    "combo",
+    "power-frequency",
+    "power-weights",
+    "near-miss",
+    "dda-bounds"
+  ],
+  "experienceEffects": ["competence", "autonomy", "tension", "recovery"],
+  "rules": {
+    "targetRangesRequiredBeforeChange": true,
+    "exactlyOneBalanceFamilyPerExperiment": true,
+    "fixedSeedCorpusRequired": true,
+    "relevantHumanScenarioRequired": true,
+    "averageScoreAloneProhibited": true,
+    "configAndRulesIdentityRequired": true,
+    "keepOrRevertDecisionRequired": true
+  },
+  "requiredExperimentFields": [
+    "experimentId",
+    "status",
+    "balanceFamily",
+    "intendedExperienceEffect",
+    "hypothesis",
+    "targetMetric",
+    "targetRange",
+    "baselineConfigHash",
+    "candidateConfigHash",
+    "rulesetId",
+    "rulesVersion",
+    "seedCorpusSha256",
+    "automatedResultSha256",
+    "humanScenarioId",
+    "humanEvidenceReferences",
+    "result",
+    "decision",
+    "decisionReason"
+  ],
+  "decisionValues": ["keep", "revert", "blocked"],
+  "humanTargetRanges": [],
+  "experiments": []
+}

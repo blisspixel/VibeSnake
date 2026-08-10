@@ -1,4 +1,5 @@
 using VibeSnake.Persistence;
+using System.Text.Json;
 
 namespace VibeSnake.Rules.Tests;
 
@@ -19,13 +20,15 @@ public sealed class LocalDiagnosticsTests
                 rulesVersion: 4,
                 screenState: "Running",
                 exception: new InvalidOperationException(
-                    "Failed under C:\\Users\\example\\secret\\file.txt"));
+                    "Failed under C:\\Users\\example\\secret\\file.txt and "
+                    + "/var/lib/vibesnake/private/save.json"));
 
             Assert.True(File.Exists(path));
             var text = File.ReadAllText(path);
             Assert.Contains("\"schemaVersion\": 1", text, StringComparison.Ordinal);
             Assert.Contains("vibesnake-core", text, StringComparison.Ordinal);
             Assert.DoesNotContain("C:\\Users\\example", text, StringComparison.Ordinal);
+            Assert.DoesNotContain("/var/lib/vibesnake", text, StringComparison.Ordinal);
             Assert.Contains("<path>", text, StringComparison.Ordinal);
             Assert.Single(diagnostics.ListReportFileNames());
         }
@@ -57,6 +60,89 @@ public sealed class LocalDiagnosticsTests
             var text = File.ReadAllText(path);
             Assert.Contains(configHash, text, StringComparison.Ordinal);
             Assert.Contains("sha256-canonical-runconfig-v1", text, StringComparison.Ordinal);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void Writes_bounded_reproducible_first_divergence_report()
+    {
+        var root = Path.Combine(
+            Path.GetTempPath(),
+            "vibesnake-divergence-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(root);
+        try
+        {
+            var diagnostics = new LocalDiagnostics(root);
+            var commands = Enumerable.Range(0, 70)
+                .Select(index => index == 69
+                    ? "Up C:\\Users\\example\\private\\trace.json"
+                    : $"Left-{index}")
+                .ToArray();
+            var path = diagnostics.WriteDivergenceReport(
+                appVersion: "0.2.1",
+                platform: "Windows",
+                rulesetId: "vibesnake-core",
+                rulesVersion: 4,
+                campaignId: "candidate-reliability",
+                modeId: "vibe",
+                gameplaySeed: 0x1234UL,
+                controllerSeed: 0x5678UL,
+                runIndex: 2,
+                firstDivergentStep: 17,
+                expectedStateHash: "1111111111111111",
+                actualStateHash: "2222222222222222",
+                recentCommands: commands,
+                timeProvider: new FixedDiagnosticsTimeProvider(
+                    new DateTimeOffset(2026, 8, 9, 12, 0, 0, TimeSpan.Zero)));
+
+            using var document = JsonDocument.Parse(File.ReadAllText(path));
+            var rootElement = document.RootElement;
+            Assert.Equal(1, rootElement.GetProperty("schemaVersion").GetInt32());
+            Assert.Equal(
+                "deterministic-divergence-report-v1",
+                rootElement.GetProperty("kind").GetString());
+            Assert.Equal("0000000000001234", rootElement.GetProperty("gameplaySeed").GetString());
+            Assert.Equal("0000000000005678", rootElement.GetProperty("controllerSeed").GetString());
+            Assert.Equal(17, rootElement.GetProperty("firstDivergentStep").GetInt32());
+            Assert.Equal(
+                LocalDiagnostics.MaximumRecentCommands,
+                rootElement.GetProperty("recentCommandCount").GetInt32());
+            Assert.DoesNotContain("C:\\Users\\example", File.ReadAllText(path), StringComparison.Ordinal);
+            Assert.Single(diagnostics.ListDivergenceReportFileNames());
+            Assert.Empty(diagnostics.ListReportFileNames());
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void Divergence_report_rejects_invalid_reproduction_fields()
+    {
+        var root = Path.Combine(
+            Path.GetTempPath(),
+            "vibesnake-divergence-invalid-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(root);
+        try
+        {
+            var diagnostics = new LocalDiagnostics(root);
+            Assert.Throws<ArgumentOutOfRangeException>(() => diagnostics.WriteDivergenceReport(
+                "0.2.1", "Linux", "vibesnake-core", 4, "campaign", "classic",
+                1, 2, -1, 0, "1111111111111111", "2222222222222222", []));
+            Assert.Throws<ArgumentOutOfRangeException>(() => diagnostics.WriteDivergenceReport(
+                "0.2.1", "Linux", "vibesnake-core", 4, "campaign", "classic",
+                1, 2, 0, -1, "1111111111111111", "2222222222222222", []));
+            Assert.Throws<ArgumentException>(() => diagnostics.WriteDivergenceReport(
+                "0.2.1", "Linux", "vibesnake-core", 4, "campaign", "classic",
+                1, 2, 0, 0, "bad", "2222222222222222", []));
+            Assert.Throws<ArgumentException>(() => diagnostics.WriteDivergenceReport(
+                "0.2.1", "Linux", "vibesnake-core", 4, "campaign", "classic",
+                1, 2, 0, 0, "1111111111111111", "BAD", []));
         }
         finally
         {
@@ -163,5 +249,10 @@ public sealed class LocalDiagnosticsTests
         {
             Directory.Delete(root, recursive: true);
         }
+    }
+
+    private sealed class FixedDiagnosticsTimeProvider(DateTimeOffset utcNow) : TimeProvider
+    {
+        public override DateTimeOffset GetUtcNow() => utcNow;
     }
 }

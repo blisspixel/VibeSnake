@@ -1,4 +1,5 @@
 using System.Reflection;
+using System.Text.RegularExpressions;
 using VibeSnake.Persistence;
 
 namespace VibeSnake.Rules.Tests;
@@ -190,8 +191,54 @@ public sealed class ArchitectureBoundaryTests
                 + string.Join(", ", offenders));
     }
 
+    [Fact]
+    public void Godot_shell_routes_screen_and_pause_writes_through_transition_service()
+    {
+        var mainPath = Path.Combine(
+            ResolveRepositoryRoot(),
+            "game",
+            "scripts",
+            "Main.cs");
+        var source = File.ReadAllText(mainPath);
+
+        var screenAssignments = Regex.Matches(
+            source,
+            @"\b_screenState\s*=(?!=)",
+            RegexOptions.CultureInvariant);
+        Assert.Equal(2, screenAssignments.Count);
+        Assert.Contains(
+            "private ScreenState _screenState = ScreenState.Menu;",
+            source,
+            StringComparison.Ordinal);
+        Assert.Contains("_screenState = target;", source, StringComparison.Ordinal);
+
+        var pauseAssignments = Regex.Matches(
+            source,
+            @"\b_paused\s*=(?!=)",
+            RegexOptions.CultureInvariant);
+        Assert.Equal(2, pauseAssignments.Count);
+        Assert.Contains("_paused = false;", source, StringComparison.Ordinal);
+        Assert.Contains("_paused = paused;", source, StringComparison.Ordinal);
+    }
+
     private static string ResolveRulesSourceDirectory() =>
         ResolveSourceDirectory("VibeSnake.Rules");
+
+    private static string ResolveRepositoryRoot()
+    {
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+        while (directory is not null)
+        {
+            if (File.Exists(Path.Combine(directory.FullName, "game", "scripts", "Main.cs")))
+            {
+                return directory.FullName;
+            }
+
+            directory = directory.Parent;
+        }
+
+        throw new DirectoryNotFoundException("Could not locate the repository root.");
+    }
 
     private static string ResolveSourceDirectory(string projectName)
     {

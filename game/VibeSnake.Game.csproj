@@ -10,4 +10,11 @@
     <ProjectReference Include="..\native\src\VibeSnake.Persistence\VibeSnake.Persistence.csproj" />
     <ProjectReference Include="..\native\src\VibeSnake.Rules\VibeSnake.Rules.csproj" />
   </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="..\config\content_inventory.json"
+             Link="content_inventory.json"
+             CopyToOutputDirectory="PreserveNewest"
+             CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
 </Project>

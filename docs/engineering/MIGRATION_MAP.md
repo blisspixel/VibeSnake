@@ -22,12 +22,12 @@ This map assigns every Python reference subsystem to its target C# or Godot owne
 | Bait | `VibeSnake.Rules` + Godot | Done | Parity remaining-powers; bait mark draw |
 | Gluttony | `VibeSnake.Rules` + Godot | Done | Parity remaining-powers; body tint |
 | Segment Detach | `VibeSnake.Rules` + Godot | Done | Parity remaining-powers; hazard draw; collect-after-move |
-| Input devices | Godot `GameActions` + Persistence bindings | Partial | Logical actions, schema-1 store, and InputMap apply for keyboard/controller; remapping UI and glyphs open |
+| Input devices | Godot `GameActions` + Persistence bindings | Done for native shell | Logical actions, schema-1 store, keyboard/controller remapping, conflict swap/cancel, family-aware vector prompts, deadzone, D-pad fallback, lifecycle safety, and render-cadence evidence |
 | Menus / HUD / cosmetics | Godot presentation | Partial | Thin vertical slice only |
-| Audio buses / SFX | Godot `AudioFallback` | Partial | Fourteen fallback cues; authored packs open |
+| Audio buses / SFX | Godot `AudioFallback` plus pure C# `AudioMixAllocator` | Partial | Four buses, mono downmix, 31 distinct licensed/provenance-declared fallback cues, bounded SFX/UI voices, cooldown, priority, interruption, music ducking, saved volumes, peak policy, and output repair qualified; authored packs and physical listening remain open |
 | Radio playback | Godot content service | Not started | Python has full offline radio |
-| Persistence (profile, scores) | Godot + future store | Partial | Replay store native; profiles still Python |
-| Replays | `VibeSnake.Persistence` + Rules | Done for rules slice | Browser UI open |
+| Persistence (profile, scores) | `VibeSnake.Persistence` + Godot | Partial | Native achievements, onboarding, fair-category personal bests, preferences, bindings, separated reset, and verified backup recovery are live; full profile/cosmetic migration and top-ten history remain later work |
+| Replays | `VibeSnake.Persistence` + Rules + Godot | Working native slice | Recording, bounded storage/browser, verification, deterministic playback, reset, seek, export, exact deletion, stable seed codes, four household ghost slots, equal-rules ghost racing, private run cards, and player-data reset/recovery are live; retained platform and accessibility review remains |
 | AI personalities | Future pure rules AI module | Not started | Keep out of rules until deterministic boundary complete |
 | Content inventory / packs | Shared policy + native allowlists | Partial | Schema 1 validators exist; exportEligible=0 |
 | Config | Rules config + Godot settings UI | Partial | Ruleset identity frozen |

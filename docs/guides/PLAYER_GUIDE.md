@@ -79,6 +79,14 @@ The snake cannot reverse directly into itself. Rapid valid turns are buffered.
 | L | Browse or leave AI spectator channels |
 | Q | Quit from supported screens |
 
+### Display and pointer behavior
+
+Open Settings, then Display, to choose windowed, borderless fullscreen, or exclusive fullscreen. The 4:3 classic, 16:9, and 16:10 size presets apply to windowed mode. Fullscreen always fills the active display and does not add a second aspect-ratio frame. The 1280 by 720 game canvas is fitted without stretching or cropping. In fullscreen, the mouse pointer hides after 1.5 seconds without movement, reappears immediately when moved, and is restored whenever the game loses focus.
+
+### Customize
+
+Select Customize or press C to browse the eight authored native cosmetic sets. Up and Down move between sets, Left and Right change pages, Enter or controller A equips an unlocked set, and R or controller Y saves it as a loadout. The large live preview shows the same 4 by 4 sub-pixel pattern, eye, accessory, and trail treatment used during gameplay. Locked sets show their exact progression requirement. These visual choices never change hitboxes, movement, scoring, powers, AI, or input.
+
 ### Radio controls
 
 | Key | Action |
@@ -121,10 +129,31 @@ Nine collectible power-ups alter movement, routing, growth, food placement, or s
 - Qualifying scores enter a local top-ten table.
 
 Save ownership, schemas, migrations, backups, and recovery limitations are in [PROGRESSION.md](../design/PROGRESSION.md).
+The player-facing reset, verified-backup, restore, diagnostics, and local-removal procedure is in the [save and recovery guide](RECOVERY.md). Review the [privacy statement](../../PRIVACY.md) before sharing a log or diagnostic file.
 
 ## AI spectator mode
 
-Press L at the main menu, choose a personality with Up or Down, and press Enter. The selected AI controls the snake while you can change radio stations or start another channel. Custom JSON personalities placed under `assets/ai/custom/` appear in the browser at startup.
+In the native Godot product build, select LET'S PLAY / AI CHANNELS or press L at the main menu to open the local AI broadcast circuit. Up and Down select personality, rivalry, rules, seed class and slot, playback speed, explanation level, or prediction; Left and Right change the selected value; Enter or controller A starts the equal-rules matchup.
+
+During a broadcast, Enter or A pauses, Down or D-pad Down advances one step while paused, Up or D-pad Up switches the viewed rival, and Left or Right changes playback speed. H or controller L3 hides or restores the spectator overlay without changing the run. R or controller Y restarts the same selection. After both lanes finish, C or controller X starts an exact-seed human challenge under identical rules. Escape or controller B returns first to selection and then to the menu.
+
+Predictions are informational only. AI matches and seed challenges award no currency and cannot advance ordinary human progression. Invalid unofficial channels safely fall back to the balanced built-in channel. The frozen Python reference player retains its older L-based AI browser and local custom-JSON workflow; that is not the 1.0 product path.
+
+## Optional lore archive
+
+From native spectator selection, press U or controller LB to open the Coil Archive. Left and Right change the depth filter between All, Surface, Discoverable, and Archive. Up and Down move through the filtered entries. Escape or controller B returns to spectator selection, then to the main menu.
+
+All 19 surface entries are available immediately and summarize the eight stations, ten rivals, and nine mutations. Discoverable and archive entries open from existing local progression rewards, spectator milestones, and replay counts. A locked row names its exact local requirement. Lore browsing is offline and optional, never appears over an active run, awards no progression, and is not required to understand controls, danger, scoring, powers, accessibility, or death.
+
+## Offline comparisons and household ghosts
+
+In the native Godot replay browser, press U or controller LB to open Offline Comparisons. The browser has four fixed household rival slots. Up and Down select a slot. To import, place a native verified replay at `user://imports/household-rival.vibesnake-replay.json`, then press U or controller LB. Import copies the replay into the selected empty slot and never changes or removes the source. An occupied slot is never overwritten. Modified, incompatible, oversized, or unreadable files are rejected and remain where they were.
+
+Press Enter or controller A on a verified slot to race its ghost. The player and ghost start with the same rules, mode, configuration, and gameplay seed. The outlined ghost is visual only: its body, commands, collision, score, powers, and random state cannot affect the player. The HUD shows the household slot, ghost score, score delta, and length delta. Normal movement, pause, restart, keyboard, D-pad, and stick controls remain active. Restart recreates the same comparison. The race uses an isolated seeded-challenge score identity and cannot award ordinary progression.
+
+Press C or controller X on a verified slot to export a local privacy-safe run card. Each card contains closed versioned run facts such as score, peak combo, length, mode, seed, station, powers, selected look, and verification state. It contains no player name or private machine path and does not upload anything.
+
+Press F8 or controller Select/Back to prepare deletion of the selected copied slot. Enter or controller A confirms; Escape or controller B cancels without writing. Deleting a slot never deletes the original import source or an exported run card. Escape or controller B outside a deletion prompt returns to the replay browser.
 
 ## Troubleshooting
 

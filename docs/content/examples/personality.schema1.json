@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "name": "Route Planner",
+  "description": "Prefers measured routes and preserves one exit.",
+  "aggression": 0.4,
+  "risk_tolerance": 0.2,
+  "patience": 0.9,
+  "greed": 0.3,
+  "chaos": 0.1,
+  "power_up_priority": 0.6,
+  "color": [
+    80,
+    180,
+    255
+  ]
+}

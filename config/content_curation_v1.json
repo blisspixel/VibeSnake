@@ -1,0 +1,164 @@
+{
+  "schemaVersion": 1,
+  "planId": "vibesnake-content-curation-v1",
+  "inventoryPolicySha256": "6cf7e862a88d6eac01bce065319d2913c3cdcefb90dd6ead23d2f38fe7ef13ab",
+  "decisionStatus": "pending-human-listening-review",
+  "coreMusic": {
+    "pendingAssetIds": [],
+    "approvedAssetIds": [],
+    "rejectedAssetIds": []
+  },
+  "stations": [
+    {
+      "id": "flow_signal",
+      "pendingAssetIds": [
+        "asset:audio/radio/ambient_graceful_laminar.mp3",
+        "asset:audio/radio/ambient_infrared_glide.mp3",
+        "asset:audio/radio/ambient_neon_coil_transit.mp3",
+        "asset:audio/radio/chill_graceful_molt.mp3",
+        "asset:audio/radio/chill_phantom_drift.mp3",
+        "asset:audio/radio/flow_signal_crystalline_frequency.mp3",
+        "asset:audio/radio/flow_signal_future_scales.mp3",
+        "asset:audio/radio/flow_signal_neural_flow.mp3",
+        "asset:audio/radio/flow_signal_serpent_hop.mp3",
+        "asset:audio/radio/flow_signal_thermal_drift.mp3",
+        "asset:audio/radio/flow_signal_twilight_lattice.mp3",
+        "asset:audio/radio/flow_signal_vinyl_venom.mp3"
+      ],
+      "approvedAssetIds": [],
+      "rejectedAssetIds": []
+    },
+    {
+      "id": "chaos_theory",
+      "pendingAssetIds": [
+        "asset:audio/radio/chaos_theory_bossa_venom.mp3",
+        "asset:audio/radio/chaos_theory_cool_scales.mp3",
+        "asset:audio/radio/chaos_theory_nu_serpent.mp3",
+        "asset:audio/radio/jazz_attractor_coil.mp3",
+        "asset:audio/radio/jazz_cipher_molt.mp3",
+        "asset:audio/radio/jazz_coil_thermal.mp3",
+        "asset:audio/radio/jazz_fractal_glide.mp3",
+        "asset:audio/radio/jazz_pulse_alignment.mp3",
+        "asset:audio/radio/jazz_second_skin_suite.mp3",
+        "asset:audio/radio/jazz_strike_geometry.mp3",
+        "asset:audio/radio/jazz_thermal_changes.mp3",
+        "asset:audio/radio/jazz_vector_coil.mp3"
+      ],
+      "approvedAssetIds": [],
+      "rejectedAssetIds": []
+    },
+    {
+      "id": "global_coil",
+      "pendingAssetIds": [
+        "asset:audio/radio/global_coil_dancehall_fang.mp3",
+        "asset:audio/radio/global_coil_dembow_scales.mp3",
+        "asset:audio/radio/global_coil_highlife_coil.mp3",
+        "asset:audio/radio/global_coil_mbalax_serpent.mp3",
+        "asset:audio/radio/global_coil_soukous_strike.mp3",
+        "asset:audio/radio/soul_molt_in_color.mp3",
+        "asset:audio/radio/world_basking_protocol.mp3",
+        "asset:audio/radio/world_chrome_canopy_drift.mp3",
+        "asset:audio/radio/world_ember_molt.mp3",
+        "asset:audio/radio/world_infrared_lull.mp3",
+        "asset:audio/radio/world_laminar_glide.mp3",
+        "asset:audio/radio/world_thermal_chorus.mp3"
+      ],
+      "approvedAssetIds": [],
+      "rejectedAssetIds": []
+    },
+    {
+      "id": "ourotron",
+      "pendingAssetIds": [
+        "asset:audio/radio/ourotron_dream_scales.mp3",
+        "asset:audio/radio/ourotron_electro_fang.mp3",
+        "asset:audio/radio/ourotron_italo_serpent.mp3",
+        "asset:audio/radio/synthwave_cipher_molt.mp3",
+        "asset:audio/radio/synthwave_clockwork_vector.mp3",
+        "asset:audio/radio/synthwave_ecdysis_ignition.mp3",
+        "asset:audio/radio/synthwave_geometry_coil.mp3",
+        "asset:audio/radio/synthwave_ignition_glide.mp3",
+        "asset:audio/radio/synthwave_infrared_glide.mp3",
+        "asset:audio/radio/synthwave_midnight_ecdysis.mp3",
+        "asset:audio/radio/synthwave_molt_velocity.mp3",
+        "asset:audio/radio/synthwave_scales_graceful.mp3",
+        "asset:audio/radio/synthwave_vector_coil.mp3"
+      ],
+      "approvedAssetIds": [],
+      "rejectedAssetIds": []
+    },
+    {
+      "id": "the_pit",
+      "pendingAssetIds": [
+        "asset:audio/radio/dance_glide_algorithm.mp3",
+        "asset:audio/radio/dance_infrared_venom.mp3",
+        "asset:audio/radio/dance_laminar_strike.mp3",
+        "asset:audio/radio/dance_measured_coil.mp3",
+        "asset:audio/radio/dance_molt_chrome.mp3",
+        "asset:audio/radio/dance_scales_graceful.mp3",
+        "asset:audio/radio/dance_vector_coil_drift.mp3",
+        "asset:audio/radio/the_pit_halftime_coil.mp3",
+        "asset:audio/radio/the_pit_neuro_venom.mp3",
+        "asset:audio/radio/the_pit_techstep_viper.mp3",
+        "asset:audio/radio/the_pit_trap_fang.mp3"
+      ],
+      "approvedAssetIds": [],
+      "rejectedAssetIds": []
+    },
+    {
+      "id": "the_bureau",
+      "pendingAssetIds": [
+        "asset:audio/radio/the_bureau_bebop_bulletin.mp3",
+        "asset:audio/radio/the_bureau_chamber_doc.mp3",
+        "asset:audio/radio/the_bureau_finance_fusion.mp3",
+        "asset:audio/radio/the_bureau_interview_ballad.mp3",
+        "asset:audio/radio/the_bureau_news_flow.mp3",
+        "asset:audio/radio/the_bureau_politics_cool.mp3",
+        "asset:audio/radio/the_bureau_science_samba.mp3",
+        "asset:audio/radio/the_bureau_smooth_report.mp3",
+        "asset:audio/radio/the_bureau_sports_swing.mp3",
+        "asset:audio/radio/the_bureau_traffic_modal.mp3",
+        "asset:audio/radio/the_bureau_weather_bossa.mp3",
+        "asset:audio/radio/the_bureau_west_coast_cast.mp3"
+      ],
+      "approvedAssetIds": [],
+      "rejectedAssetIds": []
+    },
+    {
+      "id": "the_strike",
+      "pendingAssetIds": [
+        "asset:audio/radio/rock_clockwork_venom.mp3",
+        "asset:audio/radio/rock_ignition_coil.mp3",
+        "asset:audio/radio/rock_phantom_strike_protocol.mp3",
+        "asset:audio/radio/rock_strike_geometry.mp3",
+        "asset:audio/radio/rock_strike_vector.mp3",
+        "asset:audio/radio/rock_venom_architect.mp3",
+        "asset:audio/radio/the_strike_alt_scales.mp3",
+        "asset:audio/radio/the_strike_math_scales.mp3",
+        "asset:audio/radio/the_strike_metal_serpent.mp3",
+        "asset:audio/radio/the_strike_postpunk_coil.mp3",
+        "asset:audio/radio/the_strike_surf_venom.mp3"
+      ],
+      "approvedAssetIds": [],
+      "rejectedAssetIds": []
+    },
+    {
+      "id": "underground_scales",
+      "pendingAssetIds": [
+        "asset:audio/radio/hiphop_clockwork_coil.mp3",
+        "asset:audio/radio/hiphop_crown_of_coils.mp3",
+        "asset:audio/radio/hiphop_greenhouse_lowride.mp3",
+        "asset:audio/radio/hiphop_infrared_cipher.mp3",
+        "asset:audio/radio/hiphop_neon_terrarium_glide.mp3",
+        "asset:audio/radio/hiphop_venom_protocol.mp3",
+        "asset:audio/radio/underground_scales_baile_beats.mp3",
+        "asset:audio/radio/underground_scales_boom_scales.mp3",
+        "asset:audio/radio/underground_scales_conscious_coil.mp3",
+        "asset:audio/radio/underground_scales_jazz_venom.mp3",
+        "asset:audio/radio/underground_scales_phonk_viper.mp3",
+        "asset:audio/radio/underground_scales_uk_garage_molt.mp3"
+      ],
+      "approvedAssetIds": [],
+      "rejectedAssetIds": []
+    }
+  ]
+}

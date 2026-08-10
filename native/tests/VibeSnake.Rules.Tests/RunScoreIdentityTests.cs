@@ -16,6 +16,13 @@ public sealed class RunScoreIdentityTests
         Assert.Equal(run.Score, identity.Score);
         Assert.Equal(RunStatus.Running, identity.Status);
         Assert.Equal(DeathCause.None, identity.DeathCause);
+        Assert.Equal(RunModeCatalog.VibeId, identity.ModeId);
+        Assert.Equal(1, identity.ModeVersion);
+        Assert.Equal(RunModeCatalog.VibeFixedScoreCategoryId, identity.ScoreCategoryId);
+        Assert.Equal("vibe-fixed-cadence-v1", identity.DifficultyPolicyId);
+        Assert.False(identity.AdaptationEnabled);
+        Assert.Equal(AdaptiveDifficultyPolicy.DisabledPolicyId, identity.AdaptivePolicyId);
+        Assert.Equal(AdaptiveDifficultyState.Disabled, identity.AdaptiveStateAtCapture);
     }
 
     [Fact]
@@ -65,11 +72,63 @@ public sealed class RunScoreIdentityTests
     }
 
     [Fact]
+    public void Dda_enabled_and_disabled_vibe_metadata_never_share_a_category()
+    {
+        var enabled = RunScoreIdentity.FromRun(
+            SnakeRun.Create(1UL, RunModeCatalog.CreateConfig(RunModeCatalog.Vibe)));
+        var disabled = RunScoreIdentity.FromRun(
+            SnakeRun.Create(
+                1UL,
+                RunModeCatalog.CreateConfig(
+                    RunModeCatalog.Vibe,
+                    enableAdaptation: false)));
+
+        Assert.True(enabled.AdaptationEnabled);
+        Assert.Equal(AdaptiveDifficultyPolicy.CurrentPolicyId, enabled.AdaptivePolicyId);
+        Assert.Equal(RunModeCatalog.VibeAdaptiveScoreCategoryId, enabled.ScoreCategoryId);
+        Assert.False(disabled.AdaptationEnabled);
+        Assert.Equal(RunModeCatalog.VibeFixedScoreCategoryId, disabled.ScoreCategoryId);
+        Assert.False(enabled.IsSameScoreCategory(disabled));
+    }
+
+    [Fact]
     public void Score_identity_caption_fields_are_stable_for_support_display()
     {
         var identity = RunScoreIdentity.FromRun(SnakeRun.Create(3UL));
         Assert.StartsWith("vibesnake-core@4", identity.RulesetContractId, StringComparison.Ordinal);
         Assert.Equal(64, identity.ConfigHash.Length);
         Assert.True(identity.ConfigHash.Length >= 12);
+    }
+
+    [Fact]
+    public void Run_kind_and_seed_category_catalog_is_closed_and_separates_scores()
+    {
+        Assert.Equal(8, ScoreRunContextCatalog.All.Count);
+        Assert.Equal(
+            8,
+            ScoreRunContextCatalog.All
+                .Select(context => $"{context.RunKindId}|{context.SeedCategoryId}")
+                .Distinct(StringComparer.Ordinal)
+                .Count());
+        Assert.Equal(
+            2,
+            ScoreRunContextCatalog.All.Count(context => context.CompetitiveEligible));
+
+        var run = SnakeRun.Create(4UL);
+        var normal = RunScoreIdentity.FromRun(run, ScoreRunContextCatalog.NormalHuman);
+        var challenge = RunScoreIdentity.FromRun(run, ScoreRunContextCatalog.SeededChallenge);
+        var tutorial = RunScoreIdentity.FromRun(run, ScoreRunContextCatalog.Tutorial);
+
+        Assert.Equal(ScoreRunContextCatalog.NormalHumanRunKind, normal.RunKindId);
+        Assert.Equal(ScoreRunContextCatalog.FreshLocalSeedCategory, normal.SeedCategoryId);
+        Assert.True(normal.CompetitiveEligible);
+        Assert.True(challenge.CompetitiveEligible);
+        Assert.False(tutorial.CompetitiveEligible);
+        Assert.False(normal.IsSameScoreCategory(challenge));
+        Assert.False(normal.IsSameScoreCategory(tutorial));
+        Assert.Throws<ArgumentException>(() => ScoreRunContextCatalog.Get("future", "future"));
+        Assert.Throws<ArgumentException>(() => RunScoreIdentity.FromRun(
+            run,
+            ScoreRunContextCatalog.NormalHuman with { CompetitiveEligible = false }));
     }
 }

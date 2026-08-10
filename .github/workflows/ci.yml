@@ -72,6 +72,39 @@ jobs:
       - name: Check product version alignment
         run: python scripts/check_product_version.py
 
+      - name: Check candidate freeze policy
+        run: python scripts/check_candidate_freeze.py
+
+      - name: Qualify manual product matrix handoff
+        if: matrix.python-version == '3.14'
+        run: >-
+          python scripts/check_manual_product_matrix.py
+          --output TestResults/manual-product-matrix/manual_product_matrix_handoff.json
+
+      - name: Qualify external validation handoff
+        if: matrix.python-version == '3.14'
+        run: >-
+          python scripts/check_external_validation.py
+          --output TestResults/external-validation/external_validation_handoff.json
+
+      - name: Qualify release-material foundation
+        if: matrix.python-version == '3.14'
+        run: >-
+          python scripts/check_release_materials.py
+          --output TestResults/release-materials/release_materials_handoff.json
+
+      - name: Qualify release rehearsal handoff
+        if: matrix.python-version == '3.14'
+        run: >-
+          python scripts/check_release_rehearsal.py
+          --output TestResults/release-rehearsal/release_rehearsal_handoff.json
+
+      - name: Qualify stable promotion guard
+        if: matrix.python-version == '3.14'
+        run: >-
+          python scripts/check_stable_promotion.py
+          --output TestResults/stable-promotion/stable_promotion_handoff.json
+
       - name: Verify current README screenshots
         run: python scripts/capture_readme_screenshots.py --check
 
@@ -95,6 +128,7 @@ jobs:
           python -m vibesnake.qa.shared_phase_shift_traces --check
           python -m vibesnake.qa.shared_last_stand_traces --check
           python -m vibesnake.qa.shared_remaining_power_traces --check
+          python -m vibesnake.qa.shared_achievement_candidate_traces --check
 
       - name: Test with coverage
         run: python -m pytest --cov=vibesnake --cov-report=term-missing --cov-report=xml
@@ -111,6 +145,11 @@ jobs:
           path: |
             coverage.xml
             qa_reports/core.json
+            TestResults/manual-product-matrix/manual_product_matrix_handoff.json
+            TestResults/external-validation/external_validation_handoff.json
+            TestResults/release-materials/release_materials_handoff.json
+            TestResults/release-rehearsal/release_rehearsal_handoff.json
+            TestResults/stable-promotion/stable_promotion_handoff.json
           if-no-files-found: error
           retention-days: 14
 
@@ -159,8 +198,9 @@ jobs:
           -p:CollectCoverage=true
           -p:CoverletOutput=../../../TestResults/native/
           -p:CoverletOutputFormat=cobertura
-          -p:Threshold=80
-          -p:ThresholdType=line
+          -p:Threshold=90
+          -p:ThresholdType=line%2cbranch
+          -p:ThresholdStat=minimum
           -p:ExcludeByFile=**/Properties/AssemblyInfo.cs
 
       - name: Upload native parity divergence evidence
@@ -232,12 +272,32 @@ jobs:
       - name: Export and smoke native player outside checkout
         id: player
         shell: pwsh
+        env:
+          VIBESNAKE_QUALIFICATION_BUILD_MODE: ${{ (github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/')) && 'Release' || 'Debug' }}
         run: |
           $outputDirectory = Join-Path $env:RUNNER_TEMP "vibesnake-${{ matrix.platform_id }}"
-          ./scripts/test_native_export.ps1 `
-            -GodotExecutable "${{ steps.godot.outputs.godot-path }}" `
-            -OutputDirectory $outputDirectory `
-            -SkipTemplateInstall
+          $candidateLaunchCount = if ($env:VIBESNAKE_QUALIFICATION_BUILD_MODE -eq "Release") { 100 } else { 0 }
+          $exportArguments = @{
+            GodotExecutable = "${{ steps.godot.outputs.godot-path }}"
+            OutputDirectory = $outputDirectory
+            EvidenceDirectory = "TestResults/native"
+            BuildMode = $env:VIBESNAKE_QUALIFICATION_BUILD_MODE
+            CandidateLaunchCount = $candidateLaunchCount
+            SkipTemplateInstall = $true
+          }
+          if ($env:VIBESNAKE_QUALIFICATION_BUILD_MODE -eq "Release") {
+            $exportArguments["CandidateLifecycle"] = $true
+          }
+          ./scripts/test_native_export.ps1 @exportArguments
+
+      - name: Upload native qualification evidence
+        if: always()
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
+        with:
+          name: vibesnake-${{ matrix.platform_id }}-qualification-evidence
+          path: TestResults/native/*.json
+          if-no-files-found: error
+          retention-days: 14
 
       - name: Upload native qualification manifest
         uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
@@ -251,8 +311,100 @@ jobs:
         if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/')
         uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
         with:
-          name: vibesnake-${{ matrix.platform_id }}-debug
+          name: vibesnake-${{ matrix.platform_id }}-unsigned-qualified
           path: ${{ steps.player.outputs.artifact-root }}
           if-no-files-found: error
-          retention-days: 1
+          retention-days: 30
           compression-level: 0
+
+      - name: Upload unsigned channel-shape qualification package
+        if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/')
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
+        with:
+          name: vibesnake-${{ matrix.platform_id }}-unsigned-channel-shape
+          path: ${{ steps.player.outputs.package-root }}
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 0
+
+  release-matrix:
+    name: Cross-bind native release matrix
+    needs: godot-smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out source
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+
+      - name: Set up Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.14"
+
+      - name: Download native qualification evidence
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
+        with:
+          pattern: vibesnake-*-qualification-evidence
+          path: release-matrix
+
+      - name: Download native artifact manifests
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
+        with:
+          pattern: vibesnake-*-manifest
+          path: release-matrix
+
+      - name: Qualify the complete native matrix
+        run: |
+          build_mode=Debug
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" || "${{ github.ref }}" == refs/tags/* ]]; then
+            build_mode=Release
+          fi
+          python scripts/check_release_matrix.py release-matrix \
+            --expected-revision "${{ github.sha }}" \
+            --expected-build-mode "$build_mode" \
+            --output TestResults/release-matrix/release_matrix.json
+
+      - name: Upload release matrix evidence
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
+        with:
+          name: vibesnake-release-matrix
+          path: TestResults/release-matrix/release_matrix.json
+          if-no-files-found: error
+          retention-days: 30
+
+  attest-qualified-manifests:
+    name: Attest qualified manifest for ${{ matrix.platform_id }}
+    if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/')
+    needs: [godot-smoke, release-matrix]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+      artifact-metadata: write
+    strategy:
+      fail-fast: false
+      matrix:
+        platform_id: [windows-x64, linux-x64, macos-universal]
+
+    steps:
+      - name: Download qualified artifact manifest
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
+        with:
+          name: vibesnake-${{ matrix.platform_id }}-manifest
+          path: attestation-input
+
+      - name: Attest qualified artifact manifest
+        id: provenance
+        uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
+        with:
+          subject-path: attestation-input/artifact-manifest.json
+
+      - name: Upload detached provenance bundle
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
+        with:
+          name: vibesnake-${{ matrix.platform_id }}-provenance
+          path: ${{ steps.provenance.outputs.bundle-path }}
+          if-no-files-found: error
+          retention-days: 30

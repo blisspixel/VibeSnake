@@ -56,6 +56,40 @@ public sealed partial class RunReplay
                 }
             }
 
+            var hasCapturedAtUtc = root.TryGetProperty("capturedAtUtc", out _);
+            var hasGameplaySeed = root.TryGetProperty("gameplaySeed", out _);
+            var hasAiSeed = root.TryGetProperty("aiSeed", out _);
+            var writeCaptureMetadata = hasCapturedAtUtc || hasGameplaySeed || hasAiSeed;
+            string? capturedAtUtc = null;
+            ulong? gameplaySeed = null;
+            ulong? aiSeed = null;
+            if (writeCaptureMetadata)
+            {
+                if (!hasCapturedAtUtc || !hasGameplaySeed || !hasAiSeed)
+                {
+                    return Incompatible(
+                        ReplayCompatibilityCode.InvalidPayload,
+                        "Replay capture metadata fields must be present together.");
+                }
+
+                capturedAtUtc = ReadString(root, "capturedAtUtc");
+                gameplaySeed = root.GetProperty("gameplaySeed").GetUInt64();
+                aiSeed = root.GetProperty("aiSeed").GetUInt64();
+                if (!IsCanonicalCaptureTimestamp(capturedAtUtc))
+                {
+                    return Incompatible(
+                        ReplayCompatibilityCode.InvalidPayload,
+                        "The replay capture timestamp is not canonical UTC.");
+                }
+
+                if (gameplaySeed != aiSeed)
+                {
+                    return Incompatible(
+                        ReplayCompatibilityCode.InvalidPayload,
+                        "The replay seed inputs do not match the supported stream contract.");
+                }
+            }
+
             var rulesetElement = RequireObject(root.GetProperty("ruleset"), "ruleset");
             var rulesetId = ReadString(rulesetElement, "id");
             if (!string.Equals(
@@ -171,7 +205,11 @@ public sealed partial class RunReplay
                 configHash,
                 configHashAlgorithm,
                 writeConfigIdentity,
-                appVersion);
+                appVersion,
+                capturedAtUtc,
+                gameplaySeed,
+                aiSeed,
+                writeCaptureMetadata);
 
             var expectedPayloadHash = replay.ComputePayloadHash();
             if (!FixedHashEquals(payloadHash, expectedPayloadHash))

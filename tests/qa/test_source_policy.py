@@ -78,3 +78,21 @@ def test_policy_accepts_explicit_complete_code(tmp_path: Path) -> None:
     )
 
     assert inspect_repository(tmp_path) == ()
+
+
+def test_policy_rejects_signing_and_credential_material(tmp_path: Path) -> None:
+    credential_paths = (
+        tmp_path / "config" / ".env.production",
+        tmp_path / "signing" / "windows.p12",
+        tmp_path / "signing" / "AuthKey_RELEASE.p8",
+        tmp_path / "signing" / "release.keystore",
+    )
+    for path in credential_paths:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("private", encoding="utf-8")
+
+    violations = inspect_repository(tmp_path)
+
+    assert len(violations) == len(credential_paths)
+    assert {violation.path for violation in violations} == {path.relative_to(tmp_path) for path in credential_paths}
+    assert {violation.message for violation in violations} == {"credential or signing material is forbidden"}

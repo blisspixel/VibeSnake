@@ -123,7 +123,41 @@ public sealed partial class SnakeRun
             StarvationWarningTicks: ReadOptionalInt32(
                 configElement,
                 "starvationWarningTicks",
-                defaultValue: RunConfig.DefaultStarvationWarningTicks));
+                defaultValue: RunConfig.DefaultStarvationWarningTicks),
+            ModeId: ReadOptionalString(
+                configElement,
+                "modeId",
+                RunModeCatalog.VibeId),
+            ModeVersion: ReadOptionalInt32(
+                configElement,
+                "modeVersion",
+                RunModeCatalog.CurrentModeVersion),
+            EnableStarvation: ReadOptionalBoolean(
+                configElement,
+                "enableStarvation",
+                defaultValue: true),
+            EnableComboScoring: ReadOptionalBoolean(
+                configElement,
+                "enableComboScoring",
+                defaultValue: true),
+            EnableSpeedScoreBonus: ReadOptionalBoolean(
+                configElement,
+                "enableSpeedScoreBonus",
+                defaultValue: true),
+            EnableLengthScoreBonus: ReadOptionalBoolean(
+                configElement,
+                "enableLengthScoreBonus",
+                defaultValue: true),
+            EnableAdaptation: ReadOptionalBoolean(
+                configElement,
+                "enableAdaptation"),
+            AdaptivePolicyId: ReadOptionalString(
+                configElement,
+                "adaptivePolicyId",
+                AdaptiveDifficultyPolicy.DisabledPolicyId),
+            EnablePowerDecisionOffers: ReadOptionalBoolean(
+                configElement,
+                "enablePowerDecisionOffers"));
         config.Validate();
 
         var randomElement = RequireObject(root.GetProperty("random"), "random");
@@ -227,11 +261,14 @@ public sealed partial class SnakeRun
     private static int ReadInt32(JsonElement parent, string propertyName) =>
         parent.GetProperty(propertyName).GetInt32();
 
-    private static bool ReadOptionalBoolean(JsonElement parent, string propertyName)
+    private static bool ReadOptionalBoolean(
+        JsonElement parent,
+        string propertyName,
+        bool defaultValue = false)
     {
         if (!parent.TryGetProperty(propertyName, out var element))
         {
-            return false;
+            return defaultValue;
         }
 
         if (element.ValueKind is not (JsonValueKind.True or JsonValueKind.False))
@@ -241,6 +278,25 @@ public sealed partial class SnakeRun
         }
 
         return element.GetBoolean();
+    }
+
+    private static string ReadOptionalString(
+        JsonElement parent,
+        string propertyName,
+        string defaultValue)
+    {
+        if (!parent.TryGetProperty(propertyName, out var element))
+        {
+            return defaultValue;
+        }
+
+        if (element.ValueKind != JsonValueKind.String)
+        {
+            throw new InvalidDataException(
+                $"The {propertyName} value must be a string.");
+        }
+
+        return element.GetString()!;
     }
 
     private static int ReadOptionalInt32(

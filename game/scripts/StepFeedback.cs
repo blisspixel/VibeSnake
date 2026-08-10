@@ -2,90 +2,113 @@ using VibeSnake.Rules;
 
 namespace VibeSnake.Game;
 
-internal readonly record struct StepFeedback(AudioCue? Cue, string? Caption)
+internal readonly record struct StepFeedback(AudioCue? Cue, ShellTextReference? Text)
 {
-    public static StepFeedback Resolve(IReadOnlyList<RunEventDetail> events)
+    public static StepFeedback Resolve(
+        IReadOnlyList<RunEventDetail> events,
+        int comboCount = 0,
+        VibeLevelTransition? vibeTransition = null)
     {
         ArgumentNullException.ThrowIfNull(events);
+        if (comboCount < 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(comboCount));
+        }
 
         if (Contains(events, RunEventKind.CollisionPrevented, PowerKind.LastStand))
         {
-            return new StepFeedback(
+            return Localized(
                 AudioCue.PowerRecovery,
-                "LAST STAND: DEATH REVERSED");
+                "feedback.power.last-stand-reversed");
         }
 
         if (Contains(events, RunEventKind.CollisionPrevented, PowerKind.Shield))
         {
-            return new StepFeedback(
+            return Localized(
                 AudioCue.ShieldBreak,
-                "SHIELD BROKE: COLLISION BLOCKED");
+                "feedback.power.shield-broke");
         }
 
         if (Contains(events, RunEventKind.PowerActivated, PowerKind.LastStand)
             && Contains(events, RunEventKind.PowerConsumed, PowerKind.LastStand))
         {
-            return new StepFeedback(
+            return Localized(
                 AudioCue.PowerRecovery,
-                "LAST STAND RECOVERY WINDOW");
+                "feedback.power.last-stand-window");
         }
 
         if (TryPowerEvent(events, RunEventKind.PowerActivated, out var activated))
         {
-            return new StepFeedback(
-                activated == PowerKind.Shield
-                    ? AudioCue.ShieldActivate
-                    : AudioCue.PowerActivate,
-                ActivationCaption(activated));
+            return Localized(
+                ActivationCue(activated),
+                ActivationCopyId(activated));
         }
 
         if (TryPowerEvent(events, RunEventKind.PowerExpired, out var expired))
         {
-            return new StepFeedback(
+            return Localized(
                 expired == PowerKind.Shield
                     ? AudioCue.ShieldExpire
                     : AudioCue.PowerExpire,
-                $"{PowerPresentation.ShortName(expired)} SIGNAL EXPIRED");
+                "feedback.power.expired",
+                ShellTextArgument.From("power", PowerPresentation.ShortName(expired)));
         }
 
         if (TryPowerEvent(events, RunEventKind.PowerDiscarded, out var discarded))
         {
-            return new StepFeedback(
+            return Localized(
                 discarded == PowerKind.Shield
                     ? AudioCue.ShieldExpire
                     : AudioCue.PowerExpire,
-                $"{PowerPresentation.ShortName(discarded)} SIGNAL CLEARED");
+                "feedback.power.cleared",
+                ShellTextArgument.From("power", PowerPresentation.ShortName(discarded)));
         }
 
         if (TryPowerEvent(events, RunEventKind.PowerSpawned, out var spawned))
         {
-            return new StepFeedback(
+            return Localized(
                 spawned == PowerKind.Shield
                     ? AudioCue.ShieldSpawn
                     : AudioCue.PowerSpawn,
-                $"{PowerPresentation.ShortName(spawned)} SIGNAL DETECTED");
+                "feedback.power.detected",
+                ShellTextArgument.From("power", PowerPresentation.ShortName(spawned)));
         }
 
         // Achievement candidates outrank pressure/style cues (catalog priority 92).
-        if (TryAchievementCaption(events, out var achievementCaption))
+        if (TryAchievementName(events, out var achievementName))
         {
-            return new StepFeedback(AudioCue.Confirm, achievementCaption);
+            return Localized(
+                AudioCue.Achievement,
+                "feedback.achievement",
+                ShellTextArgument.From("achievement", achievementName.ToUpperInvariant()));
         }
 
         // Starvation pressure outranks near-miss style captions (catalog priority).
         if (events.Any(detail => detail.Kind == RunEventKind.StarvationWarning))
         {
-            return new StepFeedback(AudioCue.Pause, "STARVATION WARNING");
+            return Localized(AudioCue.Starvation, "feedback.starvation-warning");
         }
 
-        if (TryNearMissCaption(events, out var nearMissCaption))
+        if (events.Any(detail => detail.Kind == RunEventKind.ComboExpired)
+            && vibeTransition is { Cause: VibeTransitionCause.ComboBreak })
         {
-            return new StepFeedback(AudioCue.Food, nearMissCaption);
+            return Localized(vibeTransition.Stinger, "feedback.combo-expired");
         }
 
-        if (events.Any(detail => detail.Kind == RunEventKind.ComboExpired))
+        if (events.Any(detail => detail.Kind == RunEventKind.AteFood)
+            && vibeTransition is { Cause: VibeTransitionCause.Escalation })
         {
-            return new StepFeedback(AudioCue.Pause, "COMBO EXPIRED");
+            var definition = VibeLevelDirector.Find(vibeTransition.To);
+            return Localized(
+                vibeTransition.Stinger,
+                "feedback.combo-level",
+                ShellTextArgument.From("count", definition.ComboThreshold),
+                ShellTextArgument.From("level", definition.Name));
+        }
+
+        if (TryNearMissText(events, out var nearMissText))
+        {
+            return new StepFeedback(AudioCue.Food, nearMissText);
         }
 
         return events.Any(detail => detail.Kind == RunEventKind.AteFood)
@@ -93,9 +116,12 @@ internal readonly record struct StepFeedback(AudioCue? Cue, string? Caption)
             : default;
     }
 
-    private static bool TryAchievementCaption(
+    public static AudioCue ActivationCue(PowerKind power) =>
+        PowerFeedbackCatalog.Find(power).ActivationCue;
+
+    private static bool TryAchievementName(
         IReadOnlyList<RunEventDetail> events,
-        out string caption)
+        out string name)
     {
         foreach (var detail in events)
         {
@@ -111,17 +137,17 @@ internal readonly record struct StepFeedback(AudioCue? Cue, string? Caption)
                 continue;
             }
 
-            caption = "ACHIEVEMENT: " + definition.Name.ToUpperInvariant();
+            name = definition.Name;
             return true;
         }
 
-        caption = string.Empty;
+        name = string.Empty;
         return false;
     }
 
-    private static bool TryNearMissCaption(
+    private static bool TryNearMissText(
         IReadOnlyList<RunEventDetail> events,
-        out string caption)
+        out ShellTextReference text)
     {
         foreach (var detail in events)
         {
@@ -133,39 +159,51 @@ internal readonly record struct StepFeedback(AudioCue? Cue, string? Caption)
             // Spatial body-proximity uses a grid position; food style/clutch does not.
             if (detail.Position is null)
             {
-                caption = detail.Value >= 2
-                    ? $"+{detail.Value} STYLE STREAK!"
-                    : $"+{detail.Value} CLUTCH!";
+                text = ShellTextReference.Create(
+                    detail.Value >= 2
+                        ? "feedback.near-miss.style-streak"
+                        : "feedback.near-miss.clutch",
+                    ShellTextArgument.From("points", detail.Value));
             }
             else if (detail.Value >= 2)
             {
-                caption = $"+{detail.Value} THREADING THE NEEDLE!";
+                text = ShellTextReference.Create(
+                    "feedback.near-miss.threading",
+                    ShellTextArgument.From("points", detail.Value));
             }
             else
             {
-                caption = $"+{detail.Value} CLOSE CALL!";
+                text = ShellTextReference.Create(
+                    "feedback.near-miss.close-call",
+                    ShellTextArgument.From("points", detail.Value));
             }
 
             return true;
         }
 
-        caption = string.Empty;
+        text = default;
         return false;
     }
 
-    private static string ActivationCaption(PowerKind power) => power switch
+    private static string ActivationCopyId(PowerKind power) => power switch
     {
-        PowerKind.Shield => "SHIELD ONLINE: 1 COLLISION BLOCK",
-        PowerKind.PhaseShift => "PHASE SHIFT ONLINE: BODY PASS",
-        PowerKind.LastStand => "LAST STAND ARMED",
-        PowerKind.SlowMo => "SLOW-MO ONLINE: HALF STEP RATE",
-        PowerKind.Boost => "BOOST ONLINE: DOUBLE STEP RATE",
-        PowerKind.Magnet => "MAGNET ONLINE: FOOD PULL",
-        PowerKind.Bait => "BAIT MARKED: NEXT FOOD PULL",
-        PowerKind.Gluttony => "GLUTTONY ONLINE: EAT WITHOUT GROWTH",
-        PowerKind.SegmentDetach => "SEGMENTS DETACHED: TIMED HAZARDS",
+        PowerKind.Shield => "feedback.power.activation.shield",
+        PowerKind.PhaseShift => "feedback.power.activation.phase-shift",
+        PowerKind.LastStand => "feedback.power.activation.last-stand",
+        PowerKind.SlowMo => "feedback.power.activation.slow-mo",
+        PowerKind.Boost => "feedback.power.activation.boost",
+        PowerKind.Magnet => "feedback.power.activation.magnet",
+        PowerKind.Bait => "feedback.power.activation.bait",
+        PowerKind.Gluttony => "feedback.power.activation.gluttony",
+        PowerKind.SegmentDetach => "feedback.power.activation.segment-detach",
         _ => throw new ArgumentOutOfRangeException(nameof(power), power, "Unknown power kind."),
     };
+
+    private static StepFeedback Localized(
+        AudioCue cue,
+        string copyId,
+        params ShellTextArgument[] arguments) =>
+        new(cue, ShellTextReference.Create(copyId, arguments));
 
     private static bool Contains(
         IEnumerable<RunEventDetail> events,

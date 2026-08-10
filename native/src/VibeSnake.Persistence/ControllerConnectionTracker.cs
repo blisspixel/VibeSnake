@@ -2,8 +2,8 @@ namespace VibeSnake.Persistence;
 
 /// <summary>
 /// Pure controller connection ledger for hot-plug notices.
-/// Presentation layers report device ids; this type owns dedupe, captions,
-/// and disconnect safety without referencing Godot or OS APIs.
+/// Presentation layers report device ids; this type owns dedupe and disconnect
+/// safety without owning player-facing copy or referencing Godot or OS APIs.
 /// </summary>
 public enum ControllerConnectionKind : byte
 {
@@ -14,8 +14,7 @@ public enum ControllerConnectionKind : byte
 public readonly record struct ControllerConnectionEvent(
     ControllerConnectionKind Kind,
     int DeviceId,
-    string DeviceName,
-    string Caption);
+    string DeviceName);
 
 public sealed class ControllerConnectionTracker
 {
@@ -54,8 +53,7 @@ public sealed class ControllerConnectionTracker
         return new ControllerConnectionEvent(
             ControllerConnectionKind.Connected,
             deviceId,
-            name,
-            "CONTROLLER CONNECTED: " + name);
+            name);
     }
 
     /// <summary>
@@ -76,8 +74,7 @@ public sealed class ControllerConnectionTracker
         return new ControllerConnectionEvent(
             ControllerConnectionKind.Disconnected,
             deviceId,
-            name,
-            "CONTROLLER DISCONNECTED: " + name);
+            name);
     }
 
     public bool IsConnected(int deviceId) => _connected.ContainsKey(deviceId);

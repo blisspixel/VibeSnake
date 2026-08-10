@@ -1,0 +1,208 @@
+{
+  "schemaVersion": 1,
+  "kind": "vibesnake-achievement-mode-audit-v1",
+  "classicPolicy": "classic@1 emits no progression candidates; all achievements remain visibly excluded rather than silently reusing Vibe thresholds",
+  "vibePolicy": "vibe@1 may emit only the 17 implemented rules-local candidates",
+  "entries": [
+    {
+      "referenceId": "baby_steps",
+      "nativeId": null,
+      "classicEligibility": "excluded",
+      "vibeEligibility": "excluded",
+      "decision": "defer-profile-progression",
+      "reason": "Lifetime games-played state is outside the pure run-local catalog."
+    },
+    {
+      "referenceId": "just_a_taste",
+      "nativeId": "just_a_taste",
+      "classicEligibility": "excluded",
+      "vibeEligibility": "eligible",
+      "decision": "keep-vibe-only",
+      "reason": "Classic progression candidates are disabled by the frozen classic@1 contract."
+    },
+    {
+      "referenceId": "wrap_around",
+      "nativeId": "wrap_around",
+      "classicEligibility": "excluded",
+      "vibeEligibility": "eligible",
+      "decision": "keep-vibe-only",
+      "reason": "Classic progression candidates are disabled by the frozen classic@1 contract."
+    },
+    {
+      "referenceId": "powered_up",
+      "nativeId": "powered_up",
+      "classicEligibility": "excluded",
+      "vibeEligibility": "eligible",
+      "decision": "keep-vibe-only",
+      "reason": "Classic has no powers and cannot satisfy this condition."
+    },
+    {
+      "referenceId": "quick_reflexes",
+      "nativeId": "quick_reflexes",
+      "classicEligibility": "excluded",
+      "vibeEligibility": "eligible",
+      "decision": "keep-vibe-only",
+      "reason": "Classic progression candidates are disabled by the frozen classic@1 contract."
+    },
+    {
+      "referenceId": "getting_longer",
+      "nativeId": "getting_longer",
+      "classicEligibility": "excluded",
+      "vibeEligibility": "eligible",
+      "decision": "keep-vibe-only",
+      "reason": "Classic progression candidates are disabled by the frozen classic@1 contract."
+    },
+    {
+      "referenceId": "first_bite",
+      "nativeId": "first_bite",
+      "classicEligibility": "excluded",
+      "vibeEligibility": "eligible",
+      "decision": "keep-vibe-only",
+      "reason": "Classic and Vibe score models differ, so the threshold is not silently shared."
+    },
+    {
+      "referenceId": "century",
+      "nativeId": "century",
+      "classicEligibility": "excluded",
+      "vibeEligibility": "eligible",
+      "decision": "keep-vibe-only",
+      "reason": "Classic and Vibe score models differ, so the threshold is not silently shared."
+    },
+    {
+      "referenceId": "high_roller",
+      "nativeId": "high_roller",
+      "classicEligibility": "excluded",
+      "vibeEligibility": "eligible",
+      "decision": "keep-vibe-only",
+      "reason": "Classic and Vibe score models differ, so the threshold is not silently shared."
+    },
+    {
+      "referenceId": "legend",
+      "nativeId": "legend",
+      "classicEligibility": "excluded",
+      "vibeEligibility": "eligible",
+      "decision": "keep-vibe-only",
+      "reason": "Classic and Vibe score models differ, so the threshold is not silently shared."
+    },
+    {
+      "referenceId": "combo_starter",
+      "nativeId": "combo_starter",
+      "classicEligibility": "excluded",
+      "vibeEligibility": "eligible",
+      "decision": "keep-vibe-only",
+      "reason": "Classic has no combo system and cannot satisfy this condition."
+    },
+    {
+      "referenceId": "combo_king",
+      "nativeId": "combo_king",
+      "classicEligibility": "excluded",
+      "vibeEligibility": "eligible",
+      "decision": "keep-vibe-only",
+      "reason": "Classic has no combo system and cannot satisfy this condition."
+    },
+    {
+      "referenceId": "growing_up",
+      "nativeId": "growing_strong",
+      "classicEligibility": "excluded",
+      "vibeEligibility": "eligible",
+      "decision": "keep-vibe-only",
+      "reason": "The native name is clearer; Classic progression remains disabled."
+    },
+    {
+      "referenceId": "long_boi",
+      "nativeId": "serpent",
+      "classicEligibility": "excluded",
+      "vibeEligibility": "eligible",
+      "decision": "keep-vibe-only",
+      "reason": "The native name is localization-ready; Classic progression remains disabled."
+    },
+    {
+      "referenceId": "newcomer",
+      "nativeId": null,
+      "classicEligibility": "excluded",
+      "vibeEligibility": "excluded",
+      "decision": "defer-profile-progression",
+      "reason": "Lifetime games-played state is outside the pure run-local catalog."
+    },
+    {
+      "referenceId": "regular",
+      "nativeId": null,
+      "classicEligibility": "excluded",
+      "vibeEligibility": "excluded",
+      "decision": "defer-profile-progression",
+      "reason": "Lifetime games-played state is outside the pure run-local catalog."
+    },
+    {
+      "referenceId": "veteran",
+      "nativeId": null,
+      "classicEligibility": "excluded",
+      "vibeEligibility": "excluded",
+      "decision": "defer-profile-progression",
+      "reason": "Lifetime games-played state is outside the pure run-local catalog."
+    },
+    {
+      "referenceId": "close_call",
+      "nativeId": "close_call",
+      "classicEligibility": "excluded",
+      "vibeEligibility": "eligible",
+      "decision": "keep-vibe-only",
+      "reason": "Classic has no near-miss scoring and cannot satisfy this condition."
+    },
+    {
+      "referenceId": "power_hungry",
+      "nativeId": "power_hungry",
+      "classicEligibility": "excluded",
+      "vibeEligibility": "eligible",
+      "decision": "keep-vibe-only",
+      "reason": "Classic has no powers and cannot satisfy this condition."
+    },
+    {
+      "referenceId": "survivor",
+      "nativeId": "endurance",
+      "classicEligibility": "excluded",
+      "vibeEligibility": "eligible",
+      "decision": "keep-vibe-only",
+      "reason": "The native name is distinct; Classic progression remains disabled."
+    },
+    {
+      "referenceId": "marathon_runner",
+      "nativeId": "marathon",
+      "classicEligibility": "excluded",
+      "vibeEligibility": "eligible",
+      "decision": "keep-vibe-only",
+      "reason": "The native name is concise; Classic progression remains disabled."
+    },
+    {
+      "referenceId": "iron_will",
+      "nativeId": null,
+      "classicEligibility": "excluded",
+      "vibeEligibility": "excluded",
+      "decision": "defer-redundant-threshold",
+      "reason": "A second intermediate score threshold adds no distinct rules-local behavior yet."
+    },
+    {
+      "referenceId": "snake_charmer",
+      "nativeId": null,
+      "classicEligibility": "excluded",
+      "vibeEligibility": "excluded",
+      "decision": "defer-redundant-threshold",
+      "reason": "A fourth length threshold is deferred until progression pacing is reviewed."
+    },
+    {
+      "referenceId": "night_owl",
+      "nativeId": null,
+      "classicEligibility": "excluded",
+      "vibeEligibility": "excluded",
+      "decision": "remove-wall-clock-condition",
+      "reason": "Wall-clock play requirements conflict with the deterministic offline rules boundary."
+    },
+    {
+      "referenceId": "early_bird",
+      "nativeId": null,
+      "classicEligibility": "excluded",
+      "vibeEligibility": "excluded",
+      "decision": "remove-wall-clock-condition",
+      "reason": "Wall-clock play requirements conflict with the deterministic offline rules boundary."
+    }
+  ]
+}

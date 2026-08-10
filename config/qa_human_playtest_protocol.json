@@ -1,0 +1,275 @@
+{
+  "schemaVersion": 1,
+  "kind": "vibesnake-human-playtest-protocol-v1",
+  "status": "automated-qualified-experience-unverified",
+  "privacy": {
+    "participantIdFormat": "session-[0-9]{3}",
+    "consentRecordedOutsideRepository": true,
+    "localSummarySharingOptional": true,
+    "allowedParticipantFields": [
+      "participantId",
+      "cohortId",
+      "stageId",
+      "priorVibeSnakeExposure",
+      "inputExperienceBand",
+      "accessibilityProfileIds"
+    ],
+    "forbiddenFieldFamilies": [
+      "name",
+      "account",
+      "email",
+      "address",
+      "raw-input-event",
+      "raw-input-timing",
+      "system-path",
+      "device-serial",
+      "ip-address",
+      "unrelated-device-information"
+    ]
+  },
+  "cohorts": [
+    {
+      "id": "first-time-keyboard",
+      "eligibility": "No prior Vibe Snake play; completes the flow without a controller."
+    },
+    {
+      "id": "first-time-controller",
+      "eligibility": "No prior Vibe Snake play; completes the flow without gameplay keyboard input."
+    },
+    {
+      "id": "returning-arcade",
+      "eligibility": "Regularly plays score-focused arcade games and may have prior Vibe Snake exposure."
+    },
+    {
+      "id": "accessibility-focused",
+      "eligibility": "Uses or evaluates at least one muted, reduced-motion, flash-free, or high-contrast profile."
+    }
+  ],
+  "stages": [
+    {
+      "id": "formative",
+      "freshParticipantsRequired": false,
+      "purpose": "Discover comprehension, control, attribution, recovery, and replay-motivation problems."
+    },
+    {
+      "id": "targeted-follow-up",
+      "freshParticipantsRequired": false,
+      "purpose": "Re-run only affected scenarios after each material repair."
+    },
+    {
+      "id": "fresh-validation",
+      "freshParticipantsRequired": true,
+      "purpose": "Confirm the repaired complete flow with participants who did not see earlier builds."
+    }
+  ],
+  "scenarios": [
+    {
+      "id": "first-launch",
+      "fixedSeed": null,
+      "requiredObservations": ["comprehension", "chosenRoutes", "observedErrors"]
+    },
+    {
+      "id": "tutorial",
+      "fixedSeed": null,
+      "requiredObservations": ["comprehension", "chosenRoutes", "observedErrors"]
+    },
+    {
+      "id": "mode-selection",
+      "fixedSeed": null,
+      "requiredObservations": ["comprehension", "chosenRoutes", "observedErrors"]
+    },
+    {
+      "id": "seeded-run",
+      "fixedSeed": "42",
+      "requiredObservations": ["comprehension", "chosenRoutes", "observedErrors", "qualitativeFeedback"]
+    },
+    {
+      "id": "death-attribution",
+      "fixedSeed": "7",
+      "requiredObservations": ["deathAttribution", "observedErrors", "qualitativeFeedback"]
+    },
+    {
+      "id": "deliberate-restart",
+      "fixedSeed": "7",
+      "requiredObservations": ["restartSuccess", "observedErrors"]
+    },
+    {
+      "id": "settings-discovery",
+      "fixedSeed": null,
+      "requiredObservations": ["settingsDiscovery", "chosenRoutes", "observedErrors"]
+    },
+    {
+      "id": "fixed-seed-recovery",
+      "fixedSeed": "20260808",
+      "requiredObservations": [
+        "recoveryAnticipated",
+        "recoveryAttributable",
+        "recoveryControllable",
+        "recoveryWorthRetrying",
+        "qualitativeFeedback"
+      ]
+    },
+    {
+      "id": "voluntary-replay",
+      "fixedSeed": null,
+      "requiredObservations": ["voluntaryReplay", "replayMotivation", "qualitativeFeedback"]
+    },
+    {
+      "id": "boost-phase-shift",
+      "fixedSeed": "0",
+      "requiredObservations": [
+        "powerTypeIdentified",
+        "powerVisibilityReadable",
+        "powerDetourIntent",
+        "powerSynergyExplained",
+        "qualitativeFeedback"
+      ]
+    },
+    {
+      "id": "slow-mo-magnet",
+      "fixedSeed": "1",
+      "requiredObservations": [
+        "powerTypeIdentified",
+        "powerVisibilityReadable",
+        "powerDetourIntent",
+        "powerSynergyExplained",
+        "qualitativeFeedback"
+      ]
+    },
+    {
+      "id": "bait-boost",
+      "fixedSeed": "7",
+      "requiredObservations": [
+        "powerTypeIdentified",
+        "powerVisibilityReadable",
+        "powerDetourIntent",
+        "powerSynergyExplained",
+        "qualitativeFeedback"
+      ]
+    },
+    {
+      "id": "gluttony-magnet",
+      "fixedSeed": "42",
+      "requiredObservations": [
+        "powerTypeIdentified",
+        "powerVisibilityReadable",
+        "powerDetourIntent",
+        "powerSynergyExplained",
+        "qualitativeFeedback"
+      ]
+    },
+    {
+      "id": "segment-detach-protection",
+      "fixedSeed": "20260808",
+      "requiredObservations": [
+        "powerTypeIdentified",
+        "powerVisibilityReadable",
+        "powerDetourIntent",
+        "powerSynergyExplained",
+        "powerSaveAttributed",
+        "qualitativeFeedback"
+      ]
+    },
+    {
+      "id": "last-stand-long-combo",
+      "fixedSeed": "32452843",
+      "requiredObservations": [
+        "powerTypeIdentified",
+        "powerVisibilityReadable",
+        "powerDetourIntent",
+        "powerSynergyExplained",
+        "powerSaveAttributed",
+        "powerDeathAdjacencyAttributed",
+        "recoveryAnticipated",
+        "recoveryAttributable",
+        "recoveryControllable",
+        "qualitativeFeedback"
+      ]
+    }
+  ],
+  "recoveryProfiles": [
+    "default",
+    "muted",
+    "reduced-motion",
+    "flash-free",
+    "high-contrast",
+    "controller-only"
+  ],
+  "requiredBuildFields": [
+    "appVersion",
+    "sourceRevision",
+    "artifactSha256",
+    "platform",
+    "rulesetId",
+    "rulesVersion",
+    "modeId",
+    "modeVersion",
+    "scoreCategoryId",
+    "configHash",
+    "seed",
+    "inputDeviceClass",
+    "accessibilityProfileIds"
+  ],
+  "requiredObservationFields": [
+    "comprehension",
+    "observedErrors",
+    "chosenRoutes",
+    "deathAttribution",
+    "restartSuccess",
+    "settingsDiscovery",
+    "qualitativeFeedback",
+    "recoveryAnticipated",
+    "recoveryAttributable",
+    "recoveryControllable",
+    "recoveryWorthRetrying",
+    "voluntaryReplay",
+    "replayMotivation",
+    "powerTypeIdentified",
+    "powerVisibilityReadable",
+    "powerDetourIntent",
+    "powerSynergyExplained",
+    "powerSaveAttributed",
+    "powerDeathAdjacencyAttributed"
+  ],
+  "severityDefinitions": [
+    {
+      "id": "severity-1",
+      "meaning": "Safety, privacy, data-loss, or complete control failure that blocks all testing and release."
+    },
+    {
+      "id": "severity-2",
+      "meaning": "Critical flow, input, attribution, accessibility, or recovery failure with no reasonable workaround."
+    },
+    {
+      "id": "severity-3",
+      "meaning": "Material confusion, friction, or fatigue with a discoverable workaround."
+    },
+    {
+      "id": "severity-4",
+      "meaning": "Minor preference, polish, or isolated wording observation."
+    }
+  ],
+  "repeatedPatternRule": "The same independently observed issue in two or more sessions is repeated.",
+  "stopRules": [
+    "Stop the session immediately for any severity-1 finding.",
+    "Do not begin fresh validation while a severity-1 or severity-2 finding is unresolved.",
+    "Do not close the milestone while any repeated critical pattern is unresolved.",
+    "After a material repair, run targeted follow-up before fresh validation.",
+    "Fresh validation must use participants who did not see earlier builds."
+  ],
+  "decisionValues": ["keep", "revise", "remove", "blocked"],
+  "requiredArtifactPaths": [
+    "TestResults/native/balance_laboratory.json",
+    "TestResults/native/balance_baselines.json",
+    "TestResults/native/input_cadence.json",
+    "TestResults/native/bare_arcade_loop.json",
+    "TestResults/native/settings_screen.json",
+    "TestResults/native/local_playtest_summaries.json",
+    "TestResults/native/power_decisions.json",
+    "TestResults/native/multimodal_feedback.json",
+    "TestResults/native/visual_hierarchy.json",
+    "TestResults/native/performance.json",
+    "TestResults/native/vibe_level.json"
+  ],
+  "humanTargetRanges": []
+}

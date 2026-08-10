@@ -1,0 +1,93 @@
+{
+  "schemaVersion": 1,
+  "kind": "vibesnake-release-rehearsal-v1",
+  "status": "qualified-handoff-execution-pending",
+  "artifactPlatforms": [
+    "windows-x64",
+    "macos-universal",
+    "linux-x64"
+  ],
+  "platformOperationIds": [
+    "download",
+    "checksum",
+    "signature-verification",
+    "install",
+    "launch",
+    "save-creation",
+    "optional-content-install",
+    "optional-content-removal",
+    "update",
+    "rollback",
+    "application-removal"
+  ],
+  "authorityOperationIds": [
+    "publish",
+    "halt",
+    "replace",
+    "communicate"
+  ],
+  "resultValues": [
+    "pass",
+    "fail",
+    "blocked"
+  ],
+  "requiredRecordFields": [
+    "schemaVersion",
+    "kind",
+    "rehearsalId",
+    "sourceRevision",
+    "appVersion",
+    "previousVersion",
+    "stagedLocationId",
+    "executedUtc",
+    "candidateArtifactSha256ByPlatform",
+    "candidateArtifactPathsByPlatform",
+    "previousArtifactSha256ByPlatform",
+    "previousArtifactPathsByPlatform",
+    "candidateManifestSha256ByPlatform",
+    "candidateManifestPathsByPlatform",
+    "releaseMaterialsDecisionSha256",
+    "releaseMaterialsDecisionPath",
+    "migrationFixtureSetSha256",
+    "migrationFixturePaths",
+    "platformResults",
+    "withdrawalResult",
+    "authorityRecords",
+    "retainedFileSha256"
+  ],
+  "requiredPlatformResultFields": [
+    "platformId",
+    "operationResults",
+    "evidencePathsByOperation",
+    "protectedUserDataSha256Before",
+    "protectedUserDataSha256After"
+  ],
+  "requiredWithdrawalFields": [
+    "candidateUnavailable",
+    "previousArtifactRestored",
+    "userDataPreserved",
+    "communicationPrepared",
+    "evidencePaths"
+  ],
+  "requiredAuthorityFields": [
+    "operationId",
+    "roleId",
+    "authorizationVerified",
+    "evidencePaths"
+  ],
+  "prerequisitePaths": [
+    "config/release_materials_v1.json",
+    "config/release_signing_policy.json",
+    "docs/release/PACKAGING.md",
+    "docs/release/SIGNING.md",
+    "docs/guides/RECOVERY.md"
+  ],
+  "releaseRules": [
+    "The staged candidate artifacts, manifests, release-material decision, previous artifacts, and migration fixtures are retained and hash-verified.",
+    "Download, checksum, signature, install, launch, save creation, optional content, update, rollback, and removal pass on every platform.",
+    "Rollback and application removal preserve the protected preexisting user-data fixture exactly.",
+    "Withdrawal makes the candidate unavailable, restores the previous artifact, preserves user data, and prepares communication.",
+    "Publish, halt, replace, and communicate authority is assigned to verified operational roles without storing personal data.",
+    "Any failed or blocked operation prevents rehearsal acceptance."
+  ]
+}

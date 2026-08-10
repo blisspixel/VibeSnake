@@ -1,0 +1,290 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vibesnake.example/schemas/radio-pack.schema1.json",
+  "title": "Vibe Snake optional radio content-pack schema 1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "compatibility",
+    "credits",
+    "dependencies",
+    "description",
+    "displayName",
+    "files",
+    "id",
+    "inventory",
+    "kind",
+    "radio",
+    "schemaVersion",
+    "version"
+  ],
+  "properties": {
+    "compatibility": {
+      "$ref": "#/$defs/compatibility"
+    },
+    "credits": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 1024,
+      "items": {
+        "$ref": "#/$defs/credit"
+      }
+    },
+    "dependencies": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 1,
+      "items": {
+        "$ref": "#/$defs/coreDependency"
+      }
+    },
+    "description": {
+      "$ref": "#/$defs/text"
+    },
+    "displayName": {
+      "$ref": "#/$defs/text"
+    },
+    "files": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 4096,
+      "items": {
+        "$ref": "#/$defs/file"
+      }
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^vibesnake\\.radio\\.[a-z0-9]+(?:[.-][a-z0-9]+)*$",
+      "maxLength": 128
+    },
+    "inventory": {
+      "$ref": "#/$defs/inventory"
+    },
+    "kind": {
+      "const": "radio"
+    },
+    "radio": {
+      "$ref": "#/$defs/radio"
+    },
+    "schemaVersion": {
+      "const": 1
+    },
+    "version": {
+      "$ref": "#/$defs/version"
+    }
+  },
+  "$defs": {
+    "compatibility": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "gameVersion",
+        "ruleset"
+      ],
+      "properties": {
+        "gameVersion": {
+          "$ref": "#/$defs/versionRange"
+        },
+        "ruleset": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "id",
+            "minInclusive",
+            "maxExclusive"
+          ],
+          "properties": {
+            "id": {
+              "$ref": "#/$defs/identifier"
+            },
+            "minInclusive": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "maxExclusive": {
+              "type": "integer",
+              "minimum": 2
+            }
+          }
+        }
+      }
+    },
+    "coreDependency": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "minInclusive",
+        "maxExclusive"
+      ],
+      "properties": {
+        "id": {
+          "const": "vibesnake.core"
+        },
+        "minInclusive": {
+          "$ref": "#/$defs/version"
+        },
+        "maxExclusive": {
+          "$ref": "#/$defs/version"
+        }
+      }
+    },
+    "credit": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "attribution",
+        "id",
+        "license",
+        "reviewEvidence",
+        "source"
+      ],
+      "properties": {
+        "attribution": {
+          "$ref": "#/$defs/text"
+        },
+        "id": {
+          "$ref": "#/$defs/identifier"
+        },
+        "license": {
+          "$ref": "#/$defs/text"
+        },
+        "reviewEvidence": {
+          "$ref": "#/$defs/text"
+        },
+        "source": {
+          "$ref": "#/$defs/text"
+        }
+      }
+    },
+    "file": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "bytes",
+        "creditId",
+        "id",
+        "mediaType",
+        "path",
+        "role",
+        "runtimeUse",
+        "sha256"
+      ],
+      "properties": {
+        "bytes": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "creditId": {
+          "$ref": "#/$defs/identifier"
+        },
+        "id": {
+          "type": "string",
+          "pattern": "^asset:.+$",
+          "maxLength": 512
+        },
+        "mediaType": {
+          "const": "audio/mpeg"
+        },
+        "path": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512,
+          "pattern": "^[^\\\\/].*\\.mp3$"
+        },
+        "role": {
+          "const": "radio-track"
+        },
+        "runtimeUse": {
+          "const": "optional"
+        },
+        "sha256": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
+    "identifier": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:[.-][a-z0-9]+)*$",
+      "maxLength": 128
+    },
+    "inventory": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "assetRoot",
+        "policySha256",
+        "schemaVersion"
+      ],
+      "properties": {
+        "assetRoot": {
+          "const": "assets"
+        },
+        "policySha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "schemaVersion": {
+          "const": 1
+        }
+      }
+    },
+    "radio": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "stationId",
+        "stationName",
+        "trackIds"
+      ],
+      "properties": {
+        "stationId": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(?:_[a-z0-9]+)*$",
+          "maxLength": 128
+        },
+        "stationName": {
+          "$ref": "#/$defs/text"
+        },
+        "trackIds": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 4096,
+          "items": {
+            "type": "string",
+            "pattern": "^asset:.+$",
+            "maxLength": 512
+          }
+        }
+      }
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "text": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 512
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$"
+    },
+    "versionRange": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "minInclusive",
+        "maxExclusive"
+      ],
+      "properties": {
+        "minInclusive": {
+          "$ref": "#/$defs/version"
+        },
+        "maxExclusive": {
+          "$ref": "#/$defs/version"
+        }
+      }
+    }
+  }
+}

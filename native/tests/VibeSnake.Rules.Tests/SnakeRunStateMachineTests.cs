@@ -153,6 +153,8 @@ public sealed class SnakeRunStateMachineTests
         Assert.Equal(expected.ComboCount, actual.ComboCount);
         Assert.Equal(expected.TicksSinceLastFood, actual.TicksSinceLastFood);
         Assert.Equal(expected.HungerTicksRemaining, actual.HungerTicksRemaining);
+        Assert.Equal(expected.HungerMaximumTicks, actual.HungerMaximumTicks);
+        Assert.Equal(expected.HungerWarningTicks, actual.HungerWarningTicks);
         Assert.Equal(expected.PowerPickup, actual.PowerPickup);
         Assert.Equal(expected.PowerSpawnTicksElapsed, actual.PowerSpawnTicksElapsed);
         Assert.Equal(expected.ShieldTicksRemaining, actual.ShieldTicksRemaining);

@@ -1,0 +1,156 @@
+{
+  "schemaVersion": 1,
+  "kind": "vibesnake-external-validation-v1",
+  "status": "qualified-handoff-execution-pending",
+  "participantIdPattern": "external-[0-9]{3}",
+  "artifactPlatforms": [
+    "windows-x64",
+    "macos-universal",
+    "linux-x64"
+  ],
+  "cohorts": [
+    {
+      "id": "clean-install-fresh-keyboard",
+      "freshParticipantRequired": true,
+      "cleanInstallRequired": true,
+      "neverSeenRepositoryRequired": true
+    },
+    {
+      "id": "clean-install-fresh-controller",
+      "freshParticipantRequired": true,
+      "cleanInstallRequired": true,
+      "neverSeenRepositoryRequired": true
+    },
+    {
+      "id": "accessibility-focused-fresh",
+      "freshParticipantRequired": true,
+      "cleanInstallRequired": true,
+      "neverSeenRepositoryRequired": true
+    },
+    {
+      "id": "returning-regression",
+      "freshParticipantRequired": false,
+      "cleanInstallRequired": true,
+      "neverSeenRepositoryRequired": false
+    }
+  ],
+  "inputDevices": [
+    "keyboard",
+    "mouse",
+    "xbox-layout-controller",
+    "playstation-layout-controller"
+  ],
+  "accessibilityProfiles": [
+    "default",
+    "sound-muted",
+    "zero-shake",
+    "reduced-motion",
+    "flash-free",
+    "high-contrast",
+    "maximum-text-scale"
+  ],
+  "comprehensionChecks": [
+    "death-explanation",
+    "recovery-identification",
+    "power-route-decision-explanation",
+    "escalation-recognition",
+    "another-run-intent",
+    "another-run-reason"
+  ],
+  "reportFamilies": [
+    "defect",
+    "comprehension",
+    "accessibility",
+    "crash"
+  ],
+  "severityValues": [
+    "P0",
+    "P1",
+    "P2",
+    "P3"
+  ],
+  "findingDecisions": [
+    "fix",
+    "ship",
+    "not-reproducible"
+  ],
+  "resolutionValues": [
+    "open",
+    "closed"
+  ],
+  "requiredSessionFields": [
+    "schemaVersion",
+    "kind",
+    "sessionId",
+    "participantId",
+    "cohortId",
+    "candidateRevision",
+    "artifactPlatform",
+    "artifactSha256",
+    "appVersion",
+    "cleanInstall",
+    "neverSeenRepository",
+    "inputDeviceIds",
+    "accessibilityProfileIds",
+    "executedUtc",
+    "distributionId",
+    "consentRecordedSeparately",
+    "reportFamilyPaths",
+    "comprehensionResults",
+    "crashObserved",
+    "findingIds",
+    "evidencePaths"
+  ],
+  "requiredComprehensionResultFields": [
+    "checkId",
+    "result"
+  ],
+  "comprehensionResultValues": [
+    "pass",
+    "fail",
+    "blocked"
+  ],
+  "requiredCandidateFields": [
+    "revision",
+    "sourceTreeClean",
+    "artifactSha256ByPlatform",
+    "startedUtc",
+    "supersedesRevision",
+    "triggerFindingIds",
+    "affectedGateIds",
+    "gateRerunEvidencePaths"
+  ],
+  "requiredFindingFields": [
+    "findingId",
+    "sessionIds",
+    "severity",
+    "reportFamily",
+    "affectedGateIds",
+    "decision",
+    "resolutionStatus",
+    "workaround",
+    "resolutionRevision",
+    "verificationEvidencePaths"
+  ],
+  "prerequisitePaths": [
+    "config/qa_human_playtest_protocol.json",
+    "config/qa_manual_product_matrix_v1.json",
+    "docs/guides/ACCESSIBILITY.md",
+    "docs/release/MANUAL_PRODUCT_MATRIX.md"
+  ],
+  "privacyRules": [
+    "Consent records stay outside the repository and separate from observations.",
+    "Session JSON contains pseudonymous participant IDs and no identifying free text.",
+    "Names, accounts, contact details, device serials, system paths, raw input, raw timing, and unrelated device data are forbidden.",
+    "Retained reports are reviewed, de-identified files referenced by safe relative paths."
+  ],
+  "releaseRules": [
+    "All sessions use candidates declared in the clean candidate ledger and exact platform artifact hashes.",
+    "Every required cohort and artifact platform is represented on the final candidate.",
+    "Fresh cohorts use clean installs, have never seen the repository, and pass every comprehension check.",
+    "Keyboard, mouse, Xbox-layout controller, and PlayStation-layout controller coverage is retained.",
+    "Defect, comprehension, accessibility, and crash outcomes are retained for every session.",
+    "Every fix starts a new clean candidate and reruns every declared affected gate.",
+    "No P0 or P1 finding remains open, and every P2 is closed by a fix or an explicit ship decision with a player-facing workaround."
+  ]
+}

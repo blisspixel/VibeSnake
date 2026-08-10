@@ -143,6 +143,40 @@ public sealed class TempoPowerTests
     }
 
     [Fact]
+    public void Cadence_clock_rejects_non_finite_state_and_non_positive_intervals()
+    {
+        foreach (var delta in new[] { double.NaN, double.PositiveInfinity })
+        {
+            var accumulated = 0.0;
+            Assert.Throws<ArgumentOutOfRangeException>(
+                () => RulesCadenceClock.DrainSteps(ref accumulated, delta, () => 50));
+        }
+
+        foreach (var initial in new[] { double.NaN, double.PositiveInfinity, -1.0 })
+        {
+            var accumulated = initial;
+            Assert.Throws<ArgumentOutOfRangeException>(
+                () => RulesCadenceClock.DrainSteps(ref accumulated, 0.01, () => 50));
+        }
+
+        foreach (var interval in new[] { 0, -1 })
+        {
+            var accumulated = 100.0;
+            Assert.Throws<InvalidOperationException>(
+                () => RulesCadenceClock.DrainSteps(ref accumulated, 0.0, () => interval));
+        }
+
+        var cappedAccumulator = 1_000.0;
+        var capped = RulesCadenceClock.DrainSteps(
+            ref cappedAccumulator,
+            0.0,
+            () => 50,
+            maximumSteps: 2);
+        Assert.Equal(2, capped);
+        Assert.Equal(900.0, cappedAccumulator);
+    }
+
+    [Fact]
     public void Live_run_exposes_effective_rules_step_milliseconds()
     {
         var run = SnakeRun.CreateForTesting(

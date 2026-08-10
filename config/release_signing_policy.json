@@ -1,0 +1,58 @@
+{
+  "schemaVersion": 1,
+  "kind": "release-signing-policy-v1",
+  "credentialBoundary": "protected-release-environment",
+  "ordinaryCiCredentialAccess": false,
+  "releaseEnvironmentRequired": true,
+  "signingMaterialAllowedInRepository": false,
+  "signingMaterialAllowedInArtifacts": false,
+  "checksumsAfterPlatformSigning": true,
+  "attestAfterPlatformSigning": true,
+  "publisherIdentityRequiredAtPromotion": true,
+  "platforms": [
+    {
+      "platform": "linux-x64",
+      "artifactShape": "portable-folder",
+      "platformSigning": "not-applicable",
+      "notarization": "not-applicable",
+      "signableTargets": [],
+      "requiredVerifications": [
+        "executable-permission",
+        "sha256-checksums",
+        "github-oidc-provenance"
+      ]
+    },
+    {
+      "platform": "macos-universal",
+      "artifactShape": "app-bundle-zip",
+      "platformSigning": "developer-id-hardened-runtime",
+      "notarization": "apple-notary-service",
+      "signableTargets": [
+        "Vibe Snake.app"
+      ],
+      "requiredVerifications": [
+        "codesign-strict-verify",
+        "hardened-runtime-verify",
+        "notarization-accepted",
+        "stapler-validate",
+        "gatekeeper-assess",
+        "sha256-checksums",
+        "github-oidc-provenance"
+      ]
+    },
+    {
+      "platform": "windows-x64",
+      "artifactShape": "portable-folder",
+      "platformSigning": "authenticode-sha256",
+      "notarization": "not-applicable",
+      "signableTargets": [
+        "VibeSnake.exe"
+      ],
+      "requiredVerifications": [
+        "signtool-policy-verify",
+        "sha256-checksums",
+        "github-oidc-provenance"
+      ]
+    }
+  ]
+}

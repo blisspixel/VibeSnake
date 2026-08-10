@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text.Json;
+using VibeSnake.Rules;
 
 namespace VibeSnake.Persistence;
 
@@ -18,6 +19,12 @@ public enum PersonalityLoadCode : byte
     InvalidColor = 7,
     PathUnsafe = 8,
     IoError = 9,
+    UnknownField = 10,
+    DuplicateField = 11,
+    TooLarge = 12,
+    ReservedId = 13,
+    CapacityExceeded = 14,
+    DuplicateId = 15,
 }
 
 public sealed record PersonalityValidationIssue(
@@ -50,9 +57,38 @@ public sealed record PersonalityDocument(
     public const int MinimumSchemaVersion = 1;
     public const double TraitMinimum = 0.0;
     public const double TraitMaximum = 1.0;
+    public const int MaximumDocumentCharacters = 16_384;
+    public const int MaximumDocumentBytes = 32_768;
+    public const int MaximumNameCharacters = 48;
+    public const int MaximumDescriptionCharacters = 192;
+
+    private static readonly IReadOnlySet<string> AllowedFields = new HashSet<string>(
+        [
+            "schema_version",
+            "schemaVersion",
+            "name",
+            "description",
+            "aggression",
+            "risk_tolerance",
+            "patience",
+            "greed",
+            "chaos",
+            "power_up_priority",
+            "color",
+        ],
+        StringComparer.Ordinal);
 
     public static PersonalityLoadResult Read(string json, string? sourceName = null)
     {
+        if (json is not null && json.Length > MaximumDocumentCharacters)
+        {
+            return Fail(
+                PersonalityLoadCode.TooLarge,
+                FormatMessage(
+                    sourceName,
+                    $"Personality document exceeds {MaximumDocumentCharacters} characters."));
+        }
+
         if (string.IsNullOrWhiteSpace(json))
         {
             return Fail(
@@ -83,6 +119,15 @@ public sealed record PersonalityDocument(
 
             var root = document.RootElement;
             var issues = new List<PersonalityValidationIssue>();
+            var structureCode = ValidateRootFields(root, issues);
+            if (structureCode is { } invalidStructure)
+            {
+                return Fail(
+                    invalidStructure,
+                    FormatMessage(sourceName, "Personality validation failed."),
+                    issues);
+            }
+
             var schemaVersion = ReadSchemaVersion(root, issues);
 
             if (schemaVersion is null)
@@ -173,6 +218,23 @@ public sealed record PersonalityDocument(
 
         try
         {
+            var attributes = File.GetAttributes(fullPath);
+            if (attributes.HasFlag(FileAttributes.ReparsePoint))
+            {
+                return Fail(
+                    PersonalityLoadCode.PathUnsafe,
+                    FormatMessage(fileName, "Personality file links are not loaded."));
+            }
+
+            if (new FileInfo(fullPath).Length > MaximumDocumentBytes)
+            {
+                return Fail(
+                    PersonalityLoadCode.TooLarge,
+                    FormatMessage(
+                        fileName,
+                        $"Personality file exceeds {MaximumDocumentBytes} bytes."));
+            }
+
             return Read(File.ReadAllText(fullPath), fileName);
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
@@ -181,6 +243,92 @@ public sealed record PersonalityDocument(
                 PersonalityLoadCode.IoError,
                 FormatMessage(fileName, "Personality file could not be read: " + exception.Message));
         }
+    }
+
+    public PersonalityLoadResult ToProfile(string id)
+    {
+        if (!AiPersonality.IsValidId(id))
+        {
+            return Fail(
+                PersonalityLoadCode.PathUnsafe,
+                $"{id}: custom personality ID is invalid.");
+        }
+
+        if (AiPersonalityCatalog.BuiltIn.Any(personality =>
+            string.Equals(personality.Id, id, StringComparison.OrdinalIgnoreCase)))
+        {
+            return Fail(
+                PersonalityLoadCode.ReservedId,
+                $"{id}: built-in personality IDs are reserved.");
+        }
+
+        return new PersonalityLoadResult(
+            PersonalityLoadCode.Success,
+            $"{id}: custom personality is valid and unofficial.",
+            this);
+    }
+
+    public AiPersonalityProfile CreateProfile(string id)
+    {
+        var validation = ToProfile(id);
+        if (!validation.IsSuccess)
+        {
+            throw new InvalidOperationException(validation.Message);
+        }
+
+        var personality = new AiPersonality(
+            id,
+            Name,
+            Description,
+            ScaleTrait(Aggression),
+            ScaleTrait(RiskTolerance),
+            ScaleTrait(Patience),
+            ScaleTrait(Greed),
+            ScaleTrait(Chaos),
+            ScaleTrait(PowerUpPriority),
+            new AiDisplayColor((byte)Color[0], (byte)Color[1], (byte)Color[2]));
+        personality.Validate();
+        return new AiPersonalityProfile(
+            personality,
+            AiPersonalityContentKind.Custom,
+            AiPersonalityCatalog.CustomStatusLabel,
+            OfficialLeagueQualified: false);
+    }
+
+    private static PersonalityLoadCode? ValidateRootFields(
+        JsonElement root,
+        List<PersonalityValidationIssue> issues)
+    {
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        PersonalityLoadCode? code = null;
+        foreach (var property in root.EnumerateObject())
+        {
+            if (!seen.Add(property.Name))
+            {
+                issues.Add(new PersonalityValidationIssue(
+                    property.Name,
+                    "Duplicate fields are not allowed."));
+                code ??= PersonalityLoadCode.DuplicateField;
+            }
+
+            if (!AllowedFields.Contains(property.Name))
+            {
+                issues.Add(new PersonalityValidationIssue(
+                    property.Name,
+                    "Unknown fields are not allowed."));
+                code ??= PersonalityLoadCode.UnknownField;
+            }
+        }
+
+        if (seen.Contains("schema_version") && seen.Contains("schemaVersion"))
+        {
+            issues.Add(new PersonalityValidationIssue(
+                "schema_version",
+                "Use only one schema-version spelling."));
+            code ??= PersonalityLoadCode.DuplicateField;
+        }
+
+        return code;
     }
 
     private static int? ReadSchemaVersion(
@@ -230,6 +378,18 @@ public sealed record PersonalityDocument(
         if (value.Length == 0)
         {
             issues.Add(new PersonalityValidationIssue(field, "String must be non-empty."));
+            return null;
+        }
+
+        var maximum = field == "name"
+            ? MaximumNameCharacters
+            : MaximumDescriptionCharacters;
+        if (value.Length > maximum)
+        {
+            issues.Add(new PersonalityValidationIssue(
+                field,
+                $"String cannot exceed {maximum} characters.",
+                value.Length.ToString(CultureInfo.InvariantCulture)));
             return null;
         }
 
@@ -333,4 +493,7 @@ public sealed record PersonalityDocument(
 
     private static string FormatMessage(string? sourceName, string message) =>
         string.IsNullOrWhiteSpace(sourceName) ? message : $"{sourceName}: {message}";
+
+    private static int ScaleTrait(double value) =>
+        (int)Math.Round(value * 100, MidpointRounding.AwayFromZero);
 }

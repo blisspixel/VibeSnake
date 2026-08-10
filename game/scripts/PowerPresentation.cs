@@ -9,33 +9,11 @@ namespace VibeSnake.Game;
 /// </summary>
 internal static class PowerPresentation
 {
-    public static char Marker(PowerKind kind) => kind switch
-    {
-        PowerKind.Shield => 'S',
-        PowerKind.PhaseShift => 'P',
-        PowerKind.LastStand => 'L',
-        PowerKind.SlowMo => 'W',
-        PowerKind.Boost => 'B',
-        PowerKind.Magnet => 'M',
-        PowerKind.Bait => 'T',
-        PowerKind.Gluttony => 'G',
-        PowerKind.SegmentDetach => 'D',
-        _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, "Unknown power kind."),
-    };
+    public static char Marker(PowerKind kind) =>
+        PowerFeedbackCatalog.Find(kind).StableIcon;
 
-    public static string ShortName(PowerKind kind) => kind switch
-    {
-        PowerKind.Shield => "SHIELD",
-        PowerKind.PhaseShift => "PHASE",
-        PowerKind.LastStand => "LAST STAND",
-        PowerKind.SlowMo => "SLOW-MO",
-        PowerKind.Boost => "BOOST",
-        PowerKind.Magnet => "MAGNET",
-        PowerKind.Bait => "BAIT",
-        PowerKind.Gluttony => "GLUTTONY",
-        PowerKind.SegmentDetach => "DETACH",
-        _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, "Unknown power kind."),
-    };
+    public static string ShortName(PowerKind kind) =>
+        PowerFeedbackCatalog.Find(kind).Name;
 
     public static Color SignalColor(PowerKind kind) => kind switch
     {
@@ -58,55 +36,71 @@ internal static class PowerPresentation
 
         if (snapshot.HasShield)
         {
-            parts.Add(ActiveTimer("SHIELD", snapshot.ShieldTicksRemaining));
+            parts.Add(ActiveTimer(PowerKind.Shield, snapshot.ShieldTicksRemaining));
         }
 
         if (snapshot.HasPhaseShift)
         {
-            parts.Add(ActiveTimer("PHASE", snapshot.PhaseShiftTicksRemaining));
+            parts.Add(ActiveTimer(PowerKind.PhaseShift, snapshot.PhaseShiftTicksRemaining));
         }
 
         if (snapshot.LastStandHeld)
         {
-            parts.Add("LAST STAND HELD");
+            parts.Add("[L] LAST STAND HELD");
         }
 
         if (snapshot.HasLastStandRecovery)
         {
-            parts.Add(ActiveTimer("RECOVERY", snapshot.LastStandRecoveryTicksRemaining));
+            parts.Add(
+                ActiveTimer(
+                    PowerKind.LastStand,
+                    snapshot.LastStandRecoveryTicksRemaining,
+                    "RECOVERY IMMUNITY"));
         }
 
         if (snapshot.HasSlowMo)
         {
-            parts.Add(ActiveTimer("SLOW-MO", snapshot.SlowMoTicksRemaining));
+            parts.Add(ActiveTimer(PowerKind.SlowMo, snapshot.SlowMoTicksRemaining));
         }
 
         if (snapshot.HasBoost)
         {
-            parts.Add(ActiveTimer("BOOST", snapshot.BoostTicksRemaining));
+            parts.Add(ActiveTimer(PowerKind.Boost, snapshot.BoostTicksRemaining));
         }
 
         if (snapshot.HasMagnet)
         {
-            parts.Add(ActiveTimer("MAGNET", snapshot.MagnetTicksRemaining));
+            parts.Add(ActiveTimer(PowerKind.Magnet, snapshot.MagnetTicksRemaining));
         }
 
         if (snapshot.HasGluttony)
         {
-            parts.Add(ActiveTimer("GLUTTONY", snapshot.GluttonyTicksRemaining));
+            parts.Add(ActiveTimer(PowerKind.Gluttony, snapshot.GluttonyTicksRemaining));
         }
 
         if (snapshot.HasBait && snapshot.BaitPosition is { } bait)
         {
-            parts.Add($"BAIT MARK {bait.X},{bait.Y}");
+            parts.Add($"[T] BAIT ARMED AT {bait.X},{bait.Y}: EAT CURRENT FOOD TO TRIGGER");
         }
 
         if (snapshot.HasDetachedObstacles)
         {
             parts.Add(
                 ActiveTimer(
-                    $"DETACH x{snapshot.DetachedObstacles.Count}",
-                    snapshot.DetachedObstacleTicksRemaining));
+                    PowerKind.SegmentDetach,
+                    snapshot.DetachedObstacleTicksRemaining,
+                    $"DETACH x{snapshot.DetachedObstacles.Count}"));
+        }
+
+        if (snapshot.PowerPickup is { } pickup)
+        {
+            var definition = PowerFeedbackCatalog.Find(pickup.Kind);
+            var decision = PowerDecisionCatalog.Get(pickup.Kind);
+            var seconds = Seconds(pickup.VisibilityTicksRemaining);
+            parts.Add(
+                $"OFFER {decision.Family.ToString().ToUpperInvariant()} "
+                    + $"[{definition.StableIcon}] {definition.Name} {seconds:0.0}s "
+                    + definition.PickupTelegraph);
         }
 
         if (parts.Count > 0)
@@ -122,17 +116,14 @@ internal static class PowerPresentation
             return string.Join("  |  ", parts);
         }
 
-        if (snapshot.PowerPickup is { } pickup)
-        {
-            var seconds = Seconds(pickup.VisibilityTicksRemaining);
-            return $"{ShortName(pickup.Kind)} SIGNAL    {seconds:0.0}s    ROUTE TO {Marker(pickup.Kind)}";
-        }
-
         return "POWER SIGNAL QUIET";
     }
 
-    private static string ActiveTimer(string label, int ticksRemaining) =>
-        $"{label} {Seconds(ticksRemaining):0.0}s";
+    private static string ActiveTimer(
+        PowerKind kind,
+        int ticksRemaining,
+        string? label = null) =>
+        $"[{Marker(kind)}] {label ?? ShortName(kind)} {Seconds(ticksRemaining):0.0}s";
 
     private static double Seconds(int ticksRemaining) =>
         ticksRemaining * RunConfig.RulesTickMilliseconds / 1000.0;

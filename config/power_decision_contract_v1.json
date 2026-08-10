@@ -1,0 +1,94 @@
+{
+  "schemaVersion": 1,
+  "kind": "vibesnake-power-decision-contract-v1",
+  "policyId": "power-decisions-v1",
+  "productMode": "vibe@1",
+  "compatibilityDefaultEnabled": false,
+  "productVibeEnabled": true,
+  "families": [
+    {
+      "id": "protection",
+      "powers": ["shield", "phase-shift", "last-stand"],
+      "redundancyPolicy": "one active protection resource suppresses all protection offers"
+    },
+    {
+      "id": "tempo",
+      "powers": ["slow-mo", "boost"],
+      "redundancyPolicy": "one active tempo effect suppresses both tempo offers"
+    },
+    {
+      "id": "harvest",
+      "powers": ["magnet", "bait", "gluttony"],
+      "redundancyPolicy": "suppress exact duplicates and retain cross-kind harvest synergies"
+    },
+    {
+      "id": "geometry",
+      "powers": ["segment-detach"],
+      "redundancyPolicy": "suppress segment detach while detached obstacles remain"
+    }
+  ],
+  "lifecycleStages": [
+    "offered",
+    "detour-observed",
+    "collected",
+    "activated",
+    "expired",
+    "consumed",
+    "saved",
+    "death-adjacent"
+  ],
+  "localSummary": {
+    "schemaVersion": 2,
+    "aggregateOnly": true,
+    "rawInputRetained": false,
+    "wallClockInputTimingRetained": false,
+    "deathAdjacencyWindowTicks": 20
+  },
+  "requiredScenarios": [
+    {
+      "id": "boost-phase-shift",
+      "seed": "0",
+      "automatedStatus": "required",
+      "humanStatus": "pending"
+    },
+    {
+      "id": "slow-mo-magnet",
+      "seed": "1",
+      "automatedStatus": "required",
+      "humanStatus": "pending"
+    },
+    {
+      "id": "bait-boost",
+      "seed": "7",
+      "automatedStatus": "required",
+      "humanStatus": "pending"
+    },
+    {
+      "id": "gluttony-magnet",
+      "seed": "42",
+      "automatedStatus": "required",
+      "humanStatus": "pending"
+    },
+    {
+      "id": "segment-detach-protection",
+      "seed": "20260808",
+      "automatedStatus": "required",
+      "humanStatus": "pending"
+    },
+    {
+      "id": "last-stand-long-combo",
+      "seed": "32452843",
+      "automatedStatus": "required",
+      "humanStatus": "pending"
+    }
+  ],
+  "mutationFork": {
+    "id": "mutation-fork-v1",
+    "choiceCount": 2,
+    "withdrawUnchosenOffer": true,
+    "enabledByDefault": false,
+    "seededEvidenceStatus": "pending",
+    "humanEvidenceStatus": "pending",
+    "decision": "unapproved"
+  }
+}

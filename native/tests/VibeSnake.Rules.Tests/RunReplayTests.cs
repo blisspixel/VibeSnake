@@ -86,6 +86,38 @@ public sealed class RunReplayTests
     }
 
     [Fact]
+    public void Capture_metadata_round_trips_explicit_timestamp_and_stream_seeds()
+    {
+        const ulong seed = 4_294_967_311UL;
+        const string capturedAtUtc = "2026-08-08T23:59:58.123Z";
+        var replay = RunReplay.Capture(
+            SnakeRun.Create(seed),
+            [[Direction.Up], []],
+            checkpointInterval: 1,
+            appVersion: "0.2.1",
+            capturedAtUtc: capturedAtUtc);
+
+        Assert.Equal(capturedAtUtc, replay.CapturedAtUtc);
+        Assert.Equal(seed, replay.GameplaySeed);
+        Assert.Equal(seed, replay.AiSeed);
+        Assert.True(replay.Verify().IsValid);
+
+        var serialized = replay.Serialize();
+        var read = RunReplay.Read(serialized);
+        Assert.True(read.Compatibility.IsCompatible, read.Compatibility.Message);
+        Assert.NotNull(read.Replay);
+        Assert.Equal(capturedAtUtc, read.Replay.CapturedAtUtc);
+        Assert.Equal(seed, read.Replay.GameplaySeed);
+        Assert.Equal(seed, read.Replay.AiSeed);
+        Assert.Equal(serialized, read.Replay.Serialize());
+
+        using var document = JsonDocument.Parse(serialized);
+        Assert.Equal(capturedAtUtc, document.RootElement.GetProperty("capturedAtUtc").GetString());
+        Assert.Equal(seed, document.RootElement.GetProperty("gameplaySeed").GetUInt64());
+        Assert.Equal(seed, document.RootElement.GetProperty("aiSeed").GetUInt64());
+    }
+
+    [Fact]
     public void Offline_Capture_accepts_optional_app_version()
     {
         var initial = SnakeRun.Create(56UL);
@@ -113,6 +145,88 @@ public sealed class RunReplayTests
         using var document = JsonDocument.Parse(replay.Serialize());
         Assert.False(document.RootElement.TryGetProperty("appVersion", out _));
         Assert.Null(RunReplay.Read(replay.Serialize()).Replay!.AppVersion);
+        Assert.False(document.RootElement.TryGetProperty("capturedAtUtc", out _));
+        Assert.False(document.RootElement.TryGetProperty("gameplaySeed", out _));
+        Assert.False(document.RootElement.TryGetProperty("aiSeed", out _));
+        Assert.Null(replay.CapturedAtUtc);
+        Assert.Null(replay.GameplaySeed);
+        Assert.Null(replay.AiSeed);
+    }
+
+    [Fact]
+    public void Capture_metadata_rejects_invalid_timestamp_and_unknown_master_seed()
+    {
+        var seeded = SnakeRun.Create(59UL);
+        var restored = SnakeRun.RestoreCanonicalState(seeded.SerializeCanonicalState());
+
+        Assert.Throws<ArgumentException>(
+            () => new RunReplayRecorder(seeded, capturedAtUtc: "2026-08-08T00:00:00Z"));
+        Assert.Throws<ArgumentException>(
+            () => new RunReplayRecorder(seeded, capturedAtUtc: "2026-02-30T00:00:00.000Z"));
+        Assert.Throws<ArgumentException>(
+            () => new RunReplayRecorder(
+                restored,
+                capturedAtUtc: "2026-08-08T00:00:00.000Z"));
+    }
+
+    [Fact]
+    public void Read_rejects_partial_invalid_or_mismatched_capture_metadata()
+    {
+        var serialized = RunReplay.Capture(
+            SnakeRun.Create(42UL),
+            [[Direction.Up]],
+            checkpointInterval: 1,
+            capturedAtUtc: "2026-08-08T00:00:00.000Z").Serialize();
+
+        string[] invalidPayloads =
+        [
+            ReplaceOnce(serialized, "\"aiSeed\":42,", string.Empty),
+            ReplaceOnce(serialized, "\"gameplaySeed\":42", "\"gameplaySeed\":43"),
+            ReplaceOnce(
+                serialized,
+                "\"capturedAtUtc\":\"2026-08-08T00:00:00.000Z\"",
+                "\"capturedAtUtc\":\"2026-08-08T00:00:00Z\""),
+            ReplaceOnce(serialized, "\"gameplaySeed\":42", "\"gameplaySeed\":\"42\""),
+        ];
+
+        foreach (var payload in invalidPayloads)
+        {
+            var result = RunReplay.Read(payload);
+            Assert.Equal(ReplayCompatibilityCode.InvalidPayload, result.Compatibility.Code);
+            Assert.Null(result.Replay);
+        }
+    }
+
+    [Fact]
+    public void Replay_construction_rejects_incomplete_or_disabled_capture_metadata()
+    {
+        var valid = CreateSingleStepReplay();
+        Assert.Throws<ArgumentException>(() => RunReplay.CreateForTesting(
+            valid.InitialCanonicalState,
+            valid.Steps,
+            valid.CheckpointInterval,
+            valid.Checkpoints,
+            valid.Outcome,
+            capturedAtUtc: "2026-08-08T00:00:00.000Z"));
+        Assert.Throws<ArgumentException>(() => RunReplay.CreateForTesting(
+            valid.InitialCanonicalState,
+            valid.Steps,
+            valid.CheckpointInterval,
+            valid.Checkpoints,
+            valid.Outcome,
+            capturedAtUtc: "2026-08-08T00:00:00.000Z",
+            gameplaySeed: 42,
+            writeCaptureMetadata: true));
+        Assert.Throws<ArgumentException>(() => RunReplay.CreateForTesting(
+            valid.InitialCanonicalState,
+            valid.Steps,
+            valid.CheckpointInterval,
+            valid.Checkpoints,
+            valid.Outcome,
+            capturedAtUtc: "2026-08-08T00:00:00.000Z",
+            gameplaySeed: 42,
+            aiSeed: 43,
+            writeCaptureMetadata: true));
     }
 
     [Fact]
@@ -275,6 +389,93 @@ public sealed class RunReplayTests
                 DeathCause.None,
                 0,
                 "ABCDEF0000000000"));
+
+        Assert.Throws<ArgumentOutOfRangeException>(() => new ReplayOutcome(
+            -1, 0, RunStatus.Running, DeathCause.None, 0, "0000000000000000"));
+        Assert.Throws<ArgumentOutOfRangeException>(() => new ReplayOutcome(
+            0, -1, RunStatus.Running, DeathCause.None, 0, "0000000000000000"));
+        Assert.Throws<ArgumentOutOfRangeException>(() => new ReplayOutcome(
+            0, 0, (RunStatus)255, DeathCause.None, 0, "0000000000000000"));
+        Assert.Throws<ArgumentOutOfRangeException>(() => new ReplayOutcome(
+            0, 0, RunStatus.Running, (DeathCause)255, 0, "0000000000000000"));
+        Assert.Throws<ArgumentOutOfRangeException>(() => new ReplayOutcome(
+            0, 0, RunStatus.Running, DeathCause.None, -1, "0000000000000000"));
+    }
+
+    [Fact]
+    public void Replay_construction_rejects_size_stream_and_checkpoint_schedule_drift()
+    {
+        var valid = CreateSingleStepReplay();
+        Assert.Throws<ArgumentException>(() => RunReplay.CreateForTesting(
+            new string('x', RunReplay.MaximumSerializedCharacters + 1),
+            [],
+            1,
+            [new ReplayCheckpoint(0, "0000000000000000")],
+            new ReplayOutcome(0, 0, RunStatus.Running, DeathCause.None, 0, "0000000000000000")));
+
+        Assert.Throws<ArgumentException>(() => RunReplay.CreateForTesting(
+            valid.InitialCanonicalState,
+            Enumerable.Repeat(new ReplayStep(1, []), RunReplay.MaximumSteps + 1),
+            1,
+            [],
+            valid.Outcome));
+
+        Assert.Throws<ArgumentException>(() => RunReplay.CreateForTesting(
+            valid.InitialCanonicalState,
+            [new ReplayStep(2, [Direction.Up])],
+            1,
+            valid.Checkpoints,
+            valid.Outcome));
+
+        Assert.Throws<ArgumentException>(() => RunReplay.CreateForTesting(
+            valid.InitialCanonicalState,
+            valid.Steps,
+            1,
+            [],
+            valid.Outcome));
+
+        Assert.Throws<ArgumentException>(() => RunReplay.CreateForTesting(
+            valid.InitialCanonicalState,
+            valid.Steps,
+            1,
+            [new ReplayCheckpoint(0, valid.Checkpoints[0].StateHash),
+                new ReplayCheckpoint(0, valid.Checkpoints[1].StateHash)],
+            valid.Outcome));
+
+        Assert.Throws<ArgumentException>(() => RunReplay.CreateForTesting(
+            valid.InitialCanonicalState,
+            valid.Steps,
+            1,
+            valid.Checkpoints,
+            new ReplayOutcome(
+                0,
+                valid.Outcome.FinalTick,
+                valid.Outcome.Status,
+                valid.Outcome.DeathCause,
+                valid.Outcome.Score,
+                valid.Outcome.StateHash)));
+    }
+
+    [Fact]
+    public void Read_rejects_malformed_step_command_checkpoint_and_enum_shapes()
+    {
+        var serialized = CreateSingleStepReplay().Serialize();
+        string[] malformed =
+        [
+            ReplaceOnce(serialized, "\"steps\":[", "\"steps\":{} , \"ignored\":["),
+            ReplaceOnce(serialized, "\"commands\":[0]", "\"commands\":{}"),
+            ReplaceOnce(
+                serialized,
+                "\"commands\":[0]",
+                $"\"commands\":[{string.Join(',', Enumerable.Repeat("0", ReplayStep.MaximumCommands + 1))}]"),
+            ReplaceOnce(serialized, "\"checkpoints\":[", "\"checkpoints\":{} , \"ignoredCheckpoints\":["),
+            ReplaceOnce(serialized, "\"checkpoints\":[{", "\"checkpoints\":[null,{"),
+            ReplaceOnce(serialized, "\"commands\":[0]", "\"commands\":[255]"),
+        ];
+
+        Assert.All(malformed, payload => Assert.Equal(
+            ReplayCompatibilityCode.InvalidPayload,
+            RunReplay.Read(payload).Compatibility.Code));
     }
 
     [Theory]
@@ -333,7 +534,7 @@ public sealed class RunReplayTests
                 ReplayCompatibilityCode.UnsupportedIntegrityAlgorithm
             },
             {
-                "\"configHashAlgorithm\":\"sha256-canonical-runconfig-v1\"",
+                "\"configHashAlgorithm\":\"sha256-canonical-runconfig-v3\"",
                 "\"configHashAlgorithm\":\"unknown-config-hash\"",
                 ReplayCompatibilityCode.UnsupportedConfigHashAlgorithm
             },

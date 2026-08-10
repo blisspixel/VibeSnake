@@ -1,0 +1,127 @@
+{
+  "schemaVersion": 1,
+  "kind": "vibesnake-manual-product-matrix-v1",
+  "status": "qualified-handoff-execution-pending",
+  "requiredFlowDefectSeverity": "P1",
+  "platformRows": [
+    {
+      "id": "windows-x64",
+      "artifactPlatform": "windows-x64",
+      "architecture": "x86_64"
+    },
+    {
+      "id": "macos-universal-apple-silicon",
+      "artifactPlatform": "macos-universal",
+      "architecture": "arm64"
+    },
+    {
+      "id": "macos-universal-intel",
+      "artifactPlatform": "macos-universal",
+      "architecture": "x86_64"
+    },
+    {
+      "id": "linux-x64",
+      "artifactPlatform": "linux-x64",
+      "architecture": "x86_64"
+    }
+  ],
+  "requiredFlows": [
+    "first-launch",
+    "tutorial",
+    "classic-mode",
+    "vibe-mode",
+    "death-self-collision",
+    "death-starvation",
+    "power-shield",
+    "power-phase-shift",
+    "power-last-stand",
+    "power-slow-mo",
+    "power-boost",
+    "power-magnet",
+    "power-bait",
+    "power-gluttony",
+    "power-segment-detach",
+    "settings-gameplay",
+    "settings-controls",
+    "settings-audio",
+    "settings-display",
+    "settings-accessibility",
+    "settings-data",
+    "achievements",
+    "customization",
+    "scores",
+    "radio",
+    "optional-pack-absent",
+    "optional-pack-valid",
+    "optional-pack-removed",
+    "optional-pack-invalid",
+    "optional-pack-recovered",
+    "ai-channels",
+    "replays",
+    "reset",
+    "recovery",
+    "focus-loss",
+    "quit"
+  ],
+  "inputDevices": [
+    {
+      "id": "keyboard",
+      "requiredCoverage": "complete-required-flow"
+    },
+    {
+      "id": "mouse",
+      "requiredCoverage": "menu-settings-gameplay-direction-back"
+    },
+    {
+      "id": "xbox-layout-controller",
+      "requiredCoverage": "complete-required-flow"
+    },
+    {
+      "id": "playstation-layout-controller",
+      "requiredCoverage": "complete-required-flow"
+    }
+  ],
+  "settingsProfiles": [
+    "sound-device-absent",
+    "sound-muted",
+    "zero-shake",
+    "reduced-motion",
+    "flash-free",
+    "high-contrast",
+    "maximum-text-scale",
+    "missing-optional-content"
+  ],
+  "requiredSessionFields": [
+    "schemaVersion",
+    "kind",
+    "sessionId",
+    "candidateRevision",
+    "artifactSha256",
+    "appVersion",
+    "platformRowId",
+    "operatingSystemVersion",
+    "hardwareClass",
+    "renderer",
+    "inputDeviceIds",
+    "settingsProfileIds",
+    "executedUtc",
+    "results"
+  ],
+  "requiredResultFields": [
+    "flowId",
+    "result",
+    "evidencePaths"
+  ],
+  "resultValues": [
+    "pass",
+    "fail",
+    "blocked"
+  ],
+  "releaseRules": [
+    "Every required flow must pass on every platform row using the exact candidate artifact.",
+    "Keyboard, mouse, Xbox-layout controller, and PlayStation-layout controller coverage must be retained.",
+    "Every required settings profile must be observed at least once and on every platform where the behavior is platform-dependent.",
+    "A failed or blocked required flow prevents release acceptance.",
+    "An inaccessible required flow is a P1 defect and prevents release acceptance."
+  ]
+}

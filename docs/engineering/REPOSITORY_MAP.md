@@ -19,6 +19,8 @@
 | [NOTICE](../../NOTICE) | Project and original-content attribution |
 | [config/content_policy.json](../../config/content_policy.json) | Human-reviewed source asset classification, rights status, and shipping policy |
 | [config/content_inventory.json](../../config/content_inventory.json) | Generated deterministic file hashes, sizes, integrity results, and export eligibility |
+| [config/content_curation_v1.json](../../config/content_curation_v1.json) | Exact per-station pending, approved, and rejected content decisions bound to the inventory policy |
+| [docs/design/LOCALIZATION.md](../design/LOCALIZATION.md) | Stable shell-copy, pseudo-locale, glyph, layout, and translator handoff contract |
 
 ## Runtime package
 
@@ -59,16 +61,42 @@ game/
 |-- VibeSnake.Game.csproj     Godot C# shell, rules, and persistence references
 |-- scenes/Main.tscn          Qualification entry scene
 |-- scripts/GameActions.cs    Logical keyboard, controller, and replay defaults
-|-- scripts/AudioFallback.cs  Finite PCM fallback cues and explicit resource lifecycle
+|-- scripts/AudioFallback.cs  Finite PCM cues, bounded multi-voice mix policy, and resource lifecycle
+|-- scripts/RadioStreamPlayer.cs  Validated one-track MP3 decoder adapter and policy recovery bridge
+|-- scripts/RadioQualification.cs  Manifest, behavior, input, RNG-isolation, and missing-pack evidence
+|-- scripts/BroadcastQualification.cs  Station identity, boundary, ducking, fatigue, caption, and isolation evidence
+|-- scripts/ModeContractQualification.cs  Classic/Vibe identity, mechanics, input-route, and category evidence
+|-- scripts/AdaptiveFairnessQualification.cs  Vibe DDA bounds, opt-out, metadata, determinism, and category evidence
+|-- scripts/PowerDecisionQualification.cs  Nine-power families, offer/HUD, lifecycle, synergy, and experiment-gate evidence
+|-- scripts/PowerDecisionRunTrace.cs  Local-only aggregate per-power lifecycle counters
+|-- scripts/ReplayBrowserQualification.cs  Metadata/status, speed/HUD, export/delete, input, and isolation evidence
+|-- scripts/ProgressionQualification.cs  Goals, cosmetics, Tour, input-route, persistence, and isolation evidence
+|-- scripts/ShellLocalization.cs  Stable English copy IDs, strict parameters, deterministic pseudo-locale, and evidence schema
 |-- scripts/StepFeedback.cs   Typed event-to-cue and persistent-caption priority
-`-- scripts/Main.cs           Action routing, replay integration, drawing, lifecycle, and headless smoke adapter
+|-- scripts/MultimodalFeedback.cs  Hunger/combo/power/death presentation contract and profile evidence
+|-- scripts/VisualHierarchy.cs  Production visual budgets, priority, contrast, and review-frame evidence
+|-- scripts/PerformanceQualification.cs  Effect profiles, full-board stress shape, frame statistics, and budgets
+|-- scripts/VibeLevelDirector.cs  Sole combo-escalation authority, subsystem budgets, and fixed-scene evidence
+`-- scripts/Main.cs           Action routing, replay/progression integration, drawing, lifecycle, and headless smoke adapter
 
 native/
 |-- VibeSnake.slnx            Native solution
 |-- toolchain.json            Exact SDK, engine, editor and template hashes, renderer, and cadence pins
-|-- src/VibeSnake.Rules/      Engine-independent rules, canonical state, and restore boundary
-|-- src/VibeSnake.Persistence/  Bounded replay import and atomic user-data storage
+|-- src/VibeSnake.Rules/      Engine-independent rules, product modes, AI personalities, power decisions, progression/Tour catalogs, canonical state, and restore boundary
+|-- src/VibeSnake.Persistence/  Bounded replay/storage, progression, and local summaries plus pure audio, radio, and broadcast policies
+|-- tools/ValidateCreatorContent/  Data-only personality and canonical pack-set validation command
 `-- tests/VibeSnake.Rules.Tests/  xUnit parity, restore, replay, storage, and generated state-machine contracts
+
+```
+
+Progression-specific native ownership:
+
+- [ProgressionCatalog.cs](../../native/src/VibeSnake.Rules/ProgressionCatalog.cs): exact goals, lanes, pacing bands, metric projection, and highlighted-goal rules.
+- [CosmeticSetCatalog.cs](../../native/src/VibeSnake.Rules/CosmeticSetCatalog.cs): eight curated presentation-only sets and exact expression-reward requirements.
+- [BroadcastTourCatalog.cs](../../native/src/VibeSnake.Rules/BroadcastTourCatalog.cs): four tiers and twelve dependency-gated event contracts.
+- [BroadcastTourSession.cs](../../native/src/VibeSnake.Rules/BroadcastTourSession.cs): fixed-seed practice construction and exact terminal primary/style evaluation.
+- [ProgressionDocument.cs](../../native/src/VibeSnake.Persistence/ProgressionDocument.cs): strict atomic progression, reward, Tour, cosmetic selection, and loadout persistence.
+- [ContentCreditsDocument.cs](../../native/src/VibeSnake.Persistence/ContentCreditsDocument.cs): deterministic human-readable credits and third-party notices generated only from validated manifests.
 
 ```text
 scripts/
@@ -83,7 +111,7 @@ scripts/
 |-- test_powershell_gates.ps1   Toolchain and artifact-policy regressions
 |-- install_godot.ps1             Checksum-verified editor bootstrap
 |-- install_godot_templates.ps1   Selective checksum-verified export-template bootstrap
-|-- test_native.ps1               Rules, coverage, formatting, import, and scene smoke
+|-- test_native.ps1               Rules, coverage, balance/AI evidence, import, and scene smoke
 |-- test_native_export.ps1        Outside-checkout packaged-player smoke
 `-- inspect_native_artifact.ps1   Payload, portability, and SHA-256 manifest gate
 

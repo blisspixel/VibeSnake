@@ -77,7 +77,10 @@ try {
         "Frameworks/libpython3.14.dylib",
         "Python.framework/Versions/3.14/Python",
         ".env.local",
-        "config/.env.production"
+        "config/.env.production",
+        "signing/windows-certificate.p12",
+        "signing/AuthKey_RELEASE.p8",
+        "signing/release.keystore"
     )
     foreach ($prohibitedPath in $prohibitedPaths) {
         try {
@@ -135,7 +138,86 @@ try {
         }
     }
 
-    $caseCount = 6 + $prohibitedPaths.Count + $invalidPaths.Count
+    $ciWorkflowPath = Join-Path $repositoryRoot ".github/workflows/ci.yml"
+    $ciWorkflow = Get-Content -LiteralPath $ciWorkflowPath -Raw
+    $nativeTestScript = Get-Content -LiteralPath (Join-Path $repositoryRoot "scripts/test_native.ps1") -Raw
+    foreach ($coverageGateSource in @($ciWorkflow, $nativeTestScript)) {
+        foreach ($requiredCoverageFragment in @(
+            "-p:Threshold=90",
+            "-p:ThresholdType=line%2cbranch",
+            "-p:ThresholdStat=minimum"
+        )) {
+            if (-not $coverageGateSource.Contains($requiredCoverageFragment, [StringComparison]::Ordinal)) {
+                throw "Native coverage gate is missing: $requiredCoverageFragment"
+            }
+        }
+    }
+    if ($ciWorkflow -match '\$\{\{\s*secrets\.') {
+        throw "Ordinary CI must not reference signing or release secrets."
+    }
+    $godotJobStart = $ciWorkflow.IndexOf("  godot-smoke:", [StringComparison]::Ordinal)
+    $releaseMatrixJobStart = $ciWorkflow.IndexOf(
+        "  release-matrix:",
+        [StringComparison]::Ordinal)
+    $attestationJobStart = $ciWorkflow.IndexOf(
+        "  attest-qualified-manifests:",
+        [StringComparison]::Ordinal)
+    if (
+        $godotJobStart -lt 0 -or
+        $releaseMatrixJobStart -le $godotJobStart -or
+        $attestationJobStart -le $releaseMatrixJobStart
+    ) {
+        throw "CI must keep artifact smoke, aggregate matrix, and provenance in ordered separate jobs."
+    }
+    $godotJob = $ciWorkflow.Substring(
+        $godotJobStart,
+        $releaseMatrixJobStart - $godotJobStart)
+    if ($godotJob.Contains("id-token: write", [StringComparison]::Ordinal)) {
+        throw "Ordinary Godot smoke must not receive provenance identity permissions."
+    }
+    foreach ($requiredGodotFragment in @(
+        '$candidateLaunchCount = if ($env:VIBESNAKE_QUALIFICATION_BUILD_MODE -eq "Release") { 100 } else { 0 }',
+        "CandidateLaunchCount = `$candidateLaunchCount",
+        '$exportArguments["CandidateLifecycle"] = $true',
+        "./scripts/test_native_export.ps1 @exportArguments"
+    )) {
+        if (-not $godotJob.Contains($requiredGodotFragment, [StringComparison]::Ordinal)) {
+            throw "Native candidate launch campaign is missing: $requiredGodotFragment"
+        }
+    }
+    $releaseMatrixJob = $ciWorkflow.Substring(
+        $releaseMatrixJobStart,
+        $attestationJobStart - $releaseMatrixJobStart)
+    foreach ($requiredMatrixFragment in @(
+        "needs: godot-smoke",
+        "pattern: vibesnake-*-qualification-evidence",
+        "pattern: vibesnake-*-manifest",
+        "python scripts/check_release_matrix.py release-matrix",
+        '--expected-revision "${{ github.sha }}"',
+        "name: vibesnake-release-matrix"
+    )) {
+        if (-not $releaseMatrixJob.Contains($requiredMatrixFragment, [StringComparison]::Ordinal)) {
+            throw "Aggregate release matrix job is missing: $requiredMatrixFragment"
+        }
+    }
+    if ($releaseMatrixJob.Contains("id-token: write", [StringComparison]::Ordinal)) {
+        throw "Aggregate release matrix must not receive provenance identity permissions."
+    }
+    $attestationJob = $ciWorkflow.Substring($attestationJobStart)
+    foreach ($requiredAttestationFragment in @(
+        "needs: [godot-smoke, release-matrix]",
+        "id-token: write",
+        "attestations: write",
+        "artifact-metadata: write",
+        "actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26",
+        "github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/')"
+    )) {
+        if (-not $attestationJob.Contains($requiredAttestationFragment, [StringComparison]::Ordinal)) {
+            throw "Separated provenance job is missing: $requiredAttestationFragment"
+        }
+    }
+
+    $caseCount = 20 + $prohibitedPaths.Count + $invalidPaths.Count
     Write-Output "PowerShell qualification regression checks passed: cases=$caseCount."
 } finally {
     if (Test-Path -LiteralPath $temporaryRoot) {

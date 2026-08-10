@@ -1,4 +1,5 @@
 using System.Buffers;
+using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -10,6 +11,7 @@ public sealed partial class RunReplay
     public const int SchemaVersion = 1;
     public const string Kind = "vibesnake-run-replay";
     public const string IntegrityAlgorithmId = "sha256-canonical-replay-payload-v1";
+    public const string CaptureTimestampFormat = "yyyy-MM-dd'T'HH:mm:ss.fff'Z'";
     public const int DefaultCheckpointInterval = 200;
     public const int MaximumSteps = 100_000;
     public const int MaximumSerializedCharacters = 16 * 1024 * 1024;
@@ -18,6 +20,7 @@ public sealed partial class RunReplay
     private readonly IReadOnlyList<ReplayStep> _steps;
     private readonly IReadOnlyList<ReplayCheckpoint> _checkpoints;
     private readonly bool _writeConfigIdentity;
+    private readonly bool _writeCaptureMetadata;
 
     private RunReplay(
         string initialCanonicalState,
@@ -29,7 +32,11 @@ public sealed partial class RunReplay
         string? configHash = null,
         string? configHashAlgorithm = null,
         bool writeConfigIdentity = true,
-        string? appVersion = null)
+        string? appVersion = null,
+        string? capturedAtUtc = null,
+        ulong? gameplaySeed = null,
+        ulong? aiSeed = null,
+        bool writeCaptureMetadata = false)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(initialCanonicalState);
         ArgumentNullException.ThrowIfNull(steps);
@@ -99,6 +106,45 @@ public sealed partial class RunReplay
             AppVersion = null;
         }
 
+        _writeCaptureMetadata = writeCaptureMetadata;
+        if (writeCaptureMetadata)
+        {
+            if (capturedAtUtc is null || gameplaySeed is null || aiSeed is null)
+            {
+                throw new ArgumentException(
+                    "Replay capture metadata requires a timestamp plus gameplay and AI seeds.");
+            }
+
+            if (!IsCanonicalCaptureTimestamp(capturedAtUtc))
+            {
+                throw new ArgumentException(
+                    "Replay capturedAtUtc must use canonical UTC millisecond format.",
+                    nameof(capturedAtUtc));
+            }
+
+            if (gameplaySeed.Value != aiSeed.Value)
+            {
+                throw new ArgumentException(
+                    "Replay gameplay and AI seed inputs must match the current shared-master-seed contract.");
+            }
+
+            CapturedAtUtc = capturedAtUtc;
+            GameplaySeed = gameplaySeed;
+            AiSeed = aiSeed;
+        }
+        else
+        {
+            if (capturedAtUtc is not null || gameplaySeed is not null || aiSeed is not null)
+            {
+                throw new ArgumentException(
+                    "Replay capture metadata fields cannot be supplied when metadata output is disabled.");
+            }
+
+            CapturedAtUtc = null;
+            GameplaySeed = null;
+            AiSeed = null;
+        }
+
         (ConfigHash, ConfigHashAlgorithm) = ResolveConfigIdentity(
             initialCanonicalState,
             configHash,
@@ -134,6 +180,21 @@ public sealed partial class RunReplay
     public string? AppVersion { get; }
 
     /// <summary>
+    /// Optional canonical UTC capture timestamp supplied by the shell. Rules do
+    /// not read a clock; legacy schema-1 envelopes omit this field.
+    /// </summary>
+    public string? CapturedAtUtc { get; }
+
+    /// <summary>
+    /// Seed input for the deterministic gameplay stream. The current stream
+    /// bank uses a shared master seed with distinct fixed sequence IDs.
+    /// </summary>
+    public ulong? GameplaySeed { get; }
+
+    /// <summary>Seed input for the deterministic AI stream.</summary>
+    public ulong? AiSeed { get; }
+
+    /// <summary>
     /// Effective rules configuration digest captured at recording time.
     /// Verification rejects any restored or mid-run config identity drift.
     /// </summary>
@@ -156,7 +217,8 @@ public sealed partial class RunReplay
         SnakeRun initialRun,
         IEnumerable<IReadOnlyList<Direction>> commandsByStep,
         int checkpointInterval = DefaultCheckpointInterval,
-        string? appVersion = null)
+        string? appVersion = null,
+        string? capturedAtUtc = null)
     {
         ArgumentNullException.ThrowIfNull(initialRun);
         ArgumentNullException.ThrowIfNull(commandsByStep);
@@ -170,9 +232,10 @@ public sealed partial class RunReplay
         var initialCanonicalState = initialRun.SerializeCanonicalState();
         var simulation = SnakeRun.RestoreCanonicalState(initialCanonicalState);
         var recorder = new RunReplayRecorder(
-            simulation,
+            initialRun,
             checkpointInterval,
-            appVersion);
+            appVersion,
+            capturedAtUtc);
 
         foreach (var commands in commandsByStep)
         {
@@ -229,7 +292,11 @@ public sealed partial class RunReplay
         ReplayOutcome outcome,
         string? configHash = null,
         string? configHashAlgorithm = null,
-        string? appVersion = null) =>
+        string? appVersion = null,
+        string? capturedAtUtc = null,
+        ulong? gameplaySeed = null,
+        ulong? aiSeed = null,
+        bool writeCaptureMetadata = false) =>
         new(
             initialCanonicalState,
             steps,
@@ -239,7 +306,11 @@ public sealed partial class RunReplay
             configHash: configHash,
             configHashAlgorithm: configHashAlgorithm,
             writeConfigIdentity: true,
-            appVersion: appVersion);
+            appVersion: appVersion,
+            capturedAtUtc: capturedAtUtc,
+            gameplaySeed: gameplaySeed,
+            aiSeed: aiSeed,
+            writeCaptureMetadata: writeCaptureMetadata);
 
     public ReplayVerificationResult Verify(
         long maximumWorkUnits = MaximumVerificationWorkUnits)
@@ -414,7 +485,11 @@ public sealed partial class RunReplay
         ReplayOutcome outcome,
         string? configHash = null,
         string? configHashAlgorithm = null,
-        string? appVersion = null) =>
+        string? appVersion = null,
+        string? capturedAtUtc = null,
+        ulong? gameplaySeed = null,
+        ulong? aiSeed = null,
+        bool writeCaptureMetadata = false) =>
         CreateRecorded(
             initialCanonicalState,
             steps,
@@ -423,9 +498,28 @@ public sealed partial class RunReplay
             outcome,
             configHash,
             configHashAlgorithm,
-            appVersion);
+            appVersion,
+            capturedAtUtc,
+            gameplaySeed,
+            aiSeed,
+            writeCaptureMetadata);
 
     internal static bool IsStateHash(string? value) => IsLowerHex(value, 16);
+
+    internal static bool IsCanonicalCaptureTimestamp(string? value) =>
+        value is not null
+        && value.Length == 24
+        && DateTimeOffset.TryParseExact(
+            value,
+            CaptureTimestampFormat,
+            CultureInfo.InvariantCulture,
+            DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal,
+            out var parsed)
+        && parsed.Offset == TimeSpan.Zero
+        && string.Equals(
+            parsed.ToString(CaptureTimestampFormat, CultureInfo.InvariantCulture),
+            value,
+            StringComparison.Ordinal);
 
     private static ReplayVerificationResult VerificationFailure(
         ReplayVerificationCode code,
@@ -514,6 +608,13 @@ public sealed partial class RunReplay
             if (AppVersion is not null)
             {
                 writer.WriteString("appVersion", AppVersion);
+            }
+
+            if (_writeCaptureMetadata)
+            {
+                writer.WriteString("capturedAtUtc", CapturedAtUtc);
+                writer.WriteNumber("gameplaySeed", GameplaySeed!.Value);
+                writer.WriteNumber("aiSeed", AiSeed!.Value);
             }
 
             writer.WriteStartObject("ruleset");

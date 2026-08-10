@@ -1,0 +1,116 @@
+{
+  "schemaVersion": 1,
+  "policyId": "candidate-freeze-policy-v1",
+  "candidateVersion": "0.9.0",
+  "promotionVersion": "1.0.0",
+  "state": "pre-freeze",
+  "activation": {
+    "candidateRevision": null,
+    "activatedUtc": null,
+    "baselineManifest": null,
+    "baselineSha256": null
+  },
+  "prerequisiteGates": [
+    {
+      "id": "0.8.0-acceptance",
+      "state": "open"
+    },
+    {
+      "id": "clean-revision",
+      "state": "open"
+    },
+    {
+      "id": "green-ci",
+      "state": "open"
+    },
+    {
+      "id": "release-matrix-ready",
+      "state": "open"
+    }
+  ],
+  "frozenContracts": [
+    {
+      "id": "rules",
+      "pathPatterns": [
+        "native/src/VibeSnake.Rules/**/*.cs"
+      ]
+    },
+    {
+      "id": "save-schemas",
+      "pathPatterns": [
+        "native/src/VibeSnake.Persistence/**/*.cs"
+      ]
+    },
+    {
+      "id": "replay-schema",
+      "pathPatterns": [
+        "native/src/VibeSnake.Rules/ReplayContracts.cs",
+        "native/src/VibeSnake.Rules/RunReplay*.cs",
+        "native/src/VibeSnake.Persistence/Replay*.cs"
+      ]
+    },
+    {
+      "id": "content-manifests",
+      "pathPatterns": [
+        "assets/audio/sound_effects.json",
+        "assets/config/config.json",
+        "config/content_curation_v1.json",
+        "config/content_inventory.json",
+        "config/content_policy.json",
+        "config/radio_network_plan.json",
+        "config/snake_news_segments.json"
+      ]
+    },
+    {
+      "id": "input-defaults",
+      "pathPatterns": [
+        "game/project.godot",
+        "game/scripts/GameActions.cs",
+        "native/src/VibeSnake.Persistence/Input*.cs"
+      ]
+    },
+    {
+      "id": "accessibility-defaults",
+      "pathPatterns": [
+        "game/scripts/AccessibilityPresentation.cs",
+        "game/scripts/ShellSettings.cs",
+        "native/src/VibeSnake.Persistence/PreferencesDocument.cs"
+      ]
+    }
+  ],
+  "allowedChangeKinds": [
+    "defect",
+    "compatibility",
+    "performance",
+    "documentation",
+    "release-operation"
+  ],
+  "requiredChangeEvidence": [
+    "changeKind",
+    "failedGate",
+    "severity",
+    "reproduction",
+    "verification",
+    "affectedFrozenContracts",
+    "risk",
+    "rollback"
+  ],
+  "severityPolicy": [
+    {
+      "id": "P0",
+      "releaseEffect": "always-blocks"
+    },
+    {
+      "id": "P1",
+      "releaseEffect": "always-blocks"
+    },
+    {
+      "id": "P2",
+      "releaseEffect": "decision-required"
+    },
+    {
+      "id": "P3",
+      "releaseEffect": "known-issue-eligible"
+    }
+  ]
+}

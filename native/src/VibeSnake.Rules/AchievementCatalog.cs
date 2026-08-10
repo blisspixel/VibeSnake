@@ -5,11 +5,29 @@ namespace VibeSnake.Rules;
 /// IDs match the Python reference catalog where the condition is rules-local.
 /// Profile-lifetime and wall-clock achievements are intentionally excluded.
 /// </summary>
+[Flags]
+public enum AchievementModeEligibility : byte
+{
+    None = 0,
+    Classic = 1 << 0,
+    Vibe = 1 << 1,
+    AllHumanModes = Classic | Vibe,
+}
+
 public sealed record AchievementDefinition(
     string Id,
     string Name,
     string Description,
-    string Rarity);
+    string Rarity,
+    AchievementModeEligibility ModeEligibility)
+{
+    public bool IsEligibleForMode(string modeId) => modeId switch
+    {
+        RunModeCatalog.ClassicId => ModeEligibility.HasFlag(AchievementModeEligibility.Classic),
+        RunModeCatalog.VibeId => ModeEligibility.HasFlag(AchievementModeEligibility.Vibe),
+        _ => false,
+    };
+}
 
 /// <summary>
 /// Snapshot of run-local metrics used to decide achievement candidates.
@@ -34,23 +52,23 @@ public static class AchievementCatalog
 {
     public static IReadOnlyList<AchievementDefinition> Definitions { get; } =
     [
-        new("first_bite", "First Bite", "Score your first point", "common"),
-        new("century", "Century", "Reach 100 points", "common"),
-        new("high_roller", "High Roller", "Reach 500 points in a single game", "rare"),
-        new("legend", "Legend", "Reach 1000 points in a single game", "legendary"),
-        new("just_a_taste", "Just a Taste", "Eat 5 food items", "common"),
-        new("getting_longer", "Getting Longer", "Reach length 5", "common"),
-        new("growing_strong", "Growing Strong", "Reach length 10", "common"),
-        new("serpent", "Serpent", "Reach length 25", "rare"),
-        new("combo_starter", "Combo Starter", "Get a 5x combo", "common"),
-        new("combo_king", "Combo King", "Get a 10x combo", "rare"),
-        new("wrap_around", "Wrap Around", "Use screen wrapping 3 times", "common"),
-        new("close_call", "Close Call", "Get 10 near-misses in one game", "rare"),
-        new("powered_up", "Powered Up", "Collect your first power-up", "common"),
-        new("power_hungry", "Power Hungry", "Collect 5 power-ups in one game", "rare"),
-        new("quick_reflexes", "Quick Reflexes", "Survive for 30 seconds", "common"),
-        new("endurance", "Endurance", "Survive for 180 seconds", "rare"),
-        new("marathon", "Marathon", "Survive for 300 seconds", "epic"),
+        new("first_bite", "First Bite", "Score your first point", "common", AchievementModeEligibility.Vibe),
+        new("century", "Century", "Reach 100 points", "common", AchievementModeEligibility.Vibe),
+        new("high_roller", "High Roller", "Reach 500 points in a single game", "rare", AchievementModeEligibility.Vibe),
+        new("legend", "Legend", "Reach 1000 points in a single game", "legendary", AchievementModeEligibility.Vibe),
+        new("just_a_taste", "Just a Taste", "Eat 5 food items", "common", AchievementModeEligibility.Vibe),
+        new("getting_longer", "Getting Longer", "Reach length 5", "common", AchievementModeEligibility.Vibe),
+        new("growing_strong", "Growing Strong", "Reach length 10", "common", AchievementModeEligibility.Vibe),
+        new("serpent", "Serpent", "Reach length 25", "rare", AchievementModeEligibility.Vibe),
+        new("combo_starter", "Combo Starter", "Get a 5x combo", "common", AchievementModeEligibility.Vibe),
+        new("combo_king", "Combo King", "Get a 10x combo", "rare", AchievementModeEligibility.Vibe),
+        new("wrap_around", "Wrap Around", "Use screen wrapping 3 times", "common", AchievementModeEligibility.Vibe),
+        new("close_call", "Close Call", "Get 10 near-misses in one game", "rare", AchievementModeEligibility.Vibe),
+        new("powered_up", "Powered Up", "Collect your first power-up", "common", AchievementModeEligibility.Vibe),
+        new("power_hungry", "Power Hungry", "Collect 5 power-ups in one game", "rare", AchievementModeEligibility.Vibe),
+        new("quick_reflexes", "Quick Reflexes", "Survive for 30 seconds", "common", AchievementModeEligibility.Vibe),
+        new("endurance", "Endurance", "Survive for 180 seconds", "rare", AchievementModeEligibility.Vibe),
+        new("marathon", "Marathon", "Survive for 300 seconds", "epic", AchievementModeEligibility.Vibe),
     ];
 
     private static readonly Dictionary<string, Func<RunAchievementMetrics, bool>> Conditions =
@@ -85,8 +103,10 @@ public static class AchievementCatalog
     public static IReadOnlyList<string> EvaluateCandidates(
         RunAchievementMetrics metrics,
         IReadOnlySet<string>? alreadyUnlocked = null,
-        bool requireTerminal = true)
+        bool requireTerminal = true,
+        string modeId = RunModeCatalog.VibeId)
     {
+        _ = RunModeCatalog.Get(modeId, RunModeCatalog.CurrentModeVersion);
         if (requireTerminal && !metrics.IsTerminal)
         {
             return Array.Empty<string>();
@@ -96,7 +116,8 @@ public static class AchievementCatalog
         var earned = new List<string>();
         foreach (var definition in Definitions)
         {
-            if (alreadyUnlocked.Contains(definition.Id))
+            if (!definition.IsEligibleForMode(modeId)
+                || alreadyUnlocked.Contains(definition.Id))
             {
                 continue;
             }

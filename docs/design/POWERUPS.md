@@ -1,6 +1,6 @@
 # Power-ups
 
-All nine power-ups are connected to normal runs in the Python reference and tested through the main `Game.update` boundary. Unless stated otherwise, collecting a duplicate type is prevented while that effect remains active. Different types can overlap. All nine powers are complete native C# contracts in `VibeSnake.Rules`. The Godot shell renders markers, HUD status, head outlines, detached obstacles, bait marks, prioritized fallback cues, and Slow-Mo/Boost wall-clock cadence for the full portfolio.
+All nine power-ups are connected to normal runs in both the Python reference and the native Vibe product mode. Unless stated otherwise, collecting a duplicate type is prevented while that effect remains active. Intended cross-family combinations can overlap. All nine powers are complete native C# contracts in `VibeSnake.Rules`. The Godot shell renders markers, family and visibility text, HUD status, head outlines, detached obstacles, bait marks, prioritized fallback cues, and Slow-Mo/Boost wall-clock cadence for the full portfolio.
 
 ## Gameplay contracts
 
@@ -39,6 +39,42 @@ The [base class](../../src/vibesnake/powerups/base.py) has three terminal-safe s
 Instant effects become inactive during activation. Last Stand overrides timed expiry and remains held until the death resolver consumes it. Reset clears every effect flag, obstacle, timer, and visual indicator.
 
 The manager schedules spawns, excludes the snake, food, detached obstacles, and visible collectibles from candidate cells, rejects duplicate active effect types, detects collection, advances effects, and removes every inactive instance.
+
+## Native product offer policy
+
+`PowerDecisionCatalog` is the stable `power-decisions-v1` authority for the nine kinds, four tactical families, player question, state grammar, and offer telegraph.
+
+| Family | Powers | Product offer rule |
+| --- | --- | --- |
+| Protection | Shield, Phase Shift, Last Stand | Any active or recovering protection resource suppresses all three protection offers. |
+| Tempo | Slow-Mo, Boost | Either active tempo effect suppresses both tempo offers so a new offer cannot silently negate the current one. |
+| Harvest | Magnet, Bait, Gluttony | Exact duplicates are suppressed; cross-kind harvest combinations remain available. |
+| Geometry | Segment Detach | A new detach is suppressed while detached obstacles remain. |
+
+Automatic selection is deterministic and enum ordered before the gameplay RNG chooses among eligible kinds. The product `vibe@1` factory enables the policy and can reach all nine kinds. Classic disables power spawning. Default `RunConfig` leaves the policy off and retains the frozen Shield-only random path for shared dual-runtime fixtures and old canonical states. The enabled flag is part of config, replay, and score identity, and an enabled canonical state restores it explicitly.
+
+## Decision readability and local evidence
+
+A spawned pickup reserves the immediate movement destination, so its typed spawn event, stable on-board letter and outline, audio cue, family label, effect text, and remaining visibility appear at least one rules boundary before collection is possible. The HUD keeps the offer line visible beside existing active states instead of hiding it. Every timed state shows seconds, Last Stand and Bait use explicit held language, and Segment Detach shows both obstacle count and remaining time.
+
+Opted-in local playtest summary schema 2 stores nine aggregate-only power rows. Each row counts `offered`, `detoursObserved`, `collected`, `activated`, `expired`, `consumed`, `saved`, and `deathAdjacent`. A detour is counted once when a direction change moves closer to the live offer. A save is a typed collision-prevention event. Death adjacency uses the last related power event within 20 rules ticks. No raw input event, input time, device identity, path, or free text is retained. Schema 1 summaries migrate with zeroed power rows because they never recorded this evidence.
+
+## Required synergy scenarios
+
+| Scenario | Automated contract | Human decision still required |
+| --- | --- | --- |
+| Boost plus Phase Shift | Double cadence retains an explicit body-pass collision window. | Can the player plan the high-speed line and explain the protection window? |
+| Slow-Mo plus Magnet | Slow cadence composes with deterministic food pull. | Does the combination improve deliberate recovery without becoming trivial? |
+| Bait plus Boost | A held spawn bias composes with the faster conversion window. | Is the preview understandable before the player commits? |
+| Gluttony plus Magnet | Pulled food restores score and hunger without body growth. | Can the player explain the growth trade? |
+| Segment Detach plus protection | Temporary hazards coexist with an independent protection resource and readable countdown. | Is body relief worth the obstacle field? |
+| Last Stand after a long combo | The held rescue consumes once and exposes recovery immunity without losing score. | Was the save anticipated, attributable, controllable, and worth retrying? |
+
+Reviewed deterministic seeds and observation fields for all six are in `config/power_decision_contract_v1.json` and `config/qa_human_playtest_protocol.json`. Automated seeded contracts pass. Human scenario status remains pending with zero sessions.
+
+## Mutation Fork experiment
+
+The pure prototype can deterministically choose two distinct eligible offers and resolves either collection by withdrawing the other. Its flag defaults off, is not wired into product spawning, and consumes no production random state. The contract remains `automated-prototype-human-unverified` and unapproved. It may be enabled in the product only after seeded and human evidence shows more planning without added confusion. Otherwise it is removed cleanly.
 
 ## Native Slow-Mo and Boost qualification
 
@@ -91,9 +127,10 @@ Eight generated Python-to-C# cases compare normalized state and ordered power ev
 
 ## Configuration
 
-- `powerups.enabled` controls manager spawning.
-- `powerups.spawn_interval` controls the target spawn cadence.
-- `powerups.visible_duration` controls how long an uncollected spawned instance remains visible.
+- In the Python oracle, `powerups.enabled`, `powerups.spawn_interval`, and `powerups.visible_duration` retain the reference manager behavior.
+- In native rules, `PowerSpawnIntervalTicks` and `PowerVisibleTicks` own cadence and visibility.
+- Native `EnablePowerDecisionOffers` defaults false for compatibility and is true in the Vibe product factory.
+- `config/power_decision_contract_v1.json` locks families, lifecycle evidence, six scenarios, and the default-off Mutation Fork gate.
 
 See [CONFIGURATION.md](../guides/CONFIGURATION.md).
 
@@ -102,10 +139,12 @@ See [CONFIGURATION.md](../guides/CONFIGURATION.md).
 A new or changed power-up is complete only when automated tests prove:
 
 - It spawns in a legal free cell and cannot duplicate an already active type.
+- Product offers cannot be redundant with an active protection, opposing tempo, or active geometry state.
 - Collection triggers exactly one activation.
 - Its documented rule changes a real run through `Game.update`.
 - Explicit consumption and timed expiry clean up flags and visuals exactly once.
 - Death, restart, pause, food spawning, obstacles, and other effects do not leak state.
 - AI and human runs use the same gameplay rule unless explicitly documented.
+- Product-mode changes refresh the descriptive AI baseline without creating human targets.
 
 The current behavioral suite lives in [test_powerup_gameplay.py](../../tests/integration/test_powerup_gameplay.py), with lifecycle and class tests under [tests/powerups](../../tests/powerups/).

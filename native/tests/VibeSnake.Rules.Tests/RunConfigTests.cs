@@ -13,6 +13,8 @@ public sealed class RunConfigTests
             Height: (RunConfig.MaximumGridCells / RunConfig.MaximumGridDimension) + 1),
         new RunConfig(StarvationTicks: 0),
         new RunConfig(StarvationTicks: RunConfig.MaximumConfiguredTicks + 1),
+        new RunConfig(StarvationWarningTicks: -1),
+        new RunConfig(StarvationWarningTicks: RunConfig.MaximumConfiguredTicks + 1),
         new RunConfig(MaximumDirectionQueue: 0),
         new RunConfig(
             MaximumDirectionQueue: RunConfig.MaximumDirectionQueueCapacity + 1),
@@ -28,6 +30,25 @@ public sealed class RunConfigTests
         new RunConfig(PowerVisibleTicks: RunConfig.MaximumConfiguredTicks + 1),
         new RunConfig(ShieldDurationTicks: RunConfig.MinimumShieldDurationTicks - 1),
         new RunConfig(ShieldDurationTicks: RunConfig.MaximumConfiguredTicks + 1),
+        new RunConfig(PhaseShiftDurationTicks: RunConfig.MinimumPhaseShiftDurationTicks - 1),
+        new RunConfig(PhaseShiftDurationTicks: RunConfig.MaximumConfiguredTicks + 1),
+        new RunConfig(LastStandRecoveryTicks: RunConfig.MinimumLastStandRecoveryTicks - 1),
+        new RunConfig(LastStandRecoveryTicks: RunConfig.MaximumConfiguredTicks + 1),
+        new RunConfig(SlowMoDurationTicks: RunConfig.MinimumSlowMoDurationTicks - 1),
+        new RunConfig(SlowMoDurationTicks: RunConfig.MaximumConfiguredTicks + 1),
+        new RunConfig(BoostDurationTicks: RunConfig.MinimumBoostDurationTicks - 1),
+        new RunConfig(BoostDurationTicks: RunConfig.MaximumConfiguredTicks + 1),
+        new RunConfig(MagnetDurationTicks: RunConfig.MinimumMagnetDurationTicks - 1),
+        new RunConfig(MagnetDurationTicks: RunConfig.MaximumConfiguredTicks + 1),
+        new RunConfig(GluttonyDurationTicks: RunConfig.MinimumGluttonyDurationTicks - 1),
+        new RunConfig(GluttonyDurationTicks: RunConfig.MaximumConfiguredTicks + 1),
+        new RunConfig(
+            SegmentDetachObstacleTicks: RunConfig.MinimumSegmentDetachObstacleTicks - 1),
+        new RunConfig(SegmentDetachObstacleTicks: RunConfig.MaximumConfiguredTicks + 1),
+        new RunConfig(
+            SegmentDetachMaxSegments: RunConfig.MinimumSegmentDetachMaxSegments - 1),
+        new RunConfig(
+            SegmentDetachMaxSegments: RunConfig.MaximumSegmentDetachMaxSegments + 1),
     };
 
     [Theory]
@@ -59,7 +80,7 @@ public sealed class RunConfigTests
         Assert.Equal(64, left.Length);
         Assert.Equal(left, right);
         Assert.Matches("^[0-9a-f]{64}$", left);
-        Assert.Equal(RunConfig.ConfigHashAlgorithmId, "sha256-canonical-runconfig-v1");
+        Assert.Equal(RunConfig.ConfigHashAlgorithmId, "sha256-canonical-runconfig-v3");
     }
 
     [Fact]
@@ -83,13 +104,22 @@ public sealed class RunConfigTests
             EnableNearMiss: true,
             EnableComboExpiredEvent: true).SerializeCanonicalConfig();
 
-        Assert.Contains("\"algorithm\":\"sha256-canonical-runconfig-v1\"", json);
+        Assert.Contains("\"algorithm\":\"sha256-canonical-runconfig-v3\"", json);
         Assert.Contains("\"rulesetId\":\"vibesnake-core\"", json);
         Assert.Contains("\"rulesVersion\":4", json);
+        Assert.Contains("\"modeId\":\"vibe\"", json);
+        Assert.Contains("\"modeVersion\":1", json);
         Assert.Contains("\"enableNearMiss\":true", json);
         Assert.Contains("\"enableComboExpiredEvent\":true", json);
         Assert.Contains("\"starvationWarningTicks\":200", json);
         Assert.Contains("\"rulesTickMilliseconds\":50", json);
+        Assert.Contains("\"enableStarvation\":true", json);
+        Assert.Contains("\"enableComboScoring\":true", json);
+        Assert.Contains("\"enableSpeedScoreBonus\":true", json);
+        Assert.Contains("\"enableLengthScoreBonus\":true", json);
+        Assert.Contains("\"enableAdaptation\":false", json);
+        Assert.Contains("\"adaptivePolicyId\":\"none\"", json);
+        Assert.DoesNotContain("enablePowerDecisionOffers", json, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -110,6 +140,44 @@ public sealed class RunConfigTests
             "\"enableAchievementCandidates\":true",
             new RunConfig(EnableAchievementCandidates: true).SerializeCanonicalConfig(),
             StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Config_hash_changes_for_mode_and_score_model_fields()
+    {
+        var vibe = RunModeCatalog.CreateConfig(
+            RunModeCatalog.Vibe,
+            enableAdaptation: false);
+        var classic = RunModeCatalog.CreateConfig(RunModeCatalog.Classic);
+
+        Assert.NotEqual(vibe.ComputeConfigHash(), classic.ComputeConfigHash());
+        Assert.NotEqual(
+            vibe.ComputeConfigHash(),
+            (vibe with { EnableStarvation = false }).ComputeConfigHash());
+        Assert.NotEqual(
+            vibe.ComputeConfigHash(),
+            (vibe with { EnableComboScoring = false }).ComputeConfigHash());
+        Assert.NotEqual(
+            vibe.ComputeConfigHash(),
+            (vibe with { EnableSpeedScoreBonus = false }).ComputeConfigHash());
+        Assert.NotEqual(
+            vibe.ComputeConfigHash(),
+            (vibe with { EnableLengthScoreBonus = false }).ComputeConfigHash());
+        var adaptive = RunModeCatalog.CreateConfig(RunModeCatalog.Vibe);
+        Assert.NotEqual(vibe.ComputeConfigHash(), adaptive.ComputeConfigHash());
+        Assert.NotEqual(
+            vibe.ComputeConfigHash(),
+            (vibe with { EnablePowerDecisionOffers = false }).ComputeConfigHash());
+    }
+
+    [Theory]
+    [InlineData("unknown", 1)]
+    [InlineData("classic", 0)]
+    [InlineData("vibe", 2)]
+    public void Config_rejects_unknown_mode_identity(string modeId, int modeVersion)
+    {
+        var invalid = new RunConfig(ModeId: modeId, ModeVersion: modeVersion);
+        Assert.Throws<ArgumentException>(() => invalid.ComputeConfigHash());
     }
 
     [Fact]

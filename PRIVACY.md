@@ -1,0 +1,33 @@
+# Privacy
+
+Status: release-material foundation for the Vibe Snake alpha. Final candidate review is pending.
+
+Vibe Snake is designed to work offline. The native game has no account, telemetry, analytics, advertising, cloud-save, matchmaking, or automatic upload service. Playing the game does not require a network connection.
+
+## Data stored on the device
+
+The game may store settings, input bindings, onboarding state, achievements, progression, local scores, replays, offline household comparisons, optional-content state, recovery backups, local logs, and local diagnostics in the operating system's application-data location. The exact native layout and platform roots are documented in the [user-data contract](docs/engineering/USER_DATA.md).
+
+Local playtest summaries are disabled by default. If enabled, they contain a closed set of aggregate run facts and no player name, account, raw input, raw timing, system path, device serial, IP address, or free text. Export is an explicit local action. The game has no summary uploader.
+
+Logs and diagnostics remain local. Production boundaries sanitize private path prefixes, cap file sizes, and exclude credentials, raw input, and unrelated device information. A player chooses whether to share a reviewed file outside the game.
+
+## Network and optional content
+
+Core play remains offline. Optional content is installed from explicit local packages and validated before use. The game does not download or update a content pack by itself. Any future storefront may perform delivery or updates under that storefront's separate terms, but it must not become a gameplay service or receive game telemetry from Vibe Snake.
+
+## External testing and reports
+
+Controlled external validation uses pseudonymous participant IDs. Consent records stay separate from session observations and outside the public repository. Retained reports must be reviewed and de-identified. Names, accounts, contact details, private paths, device serials, raw input, raw timing, and unrelated device data are forbidden from the validation record.
+
+Public support intake is currently closed while the project is an alpha. Before a public release, [SUPPORT.md](SUPPORT.md) must name a tested route. Sending a report through that future route is voluntary. Players should remove personal information before attaching logs, screenshots, saves, or diagnostics.
+
+## Control and deletion
+
+The Data settings screen separates preferences, progression, local scores, replays, and optional content. Confirmed reset creates a bounded local backup before removing only the selected application-owned category. Local playtest summaries use a separate permanent-deletion action. Player-supplied import sources are not reset targets.
+
+Removing the application does not remove external player data. A player who wants complete local removal must first use the documented reset and deletion controls, then remove the remaining platform user-data directory manually. See the [recovery guide](docs/guides/RECOVERY.md) before deleting files.
+
+## Release boundary
+
+This statement describes the implemented offline architecture. A final release must recheck the exact packaged artifact, storefront wrapper, support route, save locations, and optional-content delivery. Any future network feature requires a reviewed privacy update before it is enabled.

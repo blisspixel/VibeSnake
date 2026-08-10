@@ -14,8 +14,11 @@ public sealed class LocalDiagnostics
 {
     public const string DiagnosticsDirectoryName = "diagnostics";
     public const string ReportFileExtension = ".vibesnake-diagnostic.json";
+    public const string DivergenceReportFileExtension = ".vibesnake-divergence.json";
     public const int MaximumMessageCharacters = 2_000;
     public const int MaximumStackCharacters = 8_000;
+    public const int MaximumRecentCommands = 64;
+    public const int MaximumCommandCharacters = 64;
     public const int MaximumReportsRetained = 32;
 
     public LocalDiagnostics(string userDataRoot)
@@ -109,20 +112,112 @@ public sealed class LocalDiagnostics
         return path;
     }
 
-    public IReadOnlyList<string> ListReportFileNames()
+    /// <summary>
+    /// Writes the first deterministic mismatch with enough bounded state to
+    /// reproduce the exact run. Commands retain only the most recent bounded
+    /// prefix and never include save contents or absolute paths.
+    /// </summary>
+    public string WriteDivergenceReport(
+        string appVersion,
+        string platform,
+        string rulesetId,
+        int rulesVersion,
+        string campaignId,
+        string modeId,
+        ulong gameplaySeed,
+        ulong controllerSeed,
+        int runIndex,
+        int firstDivergentStep,
+        string expectedStateHash,
+        string actualStateHash,
+        IReadOnlyList<string> recentCommands,
+        TimeProvider? timeProvider = null)
     {
-        if (!Directory.Exists(DiagnosticsDirectory))
+        ArgumentException.ThrowIfNullOrWhiteSpace(appVersion);
+        ArgumentException.ThrowIfNullOrWhiteSpace(platform);
+        ArgumentException.ThrowIfNullOrWhiteSpace(rulesetId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(campaignId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(modeId);
+        ArgumentNullException.ThrowIfNull(recentCommands);
+        if (runIndex < 0)
         {
-            return Array.Empty<string>();
+            throw new ArgumentOutOfRangeException(nameof(runIndex));
         }
 
-        return Directory.GetFiles(DiagnosticsDirectory, "*" + ReportFileExtension)
-            .Select(Path.GetFileName)
-            .Where(name => !string.IsNullOrWhiteSpace(name))
-            .Cast<string>()
-            .OrderBy(name => name, StringComparer.Ordinal)
+        if (firstDivergentStep < 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(firstDivergentStep));
+        }
+
+        if (!IsLowerHex(expectedStateHash, 16))
+        {
+            throw new ArgumentException(
+                "expectedStateHash must be a 16-character lowercase hex digest.",
+                nameof(expectedStateHash));
+        }
+
+        if (!IsLowerHex(actualStateHash, 16))
+        {
+            throw new ArgumentException(
+                "actualStateHash must be a 16-character lowercase hex digest.",
+                nameof(actualStateHash));
+        }
+
+        timeProvider ??= TimeProvider.System;
+        Directory.CreateDirectory(DiagnosticsDirectory);
+        var timestamp = timeProvider.GetUtcNow().UtcDateTime;
+        var fileName = string.Create(
+            CultureInfo.InvariantCulture,
+            $"{timestamp:yyyyMMdd'T'HHmmss'Z'}_{SanitizeToken(campaignId)}_{SanitizeToken(modeId)}_step-{firstDivergentStep:D6}{DivergenceReportFileExtension}");
+        var path = Path.Combine(DiagnosticsDirectory, fileName);
+        var boundedCommands = recentCommands
+            .TakeLast(MaximumRecentCommands)
+            .Select(command => Truncate(SanitizeMessage(command), MaximumCommandCharacters))
             .ToArray();
+        var payload = new
+        {
+            schemaVersion = 1,
+            kind = "deterministic-divergence-report-v1",
+            capturedAtUtc = timestamp.ToString("O", CultureInfo.InvariantCulture),
+            appVersion,
+            platform = SanitizeToken(platform),
+            rulesetId = SanitizeToken(rulesetId),
+            rulesVersion,
+            campaignId = SanitizeToken(campaignId),
+            modeId = SanitizeToken(modeId),
+            gameplaySeed = gameplaySeed.ToString("x16", CultureInfo.InvariantCulture),
+            controllerSeed = controllerSeed.ToString("x16", CultureInfo.InvariantCulture),
+            runIndex,
+            firstDivergentStep,
+            expectedStateHash,
+            actualStateHash,
+            recentCommandCount = boundedCommands.Length,
+            recentCommands = boundedCommands,
+        };
+        var json = JsonSerializer.Serialize(
+            payload,
+            new JsonSerializerOptions
+            {
+                WriteIndented = true,
+                Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
+            }) + "\n";
+        var temporaryPath = path + ".tmp";
+        File.WriteAllText(
+            temporaryPath,
+            json,
+            new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
+        File.Move(temporaryPath, path, overwrite: true);
+        PruneOldReports();
+        return path;
     }
+
+    public IReadOnlyList<string> ListReportFileNames()
+    {
+        return ListReportFileNames(ReportFileExtension);
+    }
+
+    public IReadOnlyList<string> ListDivergenceReportFileNames() =>
+        ListReportFileNames(DivergenceReportFileExtension);
 
     /// <summary>
     /// Ensures the diagnostics directory exists and returns its absolute path for
@@ -136,7 +231,10 @@ public sealed class LocalDiagnostics
 
     private void PruneOldReports()
     {
-        var files = Directory.GetFiles(DiagnosticsDirectory, "*" + ReportFileExtension)
+        var files = Directory.GetFiles(DiagnosticsDirectory)
+            .Where(path =>
+                path.EndsWith(ReportFileExtension, StringComparison.Ordinal)
+                || path.EndsWith(DivergenceReportFileExtension, StringComparison.Ordinal))
             .Select(path => new FileInfo(path))
             .OrderByDescending(info => info.CreationTimeUtc)
             .ToArray();
@@ -144,6 +242,21 @@ public sealed class LocalDiagnostics
         {
             files[index].Delete();
         }
+    }
+
+    private IReadOnlyList<string> ListReportFileNames(string extension)
+    {
+        if (!Directory.Exists(DiagnosticsDirectory))
+        {
+            return Array.Empty<string>();
+        }
+
+        return Directory.GetFiles(DiagnosticsDirectory, "*" + extension)
+            .Select(Path.GetFileName)
+            .Where(name => !string.IsNullOrWhiteSpace(name))
+            .Cast<string>()
+            .OrderBy(name => name, StringComparer.Ordinal)
+            .ToArray();
     }
 
     private static string Truncate(string value, int maximum)
@@ -186,6 +299,11 @@ public sealed class LocalDiagnostics
         sanitized = Regex.Replace(
             sanitized,
             "/(?:home|Users)/[^\\s\"']+",
+            "<path>",
+            RegexOptions.CultureInvariant);
+        sanitized = Regex.Replace(
+            sanitized,
+            "(?<![:A-Za-z0-9])/(?:[^/\\s\"']+/)*[^/\\s\"']+",
             "<path>",
             RegexOptions.CultureInvariant);
         return sanitized;

@@ -94,4 +94,20 @@ public sealed class AchievementsBrowseReportTests
 
         Assert.Equal(report.Entries.Count, report.Filter(unlockedOnly: null).Count);
     }
+
+    [Fact]
+    public void Empty_catalog_projection_is_not_complete_and_long_preview_scans_all_rows()
+    {
+        var empty = new AchievementsBrowseReport(
+            0,
+            0,
+            0,
+            new Dictionary<string, int>(),
+            new Dictionary<string, int>(),
+            []);
+        Assert.False(empty.IsComplete);
+
+        var oneUnlocked = AchievementsBrowseReport.FromUnlocks(["first_bite"]);
+        Assert.Equal("FIRST_BITE", oneUnlocked.FormatUnlockedPreview(limit: int.MaxValue));
+    }
 }

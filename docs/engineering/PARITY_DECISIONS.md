@@ -136,3 +136,15 @@ and are rejected as incompatible rather than silently acquiring zeros.
 Player consequence: mid-run restore, future checkpoints, and any path that
 continues from serialized state preserve unlock eligibility already earned
 during the run.
+
+## PD-011: Diversified offers stay native product-gated
+
+Status: Resolved as an intentional native product gate
+
+The frozen shared spawn path always offers Shield and consumes one gameplay RNG draw for its legal cell. Replacing that default would change shared fixtures, replay hashes, and Python oracle behavior under the same compatibility configuration. `RunConfig.EnablePowerDecisionOffers` therefore defaults false. Default and shared-fixture config hashes remain byte stable because the false value is omitted from canonical config and state JSON. An enabled config writes explicit `enablePowerDecisionOffers: true`, receives a distinct config hash under the existing `sha256-canonical-runconfig-v3` extension rule, restores the flag, and consumes a deterministic kind draw before the legal-cell draw.
+
+The `vibe@1` product factory enables `power-decisions-v1`; Classic remains power-free. The policy exposes all nine native powers, suppresses redundant protection, opposing tempo, exact harvest duplicates, and active geometry duplicates, and retains declared cross-family synergies. This is a native-only post-port extension, so no shared Python trace was regenerated and `vibesnake-core@4` compatibility fixtures continue to use the default-off path.
+
+The opted-in local summary schema 2 and Godot HUD observe the enabled product path without entering pure rules state. The Mutation Fork prototype is pure, explicit, and default off; it is not part of product spawning or score identity unless a later reviewed decision enables it.
+
+Player consequence: Vibe runs can now receive all nine readable power offers without silently relabeling legacy, shared-fixture, Classic, or restored compatibility behavior.

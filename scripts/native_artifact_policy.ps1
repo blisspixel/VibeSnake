@@ -26,7 +26,7 @@ function Assert-NativeArtifactPath {
     $prohibitedPathPatterns = @(
         "(^|/)(?:__pycache__|qa_reports|archive|tests?)(?:/|$)",
         "(^|/)(?:\.env[^/]*|packages(?:\.[^/]+)?\.lock\.json)$",
-        "\.(?:py|pyc|pyo|ps1|sh|bat|cmd|sln|slnx|csproj|tpz|pfx|pem|key)$",
+        "\.(?:py|pyc|pyo|ps1|sh|bat|cmd|sln|slnx|csproj|tpz|pfx|p12|pem|key|p8|jks|keystore)$",
         "(^|/)(?:python(?:3(?:\.\d+)?)?|pygame)(?:/|$)",
         "(^|/)(?:python(?:w|\d+(?:\.\d+)*)?(?:_d)?\.(?:dll|exe)|libpython[^/]*\.(?:so(?:\.\d+)*|dylib))$",
         "(^|/)python(?:\d+(?:\.\d+)*)?\.framework(?:/|$)"
@@ -96,4 +96,3 @@ function Assert-ArtifactRespectsContentInventory {
         }
     }
 }
-

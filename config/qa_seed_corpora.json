@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "kind": "vibesnake-qa-seed-corpora-v1",
+  "corpora": [
+    {
+      "id": "reviewed-fixed-v1",
+      "classification": "reviewed-fixed",
+      "reviewed": true,
+      "seeds": [0, 1, 7, 42]
+    },
+    {
+      "id": "exploratory-sampled-v1",
+      "classification": "exploratory",
+      "reviewed": true,
+      "seeds": [20260808, 32452843, 49979687, 67867967]
+    },
+    {
+      "id": "previous-failure-regressions-v1",
+      "classification": "previous-failure",
+      "reviewed": true,
+      "seeds": [99, 255, 65535, 18446744073709551615],
+      "sources": [
+        "restart-and-restore regression corpus",
+        "bounded-command and maximum-seed regression corpus"
+      ]
+    }
+  ]
+}
