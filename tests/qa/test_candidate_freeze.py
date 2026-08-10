@@ -24,7 +24,7 @@ def test_repository_candidate_freeze_policy_is_valid_and_inactive() -> None:
     errors, file_count = validate_policy(ROOT, POLICY_PATH)
 
     assert errors == []
-    assert file_count >= 100
+    assert file_count >= 90
     assert policy["state"] == "pre-freeze"
     assert all(value is None for value in policy["activation"].values())
     assert {gate["state"] for gate in policy["prerequisiteGates"]} == {"open"}
@@ -90,13 +90,16 @@ def test_policy_rejects_unsafe_or_empty_surface_patterns(tmp_path: Path) -> None
     assert any("matched no files" in error for error in errors)
 
 
-def test_globstar_includes_direct_and_nested_files(tmp_path: Path) -> None:
+def test_globstar_includes_source_files_and_excludes_generated_files(tmp_path: Path) -> None:
     surface = tmp_path / "native" / "src" / "VibeSnake.Rules"
     direct = surface / "Direct.cs"
     nested = surface / "Nested" / "Nested.cs"
+    generated = surface / "obj" / "Debug" / "Generated.cs"
     nested.parent.mkdir(parents=True)
+    generated.parent.mkdir(parents=True)
     direct.write_text("direct", encoding="utf-8")
     nested.write_text("nested", encoding="utf-8")
+    generated.write_text("generated", encoding="utf-8")
 
     matches = _glob_files(tmp_path, "native/src/VibeSnake.Rules/**/*.cs")
 

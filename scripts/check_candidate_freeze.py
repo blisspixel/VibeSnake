@@ -54,6 +54,7 @@ EXPECTED_SEVERITY_EFFECTS = {
 SHA256_PATTERN = re.compile(r"[0-9a-f]{64}")
 REVISION_PATTERN = re.compile(r"[0-9a-f]{40}")
 UTC_PATTERN = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z")
+GENERATED_SURFACE_PARTS = frozenset({".godot", "bin", "obj"})
 
 
 def _read_json(path: Path) -> Any:
@@ -79,7 +80,7 @@ def _safe_pattern(pattern: Any) -> bool:
 
 
 def _glob_files(root: Path, pattern: str) -> tuple[Path, ...]:
-    """Resolve globstar with zero-or-more-directory semantics on every Python version."""
+    """Resolve source files consistently without admitting generated build output."""
     patterns = {pattern}
     pending = [pattern]
     while pending:
@@ -91,7 +92,14 @@ def _glob_files(root: Path, pattern: str) -> tuple[Path, ...]:
             patterns.add(collapsed)
             pending.append(collapsed)
 
-    return tuple(sorted({path for candidate in patterns for path in root.glob(candidate) if path.is_file()}))
+    matches = {
+        path
+        for candidate in patterns
+        for path in root.glob(candidate)
+        if path.is_file()
+        and GENERATED_SURFACE_PARTS.isdisjoint(part.casefold() for part in path.relative_to(root).parts)
+    }
+    return tuple(sorted(matches))
 
 
 def _resolve_surfaces(root: Path, contracts: Any, errors: list[str]) -> dict[str, tuple[str, ...]]:
