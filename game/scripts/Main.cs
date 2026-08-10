@@ -8639,6 +8639,7 @@ public partial class Main : Node2D
     {
         try
         {
+            SetPhysicsProcess(false);
             var outputDirectory = System.IO.Path.GetFullPath(captureDirectory);
             System.IO.Directory.CreateDirectory(outputDirectory);
             if (_window is not null)
@@ -8681,6 +8682,7 @@ public partial class Main : Node2D
                 }
 
                 spectator.SetPaused(false);
+                _snakeMotionPresentation.Reset(spectator.ViewedSnapshot.Body);
             }
 
             await CaptureReadmeFrame(outputDirectory, "ai-channel.png");

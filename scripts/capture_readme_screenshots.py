@@ -26,8 +26,8 @@ SCREENSHOT_SPECS = (
     ("ai-channel.png", "AI channel", "SPECTATOR"),
 )
 _PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
-_TEXT_FINGERPRINT_SUFFIXES = frozenset({".cs", ".godot", ".json", ".md", ".tscn", ".txt"})
-_GAME_FINGERPRINT_SUFFIXES = _TEXT_FINGERPRINT_SUFFIXES | {".png", ".svg"}
+_TEXT_FINGERPRINT_SUFFIXES = frozenset({".cs", ".godot", ".json", ".md", ".py", ".svg", ".tscn", ".txt"})
+_GAME_FINGERPRINT_SUFFIXES = _TEXT_FINGERPRINT_SUFFIXES | {".png"}
 
 
 class ScreenshotEvidenceError(ValueError):
@@ -64,7 +64,7 @@ def _source_paths() -> tuple[Path, ...]:
         REPOSITORY_ROOT / "native" / "src" / "VibeSnake.Rules",
         REPOSITORY_ROOT / "native" / "src" / "VibeSnake.Persistence",
     ):
-        paths.update(source_root.rglob("*.cs"))
+        paths.update(path for path in source_root.rglob("*.cs") if "bin" not in path.parts and "obj" not in path.parts)
     paths.add(REPOSITORY_ROOT / "config" / "content_inventory.json")
     return tuple(sorted(path.resolve() for path in paths if path.is_file()))
 
