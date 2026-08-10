@@ -141,15 +141,22 @@ try {
     $ciWorkflowPath = Join-Path $repositoryRoot ".github/workflows/ci.yml"
     $ciWorkflow = Get-Content -LiteralPath $ciWorkflowPath -Raw
     $nativeTestScript = Get-Content -LiteralPath (Join-Path $repositoryRoot "scripts/test_native.ps1") -Raw
-    foreach ($coverageGateSource in @($ciWorkflow, $nativeTestScript)) {
-        foreach ($requiredCoverageFragment in @(
-            "-p:Threshold=90",
-            "-p:ThresholdType=line%2cbranch",
-            "-p:ThresholdStat=minimum"
-        )) {
-            if (-not $coverageGateSource.Contains($requiredCoverageFragment, [StringComparison]::Ordinal)) {
-                throw "Native coverage gate is missing: $requiredCoverageFragment"
-            }
+    $nativeCoverageScript = Get-Content -LiteralPath (Join-Path $repositoryRoot "scripts/test_native_coverage.ps1") -Raw
+    foreach ($coverageConsumer in @($ciWorkflow, $nativeTestScript)) {
+        if (-not $coverageConsumer.Contains("test_native_coverage.ps1", [StringComparison]::Ordinal)) {
+            throw "Native coverage consumer does not invoke the shared coverage gate."
+        }
+    }
+    foreach ($requiredCoverageFragment in @(
+        "-p:Threshold=90",
+        "-p:ThresholdType=line%2cbranch",
+        "-p:ThresholdStat=minimum",
+        'for ($attempt = 1; $attempt -le 2; $attempt++)',
+        "build-server",
+        "Assert-NativeCoverageReport"
+    )) {
+        if (-not $nativeCoverageScript.Contains($requiredCoverageFragment, [StringComparison]::Ordinal)) {
+            throw "Native coverage gate is missing: $requiredCoverageFragment"
         }
     }
     if ($ciWorkflow -match '\$\{\{\s*secrets\.') {

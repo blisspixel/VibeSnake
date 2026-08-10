@@ -192,16 +192,8 @@ jobs:
         run: dotnet format native/VibeSnake.slnx --verify-no-changes --no-restore
 
       - name: Test native rules with coverage floor
-        run: >-
-          dotnet test native/tests/VibeSnake.Rules.Tests/VibeSnake.Rules.Tests.csproj
-          --configuration Release --no-build --no-restore
-          -p:CollectCoverage=true
-          -p:CoverletOutput=../../../TestResults/native/
-          -p:CoverletOutputFormat=cobertura
-          -p:Threshold=90
-          -p:ThresholdType=line%2cbranch
-          -p:ThresholdStat=minimum
-          -p:ExcludeByFile=**/Properties/AssemblyInfo.cs
+        shell: pwsh
+        run: ./scripts/test_native_coverage.ps1
 
       - name: Upload native parity divergence evidence
         if: failure()
