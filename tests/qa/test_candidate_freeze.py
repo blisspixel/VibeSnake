@@ -11,6 +11,7 @@ import pytest
 from scripts.check_candidate_freeze import (
     POLICY_PATH,
     ROOT,
+    _glob_files,
     _validate_policy_shape,
     build_manifest,
     validate_policy,
@@ -87,3 +88,16 @@ def test_policy_rejects_unsafe_or_empty_surface_patterns(tmp_path: Path) -> None
     assert surfaces == {}
     assert any("unsafe path pattern" in error for error in errors)
     assert any("matched no files" in error for error in errors)
+
+
+def test_globstar_includes_direct_and_nested_files(tmp_path: Path) -> None:
+    surface = tmp_path / "native" / "src" / "VibeSnake.Rules"
+    direct = surface / "Direct.cs"
+    nested = surface / "Nested" / "Nested.cs"
+    nested.parent.mkdir(parents=True)
+    direct.write_text("direct", encoding="utf-8")
+    nested.write_text("nested", encoding="utf-8")
+
+    matches = _glob_files(tmp_path, "native/src/VibeSnake.Rules/**/*.cs")
+
+    assert matches == (direct, nested)

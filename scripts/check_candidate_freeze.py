@@ -78,6 +78,22 @@ def _safe_pattern(pattern: Any) -> bool:
     return not path.is_absolute() and ".." not in path.parts
 
 
+def _glob_files(root: Path, pattern: str) -> tuple[Path, ...]:
+    """Resolve globstar with zero-or-more-directory semantics on every Python version."""
+    patterns = {pattern}
+    pending = [pattern]
+    while pending:
+        candidate = pending.pop()
+        if "/**/" not in candidate:
+            continue
+        collapsed = candidate.replace("/**/", "/", 1)
+        if collapsed not in patterns:
+            patterns.add(collapsed)
+            pending.append(collapsed)
+
+    return tuple(sorted({path for candidate in patterns for path in root.glob(candidate) if path.is_file()}))
+
+
 def _resolve_surfaces(root: Path, contracts: Any, errors: list[str]) -> dict[str, tuple[str, ...]]:
     owners: dict[str, set[str]] = defaultdict(set)
     if not isinstance(contracts, list):
@@ -100,7 +116,7 @@ def _resolve_surfaces(root: Path, contracts: Any, errors: list[str]) -> dict[str
             if not _safe_pattern(pattern):
                 errors.append(f"{context} contains an unsafe path pattern: {pattern!r}")
                 continue
-            matches = sorted(path for path in root.glob(pattern) if path.is_file())
+            matches = _glob_files(root, pattern)
             if not matches:
                 errors.append(f"{context} path pattern matched no files: {pattern}")
             for path in matches:
