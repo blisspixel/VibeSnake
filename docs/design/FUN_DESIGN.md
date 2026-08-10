@@ -211,7 +211,7 @@ Research on game spectatorship identifies learning, affective entertainment, soc
 
 ### Broadcast clarity
 
-The viewer should understand what is at stake before a climax. The overlay can show target, Vibe Level, survival resources, personal record delta, and a concise reason for a surprising choice. It must not expose a wall of internal weights during normal viewing.
+The viewer should understand what is at stake before a climax. The board remains primary during motion: active playback uses a thin two-line lower-third ticker for the matchup, target, Vibe Level, survival resources, personal record delta, and a concise reason for a surprising choice. Playback controls appear briefly at broadcast start or after viewer interaction, auto-hide after three seconds of inactivity, and remain available while paused or complete. Clean-capture mode can hide the ticker entirely. The broadcast must not expose a wall of internal weights during normal viewing.
 
 ## Lore with three depths
 

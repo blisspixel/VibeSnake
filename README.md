@@ -34,7 +34,7 @@ This is an active alpha. Automated Windows, macOS, and Linux qualification is ex
   </tr>
   <tr>
     <td><img src="docs/images/screenshots/customization.png" alt="Native Godot customization browser with curated sets, cosmetic attributes, color swatches, and a detailed live snake preview"></td>
-    <td><img src="docs/images/screenshots/ai-channel.png" alt="Native Godot AI spectator channel with the gameplay board visible and a compact control and decision overlay"></td>
+    <td><img src="docs/images/screenshots/ai-channel.png" alt="Native Godot AI spectator channel with the gameplay board visible above a thin two-line broadcast ticker"></td>
   </tr>
 </table>
 
@@ -49,7 +49,7 @@ These are direct 1280 by 720 captures from the current Godot renderer. Their has
 - 4:3, 16:9, 16:10, square, ultrawide, borderless, and exclusive-fullscreen presentation contracts.
 - Idle pointer hiding, focus-safe pausing, reduced motion, flash-free presentation, high contrast, mono audio, and scalable text.
 - Curated cosmetic sets, progression goals, Broadcast Tour, achievements, local scores, replays, and recovery tools.
-- Let's Play / AI channels with equal-rules matches, compact overlays, playback controls, standings, lore, and seed challenges.
+- Let's Play / AI channels with equal-rules matches, a thin live ticker, contextual playback controls, standings, lore, and seed challenges.
 - Offline-first saves and content with no account or network requirement.
 
 The complete player-facing behavior is in the [player guide](docs/guides/PLAYER_GUIDE.md).

@@ -17,6 +17,7 @@ public partial class Main : Node2D
     private const ulong ReplayShutdownDrainMilliseconds = 5_000UL;
     private const ulong AudioOutputProbeIntervalMilliseconds = 1_000UL;
     private const ulong RadioPlaybackVerificationDelayMilliseconds = 2_000UL;
+    private const ulong SpectatorControlsRevealMilliseconds = 3_000UL;
     private const string BrandLogoResourcePath = "res://assets/branding/vibe-snake.png";
     private const int AchievementsPerPage = 10;
     private const int ProgressionGoalsPerPage = 5;
@@ -151,6 +152,7 @@ public partial class Main : Node2D
     private SpectatorMatchSession? _spectatorMatch;
     private bool _spectatorMatchPersisted;
     private string? _spectatorStatusCaption;
+    private ulong? _spectatorControlsVisibleUntilMilliseconds;
     private SpectatorChallengeDescriptor? _activeSpectatorChallenge;
     private string? _activeSpectatorChallengePersonalityId;
     private int _activeSpectatorAiScore;
@@ -547,6 +549,10 @@ public partial class Main : Node2D
     {
         _lastPointerActivityMilliseconds = nowMilliseconds;
         SetCursorHidden(false);
+        if (_screenState == ScreenState.Spectator && _spectatorMatch is not null)
+        {
+            RevealSpectatorControls(nowMilliseconds);
+        }
     }
 
     private void UpdateCursorVisibility(ulong nowMilliseconds)
@@ -2119,6 +2125,12 @@ public partial class Main : Node2D
             _audioStatusExpiresAtMilliseconds = null;
             QueueRedraw();
         }
+        if (_spectatorControlsVisibleUntilMilliseconds is { } spectatorControlsDeadline
+            && nowMilliseconds >= spectatorControlsDeadline)
+        {
+            _spectatorControlsVisibleUntilMilliseconds = null;
+            QueueRedraw();
+        }
 
         if (ShouldQuitAfterReplayWork(nowMilliseconds))
         {
@@ -3377,11 +3389,13 @@ public partial class Main : Node2D
         }
 
         var spectator = _spectatorMatch;
+        RevealSpectatorControls(Time.GetTicksMsec());
         if (inputEvent.IsActionPressed(GameActions.Back))
         {
             _spectatorMatch = null;
             _spectatorMatchPersisted = false;
             _spectatorStatusCaption = null;
+            _spectatorControlsVisibleUntilMilliseconds = null;
             _capturePresentation = CapturePresentationState.Visible;
             _vibeLevelDirector.Reset();
             _rulesStepAccumulatorMilliseconds = 0.0;
@@ -3667,6 +3681,7 @@ public partial class Main : Node2D
         _snakeMotionPresentation.Reset(_spectatorMatch.ViewedSnapshot.Body);
         _spectatorMatchPersisted = false;
         _capturePresentation = CapturePresentationState.Visible;
+        RevealSpectatorControls(Time.GetTicksMsec());
         _rulesStepAccumulatorMilliseconds = 0.0;
         _vibeLevelDirector.Reset();
         _spectatorStatusCaption = Localize(
@@ -3684,6 +3699,14 @@ public partial class Main : Node2D
             "Started an equal-rules local AI rivalry match.",
             eventCode: "spectator_match_start");
         PlayCue(AudioCue.Confirm);
+        QueueRedraw();
+    }
+
+    private void RevealSpectatorControls(ulong nowMilliseconds)
+    {
+        _spectatorControlsVisibleUntilMilliseconds = AddSaturating(
+            nowMilliseconds,
+            SpectatorControlsRevealMilliseconds);
         QueueRedraw();
     }
 
@@ -8178,6 +8201,79 @@ public partial class Main : Node2D
             : sanitized[..(maximumCharacters - 3)] + "...";
     }
 
+    private string FitLabelToWidth(string value, int fontSize, float maximumWidth)
+    {
+        ArgumentNullException.ThrowIfNull(value);
+        if (fontSize <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(fontSize));
+        }
+        if (maximumWidth <= 0.0f)
+        {
+            throw new ArgumentOutOfRangeException(nameof(maximumWidth));
+        }
+
+        var sanitized = new string(
+            value.Select(character => char.IsControl(character) ? ' ' : character).ToArray());
+        if (MeasureLabelWidth(sanitized, fontSize) <= maximumWidth)
+        {
+            return sanitized;
+        }
+
+        const string suffix = "...";
+        var lower = 0;
+        var upper = sanitized.Length;
+        while (lower < upper)
+        {
+            var candidateLength = lower + ((upper - lower + 1) / 2);
+            var candidate = sanitized[..candidateLength].TrimEnd() + suffix;
+            if (MeasureLabelWidth(candidate, fontSize) <= maximumWidth)
+            {
+                lower = candidateLength;
+            }
+            else
+            {
+                upper = candidateLength - 1;
+            }
+        }
+
+        return sanitized[..lower].TrimEnd() + suffix;
+    }
+
+    private void DrawFittedLabel(
+        string value,
+        Vector2 position,
+        int preferredFontSize,
+        int minimumFontSize,
+        float maximumWidth,
+        Color color)
+    {
+        if (minimumFontSize <= 0 || minimumFontSize > preferredFontSize)
+        {
+            throw new ArgumentOutOfRangeException(nameof(minimumFontSize));
+        }
+
+        var fontSize = preferredFontSize;
+        while (fontSize > minimumFontSize
+            && MeasureLabelWidth(value, fontSize) > maximumWidth)
+        {
+            fontSize--;
+        }
+
+        DrawLabel(
+            FitLabelToWidth(value, fontSize, maximumWidth),
+            position,
+            fontSize,
+            color);
+    }
+
+    private float MeasureLabelWidth(string value, int fontSize) =>
+        ActiveShellTheme.InterfaceFont.GetStringSize(
+            value,
+            HorizontalAlignment.Left,
+            -1.0f,
+            fontSize).X;
+
     private void FinalizeAndStoreReplay()
     {
         var recorder = _replayRecorder;
@@ -8683,6 +8779,7 @@ public partial class Main : Node2D
 
                 spectator.SetPaused(false);
                 _snakeMotionPresentation.Reset(spectator.ViewedSnapshot.Body);
+                _spectatorControlsVisibleUntilMilliseconds = null;
             }
 
             await CaptureReadmeFrame(outputDirectory, "ai-channel.png");
@@ -8724,22 +8821,15 @@ public partial class Main : Node2D
                 new GridPoint(44, 10),
                 Math.Min(24, config.PowerVisibleTicks)),
             baitPosition: new GridPoint(46, 25),
-            detachedObstacles:
-            [
-                new GridPoint(34, 14),
-                new GridPoint(35, 14),
-                new GridPoint(36, 14),
-            ],
-            detachedObstacleTicksRemaining: Math.Min(
-                16,
-                config.SegmentDetachObstacleTicks));
+            detachedObstacles: [],
+            detachedObstacleTicksRemaining: 0);
         _snakeMotionPresentation.Reset(body);
         TransitionToScreen(ScreenState.Running);
         _pausedByFocusLoss = false;
         _capturePresentation = CapturePresentationState.Visible;
-        _feedbackCaption = Localize("feedback.power.activation.bait");
+        _feedbackCaption = null;
         _feedbackTier = VisualFeedbackTier.Routine;
-        _feedbackTicksRemaining = FeedbackVisibilityTicks;
+        _feedbackTicksRemaining = 0;
         _comboPulseTicksRemaining = ComboFeedback.PulseTicks;
         _vibeLevelDirector.Reset();
         _vibeLevelDirector.Update(_run.ComboCount);
@@ -8971,9 +9061,16 @@ public partial class Main : Node2D
             return;
         }
 
+        var showControls = spectator.Paused
+            || spectator.IsComplete
+            || (_spectatorControlsVisibleUntilMilliseconds is { } controlsDeadline
+                && Time.GetTicksMsec() < controlsDeadline);
+        var panelTop = showControls ? 654.0f : 674.0f;
+        var titleBaseline = panelTop + 17.0f;
+        var detailBaseline = panelTop + 36.0f;
         var panel = ActiveShellPalette.CanvasBackground;
-        panel.A = 0.95f;
-        DrawRect(new Rect2(20.0f, 612.0f, 1240.0f, 106.0f), panel);
+        panel.A = 0.88f;
+        DrawRect(new Rect2(20.0f, panelTop, 1240.0f, 718.0f - panelTop), panel);
         var record = _spectatorLeague.StandingFor(spectator.ViewedPersonalityId).BestScore;
         var vibe = VibeLevelDirector.Definitions
             .Last(definition =>
@@ -8991,8 +9088,8 @@ public partial class Main : Node2D
                 ShellTextArgument.From("rival", overlay.RivalName),
                 ShellTextArgument.From("station", overlay.StationAffinity),
                 ShellTextArgument.From("shed", overlay.ShedId)),
-            new Vector2(38.0f, 641.0f),
-            ScaledFontSize(14),
+            new Vector2(38.0f, titleBaseline),
+            ScaledFontSize(12),
             ActiveShellPalette.GoldText);
         DrawLabel(
             Localize(
@@ -9000,16 +9097,16 @@ public partial class Main : Node2D
                 ShellTextArgument.From("target", target),
                 ShellTextArgument.From("risk", overlay.RiskBand.ToString().ToUpperInvariant()),
                 ShellTextArgument.From("vibe", overlay.VibeLevelId)),
-            new Vector2(38.0f, 665.0f),
-            ScaledFontSize(12),
+            new Vector2(38.0f, detailBaseline),
+            ScaledFontSize(10),
             ActiveShellPalette.BodyText);
         DrawLabel(
             Localize(
                 "spectator.overlay.resources",
                 ShellTextArgument.From("resources", resources),
                 ShellTextArgument.From("delta", overlay.RecordDelta.ToString("+0;-0;0", CultureInfo.InvariantCulture))),
-            new Vector2(560.0f, 665.0f),
-            ScaledFontSize(12),
+            new Vector2(390.0f, detailBaseline),
+            ScaledFontSize(10),
             SecondaryTextColor());
         DrawLabel(
             Localize(
@@ -9018,8 +9115,8 @@ public partial class Main : Node2D
                 ShellTextArgument.From("limit", SpectatorMatchSession.MaximumBroadcastSteps),
                 ShellTextArgument.From("state", state),
                 ShellTextArgument.From("speed", $"{spectator.PlaybackSpeed:0.0#}X")),
-            new Vector2(930.0f, 641.0f),
-            ScaledFontSize(11),
+            new Vector2(930.0f, titleBaseline),
+            ScaledFontSize(10),
             SecondaryTextColor());
         if (overlay.DecisionReasonCopyId is { } decisionReasonCopyId)
         {
@@ -9027,54 +9124,57 @@ public partial class Main : Node2D
                 Localize(
                     "spectator.overlay.reason",
                     ShellTextArgument.From("reason", Localize(decisionReasonCopyId))),
-                new Vector2(38.0f, 683.0f),
-                ScaledFontSize(10),
+                new Vector2(760.0f, detailBaseline),
+                ScaledFontSize(9),
                 ActiveShellPalette.AccentText);
         }
-        var promptX = DrawActionPromptSegment(
-            "confirm",
-            Localize("action.play-pause"),
-            new Vector2(38.0f, 706.0f),
-            ScaledFontSize(9),
-            SecondaryTextColor());
-        promptX = DrawActionPromptSegment(
-            "move_up",
-            Localize("action.switch-channel"),
-            new Vector2(promptX, 706.0f),
-            ScaledFontSize(9),
-            SecondaryTextColor());
-        promptX = DrawActionPromptSegment(
-            "move_down",
-            Localize("action.step"),
-            new Vector2(promptX, 706.0f),
-            ScaledFontSize(9),
-            SecondaryTextColor());
-        promptX = DrawActionPromptSegment(
-            "move_left",
-            Localize("action.slower"),
-            new Vector2(promptX, 706.0f),
-            ScaledFontSize(9),
-            SecondaryTextColor());
-        promptX = DrawActionPromptSegment(
-            "move_right",
-            Localize("action.faster"),
-            new Vector2(promptX, 706.0f),
-            ScaledFontSize(9),
-            SecondaryTextColor());
-        promptX = DrawActionPromptSegment(
-            "help",
-            Localize("action.toggle-hud"),
-            new Vector2(promptX, 706.0f),
-            ScaledFontSize(9),
-            SecondaryTextColor());
-        if (spectator.IsComplete)
+        if (showControls)
         {
-            DrawActionPromptSegment(
-                "browse_content_packs",
-                Localize("action.seed-challenge"),
-                new Vector2(promptX, 706.0f),
+            var promptX = DrawActionPromptSegment(
+                "confirm",
+                Localize("action.play-pause"),
+                new Vector2(38.0f, 710.0f),
                 ScaledFontSize(9),
-                ActiveShellPalette.GoldText);
+                SecondaryTextColor());
+            promptX = DrawActionPromptSegment(
+                "move_up",
+                Localize("action.switch-channel"),
+                new Vector2(promptX, 710.0f),
+                ScaledFontSize(9),
+                SecondaryTextColor());
+            promptX = DrawActionPromptSegment(
+                "move_down",
+                Localize("action.step"),
+                new Vector2(promptX, 710.0f),
+                ScaledFontSize(9),
+                SecondaryTextColor());
+            promptX = DrawActionPromptSegment(
+                "move_left",
+                Localize("action.slower"),
+                new Vector2(promptX, 710.0f),
+                ScaledFontSize(9),
+                SecondaryTextColor());
+            promptX = DrawActionPromptSegment(
+                "move_right",
+                Localize("action.faster"),
+                new Vector2(promptX, 710.0f),
+                ScaledFontSize(9),
+                SecondaryTextColor());
+            promptX = DrawActionPromptSegment(
+                "help",
+                Localize("action.toggle-hud"),
+                new Vector2(promptX, 710.0f),
+                ScaledFontSize(9),
+                SecondaryTextColor());
+            if (spectator.IsComplete)
+            {
+                DrawActionPromptSegment(
+                    "browse_content_packs",
+                    Localize("action.seed-challenge"),
+                    new Vector2(promptX, 710.0f),
+                    ScaledFontSize(9),
+                    ActiveShellPalette.GoldText);
+            }
         }
     }
 
@@ -9825,18 +9925,22 @@ public partial class Main : Node2D
                     + "  |  "
                     + secondaryStatus;
             }
-            DrawLabel(
-                BoundRadioLine(secondaryStatus, 104),
+            DrawFittedLabel(
+                secondaryStatus,
                 new Vector2(18.0f, 53.0f),
-                15,
-                _feedbackCaption is not null && _feedbackTier >= VisualFeedbackTier.Pressure
+                preferredFontSize: 15,
+                minimumFontSize: 11,
+                maximumWidth: 864.0f,
+                color: _feedbackCaption is not null && _feedbackTier >= VisualFeedbackTier.Pressure
                     ? ActiveShellPalette.WarningText
                     : ActiveShellPalette.AccentText);
-            DrawLabel(
-                BoundRadioLine(_radioPolicy.Snapshot.CompactLine, 42),
-                new Vector2(930.0f, 53.0f),
-                12,
-                SecondaryTextColor());
+            DrawFittedLabel(
+                _radioPolicy.Snapshot.CompactLine,
+                new Vector2(900.0f, 53.0f),
+                preferredFontSize: 12,
+                minimumFontSize: 10,
+                maximumWidth: 362.0f,
+                color: SecondaryTextColor());
         }
 
         if (snapshot.HasDetachedObstacles)

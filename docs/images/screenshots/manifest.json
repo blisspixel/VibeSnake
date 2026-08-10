@@ -14,7 +14,7 @@
       "file": "powers-run.png",
       "height": 720,
       "label": "Vibe mode gameplay",
-      "sha256": "919921764b7d9b2ff1aa0ac5521b9714aa23a2b795c990a6dbdd934bf00fd76e",
+      "sha256": "b46278bbe95fda1b4aa231a3ca5b67de102ebb248385914e7ae975d111079681",
       "state": "RUNNING",
       "width": 1280
     },
@@ -30,10 +30,10 @@
       "file": "ai-channel.png",
       "height": 720,
       "label": "AI channel",
-      "sha256": "9df30c9267a1e1a019f493b18d317ed5411de4fd8f43f51dfe0edc475dc4500d",
+      "sha256": "3e7b09c9bc9eee373e38e9132776370a3d0d0ec0ea80bce4a1c5787f7396c02b",
       "state": "SPECTATOR",
       "width": 1280
     }
   ],
-  "sourceSha256": "29d04204078a058ef4d167149a1851659a942890bd651a7ac40ffaae45c14edc"
+  "sourceSha256": "d10abf5f7f4924aa3035cf467dfb8f367e08a8d5940f2e1897bd2c95a3455a84"
 }
