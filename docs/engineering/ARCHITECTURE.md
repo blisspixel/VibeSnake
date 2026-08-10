@@ -1,40 +1,36 @@
 # Architecture
 
-## Current runtime overview
+## Current product overview
 
-The playable 0.2 alpha uses a source-layout Python package with Pygame for input, audio, timing, and rendering. `Game` is the composition root and currently owns most orchestration. This section documents what exists, not the accepted 1.0 target.
+The default source player uses Godot 4.7.1 .NET for presentation, input, audio, UI, and platform lifecycle. Pure `VibeSnake.Rules` owns deterministic gameplay, and `VibeSnake.Persistence` owns platform-neutral storage and content boundaries. The Python/Pygame package remains a frozen oracle for shared fixtures and migration checks.
 
 ```mermaid
 flowchart TD
-    Entry["vibesnake.__main__"] --> Game["core.game_state.Game"]
-    Game --> Input["input.InputManager"]
-    Game --> AI["ai.AIPlayer"]
-    Game --> Models["Snake, Food, Score, Death Telemetry, Near Miss"]
-    Game --> Powerups["powerups.PowerUpManager"]
-    Game --> Render["HUD, Menu, Background, Visual Effects"]
-    Game --> Audio["RadioManager and SFX"]
-    Game --> Saves["Profile, Cosmetics, High Scores, Preferences"]
-    Config["assets/config/config.json"] --> Game
-    Images["assets/images"] --> Render
-    AudioPack["optional VIBESNAKE_AUDIO_DIR overlay"] --> Audio
-    Fallbacks["procedural event cues"] --> Audio
-    CustomAI["assets/ai/custom/*.json"] --> AI
+    Launch["play.ps1 / play.sh"] --> Godot["game/scripts/Main.cs"]
+    Godot --> Rules["VibeSnake.Rules"]
+    Godot --> Persistence["VibeSnake.Persistence"]
+    Godot --> Input["Godot InputMap and remaps"]
+    Godot --> Presentation["menus, board, cosmetics, AI channels"]
+    Godot --> Audio["buses, fallback cues, radio adapter"]
+    Rules --> Snapshots["snapshots and typed events"]
+    Snapshots --> Presentation
+    Persistence --> UserData["Godot user data"]
+    Packs["validated optional packs"] --> Persistence
+    Oracle["Python/Pygame frozen oracle"] --> Fixtures["shared parity fixtures"]
+    Fixtures --> Rules
 ```
 
-## Target architecture
+## Product architecture
 
-The gated 1.0 target is Godot 4 .NET for native presentation, input, audio, UI, and exports, with deterministic gameplay in a pure C# assembly. Windows, macOS, and Linux are first-class targets. The Python runtime remains the behavior reference until step-level trace, feature, data, and artifact parity pass.
+Godot 4 .NET with pure C# rules is both the implemented source product and the gated 1.0 architecture. Windows, macOS, and Linux are first-class targets. Automated parity and artifact foundations have passed far enough to make Godot the default source launcher; signing, approved packs, physical devices, named hardware, and human acceptance still block release promotion.
 
 See [TECHNOLOGY_STRATEGY.md](../decisions/TECHNOLOGY_STRATEGY.md) for the decision, boundaries, platform contract, qualification gate, and migration sequence. See [AUTOMATED_QA.md](AUTOMATED_QA.md) for the shared trace and differential-test strategy.
 
-### Current native qualification slice
+### Native product boundary
 
 The first target-architecture seam now exists:
 
 ```text
-Godot input and drawing
-        |
-        v
 Godot input and drawing
         |
         v
@@ -52,11 +48,11 @@ VibeSnake.Rules    VibeSnake.Persistence
 
 `RunModeCatalog` is the closed product-mode boundary over `vibesnake-core@4`. It defines `classic@1` and `vibe@1`, exact product configurations, player descriptions, board, pause, seed, restart, difficulty/DDA policy, and effective score categories. Pure `AdaptiveDifficultyPolicy` owns deterministic `vibe-bounded-hunger-v1`; its closed inputs are effective config, rules tick, combo, and hunger, and its sole output is a bounded zero-to-two-tick hunger drain. `sha256-canonical-runconfig-v3` binds mode, score switches, DDA enabled state, and policy into fair-score and replay identity. `RunScoreIdentity` discloses those fields, and Vibe DDA-on/off categories are distinct. Godot selects modes and the opt-out through logical remappable actions and renders the contract, but it cannot redefine mechanics.
 
-The slice remains incomplete for approved authored audio content and final production presentation. Pure C# now owns all nine powers, near misses, profile achievements, Classic/Vibe mode contracts, the bounded Vibe adaptive policy, replay browsing/playback, stable seed challenges, isolated local ghosts, private run cards, interactive equal-rules AI spectators, a closed optional-lore catalog, and playback-free radio behavior; Godot owns their player-facing adapters. The lore adapter is an offline, presentation-only archive whose unlock checks read existing progression, spectator, and replay state without awarding progression or mutating rules. The comparison adapter uses fixed household slots and never permits ghost state to enter player collision, scoring, randomness, or progression. These systems still require their explicit content, physical-device, performance, and human review gates before promotion.
+The product remains incomplete for approved authored audio content, signed delivery, and final human-reviewed presentation. Pure C# owns all nine powers, near misses, profile achievements, Classic/Vibe mode contracts, the bounded Vibe adaptive policy, replay browsing/playback, stable seed challenges, isolated local ghosts, private run cards, interactive equal-rules AI spectators, a closed optional-lore catalog, and radio behavior; Godot owns their player-facing adapters. The lore adapter is an offline, presentation-only archive whose unlock checks read existing progression, spectator, and replay state without awarding progression or mutating rules. The comparison adapter uses fixed household slots and never permits ghost state to enter player collision, scoring, randomness, or progression. These systems still require their explicit content, physical-device, performance, and human review gates before promotion.
 
-The content boundary begins in `vibesnake.content.inventory`. It scans source assets without loading them into either game runtime, requires every file to match exactly one human-reviewed policy rule, and generates deterministic hashes, integrity results, duplicate links, rights state, and export eligibility. `vibesnake.content.packs` then validates one dependency-free offline core and station-specific optional manifests against the complete approved inventory allowlist, compatibility ranges, rights-derived credits, and exact file metadata. Its resolver isolates optional failures from a valid core. This is executable admission and resolution proof, not yet a native runtime asset locator, and the native player continues to ship no legacy source assets.
+The content inventory tooling scans source assets without loading them into either game runtime, requires every file to match exactly one human-reviewed policy rule, and generates deterministic hashes, integrity results, duplicate links, rights state, and export eligibility. Pure C# pack parsing and resolution validate dependency-free core and station-specific optional manifests against approved inventory, compatibility, credits, and exact file metadata. Godot uses that native service and isolates optional failure from core play. The native player continues to ship no legacy source assets while export eligibility remains zero.
 
-## Entry and lifecycle
+## Python oracle entry and lifecycle
 
 The console script and `python -m vibesnake` both call [__main__.py](../../src/vibesnake/__main__.py). It constructs `Game`, runs the loop, reports an unhandled exception, and always shuts down Pygame.
 

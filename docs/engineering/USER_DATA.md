@@ -1,6 +1,6 @@
 # User-data directory contracts
 
-Status: V080-11 native progression, replay, offline comparison, and recovery layout (2026-08-09).
+Status: V080-11 native progression, replay, offline comparison, and recovery layout (2026-08-10).
 
 This document is the authoritative layout for player-writable paths on Windows, macOS, and Linux. Domain rules never invent paths. Python uses `vibesnake.data.paths`. The Godot shell supplies an absolute user-data root to `VibeSnake.Persistence` (normally Godot `user://` resolved to a filesystem path, or an explicit smoke override).
 
@@ -41,7 +41,7 @@ Notes:
 | `offline-challenges/run-cards/run-card_<replay-hash>.vibesnake-run-card.json` | `OfflineChallengeStore` | Closed privacy-safe 26-field cards; 64 files and 4 MiB maximum |
 | `offline-challenges/.vibesnake-offline-challenge.lock` | `OfflineChallengeStore` | Exclusive import, card-export, and deletion lock |
 | `imports/household-rival.vibesnake-replay.json` | Player-supplied read-only import source | Explicit native household rival inbox; import never modifies or removes it |
-| `preferences.json` | `PreferencesStore` | Schema 6 gameplay, local playtest consent, multi-bus audio, mono output, display, accessibility, and controller settings |
+| `preferences.json` | `PreferencesStore` | Schema 7 gameplay, local playtest consent, multi-bus audio, mono output, display, accessibility, and controller settings |
 | `achievements.json` | `AchievementsStore` | Schema 1 permanent unlock IDs for rules-local achievement candidates |
 | `onboarding.json` | `OnboardingStore` | Schema 1 tutorial decision and revision |
 | `progression.json` | `ProgressionStore` | Schema 1 exact human-run goals, one highlighted goal, selected cosmetic set, five saved set loadouts, earned expression rewards, and dependency-closed Broadcast Tour completion |

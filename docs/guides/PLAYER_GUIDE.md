@@ -7,40 +7,31 @@ Vibe Snake currently runs from a source checkout of
 installation commands in the [root README](../../README.md), then launch with:
 
 ```powershell
-vibesnake
-```
-
-or:
-
-```powershell
-python -m vibesnake
-```
-
-The game opens at the main menu. Press Enter to begin a human run or L to browse AI channels.
-
-## Keep it updated
-
-From the same checkout (with your virtual environment active):
-
-```powershell
-vibesnake update
-```
-
-This fast-forwards `main` from GitHub and reinstalls the package. Local saves stay
-in the operating system user-data directory. Optional checks:
-
-```powershell
-vibesnake doctor
-vibesnake status
-vibesnake version
-vibesnake update --dry-run
 ./play.ps1
 ```
 
+On macOS or Linux:
+
+```bash
+./play.sh
+```
+
+The launcher verifies the pinned Godot 4.7.1 .NET editor, builds the native C# game, and opens the main menu. Press Enter to begin a human run or L to browse AI channels. Help is optional and never blocks the title menu.
+
+## Keep it updated
+
+From the same checkout:
+
+```powershell
+git pull --ff-only origin main
+./play.ps1
+```
+
+This fast-forwards `main`, rebuilds the native game, and keeps local saves in Godot's operating-system user-data directory. On macOS or Linux, run `./play.sh` after the pull.
+
 Every successful `main` push refreshes the floating
 [player-latest](https://github.com/blisspixel/VibeSnake/releases/tag/player-latest)
-download (source zip, wheels, checksums). Version tags publish the same artifacts
-under a release name.
+source download and checksums. It is not yet a signed packaged player. The frozen Python CLI and updater remain available only for oracle and migration work described in the [development guide](DEVELOPMENT.md).
 
 ## Core loop
 
@@ -67,17 +58,19 @@ The snake cannot reverse directly into itself. Rapid valid turns are buffered.
 
 | Key | Action |
 | --- | --- |
-| Enter | Start, confirm, or choose an AI channel |
+| Enter or Space | Start or confirm |
 | P | Pause or resume a run |
 | Escape | Close a screen, pause, or leave a mode depending on context |
 | F11 | Toggle fullscreen |
-| C | Open customization or play again from game over |
+| C | Open customization or content packs, depending on context |
 | V | Open high scores |
-| A | Open achievements |
-| S | Open settings |
+| U | Open achievements or contextual archive views |
+| F1 | Open settings |
+| R | Open replays or restart a supported activity |
 | H | Open or close help |
 | L | Browse or leave AI spectator channels |
-| Q | Quit from supported screens |
+| J | Cycle radio station |
+| Ctrl+Q or Cmd+Q | Quit from supported screens |
 
 ### Display and pointer behavior
 
@@ -89,12 +82,7 @@ Select Customize or press C to browse the eight authored native cosmetic sets. U
 
 ### Radio controls
 
-| Key | Action |
-| --- | --- |
-| M | Toggle radio playback |
-| R | Move to the next station |
-| `[` and `]` | Previous or next station |
-| 1 through 8 | Select a station directly |
+Press J or controller R3 to cycle the current radio station. Independent Master, Music, SFX, and UI volumes and mutes are under Settings, Audio. The HUD always reports the current station or an actionable missing-pack status.
 
 ## Scoring
 
@@ -157,18 +145,18 @@ Press F8 or controller Select/Back to prepare deletion of the selected copied sl
 
 ## Troubleshooting
 
-### Pygame does not install
+### The native toolchain does not install
 
-Use Python 3.11 through 3.14. Install the declared `pygame-ce` dependency rather than the legacy `pygame` distribution so Python 3.14 receives a supported native wheel.
+Use PowerShell 7 and the .NET 10.0.302 SDK. `./play.ps1` and `./play.sh` call the checksum-verified Godot installer. If setup fails, run `./scripts/install_godot.ps1` directly to see the exact archive, checksum, and executable validation result.
 
 ### The game launches without music
 
-The clean clone intentionally contains procedural gameplay cues but no approved radio pack. For local rights and quality review, set `VIBESNAKE_AUDIO_DIR` to a reviewed overlay containing a `radio/` directory, then launch from the checkout. An installed wheel is not yet a supported player artifact.
+The clean native game always has procedural gameplay and UI cues. Release exports currently contain no approved radio pack, so the HUD reports that the pack is unavailable and play continues safely. Source checkout review can discover the local library, but pack `exportEligible` remains zero until rights and quality review accepts it.
 
 ### Display or audio fails in a remote environment
 
-The normal game requires desktop display and audio support. Automated tests use SDL dummy drivers, but that mode is intended for validation rather than play.
+The normal game requires desktop display and audio support. Automated qualification uses Godot's headless display and isolated user data, which is intended for validation rather than play.
 
 ### Progress is in the wrong location
 
-Normal saves use the operating system's user-data directory: `%LOCALAPPDATA%\VibeSnake` on Windows, `~/Library/Application Support/VibeSnake` on macOS, and the XDG data location on Linux. `VIBESNAKE_DATA_DIR` overrides that location for portable or development use. See [CONFIGURATION.md](CONFIGURATION.md).
+Normal native saves use Godot `user://` for application name `Vibe Snake`. Press F12 or use Settings, Data to open the resolved diagnostics location. See [user-data directories](../engineering/USER_DATA.md) and [save and recovery](RECOVERY.md) before moving or restoring files.

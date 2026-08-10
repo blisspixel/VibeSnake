@@ -2,11 +2,11 @@
 
 [Current status](STATUS.md) | [Roadmap](../../ROADMAP.md) | [Support](../../SUPPORT.md) | [Recovery](../guides/RECOVERY.md)
 
-Status: pre-candidate alpha issues as of 2026-08-09. Replace this page from the exact candidate review before release.
+Status: pre-candidate alpha issues as of 2026-08-10. Replace this page from the exact candidate review before release.
 
 ## Player-facing limitations
 
-- There is no public 0.9 or 1.0 native release candidate. The source-playable Python alpha is a behavior reference and does not contain every native feature.
+- There is no public 0.9 or 1.0 native release candidate. The root launchers run the native Godot source build; the optional Python player is a frozen behavior reference and does not contain every native feature.
 - No radio or optional-content pack is export eligible. The public source inventory contains candidates, but player artifacts must exclude them until manifest, provenance, media, listening, credit, and rights gates pass.
 - Native Windows x64 Release export passes local automated qualification. Final retained Windows, macOS Universal, and Linux x64 candidate artifacts, signing, notarization, Linux runtime-baseline review, and storefront delivery are pending.
 - Keyboard, mouse, D-pad, stick, Xbox-layout, and PlayStation-layout routes have automated coverage. Physical controller families, hot-plug combinations, pointer focus, and complete platform flows still need retained human evidence.

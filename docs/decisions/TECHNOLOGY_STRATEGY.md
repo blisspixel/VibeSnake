@@ -4,11 +4,11 @@
 
 The target 1.0 architecture is a native Godot 4 .NET desktop game with gameplay rules in a pure C# assembly. Windows, macOS, and Linux are first-class release platforms. No browser or HTML runtime is in the 1.0 plan.
 
-This is a working architecture decision, not a claim that migration is complete. The current Python and Pygame game remains the playable reference until the Godot vertical slice, deterministic trace parity, and three-platform export gates pass. Reversing the target decision requires a written architecture record with measured evidence.
+The Godot vertical slice, deterministic trace parity, and three-platform export-smoke foundations now pass, so Godot is the default source player. Migration and release acceptance are not complete: Python remains a frozen fixture oracle, and approved content, signing, physical devices, named-hardware performance, and human experience gates remain open. Reversing the target decision requires a written architecture record with measured evidence.
 
 The accepted qualification decision is recorded in [ADR 0001](ADR_0001_NATIVE_RUNTIME.md). Cross-language behavior corrections and unresolved differences are recorded in [PARITY_DECISIONS.md](../engineering/PARITY_DECISIONS.md).
 
-As of 2026-08-09, Godot 4.7.1 is the pinned stable maintenance release and Godot 4 C# supports Windows, Linux, and macOS. The repository pins Godot 4.7.1 Mono commit `a13da4feb`, official editor and .NET export-template hashes, and .NET SDK 10.0.302. .NET 10 is an active LTS release. The project targets `net10.0` with **892** native contract tests and 90 percent line and branch floors per measured module, shared Python-to-C# parity fixtures, stable Classic/Vibe mode and bounded adaptive-fairness contracts, deterministic balance-laboratory, observed-baseline, native-AI-league, schema-2 local-playtest-summary, human-handoff, balance-experiment-guard, score-identity, score-browser, power-decision, replay-browser, offline-comparison, progression, content-curation, creator-content, localization, capture-sharing, candidate-reliability, candidate-fault, performance, and candidate-accessibility evidence, strict native content-pack isolation and recoverable removal, manifest-driven playback-free radio and broadcast behavior, release signing-readiness, deterministic channel-shape qualification, onboarding, run-end/personal-best, player-data reset/recovery, bounded audio allocation and output recovery, real Godot headless smoke, replay browsing/playback, and hosted packaged-player export smokes on **Windows, macOS, and Linux** outside the checkout without Python. Python remains the frozen oracle only; product work continues in pure C# and Godot.
+As of 2026-08-10, Godot 4.7.1 is the pinned stable maintenance release and Godot 4 C# supports Windows, Linux, and macOS. The repository pins Godot 4.7.1 Mono commit `a13da4feb`, official editor and .NET export-template hashes, and .NET SDK 10.0.302. .NET 10 is an active LTS release. The project targets `net10.0` with **892** native contract tests and 90 percent line and branch floors per measured module, shared Python-to-C# parity fixtures, stable Classic/Vibe mode and bounded adaptive-fairness contracts, deterministic balance-laboratory, observed-baseline, native-AI-league, schema-2 local-playtest-summary, human-handoff, balance-experiment-guard, score-identity, score-browser, power-decision, replay-browser, offline-comparison, progression, content-curation, creator-content, localization, capture-sharing, candidate-reliability, candidate-fault, performance, and candidate-accessibility evidence, strict native content-pack isolation and recoverable removal, manifest-driven playback-free radio and broadcast behavior, release signing-readiness, deterministic channel-shape qualification, onboarding, run-end/personal-best, player-data reset/recovery, bounded audio allocation and output recovery, real Godot headless smoke, replay browsing/playback, and hosted packaged-player export smokes on **Windows, macOS, and Linux** outside the checkout without Python. Python remains the frozen oracle only; product work continues in pure C# and Godot.
 
 ## Why change from the incumbent
 
@@ -17,9 +17,9 @@ Pygame and SDL can run a 2D Snake game quickly on all three desktop operating sy
 The Python reference has direct source-tree asset paths, a large coordinator,
 software-surface rendering, many direct font constructions, static controller
 assumptions, limited display scaling, a hand-built audio layer, and global random
-streams. The new native artifact matrix addresses packaging proof for the Godot
-slice, but it does not repair those reference-runtime boundaries or establish
-macOS and Linux evidence. PyInstaller would also require a separate build on each
+streams. The native artifact matrix addresses packaging proof for the Godot
+product on all three platforms, but it does not repair those reference-runtime
+boundaries. PyInstaller would also require a separate build on each
 target operating system. These issues can be fixed in Python, but doing so spends
 substantial design and maintenance effort recreating systems already present in
 a mature game engine.
@@ -30,7 +30,7 @@ Godot provides native desktop exports, a scene and resource pipeline, input acti
 
 | Requirement | Python plus Pygame today | Godot 4 .NET target | Decision consequence |
 | --- | --- | --- | --- |
-| Native Windows, macOS, Linux | SDL supports them, but no self-contained reference artifact is qualified | First-class editor and export targets; Windows slice qualified locally | Godot reduces custom platform shell work while macOS and Linux still require native evidence |
+| Native Windows, macOS, Linux | SDL supports them, but no self-contained reference artifact is qualified | First-class editor and export targets; hosted exports launch outside the checkout on all three platforms | Godot owns the product shell; protected signing and retained physical-platform review remain |
 | Deterministic rules | Possible after major extraction | Pure C# assembly independent of Godot | Both can work; C# boundary is the target |
 | Polished 2D effects | Possible through custom surfaces and shaders with added tooling | Built-in 2D renderers, shaders, animation, particles, profiling | Godot has lower presentation risk |
 | Adaptive audio and mix | Current custom mixer is partial | Audio buses, effects, streams, and routing | Godot better fits radio and cue hierarchy |
@@ -185,7 +185,7 @@ Minimum operating-system and driver versions are not claimed until tested agains
 
 ## Technology qualification gate
 
-The target stack is accepted only when a vertical slice proves all of the following:
+The source-product stack is accepted because the automated vertical slice proves the structural items below. Items that require named hardware, physical devices, approved content, or signing remain release-acceptance gates rather than reasons to send new work back to Python.
 
 1. A pure C# core runs without Godot and produces stable hashes.
 2. At least 100 shared movement, food, growth, starvation, score, and collision traces match the Python reference or have reviewed corrections.
@@ -193,7 +193,7 @@ The target stack is accepted only when a vertical slice proves all of the follow
 4. Keyboard and controller actions remain correct through pause, focus loss, and hot-plug.
 5. The 1280 by 720 logical viewport scales correctly at minimum, 16:9, 4:3, 16:10, ultrawide, square, and high-density displays.
 6. Radio streaming, bus ducking, missing audio, and device loss recover cleanly.
-7. Windows x64, macOS Universal, and Linux x86-64 debug exports launch outside the checkout and write to the correct user location.
+7. Windows x64, macOS Universal, and Linux x86-64 exports launch outside the checkout and write to the correct user location.
 8. Controlled performance scenes meet the 60 frames per second presentation target without rules drift and report p50, p95, and p99 frame times.
 9. The headless rules campaign runs substantially faster than real time and retains a failing seed and trace.
 10. Exported content contains only the allowlisted core pack and no development or archived material.
@@ -210,7 +210,7 @@ If a gate fails, first fix the vertical slice. A fallback to Pygame requires evi
 6. Port each power as one contract with differential fixtures and cleanup tests.
 7. Port progression, saves, radio manifests, AI, menus, cosmetics, and presentation behind services.
 8. Run cross-platform artifact, performance, input, audio, accessibility, and reliability gates.
-9. Make Godot the default only after feature and data parity. Preserve the Python reference for fixture reproduction until the first stable release no longer needs it.
+9. Make Godot the default after the automated feature, data, and artifact foundation passes: complete for source launch. Preserve the Python reference for fixture reproduction until the first stable release no longer needs it.
 
 This sequence avoids a blind rewrite. Every ported slice is runnable, testable, and comparable.
 

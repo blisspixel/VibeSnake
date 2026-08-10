@@ -22,7 +22,7 @@
 | [config/content_curation_v1.json](../../config/content_curation_v1.json) | Exact per-station pending, approved, and rejected content decisions bound to the inventory policy |
 | [docs/design/LOCALIZATION.md](../design/LOCALIZATION.md) | Stable shell-copy, pseudo-locale, glyph, layout, and translator handoff contract |
 
-## Runtime package
+## Frozen Python oracle
 
 ```text
 src/vibesnake/
@@ -51,7 +51,7 @@ High-change files and their reason:
 
 Read [ARCHITECTURE.md](ARCHITECTURE.md) before restructuring these files.
 
-## Native qualification foundation
+## Native product
 
 ```text
 game/
@@ -115,10 +115,10 @@ scripts/
 |-- test_native_export.ps1        Outside-checkout packaged-player smoke
 `-- inspect_native_artifact.ps1   Payload, portability, and SHA-256 manifest gate
 
-play.ps1 / play.sh / play.bat     Launch using local .venv when present
+play.ps1 / play.sh / play.bat     Verify, build, and launch the native Godot game
 ```
 
-The native paths are an active 0.3 qualification slice, not yet the default playable game. The Python package remains the behavior reference until the roadmap parity and artifact gates pass.
+The Godot and C# paths are the default source-playable product. The Python package remains a frozen behavior oracle, fixture producer, and optional migration reference. New product behavior belongs in `game/` and `native/`.
 
 Persistence and configuration boundaries:
 
@@ -140,7 +140,7 @@ assets/
 `-- images/                 Logo and deterministic radio badges
 ```
 
-Runtime code directly depends on `assets/`, which is why installed builds are not yet self-contained. [CONTENT_PIPELINE.md](../content/CONTENT_PIPELINE.md) documents the generated inventory, rights gate, and measured source debt. [CONTENT_PACKS.md](../content/CONTENT_PACKS.md) defines the implemented manifest, allowlist, compatibility, and optional-failure contract for the native boundary.
+The Python oracle directly depends on `assets/`. Native release exports admit only manifest-bound, export-eligible content, which is why the optional radio pack remains absent while `exportEligible` is zero. [CONTENT_PIPELINE.md](../content/CONTENT_PIPELINE.md) documents the generated inventory, rights gate, and measured source debt. [CONTENT_PACKS.md](../content/CONTENT_PACKS.md) defines the implemented manifest, allowlist, compatibility, and optional-failure contract for the native boundary.
 
 ## Tests
 

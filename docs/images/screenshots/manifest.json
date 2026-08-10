@@ -6,26 +6,34 @@
       "file": "main-menu.png",
       "height": 720,
       "label": "Main menu",
-      "sha256": "afc43fdd0fc710a43ecc73d86f20c89bf32c23e27763e456b35247bfbceb5fb4",
+      "sha256": "d786dbfa17233068ff3e7ee0e202435d56dcb1f5c7c907c078da36e67280cc59",
       "state": "MENU",
+      "width": 1280
+    },
+    {
+      "file": "powers-run.png",
+      "height": 720,
+      "label": "Vibe mode gameplay",
+      "sha256": "c74397018ea974d67eec563f3607188ba7057e5677862a6dd5e2dc4d3efab93d",
+      "state": "RUNNING",
       "width": 1280
     },
     {
       "file": "customization.png",
       "height": 720,
       "label": "Customization",
-      "sha256": "c7408679c7edf42a3ea0af63ab710ad861db3066fa02f01233a4a1d4a49e5f46",
-      "state": "CUSTOMIZE",
+      "sha256": "78ab4e6ddff7984592ef7663454d37cef7a462d284c933435b8e67ed8b197744",
+      "state": "COSMETICS",
       "width": 1280
     },
     {
-      "file": "powers-run.png",
+      "file": "ai-channel.png",
       "height": 720,
-      "label": "Powers active",
-      "sha256": "c3fbfd37ac8df36e8f53b48bf08012a9ac8d77d8e00913e67887b73225aae1b3",
-      "state": "RUNNING",
+      "label": "AI channel",
+      "sha256": "bca424fcac7086abbea383cfb5b474e1cbdb2516589c15f720062a1acfbab9e4",
+      "state": "SPECTATOR",
       "width": 1280
     }
   ],
-  "sourceSha256": "c53f744da4c34e1d9ca0ea067f61861ba1d8f59c57456462ad6b24f50f4e82d9"
+  "sourceSha256": "7d05532917feb8a4abf566010cc72f217f58ddd50ff77035be9dc52201efa072"
 }

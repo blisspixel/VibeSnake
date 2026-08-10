@@ -6,6 +6,10 @@ Notable player-facing and engineering changes are recorded here. The project is 
 
 ### Changed
 
+- The root launchers now start the native Godot and C# product from source. The Python implementation remains available only as the frozen behavioral oracle.
+- Reworked the README into a concise project front door that routes design, engineering, player, and release detail to canonical documents. Updated those documents to match the native source default, current controls, persistence schema, validation counts, and release posture.
+- Replaced the legacy README media with four deterministic 1280x720 native captures covering the main menu, Vibe gameplay, customization, and the compact AI channel. The capture verifier now fingerprints the native presentation sources and rejects stale or incomplete screenshot sets.
+- Unified bare-loop and performance qualification around the same 60 ms shared-host p95 ceiling, retaining the 25 ms sustained-average ceiling, the 100 ms bare-loop hard-frame cap, and named-hardware 60 FPS acceptance.
 - Roadmap, README, release status, technology strategy, and native README now state the product path explicitly: Godot + pure C# ship; Python is a frozen oracle only. Next-work table prioritizes shell depth, packaging, and pack eligibility over further Python feature work.
 - Input, viewport, presentation, audio, content, replay, onboarding, run-end, player-data recovery, balance, development, testing, and release documentation now matches the verified controller-remap, vector-prompt, scaling-matrix, audio-mixing/recovery, strict-pack, signing-readiness, deterministic-package, power-decision, replay-browser, AI-personality, progression, content-curation, creator-validation, offline-comparison, and 891-test native baseline.
 - Added a pure broadcast policy for eight explicitly unapproved station identities, four safe host boundaries, event-aware ducking, critical-cue priority, captions, fatigue limits, and no-repeat host selection. Radio track choice now uses per-station shuffle bags that exhaust playable tracks and prevent immediate repeats across refills.

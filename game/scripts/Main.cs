@@ -320,10 +320,23 @@ public partial class Main : Node2D
             : ShellLocale.English;
         var smokeTest = userArguments.Contains("--smoke-test", StringComparer.Ordinal);
         var launchProbe = userArguments.Contains("--launch-probe", StringComparer.Ordinal);
+        var readmeCaptureDirectory = GetArgumentValue(
+            userArguments,
+            "--readme-capture-dir=");
+        var automatedModeCount = (smokeTest ? 1 : 0)
+            + (launchProbe ? 1 : 0)
+            + (readmeCaptureDirectory is null ? 0 : 1);
+        if (automatedModeCount > 1)
+        {
+            throw new ArgumentException(
+                "Smoke, launch-probe, and README-capture modes are mutually exclusive.");
+        }
+
         var smokeUserDataRoot = GetArgumentValue(
             userArguments,
             "--smoke-user-data-root=");
-        if ((smokeTest || launchProbe) && smokeUserDataRoot is null)
+        if ((smokeTest || launchProbe || readmeCaptureDirectory is not null)
+            && smokeUserDataRoot is null)
         {
             throw new ArgumentException(
                 "Automated launch modes require an explicit --smoke-user-data-root path.");
@@ -360,14 +373,16 @@ public partial class Main : Node2D
         Input.JoyConnectionChanged += OnJoyConnectionChanged;
         _structuredLog.Information(
             "shell",
-            smokeTest || launchProbe
+            smokeTest || launchProbe || readmeCaptureDirectory is not null
                 ? "Automated shell session started."
                 : "Interactive shell session started.",
             eventCode: smokeTest
                 ? "smoke_session_start"
                 : launchProbe
                     ? "launch_probe_start"
-                    : "session_start");
+                    : readmeCaptureDirectory is not null
+                        ? "readme_capture_start"
+                        : "session_start");
         _window = GetWindow();
         _window.FilesDropped += OnFilesDropped;
         _window.SizeChanged += OnWindowSizeChanged;
@@ -381,6 +396,11 @@ public partial class Main : Node2D
         if (launchProbe)
         {
             ExecuteLaunchProbe(userArguments);
+            return;
+        }
+        if (readmeCaptureDirectory is not null)
+        {
+            ExecuteReadmeCapture(readmeCaptureDirectory);
             return;
         }
 
@@ -8613,6 +8633,134 @@ public partial class Main : Node2D
         }
 
         return value;
+    }
+
+    private async void ExecuteReadmeCapture(string captureDirectory)
+    {
+        try
+        {
+            var outputDirectory = System.IO.Path.GetFullPath(captureDirectory);
+            System.IO.Directory.CreateDirectory(outputDirectory);
+            if (_window is not null)
+            {
+                _window.Mode = Window.ModeEnum.Windowed;
+                _window.Size = new Vector2I(1280, 720);
+            }
+
+            _shellSettings = ShellSettings.CreateDefaults();
+            ApplyRuntimeShellSettings();
+            RefreshVirtualViewport();
+
+            TransitionToScreen(ScreenState.Menu);
+            _mainMenuCursor = (int)MainMenuItem.Start;
+            await CaptureReadmeFrame(outputDirectory, "main-menu.png");
+
+            OpenCosmeticSets();
+            _cosmeticCursor = Math.Min(2, CosmeticSetCatalog.Sets.Count - 1);
+            _cosmeticPage = _cosmeticCursor / CosmeticSetsPerPage;
+            var capturedCosmetic = CosmeticSetCatalog.Sets[_cosmeticCursor];
+            _cosmeticStatusCaption = Localize(
+                "status.cosmetics.selected",
+                ShellTextArgument.From(
+                    "cosmetic",
+                    capturedCosmetic.Name.ToUpperInvariant()));
+            await CaptureReadmeFrame(outputDirectory, "customization.png");
+
+            ReturnToMenu();
+            StageReadmeGameplay();
+            await CaptureReadmeFrame(outputDirectory, "powers-run.png");
+
+            ReturnToMenu();
+            OpenSpectatorBrowse();
+            StartSpectatorMatch();
+            if (_spectatorMatch is { } spectator)
+            {
+                for (var step = 0; step < 28 && !spectator.IsComplete; step++)
+                {
+                    AdvanceSpectatorOneStep(spectator);
+                }
+
+                spectator.SetPaused(false);
+            }
+
+            await CaptureReadmeFrame(outputDirectory, "ai-channel.png");
+            GD.Print("VIBESNAKE_README_CAPTURE_OK count=4");
+            GetTree().Quit(0);
+        }
+        catch (Exception exception)
+        {
+            GD.PushError($"VIBESNAKE_README_CAPTURE_FAILED {exception}");
+            GetTree().Quit(1);
+        }
+    }
+
+    private void StageReadmeGameplay()
+    {
+        var body = Enumerable.Range(10, 16)
+            .Select(x => new GridPoint(x, 23))
+            .Concat(
+            [
+                new GridPoint(25, 22),
+                new GridPoint(25, 21),
+                new GridPoint(25, 20),
+            ])
+            .Concat(Enumerable.Range(26, 12).Select(x => new GridPoint(x, 20)))
+            .ToArray();
+        var config = SelectedRunConfig();
+        _run = SnakeRun.CreateForTesting(
+            config,
+            body,
+            RulesDirection.Right,
+            food: new GridPoint(52, 14),
+            hungerTicksRemaining: Math.Min(120, config.StarvationTicks),
+            score: 4_820,
+            comboCount: 9,
+            ticksSinceLastFood: 1,
+            tick: 183,
+            powerPickup: new PowerPickup(
+                PowerKind.Gluttony,
+                new GridPoint(44, 10),
+                Math.Min(24, config.PowerVisibleTicks)),
+            baitPosition: new GridPoint(46, 25),
+            detachedObstacles:
+            [
+                new GridPoint(34, 14),
+                new GridPoint(35, 14),
+                new GridPoint(36, 14),
+            ],
+            detachedObstacleTicksRemaining: Math.Min(
+                16,
+                config.SegmentDetachObstacleTicks));
+        _snakeMotionPresentation.Reset(body);
+        TransitionToScreen(ScreenState.Running);
+        _pausedByFocusLoss = false;
+        _capturePresentation = CapturePresentationState.Visible;
+        _feedbackCaption = Localize("feedback.power.activation.bait");
+        _feedbackTier = VisualFeedbackTier.Routine;
+        _feedbackTicksRemaining = FeedbackVisibilityTicks;
+        _comboPulseTicksRemaining = ComboFeedback.PulseTicks;
+        _vibeLevelDirector.Reset();
+        _vibeLevelDirector.Update(_run.ComboCount);
+    }
+
+    private async Task CaptureReadmeFrame(string outputDirectory, string fileName)
+    {
+        QueueRedraw();
+        await ToSignal(RenderingServer.Singleton, RenderingServer.SignalName.FramePostDraw);
+        var image = GetViewport().GetTexture().GetImage();
+        if (image.GetWidth() != 1280 || image.GetHeight() != 720)
+        {
+            throw new InvalidOperationException(
+                $"README capture viewport must be 1280x720, observed {image.GetWidth()}x{image.GetHeight()}.");
+        }
+
+        var path = System.IO.Path.Combine(outputDirectory, fileName);
+        var result = image.SavePng(path);
+        if (result != Error.Ok)
+        {
+            throw new System.IO.IOException(
+                $"README capture could not write {fileName}: {result}.");
+        }
     }
 
     private void ExecuteLaunchProbe(IReadOnlyList<string> userArguments)

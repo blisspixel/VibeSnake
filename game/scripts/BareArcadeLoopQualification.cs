@@ -98,7 +98,6 @@ internal static class BareArcadeLoopQualification
 {
     private const ulong QualificationSeed = 20260808UL;
     private const double MinimumGraphicalContrast = 3.0;
-    private const double MaximumSmokeP95Milliseconds = 50.0;
     private const double MaximumSmokeFrameMilliseconds = 100.0;
 
     public static BareArcadeLoopQualificationEvidence Run(
@@ -208,7 +207,8 @@ internal static class BareArcadeLoopQualification
             && headFoodContrast >= MinimumGraphicalContrast
             && GameplayPresentation.HeadInset != GameplayPresentation.FoodInset;
         var framePacingComplete = frameSummary.SampleCount >= 32
-            && frameSummary.P95Milliseconds <= MaximumSmokeP95Milliseconds
+            && frameSummary.P95Milliseconds
+                <= PerformanceQualification.SharedHostMaximumP95Milliseconds
             && frameSummary.MaxMilliseconds <= MaximumSmokeFrameMilliseconds;
 
         var quietRun = SnakeRun.CreateForTesting(
@@ -388,7 +388,8 @@ internal static class BareArcadeLoopQualification
                 FoodBoardContrast: foodBoardContrast,
                 HeadFoodContrast: headFoodContrast,
                 FatalOutlineBoardContrast: fatalOutlineBoardContrast,
-                MaximumSmokeP95Milliseconds: MaximumSmokeP95Milliseconds,
+                MaximumSmokeP95Milliseconds:
+                    PerformanceQualification.SharedHostMaximumP95Milliseconds,
                 ObservedSmokeP95Milliseconds: frameSummary.P95Milliseconds,
                 MaximumSmokeFrameMilliseconds: MaximumSmokeFrameMilliseconds,
                 ObservedSmokeFrameMilliseconds: frameSummary.MaxMilliseconds,

@@ -1,6 +1,6 @@
 # Python-to-Native Migration Ownership Map
 
-Status: V030-12 expanded procedures (2026-08-04).
+Status: Native source default; frozen-oracle procedures retained (2026-08-10).
 
 This map assigns every Python reference subsystem to its target C# or Godot owner. **Product work lands in the target owner only.** Python is a frozen oracle: do not add major new player-facing features there, and never implement the same feature twice.
 
@@ -10,10 +10,10 @@ This map assigns every Python reference subsystem to its target C# or Godot owne
 | --- | --- | --- | --- |
 | `core/snake.py` movement, wrap, body | `VibeSnake.Rules` | Done | Shared movement and core-rule fixtures |
 | `core/scoring.py` combo, bonuses | `VibeSnake.Rules` | Done | Shared core-rule fixtures |
-| `core/near_miss.py` proximity and style | `VibeSnake.Rules` `NearMissDetector` + `SnakeRun` | Partial | Pure detector ported; SnakeRun wires body proximity, clutch eat, and style points with `RunEventKind.NearMiss`; edge-ride remains unwired in both runtimes |
+| `core/near_miss.py` proximity and style | `VibeSnake.Rules` `NearMissDetector` + `SnakeRun` | Done for product contract | Body proximity and clutch events are wired and measured; intentionally absent edge-ride behavior is not a migration blocker |
 | Starvation timer / deadline | `VibeSnake.Rules` | Done | Exact order with collision; one-shot `StarvationWarning` at default 200 remaining ticks |
 | Food spawn | `VibeSnake.Rules` | Done | PCG32 free-cell selection |
-| Power manager spawn cadence | `VibeSnake.Rules` | Partial | Shield auto-spawn only; other kinds injected for tests |
+| Power manager spawn cadence | `VibeSnake.Rules` | Done | Product Vibe uses deterministic nine-power decision offers; Classic remains power-free and frozen parity configs retain their compatibility path |
 | Shield | `VibeSnake.Rules` + Godot | Done | Parity `shield_rules_v1`; shell markers and cues |
 | Phase Shift | `VibeSnake.Rules` + Godot | Done | Parity `phase_shift_rules_v1`; shell markers and body tint |
 | Last Stand | `VibeSnake.Rules` + Godot | Done | Parity `last_stand_rules_v1`; recovery captions |
@@ -23,23 +23,23 @@ This map assigns every Python reference subsystem to its target C# or Godot owne
 | Gluttony | `VibeSnake.Rules` + Godot | Done | Parity remaining-powers; body tint |
 | Segment Detach | `VibeSnake.Rules` + Godot | Done | Parity remaining-powers; hazard draw; collect-after-move |
 | Input devices | Godot `GameActions` + Persistence bindings | Done for native shell | Logical actions, schema-1 store, keyboard/controller remapping, conflict swap/cancel, family-aware vector prompts, deadzone, D-pad fallback, lifecycle safety, and render-cadence evidence |
-| Menus / HUD / cosmetics | Godot presentation | Partial | Thin vertical slice only |
+| Menus / HUD / cosmetics | Godot presentation | Done for automated foundation | Title-first shell, complete current screen flow, detailed gameplay, eight curated sets, live preview, adaptive viewports, and accessibility evidence are live |
 | Audio buses / SFX | Godot `AudioFallback` plus pure C# `AudioMixAllocator` | Partial | Four buses, mono downmix, 31 distinct licensed/provenance-declared fallback cues, bounded SFX/UI voices, cooldown, priority, interruption, music ducking, saved volumes, peak policy, and output repair qualified; authored packs and physical listening remain open |
-| Radio playback | Godot content service | Not started | Python has full offline radio |
-| Persistence (profile, scores) | `VibeSnake.Persistence` + Godot | Partial | Native achievements, onboarding, fair-category personal bests, preferences, bindings, separated reset, and verified backup recovery are live; full profile/cosmetic migration and top-ten history remain later work |
-| Replays | `VibeSnake.Persistence` + Rules + Godot | Working native slice | Recording, bounded storage/browser, verification, deterministic playback, reset, seek, export, exact deletion, stable seed codes, four household ghost slots, equal-rules ghost racing, private run cards, and player-data reset/recovery are live; retained platform and accessibility review remains |
-| AI personalities | Future pure rules AI module | Not started | Keep out of rules until deterministic boundary complete |
+| Radio playback | Godot content service | Done for automated foundation | Native manifest policy, one-track decoder adapter, source-checkout discovery, Music-bus routing, recovery, and isolated RNG are live; approved export packs and listening review remain |
+| Persistence (profile, scores) | `VibeSnake.Persistence` + Godot | Done for current native scope | Achievements, onboarding, progression, cosmetics, fair-category personal bests, top-ten history and optional Python import, preferences, bindings, reset, backup, and recovery are live |
+| Replays | `VibeSnake.Persistence` + Rules + Godot | Done for automated foundation | Recording, bounded storage/browser, verification, deterministic playback, reset, seek, export, exact deletion, stable seed codes, four household ghost slots, equal-rules ghost racing, private run cards, and recovery are live; retained platform and accessibility review remains |
+| AI personalities | Pure C# AI and spectator sessions | Done for automated foundation | Ten measured personalities, local equal-rules matches, standings, commentary, explanations, recovery, and exact-seed human challenges are live |
 | Content inventory / packs | Shared policy + native allowlists | Partial | Schema 1 validators exist; exportEligible=0 |
-| Config | Rules config + Godot settings UI | Partial | Ruleset identity frozen |
+| Config | Rules config + Godot settings UI | Done for current schema | Rules identity plus schema-7 gameplay, control, audio, display, accessibility, and data settings are live; future additions require versioned migration |
 
 ## Port order (locked)
 
 1. Shield, Phase Shift, Last Stand (collision recovery matrix): done
 2. Slow-Mo and Boost (tempo modifiers): done (rules + shell cadence)
 3. Magnet, Bait, Gluttony, Segment Detach: done (rules + shell + shared fixtures)
-4. Presentation polish, radio, progression UI on Godot: **current** (achievements browse landed; remapping/glyphs/radio still open)
-5. Installer/archive shapes and first export-eligible packs: **next packaging gates**
-5. Content service and pack allowlists before shipping native asset payloads: next dependency
+4. Presentation, radio adaptation, progression UI, remapping, glyphs, replays, and AI channels on Godot: automated foundation complete
+5. Installer/archive shapes and cross-platform packaged-player smoke: automated foundation complete
+6. First export-eligible packs, protected signing, physical-platform review, and human acceptance: current release gates
 
 ## Data migration procedures
 
@@ -77,7 +77,7 @@ These procedures apply when a versioned player-data contract changes while Pytho
 
 ## Rollback
 
-- Keep Python playable via `vibesnake` until 0.3 artifact gates accept the native path.
+- Keep Python runnable through `vibesnake` for oracle reproduction and migration work, but do not present it as the default player.
 - Shared fixtures are the contract: a native regression must not silently change fixture expectations without a `PARITY_DECISIONS.md` entry.
 - Replay schema rejections leave files intact.
 - Do not delete Python power modules until every power has native parity fixtures and Godot presentation coverage (currently satisfied for all nine; retain modules until the dual-runtime freeze ends).

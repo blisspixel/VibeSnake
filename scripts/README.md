@@ -58,8 +58,9 @@ vibesnake version
 `visual_generate_badges.py` is deterministic and enforced by CI using project-owned
 pixel glyphs. `visual_generate_logo.py` hash-checks the preferred handcrafted brand
 mark under `assets/images/logo.png`.
-`capture_readme_screenshots.py` renders documented game states from isolated
-player and audio directories and checks exact current bytes.
+`capture_readme_screenshots.py` builds the native game, asks Godot to render four
+staged product screens with isolated user data, and checks exact committed bytes,
+dimensions, README references, and native presentation-source freshness.
 
 Legacy credentialed audio-generation, grading, curation, rename, and mutation
 programs are preserved only in the ignored local archive. They are not release

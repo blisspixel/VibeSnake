@@ -1,26 +1,36 @@
-# One-click play helper for a cloned Vibe Snake checkout.
+# Build and launch the native Godot game from a cloned checkout.
 # Usage: ./play.ps1
 
+[CmdletBinding()]
+param()
+
+Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
-$Root = Split-Path -Parent $MyInvocation.MyCommand.Path
-Set-Location -LiteralPath $Root
 
-$venvPython = Join-Path $Root ".venv\Scripts\python.exe"
-if (Test-Path -LiteralPath $venvPython) {
-    & $venvPython -m vibesnake @args
-    exit $LASTEXITCODE
+$repositoryRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
+Set-Location -LiteralPath $repositoryRoot
+
+if ($PSVersionTable.PSVersion.Major -lt 7) {
+    throw "Vibe Snake requires PowerShell 7 or newer. Run this script with pwsh."
+}
+if (-not (Get-Command dotnet -ErrorAction SilentlyContinue)) {
+    throw "The .NET 10.0.302 SDK is required. Install it, then run ./play.ps1 again."
 }
 
-if (Get-Command vibesnake -ErrorAction SilentlyContinue) {
-    & vibesnake @args
-    exit $LASTEXITCODE
+$installerOutput = & (Join-Path $repositoryRoot "scripts/install_godot.ps1")
+$installerOutput | Write-Output
+$executableLine = $installerOutput |
+    Where-Object { $_ -like "GodotExecutable=*" } |
+    Select-Object -Last 1
+if (-not $executableLine) {
+    throw "The verified Godot installer did not report an executable path."
 }
 
-Write-Host "No virtual environment found."
-Write-Host "Run ./scripts/install_player.ps1 first, or:"
-Write-Host "  py -3.14 -m venv .venv"
-Write-Host "  .\.venv\Scripts\Activate.ps1"
-Write-Host "  python -m pip install --require-hashes --only-binary=:all: -r requirements-runtime.lock"
-Write-Host "  python -m pip install --no-deps --no-build-isolation -e ."
-Write-Host "  ./play.ps1"
-exit 1
+$godotExecutable = $executableLine.Substring("GodotExecutable=".Length)
+& dotnet build (Join-Path $repositoryRoot "game/VibeSnake.Game.sln") --nologo
+if ($LASTEXITCODE -ne 0) {
+    throw "The native game build failed."
+}
+
+& $godotExecutable --path (Join-Path $repositoryRoot "game") -- @args
+exit $LASTEXITCODE

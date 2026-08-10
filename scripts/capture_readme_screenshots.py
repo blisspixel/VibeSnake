@@ -1,33 +1,33 @@
-"""Capture and verify current-build screenshots used by the root README."""
+"""Capture and verify native Godot screenshots used by the root README."""
 
 from __future__ import annotations
 
 import argparse
-from collections import deque
 import hashlib
 import json
 import os
 from pathlib import Path
-import random
+import shutil
 import struct
+import subprocess
+import sys
 import tempfile
 from typing import Any, Sequence
 
-from _checkout import promote_checkout_source
-
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
-SOURCE_ROOT = promote_checkout_source(REPOSITORY_ROOT)
-
 SCREENSHOT_DIRECTORY = REPOSITORY_ROOT / "docs" / "images" / "screenshots"
 MANIFEST_PATH = SCREENSHOT_DIRECTORY / "manifest.json"
 README_PATH = REPOSITORY_ROOT / "README.md"
 SCREENSHOT_SPECS = (
     ("main-menu.png", "Main menu", "MENU"),
-    ("customization.png", "Customization", "CUSTOMIZE"),
-    ("powers-run.png", "Powers active", "RUNNING"),
+    ("powers-run.png", "Vibe mode gameplay", "RUNNING"),
+    ("customization.png", "Customization", "COSMETICS"),
+    ("ai-channel.png", "AI channel", "SPECTATOR"),
 )
 _PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
+_TEXT_FINGERPRINT_SUFFIXES = frozenset({".cs", ".godot", ".json", ".md", ".tscn", ".txt"})
+_GAME_FINGERPRINT_SUFFIXES = _TEXT_FINGERPRINT_SUFFIXES | {".png", ".svg"}
 
 
 class ScreenshotEvidenceError(ValueError):
@@ -42,10 +42,6 @@ def _sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
-# Text inputs are fingerprinted with LF newlines so Windows checkouts match CI.
-_TEXT_FINGERPRINT_SUFFIXES = frozenset({".py", ".json", ".toml", ".txt", ".cfg", ".md", ".yml", ".yaml"})
-
-
 def _fingerprint_payload(path: Path) -> bytes:
     data = path.read_bytes()
     if path.suffix.lower() in _TEXT_FINGERPRINT_SUFFIXES:
@@ -55,9 +51,21 @@ def _fingerprint_payload(path: Path) -> bytes:
 
 def _source_paths() -> tuple[Path, ...]:
     paths = {Path(__file__).resolve()}
-    paths.update((REPOSITORY_ROOT / "src" / "vibesnake").rglob("*.py"))
-    for pattern in ("*.json", "*.png"):
-        paths.update((REPOSITORY_ROOT / "assets").rglob(pattern))
+    paths.update(
+        path
+        for path in (REPOSITORY_ROOT / "game").rglob("*")
+        if path.is_file()
+        and path.suffix.lower() in _GAME_FINGERPRINT_SUFFIXES
+        and ".godot" not in path.parts
+        and "bin" not in path.parts
+        and "obj" not in path.parts
+    )
+    for source_root in (
+        REPOSITORY_ROOT / "native" / "src" / "VibeSnake.Rules",
+        REPOSITORY_ROOT / "native" / "src" / "VibeSnake.Persistence",
+    ):
+        paths.update(source_root.rglob("*.cs"))
+    paths.add(REPOSITORY_ROOT / "config" / "content_inventory.json")
     return tuple(sorted(path.resolve() for path in paths if path.is_file()))
 
 
@@ -111,7 +119,7 @@ def verify_screenshots() -> None:
     manifest = _load_manifest()
     current_source_hash = _source_fingerprint()
     if manifest["sourceSha256"] != current_source_hash:
-        raise ScreenshotEvidenceError("README screenshots are stale relative to current presentation source")
+        raise ScreenshotEvidenceError("README screenshots are stale relative to current native presentation source")
 
     expected_names = {spec[0] for spec in SCREENSHOT_SPECS}
     records: dict[str, dict[str, Any]] = {}
@@ -138,6 +146,8 @@ def verify_screenshots() -> None:
         if not path.is_file():
             raise ScreenshotEvidenceError(f"missing README screenshot: {path}")
         width, height = _png_dimensions(path)
+        if (width, height) != (1280, 720):
+            raise ScreenshotEvidenceError(f"screenshot is not 1280x720: {file_name}")
         if (record["width"], record["height"]) != (width, height):
             raise ScreenshotEvidenceError(f"screenshot dimensions changed: {file_name}")
         if record["sha256"] != _sha256(path):
@@ -147,141 +157,79 @@ def verify_screenshots() -> None:
             raise ScreenshotEvidenceError(f"README does not reference {relative_path}")
 
 
-def _stage_powers_run(game: Any) -> None:
-    """Stage a lively in-run board with active powers and readable HUD state."""
-    from vibesnake.core.enums import Direction, GameState
-    from vibesnake.powerups.boost import BoostPowerUp
-    from vibesnake.powerups.gluttony import GluttonyPowerUp
-    from vibesnake.powerups.magnet import MagnetPowerUp
-    from vibesnake.powerups.shield import ShieldPowerUp
-    from vibesnake.powerups.slowmo import SlowMoPowerUp
-
-    body = deque(
-        [
-            (18, 22),
-            (19, 22),
-            (20, 22),
-            (21, 22),
-            (22, 22),
-            (23, 22),
-            (24, 22),
-            (25, 22),
-            (26, 22),
-            (27, 22),
-            (28, 22),
-            (28, 21),
-            (28, 20),
-            (29, 20),
-            (30, 20),
-            (31, 20),
-            (32, 20),
-            (33, 20),
-            (34, 20),
-            (35, 20),
-        ]
+def _resolve_godot_executable(explicit: str | None) -> Path:
+    candidates: list[Path] = []
+    configured = explicit or os.environ.get("VIBESNAKE_GODOT_EXECUTABLE")
+    if configured:
+        candidates.append(Path(configured))
+    tools_root = REPOSITORY_ROOT / ".tools" / "godot" / "4.7.1"
+    if sys.platform == "win32":
+        candidates.extend(sorted(tools_root.rglob("*console.exe")))
+        candidates.extend(sorted(tools_root.rglob("Godot*.exe")))
+    elif sys.platform == "darwin":
+        candidates.extend(sorted(tools_root.rglob("Godot_mono.app/Contents/MacOS/Godot")))
+    else:
+        candidates.extend(sorted(tools_root.rglob("Godot*")))
+    for command in ("godot-mono", "godot"):
+        resolved = shutil.which(command)
+        if resolved:
+            candidates.append(Path(resolved))
+    for candidate in candidates:
+        if candidate.is_file():
+            return candidate.resolve()
+    raise ScreenshotEvidenceError(
+        "Godot 4.7.1 executable not found; run scripts/install_godot.ps1 or pass --godot-executable"
     )
-    game.snake.body = body
-    game.snake.positions_set = set(body)
-    game.snake.direction = Direction.RIGHT
-    game.snake.animation_time = 2.8
-    game.snake.hue_shift = 18
-    game.food.position = (50, 12)
-    game.score_manager.base_score = 4120
-    game.score_manager.combo_count = 9
-    game.score_manager.time_since_last_food = 0.55
-    game.starvation_timer = 16.0
-    game.session_food_eaten = 31
-    game.session_wraps = 8
-    game.detached_segments = [(42, 16), (42, 17), (42, 18), (43, 18)]
-    game.detached_segments_timer = 5.4
-
-    shield = ShieldPowerUp((0, 0))
-    shield.activate(game)
-    shield.timer = 2.1
-    boost = BoostPowerUp((0, 0))
-    boost.activate(game)
-    boost.timer = 1.8
-    slowmo = SlowMoPowerUp((0, 0))
-    slowmo.activate(game)
-    slowmo.timer = 1.2
-    magnet = MagnetPowerUp((46, 12))
-    magnet.visible_timer = 2.4
-    gluttony = GluttonyPowerUp((38, 26))
-    gluttony.visible_timer = 1.9
-    game.powerups.active_powerups = [shield, boost, slowmo, magnet, gluttony]
-    game.visual_effects.add_score_popup(740, 300, "+240 POWER CHAIN", (120, 255, 220))
-    game.visual_effects.add_score_popup(820, 360, "SHIELD UP", (180, 255, 140))
-    if game.radio is not None:
-        game.radio.current_station_index = 3
-        game.radio.is_playing = True
-    game.state = GameState.RUNNING
 
 
-def _stage_customization(game: Any) -> None:
-    """Open the customization menu on a distinctive option for capture."""
-    from vibesnake.core.enums import GameState
+def capture_screenshots(godot_executable: str | None) -> None:
+    """Render four canonical README screenshots from the native Godot game."""
+    godot = _resolve_godot_executable(godot_executable)
+    build = subprocess.run(
+        [
+            "dotnet",
+            "build",
+            str(REPOSITORY_ROOT / "game" / "VibeSnake.Game.sln"),
+            "--nologo",
+        ],
+        cwd=REPOSITORY_ROOT,
+        text=True,
+        capture_output=True,
+        check=False,
+        timeout=180,
+    )
+    if build.returncode != 0:
+        raise ScreenshotEvidenceError("native screenshot build failed:\n" + build.stdout + build.stderr)
 
-    game.state = GameState.CUSTOMIZE
-    game.customization_category = 0
-    game.customization_option = 2
-    game.customization_notification = None
-
-
-def capture_screenshots() -> None:
-    """Render the three canonical README screenshots from the production game."""
-    os.environ.setdefault("PYGAME_HIDE_SUPPORT_PROMPT", "1")
-    os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
-    os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
-
+    SCREENSHOT_DIRECTORY.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix="vibesnake-readme-") as data_directory:
-        os.environ["VIBESNAKE_DATA_DIR"] = data_directory
-        isolated_audio_directory = Path(data_directory) / "audio"
-        isolated_audio_directory.mkdir()
-        os.environ["VIBESNAKE_AUDIO_DIR"] = str(isolated_audio_directory)
-        random.seed(0x51A6E)
-
-        import pygame
-        import vibesnake
-
-        from vibesnake.core.enums import GameState
-        from vibesnake.core.game_state import Game
-        from vibesnake.data import settings
-
-        package_path = Path(vibesnake.__file__).resolve()
-        expected_logo = (REPOSITORY_ROOT / "assets" / "images" / "logo.png").resolve()
-        if not package_path.is_relative_to(SOURCE_ROOT.resolve()):
-            raise ScreenshotEvidenceError(f"capture imported code outside the checkout: {package_path}")
-        if Path(settings.LOGO_PATH).resolve() != expected_logo or not expected_logo.is_file():
-            raise ScreenshotEvidenceError("capture did not resolve the canonical checkout logo")
-
-        pygame.init()
-        SCREENSHOT_DIRECTORY.mkdir(parents=True, exist_ok=True)
-        game = Game()
-        if game.radio is not None:
-            game.radio.stop()
-            game.radio.set_volume(0.0)
-            game.radio.play_current_station(random_track=False)
-        game.sound_on = False
-
-        game.state = GameState.MENU
-        game.draw()
-        pygame.image.save(game.screen, SCREENSHOT_DIRECTORY / "main-menu.png")
-
-        _stage_customization(game)
-        game.draw()
-        pygame.image.save(game.screen, SCREENSHOT_DIRECTORY / "customization.png")
-
-        game.reset()
-        _stage_powers_run(game)
-        game.draw()
-        pygame.image.save(game.screen, SCREENSHOT_DIRECTORY / "powers-run.png")
-        if game.radio is not None:
-            game.radio.stop()
-        pygame.quit()
+        command = [
+            str(godot),
+            "--path",
+            str(REPOSITORY_ROOT / "game"),
+            "--rendering-method",
+            "gl_compatibility",
+            "--",
+            f"--readme-capture-dir={SCREENSHOT_DIRECTORY}",
+            f"--smoke-user-data-root={data_directory}",
+        ]
+        capture = subprocess.run(
+            command,
+            cwd=REPOSITORY_ROOT,
+            text=True,
+            capture_output=True,
+            check=False,
+            timeout=120,
+        )
+    output = capture.stdout + capture.stderr
+    if capture.returncode != 0 or "VIBESNAKE_README_CAPTURE_OK count=4" not in output:
+        raise ScreenshotEvidenceError("native Godot screenshot capture failed:\n" + output)
 
     records = []
     for file_name, label, state in SCREENSHOT_SPECS:
         path = SCREENSHOT_DIRECTORY / file_name
+        if not path.is_file():
+            raise ScreenshotEvidenceError(f"native capture did not write {file_name}")
         width, height = _png_dimensions(path)
         records.append(
             {
@@ -310,7 +258,11 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--check",
         action="store_true",
-        help="verify that committed screenshots match their manifest and current source",
+        help="verify committed screenshots against native presentation source",
+    )
+    parser.add_argument(
+        "--godot-executable",
+        help="path to the pinned Godot 4.7.1 executable used for capture",
     )
     return parser
 
@@ -321,12 +273,12 @@ def main(argv: Sequence[str] | None = None) -> int:
     try:
         if arguments.check:
             verify_screenshots()
-            print(f"README screenshots verified: {len(SCREENSHOT_SPECS)} current captures")
+            print(f"README screenshots verified: {len(SCREENSHOT_SPECS)} native captures")
         else:
-            capture_screenshots()
+            capture_screenshots(arguments.godot_executable)
             verify_screenshots()
-            print(f"README screenshots captured: {len(SCREENSHOT_SPECS)} current captures")
-    except ScreenshotEvidenceError as error:
+            print(f"README screenshots captured: {len(SCREENSHOT_SPECS)} native captures")
+    except (OSError, subprocess.SubprocessError, ScreenshotEvidenceError) as error:
         print(f"README screenshot validation failed: {error}")
         return 1
     return 0

@@ -2,7 +2,7 @@
 
 ## Prerequisites
 
-- Python 3.11, 3.12, 3.13, or 3.14. Python 3.14 is recommended.
+- Python 3.11, 3.12, 3.13, or 3.14 for oracle, fixture, documentation, and quality tooling. Python 3.14 is recommended.
 - A desktop environment for visible playtesting.
 - Git if the project is placed under version control.
 - Optional external-service credentials only when running content-generation tools.
@@ -32,25 +32,21 @@ python -m pip install --require-hashes --only-binary=:all: -r requirements-ci.lo
 python -m pip install --no-deps --no-build-isolation -e .
 ```
 
-## Run
+## Run the native game
 
 ```powershell
-vibesnake
-# or
-python -m vibesnake
-# or, if a local .venv exists
 ./play.ps1
 ```
 
-| Command | Purpose |
-| --- | --- |
-| `vibesnake` / `vibesnake play` | Launch the Python alpha |
-| `vibesnake update` | Fast-forward this checkout from GitHub `main` and reinstall |
-| `vibesnake status` | Compare local HEAD to GitHub `main` without changing files |
-| `vibesnake doctor` | Check Python, assets, and the offline radio library |
-| `vibesnake version` | Print the installed package version |
+On macOS or Linux:
 
-Use `vibesnake update --dry-run` to inspect without writing. The editable install also registers the `vibesnake` console script.
+```bash
+./play.sh
+```
+
+Both launchers call the same PowerShell 7 path. They install and verify the pinned Godot editor when needed, build `game/VibeSnake.Game.sln`, and launch `game/project.godot`. The first run downloads the platform editor archive. Later runs reuse the verified repository-local cache.
+
+The editable Python install still registers `vibesnake`, `vibesnake status`, `vibesnake update`, `vibesnake doctor`, and `vibesnake version` for frozen-oracle and migration work. It is not the default product launcher.
 
 ## Set up the native toolchain
 
@@ -157,7 +153,7 @@ resolution or changed build contract therefore fails before tests. Local Git
 checkouts can install the repository-owned hooks with `pre-commit install`; CI
 invokes the same commands directly.
 
-The gameplay QA command runs the current Python reference adapter. Shared fixtures prove the implemented Python-to-C# rules scope, and the native export command proves the current platform's packaged player. Complete behavior parity and retained macOS and Linux evidence remain active 0.3 work in [TECHNOLOGY_STRATEGY.md](../decisions/TECHNOLOGY_STRATEGY.md).
+The gameplay QA command runs the frozen Python reference adapter. Shared fixtures prove the implemented Python-to-C# rules scope, and the native export command proves the current platform's packaged player. The native Godot build is the default source player; Python remains in the tree for oracle reproduction and migration evidence through 1.0. Remaining platform, physical-device, content, and human acceptance work is tracked in [TECHNOLOGY_STRATEGY.md](../decisions/TECHNOLOGY_STRATEGY.md) and the [roadmap](../../ROADMAP.md).
 
 ## Project conventions
 

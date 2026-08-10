@@ -1,6 +1,6 @@
 # Input and Application Lifecycle
 
-This document separates the playable Python alpha controls from the native 1.0 input contract. Player-facing controls for the alpha remain in [PLAYER_GUIDE.md](../guides/PLAYER_GUIDE.md). The native shell is a qualification slice and is not yet the default runtime.
+This document defines the native Godot product input contract and preserves the frozen Python mappings only where migration or parity work needs them. Player-facing native controls are in [PLAYER_GUIDE.md](../guides/PLAYER_GUIDE.md). The Godot shell is the default source runtime; Python is an optional behavior oracle.
 
 ## Native action contract
 
