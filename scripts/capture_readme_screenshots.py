@@ -66,7 +66,13 @@ def _source_paths() -> tuple[Path, ...]:
     ):
         paths.update(path for path in source_root.rglob("*.cs") if "bin" not in path.parts and "obj" not in path.parts)
     paths.add(REPOSITORY_ROOT / "config" / "content_inventory.json")
-    return tuple(sorted(path.resolve() for path in paths if path.is_file()))
+    resolved_paths = (path.resolve() for path in paths if path.is_file())
+    return tuple(
+        sorted(
+            resolved_paths,
+            key=lambda path: path.relative_to(REPOSITORY_ROOT).as_posix(),
+        )
+    )
 
 
 def _source_fingerprint() -> str:
