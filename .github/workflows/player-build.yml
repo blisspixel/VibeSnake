@@ -3,7 +3,6 @@ name: Player build
 on:
   push:
     branches: [main]
-    tags: ["v*"]
   workflow_dispatch:
 
 concurrency:
@@ -130,36 +129,3 @@ jobs:
             --latest=false \
             --notes-file "${NOTES}" \
             --title "Vibe Snake player latest (main)"
-
-      - name: Publish GitHub Release for tags
-        if: startsWith(github.ref, 'refs/tags/')
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          set -euo pipefail
-          NOTES="$(mktemp)"
-          cat > "${NOTES}" <<'EOF'
-          Playable Vibe Snake build.
-
-          Easy path:
-            git clone https://github.com/blisspixel/VibeSnake.git
-            cd VibeSnake
-            python3.14 -m venv .venv && source .venv/bin/activate
-            python -m pip install --require-hashes --only-binary=:all: -r requirements-runtime.lock
-            python -m pip install --no-deps --no-build-isolation -e .
-            vibesnake
-
-          Update later:
-            vibesnake update
-            vibesnake status
-
-          Includes the eight-station offline radio catalog under assets/audio/radio/.
-          EOF
-          gh release create "${GITHUB_REF_NAME}" \
-            dist/*.whl \
-            dist/*.tar.gz \
-            dist/VibeSnake-player-source.zip \
-            dist/SHA256SUMS.txt \
-            --generate-notes \
-            --notes-file "${NOTES}" \
-            --title "Vibe Snake ${GITHUB_REF_NAME}"

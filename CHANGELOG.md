@@ -4,6 +4,11 @@ Notable player-facing and engineering changes are recorded here. The project is 
 
 ## Unreleased
 
+- Advanced the development identity to canonical SemVer `0.3.0-alpha.1`, mapped deliberately to Python package version `0.3.0a1`, with one root `VERSION` authority and a drift gate across native and Python identities.
+- Removed versioned tag publication from the continuous Python source-snapshot workflow. `player-latest` remains the explicit source/reference channel from `main`.
+- Added fail-closed unsigned native alpha assembly. It requires one matching three-platform Release matrix, deterministic qualification packages, exact manifests and checksums, detached provenance, canonical alpha tag identity, and a release-ready content inventory before GitHub prerelease publication.
+- Kept every qualification and stable output `publicationEligible: false`; alpha downloads are renamed `-unsigned-preview` and carry an aggregate manifest, checksums, provenance, and explicit signing and compatibility limitations.
+
 ### Changed
 
 - Refreshed the qualified development and CI toolchain against generally available releases on 2026-08-10. Godot remains on 4.7.1 stable and .NET remains on the 10.0.302 LTS SDK; preview Godot 4.8 and .NET 11 builds remain excluded. GitHub Actions are pinned by commit to their current stable releases, .NET test and coverage packages are current, and both hash-locked Python graphs were regenerated from current stable packages. Coverlet 10's expanded branch instrumentation measures Rules at 95.77/88.69 percent and Persistence at 94.1/87.27 percent line/branch, so the current alpha gate is rebaselined without test removal to 90 percent line and 85 percent branch per measured module; the roadmap's 0.4 gate remains 90 percent branch coverage.

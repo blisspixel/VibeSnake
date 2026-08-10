@@ -202,6 +202,7 @@ def validate_release_matrix(
             (
                 "passed",
                 "qualificationOnly",
+                "assemblyEligible",
                 "optionalPackOutputSeparate",
                 "playerDataExcluded",
                 "uninstallPreservesPlayerData",
@@ -217,6 +218,14 @@ def validate_release_matrix(
             errors.append(f"{platform} output.packageSha256 must be a SHA-256 digest")
         if not isinstance(output.get("packageBytes"), int) or output["packageBytes"] <= 0:
             errors.append(f"{platform} output.packageBytes must be a positive integer")
+        expected_extension = ".tar.gz" if platform == "linux-x64" else ".zip"
+        direct_download_file_name = output.get("directDownloadFileName")
+        if (
+            not isinstance(direct_download_file_name, str)
+            or not direct_download_file_name.startswith("VibeSnake-")
+            or not direct_download_file_name.endswith(f"-{platform}-qualification{expected_extension}")
+        ):
+            errors.append(f"{platform} output.directDownloadFileName is not a qualification package")
         product_version = output.get("productVersion")
         if not isinstance(product_version, str) or not product_version:
             errors.append(f"{platform} output.productVersion must be nonempty")
@@ -929,6 +938,8 @@ def validate_release_matrix(
                 "platform": platform,
                 "artifactManifestSha256": manifest_sha,
                 "packageSha256": package_sha,
+                "packageBytes": output.get("packageBytes"),
+                "directDownloadFileName": direct_download_file_name,
                 "fileCount": manifest.get("fileCount"),
                 "totalBytes": manifest.get("totalBytes"),
                 "runtimeIdentifier": dependencies.get("runtimeIdentifier"),

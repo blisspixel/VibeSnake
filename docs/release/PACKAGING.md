@@ -1,6 +1,6 @@
 # Native Release Outputs
 
-Status: deterministic qualification packaging implemented; signed publication and storefront submission are not configured.
+Status: deterministic qualification and unsigned alpha assembly are implemented; first-alpha approval, signed publication, and storefront submission remain pending.
 
 The three native jobs are joined by `release-matrix-qualification-v1`. The aggregate gate requires exactly Windows x64, macOS Universal, and Linux x64 rows from one source revision and build mode, with one deterministic smoke hash and lock-set digest. Each row cross-checks the artifact manifest SHA-256 against signing readiness, verifies immutable external user data and logs under the read-only install smoke, and retains the deterministic package digest. The provenance job cannot run unless this complete unsigned matrix passes.
 
@@ -17,6 +17,14 @@ The qualified Godot export is an input, not the final download. `ReleaseOutputPl
 | Linux x64 | Portable folder | Versioned tar.gz archive | Portable folder |
 
 Qualification packages end in `-qualification` and always report `publicationEligible: false`. They prove archive layout and reproducibility without pretending that an unsigned artifact is ready for players.
+
+## Unsigned native alpha channel
+
+Canonical alpha versions use SemVer in [VERSION](../../VERSION), such as `0.3.0-alpha.1`. Python package metadata uses the equivalent PEP 440 spelling, such as `0.3.0a1`. CI rejects drift among `VERSION`, `ProductIdentity.AppVersion`, the Python package, and the source fallback.
+
+Versioned tags are not handled by the source-snapshot workflow. A tag such as `v0.3.0-alpha.1` can reach the native prerelease publisher only after all three matching-platform `Release` jobs, the aggregate release matrix, detached provenance, canonical version checks, and the release-ready content inventory pass. The assembler then rehashes each qualification package and its two manifests, validates its checksum file and matrix row, rejects extra files, and copies the exact bytes to explicit `-unsigned-preview` names. It emits one aggregate manifest and checksum file. Stable publication eligibility remains false.
+
+The content gate currently fails because no source asset is export-eligible. No tag should be created until the first approved core and radio-pack output exists and the exact downloaded native artifacts receive the documented human review.
 
 ## Files emitted beside each package
 
@@ -46,6 +54,8 @@ A non-qualification package requires a `Release` build with a full source revisi
 - Explicit direct-download or storefront approval.
 
 Linux has no invented platform-signature claim, but still requires final permission, runtime-baseline, checksum, provenance, and channel review.
+
+Unsigned alpha publication is a narrow prerelease exception, not a weakening of this stable boundary. Release notes must disclose unsigned Windows/macOS packages, Gatekeeper behavior, prerelease compatibility risk, and the separate optional-content boundary. Store or stable output still requires every protected operation above.
 
 Application uninstall and optional-pack removal are separate operations. The packaging contract never includes player data and declares that uninstall preserves it. Any future installer must retain that behavior unless a distinct, explicit player-data removal choice is designed and qualified.
 

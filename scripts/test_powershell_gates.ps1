@@ -169,10 +169,14 @@ try {
     $attestationJobStart = $ciWorkflow.IndexOf(
         "  attest-qualified-manifests:",
         [StringComparison]::Ordinal)
+    $alphaPublishJobStart = $ciWorkflow.IndexOf(
+        "  publish-native-alpha:",
+        [StringComparison]::Ordinal)
     if (
         $godotJobStart -lt 0 -or
         $releaseMatrixJobStart -le $godotJobStart -or
-        $attestationJobStart -le $releaseMatrixJobStart
+        $attestationJobStart -le $releaseMatrixJobStart -or
+        $alphaPublishJobStart -le $attestationJobStart
     ) {
         throw "CI must keep artifact smoke, aggregate matrix, and provenance in ordered separate jobs."
     }
@@ -210,7 +214,9 @@ try {
     if ($releaseMatrixJob.Contains("id-token: write", [StringComparison]::Ordinal)) {
         throw "Aggregate release matrix must not receive provenance identity permissions."
     }
-    $attestationJob = $ciWorkflow.Substring($attestationJobStart)
+    $attestationJob = $ciWorkflow.Substring(
+        $attestationJobStart,
+        $alphaPublishJobStart - $attestationJobStart)
     foreach ($requiredAttestationFragment in @(
         "needs: [godot-smoke, release-matrix]",
         "id-token: write",
@@ -222,6 +228,35 @@ try {
         if (-not $attestationJob.Contains($requiredAttestationFragment, [StringComparison]::Ordinal)) {
             throw "Separated provenance job is missing: $requiredAttestationFragment"
         }
+    }
+    $alphaPublishJob = $ciWorkflow.Substring($alphaPublishJobStart)
+    foreach ($requiredAlphaPublishFragment in @(
+        "startsWith(github.ref, 'refs/tags/v') && contains(github.ref_name, '-alpha.')",
+        "needs: [release-matrix, attest-qualified-manifests]",
+        "contents: write",
+        "python scripts/content_inventory.py --check --release-ready",
+        "python scripts/assemble_unsigned_preview.py preview-channel",
+        '--tag "${{ github.ref_name }}"',
+        '--expected-revision "${{ github.sha }}"',
+        "gh release create",
+        "--verify-tag",
+        "--prerelease",
+        "--latest=false"
+    )) {
+        if (-not $alphaPublishJob.Contains($requiredAlphaPublishFragment, [StringComparison]::Ordinal)) {
+            throw "Native alpha publication job is missing: $requiredAlphaPublishFragment"
+        }
+    }
+
+    $playerBuildWorkflow = Get-Content -LiteralPath (
+        Join-Path $repositoryRoot ".github/workflows/player-build.yml") -Raw
+    if ($playerBuildWorkflow.Contains('tags: ["v*"]', [StringComparison]::Ordinal)) {
+        throw "Source player workflow must not own versioned tag publication."
+    }
+    if ($playerBuildWorkflow.Contains(
+        "Publish GitHub Release for tags",
+        [StringComparison]::Ordinal)) {
+        throw "Source player workflow must not publish versioned releases."
     }
 
     $caseCount = 20 + $prohibitedPaths.Count + $invalidPaths.Count

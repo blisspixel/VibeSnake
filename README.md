@@ -15,7 +15,7 @@ Vibe Snake is a native Godot and C# arcade successor to Snake. It combines a cle
 
 The product path is Godot 4.7.1, .NET 10, and pure C# rules. The older Python/Pygame implementation remains a frozen behavior oracle and migration reference. New product work belongs in `game/` and `native/`.
 
-This is an active alpha. Automated Windows, macOS, and Linux qualification is extensive, but Store-ready 1.0 is not ready. Physical-device review, named-hardware performance, approved content packs, signing, and structured human playtesting remain release gates. See [current status](docs/release/STATUS.md) and the [roadmap](ROADMAP.md) for the evidence-backed details.
+This is active `0.3.0-alpha.1` development. Automated Windows, macOS, and Linux qualification is extensive, but Store-ready 1.0 is not ready. Physical-device review, named-hardware performance, approved content packs, signing, and structured human playtesting remain release gates. See [current status](docs/release/STATUS.md) and the [roadmap](ROADMAP.md) for the evidence-backed details.
 
 ## Current native build
 
@@ -74,7 +74,7 @@ cd VibeSnake
 ./play.sh
 ```
 
-The current floating source build and checksums are published under [player-latest](https://github.com/blisspixel/VibeSnake/releases/tag/player-latest). Packaged store-ready players are not published yet.
+The current floating source build and checksums are published under [player-latest](https://github.com/blisspixel/VibeSnake/releases/tag/player-latest). Versioned native alpha releases now have a separate fail-closed pipeline, but the first tag remains blocked on approved packaged content and an exact artifact review. See [native release outputs](docs/release/PACKAGING.md).
 
 ## Controls
 

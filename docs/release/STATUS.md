@@ -17,7 +17,7 @@ The public checkout still includes the eight-station offline radio library (95 t
 See [ROADMAP.md Product path](../../ROADMAP.md#product-path-read-this-first). Short form:
 
 1. **Godot shell depth** - physical controller/audio-device evidence, retained scaling screenshots, authored cues, and feel review (automated fallback-audio stress and recovery now pass).
-2. **Protected signing and selected-store integration (V030-10)** - deterministic qualification archives and depot shapes exist, but they are deliberately not publishable.
+2. **Native alpha approval, then protected signing and selected-store integration (V030-10)** - `v0.3.0-alpha.1` has a fail-closed unsigned prerelease path, but content approval and an exact artifact review still block the tag. Stable and store publication remain protected operations.
 3. **First export-eligible packs (V030-08/09)** - inventory is classified; ship packs are empty by gate.
 4. **Structured human playtests (V070-06)** - execute the qualified four-cohort, three-stage protocol; its automated handoff is ready but honestly records zero human sessions.
 5. **Power-up human decision gate (V070-09)** - run the six qualified synergy scenarios, evaluate route-decision quality, and make the evidence-backed keep/remove decision for the default-off Mutation Fork prototype. The automated C#/Godot foundation is complete.
@@ -45,13 +45,13 @@ See [ROADMAP.md Product path](../../ROADMAP.md#product-path-read-this-first). Sh
 
 | Area | Verified state |
 | --- | --- |
-| Version | 0.2.1 alpha |
+| Version | `0.3.0-alpha.1` development (`0.3.0a1` Python package spelling) |
 | Canonical remote | [blisspixel/VibeSnake](https://github.com/blisspixel/VibeSnake), sole branch `main` |
 | Ship runtime (target) | Godot 4.7.1 .NET + pure C# rules; packaged player without Python |
-| Oracle / alpha checkout | Python 3.11-3.14 + Pygame CE 2.5.7+ (reference only) |
-| Player delivery | Root launchers run the native Godot source build; native export smokes run in CI; floating `player-latest` currently provides source/reference packages, not signed native installers |
+| Oracle / alpha checkout | Python 3.11-3.14 + Pygame CE 2.5.8 (reference only) |
+| Player delivery | Root launchers run the native Godot source build; floating `player-latest` provides source/reference packages only. Versioned alpha tags are owned exclusively by the native Release matrix, require all three platforms and provenance, and publish explicit unsigned-preview archives only after content approval. No native tag has been created yet. |
 | Hosted CI | Python oracle matrix (3.11-3.14), native rules on Windows/macOS/Linux, and native Godot player export smoke on all three platforms pass on tip of `main` |
-| Python deterministic tests | 534 passing locally on Python 3.14; hosted CI runs the supported 3.11 through 3.14 matrix |
+| Python deterministic tests | 551 passing locally on Python 3.14; hosted CI runs the supported 3.11 through 3.14 matrix |
 | Python line coverage | 87.12 percent locally with an 80 percent floor enforced by configuration and CI |
 | Native toolchain | Godot 4.7.1 Mono and .NET SDK 10.0.302 pinned and verified |
 | Native contract tests | **892** passing on .NET 10 with 90 percent line and 85 percent branch floors per measured module under Coverlet 10; Rules measures 95.77/88.69 percent line/branch, Persistence measures 94.1/87.27 percent, creator validation measures 95.98/94.00 percent, and aggregate native coverage is 94.8/87.86 percent. The 0.4 acceptance target remains 90 percent branch coverage. |
@@ -129,7 +129,7 @@ Earlier 0.2.0 foundations remain in effect; see [CHANGELOG.md](../../CHANGELOG.m
 ## Release blockers
 
 1. **Godot shell depth:** physical multi-controller/audio-device evidence, retained platform scaling screenshots, authored cues, and feel review. Central theme/vector prompt qualification and automated fallback stress/recovery are complete.
-2. **Protected platform signing, selected-store integration, and player-facing pack recovery (V030-10)** while exact deterministic qualification archives, store-depot shapes, checksums, portable export, manifest, read-only install, consent-bound recoverable quarantine/restore, and player-data separation gates already pass.
+2. **Approve and inspect the first native alpha, then complete protected platform signing, selected-store integration, and player-facing pack recovery (V030-10).** Exact deterministic qualification archives, an alpha-only assembly gate, store-depot shapes, checksums, provenance, portable export, manifest, read-only install, consent-bound recoverable quarantine/restore, and player-data separation gates already pass.
 3. **First export-eligible core/radio packs** (`exportEligible` still zero): loudness, credits, allowlists.
 4. Expand native artifact smokes through physical controller/device-change and retained screenshot paths; automated audio-graph failure, scaling math, and lifecycle paths now retain evidence.
 5. Replace remaining repository-relative asset assumptions with the target content service for ship packs.

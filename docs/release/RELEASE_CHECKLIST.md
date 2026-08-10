@@ -2,6 +2,16 @@
 
 The current alpha does not meet this checklist. See [STATUS.md](STATUS.md) for the active blockers and [ROADMAP.md](../../ROADMAP.md) for the versioned dependency path. This checklist is the final 1.0 go or no-go view; the roadmap defines which release establishes each item.
 
+## First native alpha checkpoint
+
+- [x] One canonical SemVer controls native identity and release tags, with an explicit PEP 440 mapping for Python packages.
+- [x] Source snapshots cannot publish versioned releases.
+- [x] Native alpha assembly requires the exact Windows, macOS, and Linux Release matrix, deterministic package hashes, manifests, checksums, and detached provenance.
+- [x] Alpha assets are named and disclosed as unsigned previews without changing stable publication eligibility.
+- [ ] Core and radio content have approved export allowlists and a production optional-pack output.
+- [ ] The exact downloaded three-platform artifacts pass the manual launch, display, input, audio, and content review.
+- [ ] Create `v0.3.0-alpha.1` only after the two preceding gates close and hosted CI is green on its source revision.
+
 ## Product scope
 
 - [ ] The fun thesis and intended run arc are validated through fresh-player, returning-player, controller, and accessibility cohorts.

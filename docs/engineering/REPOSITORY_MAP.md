@@ -6,7 +6,8 @@
 | --- | --- |
 | [README.md](../../README.md) | Concise product entry point and document links |
 | [CONTRIBUTING.md](../../CONTRIBUTING.md) | Contribution workflow and definition of done |
-| [pyproject.toml](../../pyproject.toml) | Package metadata, `vibesnake` console command, build backend, pytest, coverage, and Ruff policy |
+| [VERSION](../../VERSION) | Canonical product SemVer shared by native builds and release tags |
+| [pyproject.toml](../../pyproject.toml) | Python package metadata and PEP 440 version, `vibesnake` console command, build backend, pytest, coverage, and Ruff policy |
 | [requirements.txt](../../requirements.txt) | Runtime dependencies |
 | [requirements-dev.txt](../../requirements-dev.txt) | Human-edited development dependency constraints |
 | [requirements-ci.lock](../../requirements-ci.lock) | Universal Python 3.11 through 3.14 graph with exact versions and SHA-256 hashes |

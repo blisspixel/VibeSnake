@@ -219,18 +219,15 @@ def _document_hashes(documents_root: Path, errors: list[str]) -> dict[str, str]:
 
 
 def _canonical_app_version(documents_root: Path, errors: list[str]) -> str | None:
-    pyproject_path = documents_root / "pyproject.toml"
-    if not pyproject_path.is_file():
-        errors.append(f"missing canonical project metadata: {pyproject_path}")
+    version_path = documents_root / "VERSION"
+    if not version_path.is_file():
+        errors.append(f"missing canonical product version: {version_path}")
         return None
-    match = re.search(
-        r'(?m)^version\s*=\s*"([0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?)"\s*$',
-        pyproject_path.read_text(encoding="utf-8"),
-    )
-    if match is None:
+    version = version_path.read_text(encoding="utf-8").strip()
+    if not VERSION_PATTERN.fullmatch(version):
         errors.append("could not resolve the canonical application version")
         return None
-    return match.group(1)
+    return version
 
 
 def _validate_media_bytes(path: Path, media_kind: str, label: str, errors: list[str]) -> None:

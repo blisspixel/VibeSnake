@@ -400,3 +400,86 @@ jobs:
           path: ${{ steps.provenance.outputs.bundle-path }}
           if-no-files-found: error
           retention-days: 30
+
+  publish-native-alpha:
+    name: Publish qualified unsigned native alpha
+    if: startsWith(github.ref, 'refs/tags/v') && contains(github.ref_name, '-alpha.')
+    needs: [release-matrix, attest-qualified-manifests]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      actions: read
+      contents: write
+
+    steps:
+      - name: Check out exact tagged source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.14"
+
+      - name: Require approved release content
+        run: python scripts/content_inventory.py --check --release-ready
+
+      - name: Check exact product and tag version
+        run: python scripts/check_product_version.py
+
+      - name: Download qualified channel-shape packages
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: vibesnake-*-unsigned-channel-shape
+          path: preview-channel
+
+      - name: Download qualified release matrix
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: vibesnake-release-matrix
+          path: preview-matrix
+
+      - name: Download detached provenance
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: vibesnake-*-provenance
+          path: preview-provenance
+
+      - name: Assemble fail-closed unsigned preview
+        run: >-
+          python scripts/assemble_unsigned_preview.py preview-channel
+          --provenance-root preview-provenance
+          --matrix preview-matrix/release_matrix.json
+          --tag "${{ github.ref_name }}"
+          --expected-revision "${{ github.sha }}"
+          --output dist/native-alpha
+
+      - name: Retain assembled native alpha
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: vibesnake-native-alpha
+          path: dist/native-alpha
+          if-no-files-found: error
+          retention-days: 90
+          compression-level: 0
+
+      - name: Publish GitHub prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          NOTES="$(mktemp)"
+          cat > "${NOTES}" <<'EOF'
+          Native alpha preview for Windows x64, macOS Universal, and Linux x64.
+
+          These archives passed the exact three-platform Release matrix and include checksums plus detached provenance. Windows and macOS packages are currently unsigned. macOS Gatekeeper may require an explicit local override.
+
+          This is a prerelease. Save and replay compatibility may change before stable release. Optional radio content remains a separate pack and is never silently mixed into the base archives.
+          EOF
+          gh release create "${GITHUB_REF_NAME}" \
+            dist/native-alpha/* \
+            --verify-tag \
+            --prerelease \
+            --latest=false \
+            --generate-notes \
+            --notes-file "${NOTES}" \
+            --title "Vibe Snake ${GITHUB_REF_NAME}"

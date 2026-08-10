@@ -176,14 +176,15 @@ def _digest_map(value: Any, label: str, errors: list[str]) -> dict[str, str]:
 
 
 def _canonical_app_version(errors: list[str]) -> str | None:
-    match = re.search(
-        r'(?m)^version\s*=\s*"([0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?)"\s*$',
-        (ROOT / "pyproject.toml").read_text(encoding="utf-8"),
-    )
-    if match is None:
+    version_path = ROOT / "VERSION"
+    if not version_path.is_file():
+        errors.append(f"missing canonical product version: {version_path}")
+        return None
+    version = version_path.read_text(encoding="utf-8").strip()
+    if not VERSION_PATTERN.fullmatch(version):
         errors.append("could not resolve the canonical application version")
         return None
-    return match.group(1)
+    return version
 
 
 def validate_contract(contract_path: Path = CONTRACT_PATH) -> tuple[list[str], dict[str, Any] | None]:

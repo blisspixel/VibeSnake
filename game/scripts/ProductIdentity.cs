@@ -2,10 +2,9 @@ namespace VibeSnake.Game;
 
 /// <summary>
 /// Product identity strings shared by shell diagnostics, replays, and support UI.
-/// Keep aligned with the published package version in pyproject.toml until a
-/// single native packaging version contract owns this value.
+/// Keep aligned with the canonical SemVer value in the repository VERSION file.
 /// </summary>
 internal static class ProductIdentity
 {
-    public const string AppVersion = "0.2.1";
+    public const string AppVersion = "0.3.0-alpha.1";
 }

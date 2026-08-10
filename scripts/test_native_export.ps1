@@ -32,14 +32,11 @@ $ErrorActionPreference = "Stop"
 
 $repositoryRoot = Split-Path -Parent $PSScriptRoot
 $projectDirectory = Join-Path $repositoryRoot "game"
-$pyprojectText = Get-Content -LiteralPath (Join-Path $repositoryRoot "pyproject.toml") -Raw
-$productVersionMatch = [regex]::Match(
-    $pyprojectText,
-    '(?m)^version\s*=\s*"([0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?)"\s*$')
-if (-not $productVersionMatch.Success) {
-    throw "Could not resolve the canonical product version from pyproject.toml."
+$versionPath = Join-Path $repositoryRoot "VERSION"
+$productVersion = (Get-Content -LiteralPath $versionPath -Raw).Trim()
+if ($productVersion -notmatch '^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(?:-(alpha|beta|rc)\.[1-9][0-9]*)?$') {
+    throw "Could not resolve a canonical product SemVer from VERSION."
 }
-$productVersion = $productVersionMatch.Groups[1].Value
 $resolvedEvidenceDirectory = if ($EvidenceDirectory) {
     [System.IO.Path]::GetFullPath($EvidenceDirectory)
 } else {

@@ -94,10 +94,11 @@ def _write_platform(root: Path, platform: str, build_mode: str = "Release") -> N
             "schemaVersion": 1,
             "kind": "release-output-plan-v1",
             "product": "Vibe Snake",
-            "productVersion": "0.2.1",
+            "productVersion": "0.3.0-alpha.1",
             "platform": platform,
             "passed": True,
             "qualificationOnly": True,
+            "assemblyEligible": True,
             "optionalPackOutputSeparate": True,
             "playerDataExcluded": True,
             "uninstallPreservesPlayerData": True,
@@ -106,6 +107,9 @@ def _write_platform(root: Path, platform: str, build_mode: str = "Release") -> N
             "baseGameIncludesOptionalPacks": False,
             "packageSha256": "f" * 64,
             "packageBytes": 100,
+            "directDownloadFileName": (
+                f"VibeSnake-0.3.0-alpha.1-{platform}-qualification" + (".tar.gz" if platform == "linux-x64" else ".zip")
+            ),
         },
     )
     resource_samples = [

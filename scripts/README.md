@@ -9,7 +9,7 @@ This directory contains explicit command-line tools. Runtime code belongs under 
 | `check_source_policy.py` | Executable anti-slop, Unicode, Python placeholder, and signing-material exclusion policy |
 | `lock_python_dependencies.py` | CI and player-runtime hash-lock freshness checks and explicit regeneration |
 | `check_docs.py` | Canonical documentation discovery and relative-link validation |
-| `check_product_version.py` | Align `ProductIdentity.AppVersion` with `pyproject.toml` package version |
+| `check_product_version.py` | Align canonical `VERSION`, native `ProductIdentity.AppVersion`, and the equivalent PEP 440 package version |
 | `capture_readme_screenshots.py` | Isolated current-build README screenshot capture and freshness verification |
 | `visual_generate_badges.py` | Deterministic radio-station badge generation and byte verification |
 | `visual_generate_logo.py` | Preferred brand-logo hash and dimension verification |
@@ -29,6 +29,7 @@ This directory contains explicit command-line tools. Runtime code belongs under 
 | `check_release_rehearsal.py` | Validate the V090-10 staged artifact, update, rollback, removal, withdrawal, protected-data, retained-file, and operational-authority record |
 | `check_stable_promotion.py` | Validate the final protected 1.0 tag rebuild, ten accepted upstream decisions, public artifacts, optional pack, install smokes, preserved evidence, and stable contract |
 | `check_release_matrix.py` | Cross-bind the three native CI artifact, source, state, dependency, signing-readiness, read-only-install, deterministic-package, launch, lifecycle, reliability, fault, performance, and accessibility identities |
+| `assemble_unsigned_preview.py` | Fail closed unless an alpha tag, canonical version, complete Release matrix, three deterministic packages, checksums, and detached provenance all match, then assemble explicit unsigned-preview assets |
 | `test_native_export.ps1` | Read-only exported-player smoke, external user-data/log, artifact qualification, signing readiness, candidate reliability/fault/performance/accessibility and mouse evidence, optional clean-launch campaigns, and lifecycle/migration preflight |
 | `inspect_native_artifact.ps1` | Payload rules, portability scan, and SHA-256 manifest |
 | `install_godot.ps1` | Checksum-verified Godot editor bootstrap |

@@ -33,7 +33,7 @@ def _write_bytes(path: Path, value: bytes) -> None:
 
 def _write_final_documents(root: Path) -> dict[str, str]:
     root.mkdir(parents=True, exist_ok=True)
-    (root / "pyproject.toml").write_text('[project]\nversion = "1.0.0"\n', encoding="utf-8")
+    (root / "VERSION").write_text("1.0.0\n", encoding="utf-8")
     hashes: dict[str, str] = {}
     for index, relative_path in enumerate(REQUIRED_DOCUMENT_PATHS):
         path = root / relative_path
