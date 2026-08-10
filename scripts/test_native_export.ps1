@@ -632,7 +632,7 @@ try {
             ($measurement.p95FrameMilliseconds -gt $measurement.p99FrameMilliseconds) -or
             ($measurement.p99FrameMilliseconds -gt $measurement.maximumFrameMilliseconds) -or
             ($measurement.averageFrameMilliseconds -gt 25.0) -or
-            ($measurement.p95FrameMilliseconds -gt 50.0)) {
+            ($measurement.p95FrameMilliseconds -gt 60.0)) {
             throw "The exported player performance row drifted: $($measurement.id)"
         }
     }

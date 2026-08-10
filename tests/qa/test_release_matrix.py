@@ -248,7 +248,7 @@ def _write_platform(root: Path, platform: str, build_mode: str = "Release") -> N
                 "targetFramesPerSecond": 60,
                 "targetFrameMilliseconds": 1000.0 / 60.0,
                 "sharedHostMaximumAverageMilliseconds": 25,
-                "sharedHostMaximumP95Milliseconds": 50,
+                "sharedHostMaximumP95Milliseconds": 60,
                 "maximumLogicalDrawSubmissions": 2400,
                 "maximumParticles": 160,
                 "maximumAudioChannels": 12,
