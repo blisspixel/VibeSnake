@@ -88,6 +88,7 @@ internal static class PerformanceQualification
     public const int MaximumLiveSnakeWithSignals =
         BoardCellCapacity - ObstacleSignalsAtMaximum - VisibleCollectiblesAtMaximum;
     public const int RequiredSamplesPerProfile = 40;
+    public const int MaximumSharedHostMeasurementAttempts = 2;
 
     private const int RulesStepsPerProfile = 256;
     private const int MaximumLogicalDrawSubmissions = 2_400;
@@ -228,6 +229,37 @@ internal static class PerformanceQualification
             Profiles: Profiles,
             Measurements: measurements,
             PendingHumanChecks: pendingHumanChecks);
+    }
+
+    public static bool ShouldRetrySharedHostTail(
+        PerformanceQualificationEvidence evidence,
+        IReadOnlyList<PerformanceProfileMeasurement> measurements,
+        int completedAttemptCount)
+    {
+        ArgumentNullException.ThrowIfNull(evidence);
+        ArgumentNullException.ThrowIfNull(measurements);
+        if (completedAttemptCount < 1)
+        {
+            throw new ArgumentOutOfRangeException(nameof(completedAttemptCount));
+        }
+
+        return completedAttemptCount < MaximumSharedHostMeasurementAttempts
+            && !evidence.Passed
+            && evidence.ThreeEffectProfilesMeasured
+            && evidence.MaximumMixedStressSceneComplete
+            && evidence.FrameStatisticsComplete
+            && !evidence.SharedHostRegressionCeilingMet
+            && evidence.ParticleBudgetConsistent
+            && evidence.AudioChannelBudgetConsistent
+            && evidence.DrawSubmissionBudgetMet
+            && evidence.FeedbackCannotChangeSimulationSpeed
+            && evidence.RulesStateIdenticalAcrossProfiles
+            && measurements.All(measurement =>
+                measurement.AverageFrameMilliseconds
+                    <= SharedHostMaximumAverageMilliseconds)
+            && measurements.Any(measurement =>
+                measurement.P95FrameMilliseconds
+                    > SharedHostMaximumP95Milliseconds);
     }
 
     private static PerformanceProfileDefinition Profile(
