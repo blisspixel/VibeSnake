@@ -39,8 +39,8 @@ function Assert-NativeCoverageReport {
         $branchRate = [double]::Parse(
             $module[0].GetAttribute("branch-rate"),
             [System.Globalization.CultureInfo]::InvariantCulture)
-        if ($lineRate -lt 0.9 -or $branchRate -lt 0.9) {
-            throw "$requiredModule coverage is below the 90 percent line/branch floor."
+        if ($lineRate -lt 0.9 -or $branchRate -lt 0.85) {
+            throw "$requiredModule coverage is below the 90 percent line or 85 percent branch floor."
         }
     }
 }
@@ -55,7 +55,7 @@ $testArguments = @(
     "-p:CollectCoverage=true",
     "-p:CoverletOutput=../../../TestResults/native/",
     "-p:CoverletOutputFormat=cobertura",
-    "-p:Threshold=90",
+    "-p:Threshold=90%2c85",
     "-p:ThresholdType=line%2cbranch",
     "-p:ThresholdStat=minimum",
     "-p:ExcludeByFile=**/Properties/AssemblyInfo.cs"

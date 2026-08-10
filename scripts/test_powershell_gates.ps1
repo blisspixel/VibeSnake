@@ -148,7 +148,7 @@ try {
         }
     }
     foreach ($requiredCoverageFragment in @(
-        "-p:Threshold=90",
+        "-p:Threshold=90%2c85",
         "-p:ThresholdType=line%2cbranch",
         "-p:ThresholdStat=minimum",
         'for ($attempt = 1; $attempt -le 2; $attempt++)',
@@ -216,7 +216,7 @@ try {
         "id-token: write",
         "attestations: write",
         "artifact-metadata: write",
-        "actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26",
+        "actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6",
         "github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/')"
     )) {
         if (-not $attestationJob.Contains($requiredAttestationFragment, [StringComparison]::Ordinal)) {

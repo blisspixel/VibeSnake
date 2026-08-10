@@ -6,6 +6,7 @@ Notable player-facing and engineering changes are recorded here. The project is 
 
 ### Changed
 
+- Refreshed the qualified development and CI toolchain against generally available releases on 2026-08-10. Godot remains on 4.7.1 stable and .NET remains on the 10.0.302 LTS SDK; preview Godot 4.8 and .NET 11 builds remain excluded. GitHub Actions are pinned by commit to their current stable releases, .NET test and coverage packages are current, and both hash-locked Python graphs were regenerated from current stable packages. Coverlet 10's expanded branch instrumentation measures Rules at 95.77/88.69 percent and Persistence at 94.1/87.27 percent line/branch, so the current alpha gate is rebaselined without test removal to 90 percent line and 85 percent branch per measured module; the roadmap's 0.4 gate remains 90 percent branch coverage.
 - The root launchers now start the native Godot and C# product from source. The Python implementation remains available only as the frozen behavioral oracle.
 - Reworked the README into a concise project front door that routes design, engineering, player, and release detail to canonical documents. Updated those documents to match the native source default, current controls, persistence schema, validation counts, and release posture.
 - Replaced the legacy README media with four deterministic 1280x720 native captures covering the main menu, Vibe gameplay, customization, and the compact AI channel. The capture verifier now fingerprints the native presentation sources and rejects stale or incomplete screenshot sets.

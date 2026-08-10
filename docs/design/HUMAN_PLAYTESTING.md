@@ -17,7 +17,7 @@ The retained automated handoff must say `automated-qualified-experience-unverifi
 
 ## Entry gate
 
-Run `pwsh -NoProfile -File scripts/test_native.ps1` on the exact build before a session block. The run must pass all tests, both 90 percent module coverage floors, and the Godot smoke. `TestResults/native/human_playtest_handoff.json` must then report:
+Run `pwsh -NoProfile -File scripts/test_native.ps1` on the exact build before a session block. The run must pass all tests, the current 90 percent line and 85 percent branch module floors, and the Godot smoke. `TestResults/native/human_playtest_handoff.json` must then report:
 
 - protocol hash matching the reviewed configuration;
 - all eleven required automated artifact paths present, including `power_decisions.json`;
