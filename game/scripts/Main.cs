@@ -15276,6 +15276,18 @@ public partial class Main : Node2D
         System.IO.Directory.CreateDirectory(directory);
         var path = System.IO.Path.Combine(directory, "performance.json");
         System.IO.File.WriteAllText(path, evidence.Serialize());
+        if (!evidence.Passed)
+        {
+            var summary = string.Join(
+                "; ",
+                measurements.Select(measurement =>
+                    $"{measurement.Id}: avg={measurement.AverageFrameMilliseconds:F2}ms, "
+                    + $"p95={measurement.P95FrameMilliseconds:F2}ms, "
+                    + $"p99={measurement.P99FrameMilliseconds:F2}ms, "
+                    + $"max={measurement.MaximumFrameMilliseconds:F2}ms"));
+            throw new InvalidOperationException(
+                "Performance qualification failed. Retained measurements: " + summary);
+        }
     }
 
     private void ExecuteBareArcadeLoopSmokeTest(PresentationFrameSummary frameSummary)

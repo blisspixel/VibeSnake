@@ -1795,8 +1795,8 @@ try {
     $performanceBudget = $performanceEvidence.budget
     if (($performanceBudget.targetFramesPerSecond -ne 60) -or
         ([Math]::Abs($performanceBudget.targetFrameMilliseconds - (1000.0 / 60.0)) -gt 0.001) -or
+        ($performanceBudget.sharedHostMaximumAverageMilliseconds -ne 25.0) -or
         ($performanceBudget.sharedHostMaximumP95Milliseconds -ne 50.0) -or
-        ($performanceBudget.sharedHostMaximumFrameMilliseconds -ne 100.0) -or
         ($performanceBudget.maximumLogicalDrawSubmissions -ne 2400) -or
         ($performanceBudget.maximumParticles -ne 160) -or
         ($performanceBudget.maximumAudioChannels -ne 12) -or
@@ -1827,8 +1827,8 @@ try {
             ($measurement.p95FrameMilliseconds -lt $measurement.p50FrameMilliseconds) -or
             ($measurement.p99FrameMilliseconds -lt $measurement.p95FrameMilliseconds) -or
             ($measurement.maximumFrameMilliseconds -lt $measurement.p99FrameMilliseconds) -or
+            ($measurement.averageFrameMilliseconds -gt $performanceBudget.sharedHostMaximumAverageMilliseconds) -or
             ($measurement.p95FrameMilliseconds -gt $performanceBudget.sharedHostMaximumP95Milliseconds) -or
-            ($measurement.maximumFrameMilliseconds -gt $performanceBudget.sharedHostMaximumFrameMilliseconds) -or
             ($measurement.driverDrawCallStatus -notin @("observed", "unavailable-headless-backend"))) {
             throw "Performance profile exceeded a capacity or shared-host regression budget: $requiredPerformanceProfile"
         }

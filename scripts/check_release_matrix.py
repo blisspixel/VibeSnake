@@ -516,8 +516,8 @@ def validate_release_matrix(
         budget = performance.get("budget")
         expected_budget = {
             "targetFramesPerSecond": 60,
+            "sharedHostMaximumAverageMilliseconds": 25,
             "sharedHostMaximumP95Milliseconds": 50,
-            "sharedHostMaximumFrameMilliseconds": 100,
             "maximumLogicalDrawSubmissions": 2400,
             "maximumParticles": 160,
             "maximumAudioChannels": 12,
@@ -597,11 +597,11 @@ def validate_release_matrix(
                 ):
                     errors.append(f"{measurement_label} frame timings must be positive numbers")
                     continue
-                _, p50, p95, p99, maximum = timings
+                average, p50, p95, p99, maximum = timings
                 maximum_p99 = max(maximum_p99, p99)
                 if not (p50 <= p95 <= p99 <= maximum):
                     errors.append(f"{measurement_label} percentile ordering is invalid")
-                if p95 > 50 or maximum > 100:
+                if average > 25 or p95 > 50:
                     errors.append(f"{measurement_label} exceeded the shared-host ceiling")
                 if measurement.get("driverDrawCallStatus") not in {
                     "observed",

@@ -34,8 +34,8 @@ internal sealed record PerformanceProfileMeasurement(
 internal sealed record PublishedPerformanceBudget(
     int TargetFramesPerSecond,
     double TargetFrameMilliseconds,
+    double SharedHostMaximumAverageMilliseconds,
     double SharedHostMaximumP95Milliseconds,
-    double SharedHostMaximumFrameMilliseconds,
     int MaximumLogicalDrawSubmissions,
     int MaximumParticles,
     int MaximumAudioChannels,
@@ -91,8 +91,8 @@ internal static class PerformanceQualification
 
     private const int RulesStepsPerProfile = 256;
     private const int MaximumLogicalDrawSubmissions = 2_400;
+    private const double SharedHostMaximumAverageMilliseconds = 25.0;
     private const double SharedHostMaximumP95Milliseconds = 50.0;
-    private const double SharedHostMaximumFrameMilliseconds = 100.0;
 
     public static IReadOnlyList<PerformanceProfileDefinition> Profiles { get; } =
     [
@@ -164,8 +164,8 @@ internal static class PerformanceQualification
             && measurement.MaximumObservedDriverDrawCalls >= 0
             && measurement.AverageObservedDriverDrawCalls >= 0.0);
         var sharedHostRegressionCeilingMet = measurements.All(measurement =>
-            measurement.P95FrameMilliseconds <= SharedHostMaximumP95Milliseconds
-            && measurement.MaximumFrameMilliseconds <= SharedHostMaximumFrameMilliseconds);
+            measurement.AverageFrameMilliseconds <= SharedHostMaximumAverageMilliseconds
+            && measurement.P95FrameMilliseconds <= SharedHostMaximumP95Milliseconds);
         var particleBudgetConsistent = Profiles.All(profile =>
             profile.ParticleCount <= VisualHierarchyPolicy.Budget.MaximumSimultaneousParticles);
         var maximumAudioChannels = AudioCueMixPolicy.SfxBusCapacity
@@ -199,15 +199,10 @@ internal static class PerformanceQualification
             && drawSubmissionBudgetMet
             && feedbackCannotChangeSimulationSpeed
             && rulesStateIdenticalAcrossProfiles;
-        if (!passed)
-        {
-            throw new InvalidOperationException("Performance qualification failed.");
-        }
-
         return new PerformanceQualificationEvidence(
             SchemaVersion: 1,
             Kind: "performance-qualification-v1",
-            Passed: true,
+            Passed: passed,
             ThreeEffectProfilesMeasured: threeEffectProfilesMeasured,
             MaximumMixedStressSceneComplete: maximumMixedStressSceneComplete,
             FrameStatisticsComplete: frameStatisticsComplete,
@@ -223,8 +218,8 @@ internal static class PerformanceQualification
             Budget: new PublishedPerformanceBudget(
                 TargetFramesPerSecond: 60,
                 TargetFrameMilliseconds: 1000.0 / 60.0,
+                SharedHostMaximumAverageMilliseconds: SharedHostMaximumAverageMilliseconds,
                 SharedHostMaximumP95Milliseconds: SharedHostMaximumP95Milliseconds,
-                SharedHostMaximumFrameMilliseconds: SharedHostMaximumFrameMilliseconds,
                 MaximumLogicalDrawSubmissions: MaximumLogicalDrawSubmissions,
                 MaximumParticles: VisualHierarchyPolicy.Budget.MaximumSimultaneousParticles,
                 MaximumAudioChannels: maximumAudioChannels,
