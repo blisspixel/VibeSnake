@@ -136,18 +136,21 @@ public sealed class PlayerDataRecoveryService
                 nameof(userDataRoot));
         }
 
-        UserDataRoot = Path.GetFullPath(userDataRoot)
-            .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-        var volumeRoot = Path.GetPathRoot(UserDataRoot)?.TrimEnd(
-            Path.DirectorySeparatorChar,
-            Path.AltDirectorySeparatorChar);
-        if (string.Equals(UserDataRoot, volumeRoot, StringComparison.OrdinalIgnoreCase))
+        var fullPath = Path.GetFullPath(userDataRoot);
+        var volumeRoot = Path.GetPathRoot(fullPath);
+        var pathComparison = OperatingSystem.IsWindows()
+            ? StringComparison.OrdinalIgnoreCase
+            : StringComparison.Ordinal;
+        if (string.Equals(fullPath, volumeRoot, pathComparison))
         {
             throw new ArgumentException(
                 "The player-data root cannot be a filesystem root.",
                 nameof(userDataRoot));
         }
 
+        UserDataRoot = fullPath.TrimEnd(
+            Path.DirectorySeparatorChar,
+            Path.AltDirectorySeparatorChar);
         BackupsDirectory = Path.Combine(UserDataRoot, BackupsDirectoryName);
     }
 
