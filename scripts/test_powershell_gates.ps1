@@ -152,6 +152,7 @@ try {
         "-p:ThresholdType=line%2cbranch",
         "-p:ThresholdStat=minimum",
         'for ($attempt = 1; $attempt -le 2; $attempt++)',
+        "Native tests failed; a coverage-report retry cannot hide a test failure.",
         "build-server",
         "Assert-NativeCoverageReport"
     )) {

@@ -8,6 +8,7 @@ Notable player-facing and engineering changes are recorded here. The project is 
 - Removed versioned tag publication from the continuous Python source-snapshot workflow. `player-latest` remains the explicit source/reference channel from `main`.
 - Added fail-closed unsigned native alpha assembly. It requires one matching three-platform Release matrix, deterministic qualification packages, exact manifests and checksums, detached provenance, canonical alpha tag identity, and a release-ready content inventory before GitHub prerelease publication.
 - Kept every qualification and stable output `publicationEligible: false`; alpha downloads are renamed `-unsigned-preview` and carry an aggregate manifest, checksums, provenance, and explicit signing and compatibility limitations.
+- Stabilized shared-host native qualification after an Ubuntu runner measured 993.4 rules steps per second against the former 1,000-step floor and then exhausted the job timeout by rerunning all 892 tests. The host-dependent floor is now a conservative 750 steps per second, the job permits normal runner variance, and only a missing or malformed coverage report can trigger the one clean rebuild retry. A real test failure now fails immediately.
 
 ### Changed
 

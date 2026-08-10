@@ -63,13 +63,19 @@ $testArguments = @(
 
 Push-Location $repositoryRoot
 try {
+    $coverageAccepted = $false
     for ($attempt = 1; $attempt -le 2; $attempt++) {
+        if (Test-Path -LiteralPath $coveragePath -PathType Leaf) {
+            Remove-Item -LiteralPath $coveragePath -Force
+        }
+        & dotnet @testArguments
+        if ($LASTEXITCODE -ne 0) {
+            throw "Native tests failed; a coverage-report retry cannot hide a test failure."
+        }
+
         try {
-            if (Test-Path -LiteralPath $coveragePath -PathType Leaf) {
-                Remove-Item -LiteralPath $coveragePath -Force
-            }
-            Invoke-Dotnet -CommandArguments $testArguments
             Assert-NativeCoverageReport
+            $coverageAccepted = $true
             Write-Output "Native tests with coverage passed on attempt $attempt."
             break
         }
@@ -78,7 +84,7 @@ try {
                 throw
             }
 
-            Write-Output "Native coverage attempt $attempt failed; rebuilding and retrying once. $_"
+            Write-Output "Native coverage report attempt $attempt failed; rebuilding and retrying once. $_"
             Invoke-Dotnet -CommandArguments @("build-server", "shutdown")
             Invoke-Dotnet -CommandArguments @(
                 "build",
@@ -88,6 +94,9 @@ try {
                 "--no-restore"
             )
         }
+    }
+    if (-not $coverageAccepted) {
+        throw "Native coverage report was not accepted."
     }
 }
 finally {

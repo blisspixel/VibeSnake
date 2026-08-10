@@ -11,7 +11,7 @@ namespace VibeSnake.Rules.Tests;
 public sealed class RulesThroughputEvidenceTests
 {
     private const int StepBudget = 50_000;
-    private const double MinimumStepsPerSecond = 1_000.0;
+    private const double MinimumStepsPerSecond = 750.0;
 
     private static readonly Direction[] TurnPattern =
     [
