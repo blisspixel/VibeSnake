@@ -15,6 +15,7 @@ This directory contains explicit command-line tools. Runtime code belongs under 
 | `visual_generate_logo.py` | Preferred brand-logo hash and dimension verification |
 | `content_inventory.py` | Deterministic source-content inventory and release blocker report |
 | `content_packs.py` | Core and optional pack manifest qualification |
+| `assemble_radio_pack.py` | Deterministic, fail-closed assembly of one approved optional radio pack with manifest, checksums, and curation evidence |
 | `assert_godot_toolchain.ps1` | SHA-512 archive, extracted editor SHA-256, and exact build identity verification |
 | `native_artifact_policy.ps1` | Shared prohibited-path rules for native bundles |
 | `platform_path_policy.ps1` | Absolute environment-path validation for tooling |
@@ -29,7 +30,7 @@ This directory contains explicit command-line tools. Runtime code belongs under 
 | `check_release_rehearsal.py` | Validate the V090-10 staged artifact, update, rollback, removal, withdrawal, protected-data, retained-file, and operational-authority record |
 | `check_stable_promotion.py` | Validate the final protected 1.0 tag rebuild, ten accepted upstream decisions, public artifacts, optional pack, install smokes, preserved evidence, and stable contract |
 | `check_release_matrix.py` | Cross-bind the three native CI artifact, source, state, dependency, signing-readiness, read-only-install, deterministic-package, launch, lifecycle, reliability, fault, performance, and accessibility identities |
-| `assemble_unsigned_preview.py` | Fail closed unless an alpha tag, canonical version, complete Release matrix, three deterministic packages, checksums, and detached provenance all match, then assemble explicit unsigned-preview assets |
+| `assemble_unsigned_preview.py` | Fail closed unless an alpha tag, canonical version, complete Release matrix, three deterministic packages, checksums, detached provenance, and one approved radio pack all match, then assemble explicit unsigned-preview assets |
 | `test_native_export.ps1` | Read-only exported-player smoke, external user-data/log, artifact qualification, signing readiness, candidate reliability/fault/performance/accessibility and mouse evidence, optional clean-launch campaigns, and lifecycle/migration preflight |
 | `inspect_native_artifact.ps1` | Payload rules, portability scan, and SHA-256 manifest |
 | `install_godot.ps1` | Checksum-verified Godot editor bootstrap |

@@ -1,10 +1,31 @@
+using System.IO.Compression;
 using System.Security.Cryptography;
+using System.Text;
 
 namespace VibeSnake.Persistence;
 
 public sealed record OptionalPackInspectionReport(
     IReadOnlyList<InstalledOptionalPack> Installed,
     IReadOnlyDictionary<string, string> Rejected);
+
+public enum OptionalPackInstallCode : byte
+{
+    Success = 0,
+    InvalidRequest = 1,
+    InvalidArchive = 2,
+    AlreadyInstalled = 3,
+    StoreBusy = 4,
+    IoError = 5,
+    StorageLimit = 6,
+}
+
+public sealed record OptionalPackInstallResult(
+    OptionalPackInstallCode Code,
+    string Message,
+    InstalledOptionalPack? Pack = null)
+{
+    public bool IsSuccess => Code == OptionalPackInstallCode.Success && Pack is not null;
+}
 
 public sealed record InstalledRadioCatalogReport(
     RadioCatalog Catalog,
@@ -82,6 +103,7 @@ public sealed class OptionalPackStore
     public const int MaximumReadableAssetBytes = 32 * 1024 * 1024;
 
     private const string RemovedDirectoryName = ".removed";
+    private const string StagingDirectoryName = ".staging";
     private const string LockFileName = ".optional-pack-store.lock";
 
     private readonly string _packsRoot;
@@ -108,6 +130,91 @@ public sealed class OptionalPackStore
 
     public string PacksRoot => _packsRoot;
 
+    /// <summary>
+    /// Installs one reviewed optional-pack archive through a same-volume staging
+    /// directory. The archive must contain only canonical pack.json plus the
+    /// exact manifest allowlist, and the source archive is never modified.
+    /// </summary>
+    public OptionalPackInstallResult InstallArchive(
+        string absoluteArchivePath,
+        ContentInventory inventory)
+    {
+        ArgumentNullException.ThrowIfNull(inventory);
+        if (string.IsNullOrWhiteSpace(absoluteArchivePath)
+            || !Path.IsPathFullyQualified(absoluteArchivePath)
+            || !absoluteArchivePath.EndsWith(".vibesnake-pack.zip", StringComparison.OrdinalIgnoreCase))
+        {
+            return InstallFailure(
+                OptionalPackInstallCode.InvalidRequest,
+                "Optional pack import requires one absolute .vibesnake-pack.zip file.");
+        }
+
+        string archivePath;
+        try
+        {
+            archivePath = Path.GetFullPath(absoluteArchivePath);
+            if (!File.Exists(archivePath))
+            {
+                return InstallFailure(
+                    OptionalPackInstallCode.InvalidRequest,
+                    "Optional pack archive does not exist.");
+            }
+            RejectReparsePoint(archivePath, "Optional pack archive");
+            var archiveLength = new FileInfo(archivePath).Length;
+            if (!ContentPackBudgets.IsWithinRadioStationCompressedBudget(archiveLength))
+            {
+                return InstallFailure(
+                    OptionalPackInstallCode.InvalidArchive,
+                    "Optional pack archive exceeds the compressed-size budget.");
+            }
+            Directory.CreateDirectory(_packsRoot);
+            RejectReparsePoint(_packsRoot, "Optional packs root");
+        }
+        catch (InvalidDataException)
+        {
+            return InstallFailure(
+                OptionalPackInstallCode.InvalidArchive,
+                "Optional pack archive could not be opened safely.");
+        }
+        catch (Exception exception) when (
+            exception is IOException
+                or UnauthorizedAccessException
+                or ArgumentException
+                or NotSupportedException)
+        {
+            return InstallFailure(
+                OptionalPackInstallCode.IoError,
+                "Optional pack archive could not be opened safely.");
+        }
+
+        FileStream operationLock;
+        try
+        {
+            operationLock = AcquireOperationLock();
+        }
+        catch (IOException)
+        {
+            return InstallFailure(
+                OptionalPackInstallCode.StoreBusy,
+                "Optional pack storage is busy. Try again after the current operation finishes.");
+        }
+        catch (Exception exception) when (
+            exception is InvalidDataException
+                or UnauthorizedAccessException
+                or ArgumentException
+                or NotSupportedException)
+        {
+            return InstallFailure(
+                OptionalPackInstallCode.IoError,
+                "Optional pack storage could not be locked safely.");
+        }
+
+        using (operationLock)
+        {
+            return InstallArchiveLocked(archivePath, inventory);
+        }
+    }
+
     public OptionalPackInspectionReport InspectInstalled(ContentInventory inventory)
     {
         ArgumentNullException.ThrowIfNull(inventory);
@@ -130,7 +237,7 @@ public sealed class OptionalPackStore
 
         RejectReparsePoint(_packsRoot, "Optional packs root");
         var directories = Directory.EnumerateDirectories(_packsRoot)
-            .Where(path => Path.GetFileName(path) != RemovedDirectoryName)
+            .Where(path => !IsManagedDirectory(path))
             .Order(StringComparer.Ordinal)
             .ToArray();
         if (directories.Length > MaximumInstalledPacks)
@@ -460,7 +567,7 @@ public sealed class OptionalPackStore
         }
         RejectReparsePoint(_packsRoot, "Optional packs root");
         var directories = Directory.EnumerateDirectories(_packsRoot)
-            .Where(path => Path.GetFileName(path) != RemovedDirectoryName)
+            .Where(path => !IsManagedDirectory(path))
             .Order(StringComparer.Ordinal)
             .ToArray();
         if (directories.Length > MaximumInstalledPacks)
@@ -559,6 +666,231 @@ public sealed class OptionalPackStore
         return manifest;
     }
 
+    private OptionalPackInstallResult InstallArchiveLocked(
+        string archivePath,
+        ContentInventory inventory)
+    {
+        var stagingRoot = ResolveChildPath(_packsRoot, StagingDirectoryName);
+        string? stagingPack = null;
+        try
+        {
+            using var archiveStream = new FileStream(
+                archivePath,
+                FileMode.Open,
+                FileAccess.Read,
+                FileShare.Read,
+                65_536,
+                FileOptions.SequentialScan);
+            using var archive = new ZipArchive(
+                archiveStream,
+                ZipArchiveMode.Read,
+                leaveOpen: false,
+                entryNameEncoding: Encoding.UTF8);
+            if (archive.Entries.Count == 0 || archive.Entries.Count > MaximumEntriesPerPack)
+            {
+                throw new InvalidDataException("Optional pack archive has an invalid entry count.");
+            }
+
+            var entries = new Dictionary<string, ZipArchiveEntry>(StringComparer.Ordinal);
+            var caseFolded = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var entry in archive.Entries)
+            {
+                if (string.IsNullOrWhiteSpace(entry.Name)
+                    || entry.FullName.Contains('\\')
+                    || entry.FullName.StartsWith("/", StringComparison.Ordinal)
+                    || entry.FullName.Split('/').Any(part => part is "" or "." or "..")
+                    || !entries.TryAdd(entry.FullName, entry)
+                    || !caseFolded.Add(entry.FullName))
+                {
+                    throw new InvalidDataException(
+                        "Optional pack archive contains an unsafe, duplicate, or directory entry.");
+                }
+                var unixFileType = (entry.ExternalAttributes >> 16) & 0xF000;
+                if (unixFileType == 0xA000)
+                {
+                    throw new InvalidDataException("Optional pack archive cannot contain symbolic links.");
+                }
+            }
+
+            if (!entries.TryGetValue(ManifestFileName, out var manifestEntry)
+                || manifestEntry.Length <= 0
+                || manifestEntry.Length > ContentPackManifest.MaximumManifestBytes)
+            {
+                throw new InvalidDataException("Optional pack archive has no bounded pack.json manifest.");
+            }
+            var manifestBytes = ReadBoundedEntry(
+                manifestEntry,
+                ContentPackManifest.MaximumManifestBytes);
+            var manifestJson = new UTF8Encoding(false, true).GetString(manifestBytes);
+            var manifest = ContentPackManifest.Parse(manifestJson, inventory);
+            if (manifest.Kind != ContentPackKind.Radio
+                || !string.Equals(manifest.RenderCanonical(), manifestJson, StringComparison.Ordinal))
+            {
+                throw new InvalidDataException(
+                    "Optional pack archive manifest must be canonical radio content.");
+            }
+
+            var expectedNames = manifest.Files
+                .Select(file => file.Path)
+                .Append(ManifestFileName)
+                .ToHashSet(StringComparer.Ordinal);
+            if (!expectedNames.SetEquals(entries.Keys))
+            {
+                throw new InvalidDataException(
+                    "Optional pack archive entries do not match the manifest allowlist.");
+            }
+            long installedBytes = 0;
+            foreach (var file in manifest.Files)
+            {
+                var entry = entries[file.Path];
+                if (entry.Length != file.Bytes)
+                {
+                    throw new InvalidDataException(
+                        "Optional pack archive entry size does not match the manifest.");
+                }
+                installedBytes = checked(installedBytes + entry.Length);
+            }
+            if (!ContentPackBudgets.IsWithinRadioStationInstalledBudget(installedBytes))
+            {
+                throw new InvalidDataException(
+                    "Optional pack archive exceeds the installed-size budget.");
+            }
+
+            var destination = ResolveInstalledPackDirectory(manifest.Id);
+            if (Directory.Exists(destination) || File.Exists(destination))
+            {
+                return InstallFailure(
+                    OptionalPackInstallCode.AlreadyInstalled,
+                    "An optional pack with this id is already installed.");
+            }
+            var installedDirectoryCount = Directory.EnumerateDirectories(_packsRoot)
+                .Where(path => !IsManagedDirectory(path))
+                .Take(MaximumInstalledPacks)
+                .Count();
+            if (installedDirectoryCount >= MaximumInstalledPacks)
+            {
+                return InstallFailure(
+                    OptionalPackInstallCode.StorageLimit,
+                    $"Optional pack storage already contains {MaximumInstalledPacks} packs.");
+            }
+            Directory.CreateDirectory(stagingRoot);
+            RejectReparsePoint(stagingRoot, "Optional pack staging root");
+            stagingPack = ResolveChildPath(stagingRoot, Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(stagingPack);
+            File.WriteAllBytes(ResolveChildPath(stagingPack, ManifestFileName), manifestBytes);
+            foreach (var file in manifest.Files)
+            {
+                var destinationPath = ResolveManifestFilePath(stagingPack, file.Path);
+                Directory.CreateDirectory(Path.GetDirectoryName(destinationPath)!);
+                using var source = entries[file.Path].Open();
+                using var target = new FileStream(
+                    destinationPath,
+                    FileMode.CreateNew,
+                    FileAccess.Write,
+                    FileShare.None,
+                    65_536,
+                    FileOptions.WriteThrough);
+                CopyExactlyBounded(source, target, file.Bytes);
+                target.Flush(flushToDisk: true);
+            }
+
+            var installed = ValidatePackDirectory(stagingPack, inventory);
+            if (installed.Id != manifest.Id || installed.Version != manifest.Version)
+            {
+                throw new InvalidDataException(
+                    "Extracted optional pack identity changed during validation.");
+            }
+            Directory.Move(stagingPack, destination);
+            stagingPack = null;
+            return new OptionalPackInstallResult(
+                OptionalPackInstallCode.Success,
+                $"{installed.DisplayName} installed and verified.",
+                new InstalledOptionalPack(installed.Id, installed.Version, installed.DisplayName));
+        }
+        catch (Exception exception) when (
+            exception is InvalidDataException
+                or DecoderFallbackException
+                or OverflowException)
+        {
+            return InstallFailure(
+                OptionalPackInstallCode.InvalidArchive,
+                "Optional pack archive failed manifest, allowlist, size, or integrity validation.");
+        }
+        catch (Exception exception) when (
+            exception is IOException
+                or UnauthorizedAccessException
+                or ArgumentException
+                or NotSupportedException)
+        {
+            return InstallFailure(
+                OptionalPackInstallCode.IoError,
+                "Optional pack archive could not be installed safely.");
+        }
+        finally
+        {
+            if (stagingPack is not null && Directory.Exists(stagingPack))
+            {
+                try
+                {
+                    Directory.Delete(stagingPack, recursive: true);
+                }
+                catch (Exception exception) when (
+                    exception is IOException
+                        or UnauthorizedAccessException
+                        or ArgumentException
+                        or NotSupportedException)
+                {
+                    // A failed import remains isolated under the managed staging root.
+                }
+            }
+        }
+    }
+
+    private static byte[] ReadBoundedEntry(ZipArchiveEntry entry, int maximumBytes)
+    {
+        if (entry.Length < 0 || entry.Length > maximumBytes)
+        {
+            throw new InvalidDataException("Optional pack archive entry exceeds its read limit.");
+        }
+        using var source = entry.Open();
+        using var output = new MemoryStream(checked((int)entry.Length));
+        CopyExactlyBounded(source, output, entry.Length);
+        if (output.Length > maximumBytes)
+        {
+            throw new InvalidDataException("Optional pack archive entry length changed while reading.");
+        }
+        return output.ToArray();
+    }
+
+    private static void CopyExactlyBounded(
+        Stream source,
+        Stream destination,
+        long expectedBytes)
+    {
+        var buffer = new byte[65_536];
+        long copied = 0;
+        while (true)
+        {
+            var read = source.Read(buffer, 0, buffer.Length);
+            if (read == 0)
+            {
+                break;
+            }
+            copied = checked(copied + read);
+            if (copied > expectedBytes)
+            {
+                throw new InvalidDataException(
+                    "Optional pack archive entry expanded beyond its declared size.");
+            }
+            destination.Write(buffer, 0, read);
+        }
+        if (copied != expectedBytes)
+        {
+            throw new InvalidDataException(
+                "Optional pack archive entry ended before its declared size.");
+        }
+    }
+
     private Dictionary<string, string> EnumerateSafeFiles(string packDirectory)
     {
         var files = new Dictionary<string, string>(StringComparer.Ordinal);
@@ -609,6 +941,11 @@ public sealed class OptionalPackStore
             if (File.Exists(path) || Directory.Exists(path))
             {
                 RejectReparsePoint(path, "Optional pack store lock");
+            }
+            if (Directory.Exists(path))
+            {
+                throw new InvalidDataException(
+                    "Optional pack store lock must be a regular file.");
             }
             var stream = new FileStream(
                 path,
@@ -712,6 +1049,17 @@ public sealed class OptionalPackStore
             char.IsAsciiLetterLower(character)
             || char.IsAsciiDigit(character)
             || character is '.' or '-');
+
+    private bool IsManagedDirectory(string path)
+    {
+        var name = Path.GetFileName(path);
+        return string.Equals(name, RemovedDirectoryName, _pathComparison)
+            || string.Equals(name, StagingDirectoryName, _pathComparison);
+    }
+
+    private static OptionalPackInstallResult InstallFailure(
+        OptionalPackInstallCode code,
+        string message) => new(code, message);
 
     private static OptionalPackQuarantineResult Failure(
         OptionalPackQuarantineCode code,

@@ -22,7 +22,7 @@
       "file": "customization.png",
       "height": 720,
       "label": "Customization",
-      "sha256": "78ab4e6ddff7984592ef7663454d37cef7a462d284c933435b8e67ed8b197744",
+      "sha256": "b573c7fd639a4f45d37eaf6370e3a79be2ec980944571c2fb9fb38af38ba0f17",
       "state": "COSMETICS",
       "width": 1280
     },
@@ -35,5 +35,5 @@
       "width": 1280
     }
   ],
-  "sourceSha256": "127e82d2c863c2632d602e620cc040d4bb4b5d6908f4d714cb2f874d0f2476e8"
+  "sourceSha256": "6c0c0cd2b5dc4f5eaaca37c67e1bee9a4c9361455024b15222c7864a75d87a16"
 }

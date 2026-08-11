@@ -401,10 +401,48 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
+  package-approved-radio-content:
+    name: Package approved alpha radio content
+    if: startsWith(github.ref, 'refs/tags/v') && contains(github.ref_name, '-alpha.')
+    needs: quality
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+
+    steps:
+      - name: Check out exact tagged source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.14"
+
+      - name: Require exactly one approved alpha radio manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t manifests < <(find config/packs -maxdepth 1 -type f -name 'vibesnake.radio.*.json' -print | sort)
+          if [[ "${#manifests[@]}" -ne 1 ]]; then
+            echo "Expected exactly one approved alpha radio manifest; found ${#manifests[@]}." >&2
+            exit 1
+          fi
+          python scripts/assemble_radio_pack.py "${manifests[0]}" --output dist/approved-radio-pack
+
+      - name: Retain approved radio pack
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: vibesnake-approved-radio-pack
+          path: dist/approved-radio-pack
+          if-no-files-found: error
+          retention-days: 90
+          compression-level: 0
+
   publish-native-alpha:
     name: Publish qualified unsigned native alpha
     if: startsWith(github.ref, 'refs/tags/v') && contains(github.ref_name, '-alpha.')
-    needs: [release-matrix, attest-qualified-manifests]
+    needs: [release-matrix, attest-qualified-manifests, package-approved-radio-content]
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
@@ -444,10 +482,17 @@ jobs:
           pattern: vibesnake-*-provenance
           path: preview-provenance
 
+      - name: Download approved radio pack
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: vibesnake-approved-radio-pack
+          path: preview-radio
+
       - name: Assemble fail-closed unsigned preview
         run: >-
           python scripts/assemble_unsigned_preview.py preview-channel
           --provenance-root preview-provenance
+          --radio-pack-root preview-radio
           --matrix preview-matrix/release_matrix.json
           --tag "${{ github.ref_name }}"
           --expected-revision "${{ github.sha }}"
@@ -469,11 +514,11 @@ jobs:
           set -euo pipefail
           NOTES="$(mktemp)"
           cat > "${NOTES}" <<'EOF'
-          Native alpha preview for Windows x64, macOS Universal, and Linux x64.
+          Native alpha preview for Windows x64, macOS Universal, and Linux x64, with one separately installable approved radio pack.
 
           These archives passed the exact three-platform Release matrix and include checksums plus detached provenance. Windows and macOS packages are currently unsigned. macOS Gatekeeper may require an explicit local override.
 
-          This is a prerelease. Save and replay compatibility may change before stable release. Optional radio content remains a separate pack and is never silently mixed into the base archives.
+          This is a prerelease. Save and replay compatibility may change before stable release. Approved radio content remains a separate checked download and is never silently mixed into the base archives.
           EOF
           gh release create "${GITHUB_REF_NAME}" \
             dist/native-alpha/* \

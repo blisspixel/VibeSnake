@@ -17,6 +17,16 @@ CONTENT_PACK_SCHEMA_VERSION = 1
 CORE_PACK_ID = "vibesnake.core"
 CURRENT_RULESET_ID = CURRENT_RULESET.id
 CURRENT_RULESET_VERSION = CURRENT_RULESET.version
+CONTENT_PACK_MANIFEST_MAX_BYTES = 1_048_576
+CONTENT_PACK_MAX_FILES = 4_096
+CONTENT_PACK_MAX_CREDITS = 1_024
+CONTENT_PACK_MAX_DEPENDENCIES = 64
+CONTENT_PACK_MAX_IDENTIFIER_CHARACTERS = 128
+CONTENT_PACK_MAX_TEXT_CHARACTERS = 512
+CONTENT_PACK_MAX_PATH_CHARACTERS = 512
+
+_INT32_MAX = 2_147_483_647
+_INT64_MAX = 9_223_372_036_854_775_807
 
 _PACK_KINDS = {"core", "radio"}
 _RUNTIME_USES = {"required", "optional"}
@@ -58,6 +68,7 @@ _CREDIT_FIELDS = {
 }
 _RADIO_FIELDS = {"stationId", "stationName", "trackIds"}
 _IDENTIFIER = re.compile(r"[a-z0-9]+(?:[.-][a-z0-9]+)*\Z")
+_STATION_IDENTIFIER = re.compile(r"[a-z0-9]+(?:_[a-z0-9]+)*\Z")
 _SEMVER = re.compile(r"(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\Z")
 _LOWER_SHA256 = re.compile(r"[0-9a-f]{64}\Z")
 
@@ -138,12 +149,19 @@ def load_pack_manifest(
 ) -> dict[str, Any]:
     """Load and validate one pack manifest from disk."""
     try:
+        if path.stat().st_size > CONTENT_PACK_MANIFEST_MAX_BYTES:
+            raise ContentPackError(f"content pack exceeds the {CONTENT_PACK_MANIFEST_MAX_BYTES}-byte limit")
+        source = path.read_text(encoding="utf-8")
+        if len(source.encode("utf-8")) > CONTENT_PACK_MANIFEST_MAX_BYTES:
+            raise ContentPackError(f"content pack exceeds the {CONTENT_PACK_MANIFEST_MAX_BYTES}-byte limit")
         document = json.loads(
-            path.read_text(encoding="utf-8"),
+            source,
             object_pairs_hook=_unique_json_object,
         )
     except FileNotFoundError as error:
         raise ContentPackError(f"content pack does not exist: {path}") from error
+    except ContentPackError:
+        raise
     except (OSError, UnicodeError, json.JSONDecodeError) as error:
         raise ContentPackError(f"content pack is unreadable: {path}: {error}") from error
     return validate_pack_manifest(document, inventory)
@@ -168,7 +186,13 @@ def check_pack_manifest(
 ) -> dict[str, Any]:
     """Require a manifest to be valid and canonically encoded."""
     manifest = load_pack_manifest(path, inventory)
-    if path.read_text(encoding="utf-8") != render_pack_manifest(manifest):
+    try:
+        source = path.read_text(encoding="utf-8")
+    except (OSError, UnicodeError) as error:
+        raise ContentPackError(f"content pack is unreadable: {path}: {error}") from error
+    if len(source.encode("utf-8")) > CONTENT_PACK_MANIFEST_MAX_BYTES:
+        raise ContentPackError(f"content pack exceeds the {CONTENT_PACK_MANIFEST_MAX_BYTES}-byte limit")
+    if source != render_pack_manifest(manifest):
         raise ContentPackError(f"content pack is not canonically encoded: {path}")
     return manifest
 
@@ -396,7 +420,11 @@ def _validate_inventory_binding(
 
 
 def _validate_dependencies(value: Any, pack_id: str) -> list[dict[str, Any]]:
-    dependencies = _require_list(value, "content pack dependencies")
+    dependencies = _require_list(
+        value,
+        "content pack dependencies",
+        maximum=CONTENT_PACK_MAX_DEPENDENCIES,
+    )
     seen = set()
     for index, dependency_value in enumerate(dependencies):
         location = f"content pack dependency {index}"
@@ -413,7 +441,11 @@ def _validate_dependencies(value: Any, pack_id: str) -> list[dict[str, Any]]:
 
 
 def _validate_credits(value: Any) -> dict[str, dict[str, Any]]:
-    credit_values = _require_list(value, "content pack credits")
+    credit_values = _require_list(
+        value,
+        "content pack credits",
+        maximum=CONTENT_PACK_MAX_CREDITS,
+    )
     credits = {}
     for index, credit_value in enumerate(credit_values):
         location = f"content pack credit {index}"
@@ -434,7 +466,7 @@ def _validate_files(
     value: Any,
     credits: Mapping[str, Mapping[str, Any]],
 ) -> list[dict[str, Any]]:
-    files = _require_list(value, "content pack files")
+    files = _require_list(value, "content pack files", maximum=CONTENT_PACK_MAX_FILES)
     if not files:
         raise ContentPackError("content pack files must not be empty")
     seen_ids = set()
@@ -457,7 +489,7 @@ def _validate_files(
             raise ContentPackError(f"content pack paths collide by case: {seen_paths[folded]} and {path}")
         seen_paths[folded] = path
         _require_text(entry["mediaType"], f"{location} mediaType")
-        _require_positive_int(entry["bytes"], f"{location} bytes")
+        _require_positive_long(entry["bytes"], f"{location} bytes")
         if not _LOWER_SHA256.fullmatch(str(entry["sha256"])):
             raise ContentPackError(f"{location} sha256 must be lowercase SHA-256")
         _require_text(entry["role"], f"{location} role")
@@ -482,11 +514,19 @@ def _validate_radio(
         return None
     radio = _require_object(value, "content pack radio")
     _require_exact_fields(radio, _RADIO_FIELDS, "content pack radio")
-    station_id = _require_identifier(radio["stationId"], "content pack stationId")
-    if pack_id != f"vibesnake.radio.{station_id}":
+    station_id = _require_text(radio["stationId"], "content pack stationId")
+    if _utf16_length(station_id) > CONTENT_PACK_MAX_IDENTIFIER_CHARACTERS or not _STATION_IDENTIFIER.fullmatch(
+        station_id
+    ):
+        raise ContentPackError("content pack stationId must be lowercase words separated by underscores")
+    if pack_id != f"vibesnake.radio.{station_id.replace('_', '-')}":
         raise ContentPackError("radio pack id must match its stationId")
     _require_text(radio["stationName"], "content pack stationName")
-    track_ids = _require_list(radio["trackIds"], "content pack trackIds")
+    track_ids = _require_list(
+        radio["trackIds"],
+        "content pack trackIds",
+        maximum=CONTENT_PACK_MAX_FILES,
+    )
     if not track_ids:
         raise ContentPackError("a radio pack must contain at least one track")
     validated_track_ids = [
@@ -575,9 +615,11 @@ def _require_object(value: Any, location: str) -> dict[str, Any]:
     return dict(value)
 
 
-def _require_list(value: Any, location: str) -> list[Any]:
+def _require_list(value: Any, location: str, *, maximum: int | None = None) -> list[Any]:
     if not isinstance(value, list):
         raise ContentPackError(f"{location} must be a JSON array")
+    if maximum is not None and len(value) > maximum:
+        raise ContentPackError(f"{location} exceeds its {maximum}-item limit")
     return value
 
 
@@ -600,21 +642,28 @@ def _require_exact_fields(
 
 
 def _require_text(value: Any, location: str) -> str:
-    if not isinstance(value, str) or not value.strip():
-        raise ContentPackError(f"{location} must be a non-empty string")
+    if not isinstance(value, str) or not value.strip() or _utf16_length(value) > CONTENT_PACK_MAX_TEXT_CHARACTERS:
+        raise ContentPackError(
+            f"{location} must be a non-empty string up to {CONTENT_PACK_MAX_TEXT_CHARACTERS} characters"
+        )
     return value
 
 
 def _require_identifier(value: Any, location: str) -> str:
     text = _require_text(value, location)
-    if not _IDENTIFIER.fullmatch(text):
+    if _utf16_length(text) > CONTENT_PACK_MAX_IDENTIFIER_CHARACTERS or not _IDENTIFIER.fullmatch(text):
         raise ContentPackError(f"{location} must use lowercase letters, numbers, dots, or hyphens")
     return text
 
 
 def _require_relative_path(value: Any, location: str) -> str:
     text = _require_text(value, location)
-    if "\\" in text or text.startswith("/"):
+    if (
+        _utf16_length(text) > CONTENT_PACK_MAX_PATH_CHARACTERS
+        or "\\" in text
+        or text.startswith("/")
+        or text.endswith("/")
+    ):
         raise ContentPackError(f"{location} must use a relative POSIX path")
     parts = PurePosixPath(text).parts
     if not parts or any(part in {"", ".", ".."} for part in parts):
@@ -623,7 +672,13 @@ def _require_relative_path(value: Any, location: str) -> str:
 
 
 def _require_positive_int(value: Any, location: str) -> int:
-    if type(value) is not int or value <= 0:
+    if type(value) is not int or value <= 0 or value > _INT32_MAX:
+        raise ContentPackError(f"{location} must be a positive integer")
+    return value
+
+
+def _require_positive_long(value: Any, location: str) -> int:
+    if type(value) is not int or value <= 0 or value > _INT64_MAX:
         raise ContentPackError(f"{location} must be a positive integer")
     return value
 
@@ -633,7 +688,14 @@ def _parse_semver(value: Any, location: str) -> tuple[int, int, int]:
     match = _SEMVER.fullmatch(text)
     if match is None:
         raise ContentPackError(f"{location} must use MAJOR.MINOR.PATCH")
-    return tuple(int(part) for part in match.groups())
+    parts = tuple(int(part) for part in match.groups())
+    if any(part > _INT32_MAX for part in parts):
+        raise ContentPackError(f"{location} must use MAJOR.MINOR.PATCH")
+    return parts
+
+
+def _utf16_length(value: str) -> int:
+    return len(value.encode("utf-16-le")) // 2
 
 
 def _validate_semver_range(value: Mapping[str, Any], location: str) -> None:

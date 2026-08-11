@@ -22,9 +22,11 @@ Qualification packages end in `-qualification` and always report `publicationEli
 
 Canonical alpha versions use SemVer in [VERSION](../../VERSION), such as `0.3.0-alpha.1`. Python package metadata uses the equivalent PEP 440 spelling, such as `0.3.0a1`. CI rejects drift among `VERSION`, `ProductIdentity.AppVersion`, the Python package, and the source fallback.
 
-Versioned tags are not handled by the source-snapshot workflow. A tag such as `v0.3.0-alpha.1` can reach the native prerelease publisher only after all three matching-platform `Release` jobs, the aggregate release matrix, detached provenance, canonical version checks, and the release-ready content inventory pass. The assembler then rehashes each qualification package and its two manifests, validates its checksum file and matrix row, rejects extra files, and copies the exact bytes to explicit `-unsigned-preview` names. It emits one aggregate manifest and checksum file. Stable publication eligibility remains false.
+Versioned tags are not handled by the source-snapshot workflow. A tag such as `v0.3.0-alpha.1` can reach the native prerelease publisher only after all three matching-platform `Release` jobs, the aggregate release matrix, detached provenance, canonical version checks, and the release-ready content inventory pass. A separate tag job requires exactly one station manifest, binds it to the exact inventory and `approved-for-alpha-release` listening decisions, and emits a deterministic `.vibesnake-pack.zip`, canonical manifest, assembly evidence, and checksums. The preview assembler then rehashes each qualification package and its two manifests, validates every checksum and matrix row, independently inspects the stored radio archive and its 80 MiB compressed and 120 MiB installed budgets, rejects extra files, and copies the exact bytes to explicit `-unsigned-preview` names. It emits one aggregate manifest and checksum file. Stable publication eligibility remains false.
 
-The content gate currently fails because no source asset is export-eligible. No tag should be created until the first approved core and radio-pack output exists and the exact downloaded native artifacts receive the documented human review.
+The content gate currently fails because no source asset is export-eligible, the curation record remains pending human listening review, and no production station manifest exists. No tag should be created until the first approved core and radio-pack output exists and the exact downloaded native artifacts receive the documented human review.
+
+The approved radio pack is a separate release download, never part of a base player archive. A player installs it by dropping the `.vibesnake-pack.zip` onto a non-running game screen. The game preserves the download, extracts through bounded same-volume staging below player data, revalidates the exact manifest allowlist, sizes, and hashes, refuses overwrite, and activates the station only after an atomic move succeeds.
 
 ## Files emitted beside each package
 
@@ -34,6 +36,8 @@ The content gate currently fails because no source asset is export-eligible. No 
 | `artifact-manifest.json` | Source, toolchain, smoke identity, sizes, and per-file SHA-256 |
 | `release_output_plan.json` | Channel shape, separation guarantees, package size/hash, deterministic repeat result, and publication blockers |
 | `SHA256SUMS` | Package, artifact-manifest, and output-plan SHA-256 values |
+
+The aggregate alpha release also includes one `VibeSnake-<version>-vibesnake.radio.<station>-<pack-version>.vibesnake-pack.zip`, its renamed manifest and assembly evidence, `unsigned_preview_manifest.json`, and `SHA256SUMS.txt`. The aggregate manifest records the pack ID, version, station, track count, byte count, and SHA-256 without mixing optional content into any platform player archive.
 
 The archive contains exactly the files listed in `artifact-manifest.json`. The manifest, output plan, and checksums remain separate promotion outputs. Optional content uses the separate `.vibesnake-pack.zip` contract and never enters the base archive merely because it is installed on a build machine. Player profiles, saves, preferences, achievements, replays, logs, diagnostics, quarantined packs, and temporary data are excluded.
 

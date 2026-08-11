@@ -153,6 +153,8 @@ Use PowerShell 7 and the .NET 10.0.302 SDK. `./play.ps1` and `./play.sh` call th
 
 The clean native game always has procedural gameplay and UI cues. Release exports currently contain no approved radio pack, so the HUD reports that the pack is unavailable and play continues safely. Source checkout review can discover the local library, but pack `exportEligible` remains zero until rights and quality review accepts it.
 
+When a release provides an approved `.vibesnake-pack.zip`, leave the active run and drop that file onto the game window. The game validates and installs it below player data, keeps the downloaded archive, activates the station immediately, and shows the live installed count on Content Packs. It refuses malformed, tampered, oversized, duplicate, or already-installed archives without changing core play.
+
 ### Display or audio fails in a remote environment
 
 The normal game requires desktop display and audio support. Automated qualification uses Godot's headless display and isolated user data, which is intended for validation rather than play.

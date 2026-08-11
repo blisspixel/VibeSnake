@@ -104,6 +104,8 @@ scripts/
 |-- check_source_policy.py      Enforce executable anti-slop rules
 |-- content_inventory.py        Generate or verify the source asset inventory
 |-- content_packs.py            Qualify canonical core and optional pack manifests
+|-- assemble_radio_pack.py      Build one approved deterministic radio archive
+|-- assemble_unsigned_preview.py  Join the qualified players, provenance, and radio pack
 |-- lock_python_dependencies.py Verify or regenerate the hash-locked Python graph
 |-- install_player.ps1/.sh      One-shot clone, venv, and player install
 |-- assert_godot_toolchain.ps1  Checksum-bound pinned editor-build gate

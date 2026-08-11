@@ -149,16 +149,28 @@ internal static class ShellLocalization
         Entry("content-packs.core-ready", "CORE READY: REQUIRED AND PROTECTED"),
         Entry(
             "content-packs.optional-status",
-            "OPTIONAL PACKS: NONE APPROVED FOR THIS BUILD"),
+            "OPTIONAL RADIO PACKS READY: {count}"),
         Entry(
             "content-packs.offline-help",
             "The complete game remains playable offline without radio packs."),
         Entry(
             "content-packs.storage-help",
-            "Optional packs live in player data, never in the read-only install."),
+            "Drop approved .vibesnake-pack.zip here to install it."),
         Entry(
             "content-packs.removal-help",
             "Removal always requires confirmation and targets one pack only."),
+        Entry(
+            "status.content-packs.import-paused",
+            "FILE IMPORT PAUSED: RETURN TO THE MENU OR FINISH THE RUN"),
+        Entry(
+            "status.content-packs.inventory-unavailable",
+            "RADIO PACK IMPORT UNAVAILABLE: CONTENT INVENTORY NOT READY"),
+        Entry(
+            "status.content-packs.ready",
+            "RADIO PACK READY: {name}"),
+        Entry(
+            "status.content-packs.rejected",
+            "RADIO PACK NOT INSTALLED: {reason}"),
         Entry(
             "content-packs.retention-help",
             "Saves, profiles, achievements, preferences, and replays are retained."),
@@ -721,6 +733,13 @@ internal static class ShellLocalization
         Entry(
             "cosmetics.requirement.tour-locked",
             "LOCKED {current}/1: {requirement} IN {event}"),
+        Entry(
+            "cosmetics.requirement.detail-unlocked",
+            "UNLOCKED {current}/1: {requirement}"),
+        Entry(
+            "cosmetics.requirement.detail-locked",
+            "LOCKED {current}/1: {requirement}"),
+        Entry("cosmetics.requirement.detail-event", "TOUR EVENT: {event}"),
         Entry("settings.section.gameplay", "GAMEPLAY"),
         Entry("settings.section.controls", "CONTROLS"),
         Entry("settings.section.audio", "AUDIO"),

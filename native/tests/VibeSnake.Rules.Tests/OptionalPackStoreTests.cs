@@ -1,3 +1,4 @@
+using System.IO.Compression;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -12,6 +13,217 @@ public sealed class OptionalPackStoreTests
     private const string AssetPath = "audio/radio/flow/track-01.mp3";
     private const string PolicyHash =
         "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+
+    [Fact]
+    public void Installs_a_verified_archive_atomically_and_preserves_the_download()
+    {
+        WithFixture((fixture, store) =>
+        {
+            var archivePath = fixture.CreateArchive();
+
+            var installed = store.InstallArchive(archivePath, fixture.Inventory);
+            var duplicate = store.InstallArchive(archivePath, fixture.Inventory);
+
+            Assert.True(installed.IsSuccess);
+            Assert.Equal(PackId, installed.Pack!.Id);
+            Assert.Equal(OptionalPackInstallCode.AlreadyInstalled, duplicate.Code);
+            Assert.True(File.Exists(archivePath));
+            Assert.Single(store.InspectInstalled(fixture.Inventory).Installed);
+            Assert.Equal(fixture.Payload, File.ReadAllBytes(fixture.PayloadPath));
+            var staging = Path.Combine(store.PacksRoot, ".staging");
+            Assert.True(Directory.Exists(staging));
+            Assert.Empty(Directory.EnumerateFileSystemEntries(staging));
+        });
+    }
+
+    [Fact]
+    public void Archive_install_rejects_bad_requests_without_writing_player_data()
+    {
+        WithFixture((fixture, store) =>
+        {
+            var relative = store.InstallArchive("relative.vibesnake-pack.zip", fixture.Inventory);
+            var wrongExtension = store.InstallArchive(
+                Path.Combine(fixture.UserDataRoot, "pack.zip"),
+                fixture.Inventory);
+            var missing = store.InstallArchive(
+                Path.Combine(fixture.UserDataRoot, "missing.vibesnake-pack.zip"),
+                fixture.Inventory);
+            var oversizedPath = Path.Combine(
+                fixture.UserDataRoot,
+                "oversized.vibesnake-pack.zip");
+            Directory.CreateDirectory(fixture.UserDataRoot);
+            using (var oversized = new FileStream(
+                oversizedPath,
+                FileMode.CreateNew,
+                FileAccess.Write,
+                FileShare.None))
+            {
+                oversized.SetLength(ContentPackBudgets.RadioStationCompressedBytesMaximum + 1);
+            }
+            var oversizedArchive = store.InstallArchive(oversizedPath, fixture.Inventory);
+
+            Assert.Equal(OptionalPackInstallCode.InvalidRequest, relative.Code);
+            Assert.Equal(OptionalPackInstallCode.InvalidRequest, wrongExtension.Code);
+            Assert.Equal(OptionalPackInstallCode.InvalidRequest, missing.Code);
+            Assert.Equal(OptionalPackInstallCode.InvalidArchive, oversizedArchive.Code);
+            Assert.False(Directory.Exists(fixture.PackDirectory));
+        });
+    }
+
+    [Fact]
+    public void Archive_install_rejects_tampering_extras_and_noncanonical_manifests()
+    {
+        WithFixture((fixture, store) =>
+        {
+            var tampered = fixture.CreateArchive(
+                "tampered.vibesnake-pack.zip",
+                payload: [9, 9, 9, 9]);
+            Assert.Equal(
+                OptionalPackInstallCode.InvalidArchive,
+                store.InstallArchive(tampered, fixture.Inventory).Code);
+            var staging = Path.Combine(store.PacksRoot, ".staging");
+            Assert.True(Directory.Exists(staging));
+            Assert.Empty(Directory.EnumerateFileSystemEntries(staging));
+
+            var extra = fixture.CreateArchive(
+                "extra.vibesnake-pack.zip",
+                append: archive => WriteArchiveEntry(archive, "../escape.txt", [1]));
+            Assert.Equal(
+                OptionalPackInstallCode.InvalidArchive,
+                store.InstallArchive(extra, fixture.Inventory).Code);
+
+            var noncanonical = fixture.CreateArchive(
+                "noncanonical.vibesnake-pack.zip",
+                manifest: ToJson(fixture.ManifestTemplate));
+            Assert.Equal(
+                OptionalPackInstallCode.InvalidArchive,
+                store.InstallArchive(noncanonical, fixture.Inventory).Code);
+
+            Assert.False(Directory.Exists(fixture.PackDirectory));
+            Assert.False(File.Exists(Path.Combine(fixture.UserDataRoot, "escape.txt")));
+        });
+    }
+
+    [Fact]
+    public void Archive_install_rejects_malformed_duplicate_and_special_entries()
+    {
+        WithFixture((fixture, store) =>
+        {
+            var invalidZip = Path.Combine(
+                fixture.UserDataRoot,
+                "invalid.vibesnake-pack.zip");
+            Directory.CreateDirectory(fixture.UserDataRoot);
+            File.WriteAllBytes(invalidZip, [1, 2, 3, 4]);
+
+            var missingManifest = fixture.CreateRawArchive(
+                "missing-manifest.vibesnake-pack.zip",
+                archive => WriteArchiveEntry(archive, AssetPath, fixture.Payload));
+            var duplicate = fixture.CreateArchive(
+                "duplicate.vibesnake-pack.zip",
+                append: archive => WriteArchiveEntry(
+                    archive,
+                    OptionalPackStore.ManifestFileName,
+                    Encoding.UTF8.GetBytes(fixture.RenderManifest("1.0.0"))));
+            var caseCollision = fixture.CreateArchive(
+                "case-collision.vibesnake-pack.zip",
+                append: archive => WriteArchiveEntry(
+                    archive,
+                    AssetPath.ToUpperInvariant(),
+                    fixture.Payload));
+            var directoryEntry = fixture.CreateArchive(
+                "directory.vibesnake-pack.zip",
+                append: archive => archive.CreateEntry("unexpected/"));
+            var symbolicLink = fixture.CreateArchive(
+                "symlink.vibesnake-pack.zip",
+                append: archive =>
+                {
+                    var entry = archive.CreateEntry("link");
+                    entry.ExternalAttributes = unchecked((int)0xA1FF0000);
+                });
+            var invalidUtf8 = fixture.CreateRawArchive(
+                "invalid-utf8.vibesnake-pack.zip",
+                archive =>
+                {
+                    WriteArchiveEntry(archive, OptionalPackStore.ManifestFileName, [0xFF]);
+                    WriteArchiveEntry(archive, AssetPath, fixture.Payload);
+                });
+
+            foreach (var path in new[]
+            {
+                invalidZip,
+                missingManifest,
+                duplicate,
+                caseCollision,
+                directoryEntry,
+                symbolicLink,
+                invalidUtf8,
+            })
+            {
+                Assert.Equal(
+                    OptionalPackInstallCode.InvalidArchive,
+                    store.InstallArchive(path, fixture.Inventory).Code);
+            }
+            Assert.False(Directory.Exists(fixture.PackDirectory));
+        });
+    }
+
+    [Fact]
+    public void Archive_install_honors_the_installed_pack_limit()
+    {
+        WithFixture((fixture, store) =>
+        {
+            var archivePath = fixture.CreateArchive();
+            Directory.CreateDirectory(store.PacksRoot);
+            for (var index = 0; index < OptionalPackStore.MaximumInstalledPacks; index++)
+            {
+                Directory.CreateDirectory(Path.Combine(store.PacksRoot, $"occupied-{index:D3}"));
+            }
+
+            var result = store.InstallArchive(archivePath, fixture.Inventory);
+
+            Assert.Equal(OptionalPackInstallCode.StorageLimit, result.Code);
+            Assert.False(Directory.Exists(fixture.PackDirectory));
+            Assert.False(Directory.Exists(Path.Combine(store.PacksRoot, ".staging")));
+        });
+    }
+
+    [Fact]
+    public void Archive_install_reports_a_busy_store_without_partial_extraction()
+    {
+        WithFixture((fixture, store) =>
+        {
+            var archivePath = fixture.CreateArchive();
+            Directory.CreateDirectory(store.PacksRoot);
+            var lockPath = Path.Combine(store.PacksRoot, ".optional-pack-store.lock");
+            using var heldLock = new FileStream(
+                lockPath,
+                FileMode.OpenOrCreate,
+                FileAccess.ReadWrite,
+                FileShare.None);
+
+            var result = store.InstallArchive(archivePath, fixture.Inventory);
+
+            Assert.Equal(OptionalPackInstallCode.StoreBusy, result.Code);
+            Assert.False(Directory.Exists(fixture.PackDirectory));
+        });
+    }
+
+    [Fact]
+    public void Archive_install_rejects_a_nonfile_lock_without_throwing()
+    {
+        WithFixture((fixture, store) =>
+        {
+            var archivePath = fixture.CreateArchive();
+            Directory.CreateDirectory(store.PacksRoot);
+            Directory.CreateDirectory(
+                Path.Combine(store.PacksRoot, ".optional-pack-store.lock"));
+
+            var result = store.InstallArchive(archivePath, fixture.Inventory);
+
+            Assert.Equal(OptionalPackInstallCode.IoError, result.Code);
+            Assert.False(Directory.Exists(fixture.PackDirectory));
+        });
+    }
 
     [Fact]
     public void Inspects_a_canonical_hash_verified_optional_pack()
@@ -518,6 +730,33 @@ public sealed class OptionalPackStoreTests
             return ContentPackManifest.Parse(ToJson(document), Inventory).RenderCanonical();
         }
 
+        public string CreateArchive(
+            string fileName = "flow-signal.vibesnake-pack.zip",
+            string? manifest = null,
+            byte[]? payload = null,
+            Action<ZipArchive>? append = null)
+        {
+            Directory.CreateDirectory(UserDataRoot);
+            var path = Path.Combine(UserDataRoot, fileName);
+            using var archive = ZipFile.Open(path, ZipArchiveMode.Create);
+            WriteArchiveEntry(
+                archive,
+                OptionalPackStore.ManifestFileName,
+                Encoding.UTF8.GetBytes(manifest ?? RenderManifest("1.0.0")));
+            WriteArchiveEntry(archive, AssetPath, payload ?? Payload);
+            append?.Invoke(archive);
+            return path;
+        }
+
+        public string CreateRawArchive(string fileName, Action<ZipArchive> write)
+        {
+            Directory.CreateDirectory(UserDataRoot);
+            var path = Path.Combine(UserDataRoot, fileName);
+            using var archive = ZipFile.Open(path, ZipArchiveMode.Create);
+            write(archive);
+            return path;
+        }
+
         public void Install(bool overwrite = false)
         {
             if (overwrite && Directory.Exists(PackDirectory))
@@ -531,6 +770,17 @@ public sealed class OptionalPackStoreTests
                 RenderManifest("1.0.0"),
                 new UTF8Encoding(false));
         }
+    }
+
+    private static void WriteArchiveEntry(
+        ZipArchive archive,
+        string name,
+        byte[] contents)
+    {
+        var entry = archive.CreateEntry(name, CompressionLevel.NoCompression);
+        entry.LastWriteTime = new DateTimeOffset(1980, 1, 1, 0, 0, 0, TimeSpan.Zero);
+        using var stream = entry.Open();
+        stream.Write(contents);
     }
 
     private static string ToJson(JsonNode document) =>

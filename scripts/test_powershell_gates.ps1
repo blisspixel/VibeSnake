@@ -142,6 +142,8 @@ try {
     $ciWorkflow = Get-Content -LiteralPath $ciWorkflowPath -Raw
     $nativeTestScript = Get-Content -LiteralPath (Join-Path $repositoryRoot "scripts/test_native.ps1") -Raw
     $nativeCoverageScript = Get-Content -LiteralPath (Join-Path $repositoryRoot "scripts/test_native_coverage.ps1") -Raw
+    $nativeExportScript = Get-Content -LiteralPath (Join-Path $repositoryRoot "scripts/test_native_export.ps1") -Raw
+    $gameMainScript = Get-Content -LiteralPath (Join-Path $repositoryRoot "game/scripts/Main.cs") -Raw
     foreach ($coverageConsumer in @($ciWorkflow, $nativeTestScript)) {
         if (-not $coverageConsumer.Contains("test_native_coverage.ps1", [StringComparison]::Ordinal)) {
             throw "Native coverage consumer does not invoke the shared coverage gate."
@@ -160,6 +162,27 @@ try {
             throw "Native coverage gate is missing: $requiredCoverageFragment"
         }
     }
+    foreach ($requiredLocalizationFragment in @(
+        "ShellLocalization.All.Count == 516",
+        "entry.Parameters.Count > 0) == 73"
+    )) {
+        if (-not $gameMainScript.Contains($requiredLocalizationFragment, [StringComparison]::Ordinal)) {
+            throw "Godot localization evidence is missing catalog count: $requiredLocalizationFragment"
+        }
+    }
+    foreach ($requiredLocalizationFragment in @(
+        '($localizationEvidence.stringCount -ne 516)',
+        '($localizationEvidence.parameterizedStringCount -ne 73)'
+    )) {
+        if (-not $nativeTestScript.Contains($requiredLocalizationFragment, [StringComparison]::Ordinal)) {
+            throw "Native localization gate is missing catalog count: $requiredLocalizationFragment"
+        }
+    }
+    if (-not $nativeExportScript.Contains(
+        '"effective_schema=7 code=Success"',
+        [StringComparison]::Ordinal)) {
+        throw "Candidate repair launch must require the current preferences schema."
+    }
     if ($ciWorkflow -match '\$\{\{\s*secrets\.') {
         throw "Ordinary CI must not reference signing or release secrets."
     }
@@ -170,6 +193,9 @@ try {
     $attestationJobStart = $ciWorkflow.IndexOf(
         "  attest-qualified-manifests:",
         [StringComparison]::Ordinal)
+    $radioPackJobStart = $ciWorkflow.IndexOf(
+        "  package-approved-radio-content:",
+        [StringComparison]::Ordinal)
     $alphaPublishJobStart = $ciWorkflow.IndexOf(
         "  publish-native-alpha:",
         [StringComparison]::Ordinal)
@@ -177,7 +203,8 @@ try {
         $godotJobStart -lt 0 -or
         $releaseMatrixJobStart -le $godotJobStart -or
         $attestationJobStart -le $releaseMatrixJobStart -or
-        $alphaPublishJobStart -le $attestationJobStart
+        $radioPackJobStart -le $attestationJobStart -or
+        $alphaPublishJobStart -le $radioPackJobStart
     ) {
         throw "CI must keep artifact smoke, aggregate matrix, and provenance in ordered separate jobs."
     }
@@ -217,7 +244,7 @@ try {
     }
     $attestationJob = $ciWorkflow.Substring(
         $attestationJobStart,
-        $alphaPublishJobStart - $attestationJobStart)
+        $radioPackJobStart - $attestationJobStart)
     foreach ($requiredAttestationFragment in @(
         "needs: [godot-smoke, release-matrix]",
         "id-token: write",
@@ -230,13 +257,29 @@ try {
             throw "Separated provenance job is missing: $requiredAttestationFragment"
         }
     }
+    $radioPackJob = $ciWorkflow.Substring(
+        $radioPackJobStart,
+        $alphaPublishJobStart - $radioPackJobStart)
+    foreach ($requiredRadioPackFragment in @(
+        "startsWith(github.ref, 'refs/tags/v') && contains(github.ref_name, '-alpha.')",
+        "needs: quality",
+        "Expected exactly one approved alpha radio manifest",
+        "python scripts/assemble_radio_pack.py",
+        "name: vibesnake-approved-radio-pack"
+    )) {
+        if (-not $radioPackJob.Contains($requiredRadioPackFragment, [StringComparison]::Ordinal)) {
+            throw "Approved alpha radio-pack job is missing: $requiredRadioPackFragment"
+        }
+    }
     $alphaPublishJob = $ciWorkflow.Substring($alphaPublishJobStart)
     foreach ($requiredAlphaPublishFragment in @(
         "startsWith(github.ref, 'refs/tags/v') && contains(github.ref_name, '-alpha.')",
-        "needs: [release-matrix, attest-qualified-manifests]",
+        "needs: [release-matrix, attest-qualified-manifests, package-approved-radio-content]",
         "contents: write",
         "python scripts/content_inventory.py --check --release-ready",
         "python scripts/assemble_unsigned_preview.py preview-channel",
+        "name: vibesnake-approved-radio-pack",
+        "--radio-pack-root preview-radio",
         '--tag "${{ github.ref_name }}"',
         '--expected-revision "${{ github.sha }}"',
         "gh release create",
@@ -260,7 +303,7 @@ try {
         throw "Source player workflow must not publish versioned releases."
     }
 
-    $caseCount = 20 + $prohibitedPaths.Count + $invalidPaths.Count
+    $caseCount = 23 + $prohibitedPaths.Count + $invalidPaths.Count
     Write-Output "PowerShell qualification regression checks passed: cases=$caseCount."
 } finally {
     if (Test-Path -LiteralPath $temporaryRoot) {

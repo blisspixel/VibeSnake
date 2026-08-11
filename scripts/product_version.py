@@ -16,9 +16,12 @@ def read_product_version(root: Path) -> str:
     """Read and validate the repository's canonical SemVer product version."""
     path = root / "VERSION"
     try:
-        version = path.read_text(encoding="utf-8").strip()
-    except OSError as error:
+        source = path.read_bytes().decode("utf-8", errors="strict")
+    except (OSError, UnicodeError) as error:
         raise ValueError(f"Could not read canonical product version from {path}: {error}") from error
+    if not source.endswith("\n") or source.count("\n") != 1 or "\r" in source:
+        raise ValueError("VERSION must contain exactly one UTF-8 line terminated by LF")
+    version = source[:-1]
     if not SEMVER_PATTERN.fullmatch(version):
         raise ValueError(f"VERSION must contain one canonical stable or prerelease SemVer; got {version!r}")
     return version

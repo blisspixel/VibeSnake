@@ -86,6 +86,7 @@ public partial class Main : Node2D
     private int _baitRevealTicksRemaining;
     private OptionalPackStore? _optionalPackStore;
     private ContentInventory? _contentInventory;
+    private int _installedRadioPackCount;
     private readonly AudioOutputRecoveryTracker _audioOutputRecovery = new();
     private string? _audioStatusCaption;
     private ulong? _audioStatusExpiresAtMilliseconds;
@@ -537,9 +538,8 @@ public partial class Main : Node2D
                     "Unsupported saved window mode: " + _shellSettings.WindowMode);
         }
 
-        // Window-size presets affect the virtual presentation frame while
-        // windowed. Fullscreen always follows the display surface so it fills
-        // the monitor without a second layer of aspect-ratio letterboxing.
+        // The selected aspect preset controls presentation in every window
+        // mode. Fullscreen uses the whole display surface around that frame.
         RefreshVirtualViewport();
         QueueRedraw();
         UpdateCursorVisibility(Time.GetTicksMsec());
@@ -591,9 +591,7 @@ public partial class Main : Node2D
             (int)VirtualViewport.LogicalHeight);
         var width = Math.Max(size.X, 1);
         var height = Math.Max(size.Y, 1);
-        var preferredFrame = _window is null || _window.Mode == Window.ModeEnum.Windowed
-            ? DisplayOptions.WindowSize(_shellSettings.WindowSizePreset).Size
-            : size;
+        var preferredFrame = DisplayOptions.WindowSize(_shellSettings.WindowSizePreset).Size;
         _virtualViewport.Resize(
             width,
             height,
@@ -603,8 +601,7 @@ public partial class Main : Node2D
 
     private bool UsesClassicMenuPresentation =>
         _screenState == ScreenState.Menu
-        && _shellSettings.WindowSizePreset == PreferencesDocument.ClassicWindowSize
-        && _window?.Mode == Window.ModeEnum.Windowed;
+        && _shellSettings.WindowSizePreset == PreferencesDocument.ClassicWindowSize;
 
     private float ActiveLogicalWidth => UsesClassicMenuPresentation
         ? ClassicMenuLogicalWidth
@@ -857,6 +854,8 @@ public partial class Main : Node2D
 
     private void InitializeRadio(bool allowCheckoutFallback)
     {
+        _contentInventory = null;
+        _installedRadioPackCount = 0;
         if (_optionalPackStore is not null && TryResolveCheckoutInventoryPath(out var inventoryPath))
         {
             try
@@ -865,6 +864,7 @@ public partial class Main : Node2D
                 var inspection = _optionalPackStore.InspectRadioCatalog(_contentInventory);
                 if (inspection.Catalog.Stations.Count > 0)
                 {
+                    _installedRadioPackCount = inspection.Catalog.Stations.Count;
                     _radioPolicy.ReplaceCatalog(inspection.Catalog);
                     _radioPolicy.SetMuted(_shellSettings.EffectiveMusicVolume() <= 0.0f);
                     _radioPolicy.PlayOrResume();
@@ -914,8 +914,8 @@ public partial class Main : Node2D
             return;
         }
 
-        _contentInventory = null;
         _radioPolicy.ReplaceCatalog(RadioCatalog.Empty);
+        _radioPlayer?.Synchronize();
     }
 
     private static bool TryResolveCheckoutRadioDirectory(out string radioDirectory)
@@ -4527,6 +4527,31 @@ public partial class Main : Node2D
             ShellTextArgument.From("event", FormatTourEventName(tourEvent.Id)));
     }
 
+    private (string Requirement, string? Event) LocalizedCosmeticDetail(
+        CosmeticSetDefinition cosmetic)
+    {
+        if (cosmetic.AvailableFromStart)
+        {
+            return (Localize("cosmetics.requirement.available"), null);
+        }
+
+        var tourEvent = BroadcastTourCatalog.Events.Single(item =>
+            item.Reward.Id == cosmetic.UnlockRewardId);
+        var complete = _progression.CompletedTourEventIds.Contains(
+            tourEvent.Id,
+            StringComparer.Ordinal);
+        return (
+            Localize(
+                complete
+                    ? "cosmetics.requirement.detail-unlocked"
+                    : "cosmetics.requirement.detail-locked",
+                ShellTextArgument.From("current", complete ? 1 : 0),
+                ShellTextArgument.From("requirement", tourEvent.PrimaryGoal.ExactRequirement)),
+            Localize(
+                "cosmetics.requirement.detail-event",
+                ShellTextArgument.From("event", FormatTourEventName(tourEvent.Id))));
+    }
+
     private void OpenScoresBrowse()
     {
         TransitionToScreen(ScreenState.Scores);
@@ -7626,13 +7651,26 @@ public partial class Main : Node2D
             new Vector2(444.0f, 232.0f),
             ScaledFontSize(24),
             ActiveShellPalette.PrimaryText);
-        DrawLabel(
-            BoundPlayerDataCaption(LocalizedCosmeticRequirement(selectedCosmetic), 43),
+        var cosmeticDetail = LocalizedCosmeticDetail(selectedCosmetic);
+        DrawFittedLabel(
+            cosmeticDetail.Requirement,
             new Vector2(444.0f, 266.0f),
-            ScaledFontSize(12),
-            _progression.IsCosmeticSetUnlocked(selectedCosmetic.Id)
+            preferredFontSize: ScaledFontSize(12),
+            minimumFontSize: ScaledFontSize(10),
+            maximumWidth: 282.0f,
+            color: _progression.IsCosmeticSetUnlocked(selectedCosmetic.Id)
                 ? ActiveShellPalette.MutedGoldText
                 : ActiveShellPalette.WarningText);
+        if (cosmeticDetail.Event is not null)
+        {
+            DrawFittedLabel(
+                cosmeticDetail.Event,
+                new Vector2(444.0f, 284.0f),
+                preferredFontSize: ScaledFontSize(11),
+                minimumFontSize: ScaledFontSize(9),
+                maximumWidth: 282.0f,
+                color: ActiveShellPalette.MutedGoldText);
+        }
         var selectedState = selectedCosmetic.Id == _progression.SelectedCosmeticSetId
             ? "EQUIPPED"
             : _progression.SavedCosmeticSetIds.Contains(selectedCosmetic.Id, StringComparer.Ordinal)
@@ -7640,7 +7678,7 @@ public partial class Main : Node2D
                 : "PREVIEWING";
         DrawLabel(
             selectedState,
-            new Vector2(444.0f, 300.0f),
+            new Vector2(444.0f, 318.0f),
             ScaledFontSize(13),
             ActiveShellPalette.GoldText);
         string[] attributes =
@@ -7655,7 +7693,7 @@ public partial class Main : Node2D
         {
             DrawLabel(
                 attributes[index].ToUpperInvariant(),
-                new Vector2(444.0f, 344.0f + (index * 32.0f)),
+                new Vector2(444.0f, 354.0f + (index * 30.0f)),
                 ScaledFontSize(13),
                 index == 0 ? ActiveShellPalette.BodyText : SecondaryTextColor());
         }
@@ -8054,7 +8092,9 @@ public partial class Main : Node2D
             ScaledFontSize(20),
             ActiveShellPalette.GoldText);
         DrawLabel(
-            Localize("content-packs.optional-status"),
+            Localize(
+                "content-packs.optional-status",
+                ShellTextArgument.From("count", _installedRadioPackCount)),
             new Vector2(46.0f, 190.0f),
             ScaledFontSize(18),
             ActiveShellPalette.BodyText);
@@ -8348,13 +8388,60 @@ public partial class Main : Node2D
     {
         if (_screenState == ScreenState.Running)
         {
-            ShowReplayStatus("REPLAY IMPORT PAUSED: RETURN TO THE MENU OR FINISH THE RUN");
+            ShowReplayStatus(Localize("status.content-packs.import-paused"));
             return;
         }
 
         if (files.Length != 1)
         {
             ShowReplayStatus("REPLAY IMPORT REQUIRES EXACTLY ONE FILE");
+            return;
+        }
+
+        var path = files[0];
+        if (path.EndsWith(".vibesnake-pack.zip", StringComparison.OrdinalIgnoreCase))
+        {
+            if (_optionalPackStore is null || _contentInventory is null)
+            {
+                ShowAudioStatus(
+                    Localize("status.content-packs.inventory-unavailable"),
+                    persist: true);
+                return;
+            }
+
+            var install = _optionalPackStore.InstallArchive(path, _contentInventory);
+            if (install.IsSuccess && install.Pack is not null)
+            {
+                InitializeRadio(allowCheckoutFallback: true);
+                ShowAudioStatus(
+                    Localize(
+                        "status.content-packs.ready",
+                        ShellTextArgument.From(
+                            "name",
+                            BoundPlayerDataCaption(install.Pack.DisplayName, 96)
+                                .ToUpperInvariant())),
+                    persist: false);
+                _structuredLog?.Information(
+                    "radio",
+                    $"Installed and activated radio pack {install.Pack.Id}@{install.Pack.Version}.",
+                    eventCode: "radio_pack_installed");
+            }
+            else
+            {
+                ShowAudioStatus(
+                    Localize(
+                        "status.content-packs.rejected",
+                        ShellTextArgument.From(
+                            "reason",
+                            BoundPlayerDataCaption(install.Message, 160)
+                                .ToUpperInvariant())),
+                    persist: true);
+                _structuredLog?.Warning(
+                    "radio",
+                    $"Radio pack import failed with {install.Code}.",
+                    eventCode: "radio_pack_install_failed");
+            }
+            QueueRedraw();
             return;
         }
 
@@ -8365,7 +8452,6 @@ public partial class Main : Node2D
         }
 
         var store = _replayStore;
-        var path = files[0];
         if (!TryStartReplayOperation(
             () => FormatReplayLoadResult(
                 store.InspectExternal(path),
@@ -12418,8 +12504,8 @@ public partial class Main : Node2D
 
         const int migratedRequiredFlowCount = 13;
         const double requiredExpansionRatio = 1.30;
-        var passed = ShellLocalization.All.Count == 509
-            && ShellLocalization.All.Count(entry => entry.Parameters.Count > 0) == 67
+        var passed = ShellLocalization.All.Count == 516
+            && ShellLocalization.All.Count(entry => entry.Parameters.Count > 0) == 73
             && migratedRequiredFlowCount == 13
             && minimumExpansionRatio >= requiredExpansionRatio
             && missingGlyphs.Count == 0
@@ -13083,6 +13169,17 @@ public partial class Main : Node2D
         {
             throw new InvalidOperationException(
                 "Oversized window fitting did not preserve aspect ratio inside the usable screen.");
+        }
+
+        var fittedTiny = DisplayOptions.FitWindowToScreen(
+            classicWindow.Size,
+            new Vector2I(600, 400));
+        if (fittedTiny.X > 600
+            || fittedTiny.Y > 400
+            || Math.Abs((fittedTiny.X / (float)fittedTiny.Y) - (4.0f / 3.0f)) > 0.01f)
+        {
+            throw new InvalidOperationException(
+                "Small-screen window fitting escaped the display or changed aspect ratio.");
         }
 
         settings.MasterVolume = 0.5f;

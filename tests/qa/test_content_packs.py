@@ -7,6 +7,10 @@ from pathlib import Path
 import pytest
 
 from vibesnake.content.packs import (
+    CONTENT_PACK_MANIFEST_MAX_BYTES,
+    CONTENT_PACK_MAX_CREDITS,
+    CONTENT_PACK_MAX_DEPENDENCIES,
+    CONTENT_PACK_MAX_FILES,
     CONTENT_PACK_SCHEMA_VERSION,
     CORE_PACK_ID,
     CURRENT_RULESET_ID,
@@ -194,7 +198,7 @@ def _radio_manifest(inventory: dict[str, object]) -> dict[str, object]:
         "files": [_file(asset, RADIO_CREDIT["id"])],
         "credits": [deepcopy(RADIO_CREDIT)],
         "radio": {
-            "stationId": "flow-signal",
+            "stationId": "flow_signal",
             "stationName": "The Flow Signal",
             "trackIds": [asset["id"]],
         },
@@ -209,6 +213,7 @@ def test_core_and_radio_manifests_validate_against_exact_inventory_allowlists():
     assert core["id"] == CORE_PACK_ID
     assert core["kind"] == "core"
     assert radio["kind"] == "radio"
+    assert radio["radio"]["stationId"] == "flow_signal"
     assert radio["radio"]["trackIds"] == ["asset:audio/radio/flow/track-01.mp3"]
 
 
@@ -253,6 +258,47 @@ def test_load_reports_missing_and_malformed_manifests(tmp_path: Path):
     )
     with pytest.raises(ContentPackError, match="duplicate JSON field"):
         load_pack_manifest(duplicate, inventory)
+
+    oversized = tmp_path / "oversized.json"
+    oversized.write_bytes(b" " * (CONTENT_PACK_MANIFEST_MAX_BYTES + 1))
+    with pytest.raises(ContentPackError, match="byte limit"):
+        load_pack_manifest(oversized, inventory)
+
+
+@pytest.mark.parametrize(
+    ("change", "message"),
+    [
+        (lambda manifest: manifest.update(description="x" * 513), "up to 512 characters"),
+        (
+            lambda manifest: manifest.update(description="\U00010000" * 257),
+            "up to 512 characters",
+        ),
+        (lambda manifest: manifest.update(version="2147483648.0.0"), "MAJOR.MINOR.PATCH"),
+        (
+            lambda manifest: manifest["compatibility"]["ruleset"].update(minInclusive=2_147_483_648),
+            "positive integer",
+        ),
+        (
+            lambda manifest: manifest.update(dependencies=[{}] * (CONTENT_PACK_MAX_DEPENDENCIES + 1)),
+            "64-item limit",
+        ),
+        (
+            lambda manifest: manifest.update(credits=[{}] * (CONTENT_PACK_MAX_CREDITS + 1)),
+            "1024-item limit",
+        ),
+        (
+            lambda manifest: manifest.update(files=[{}] * (CONTENT_PACK_MAX_FILES + 1)),
+            "4096-item limit",
+        ),
+    ],
+)
+def test_manifest_matches_native_parser_bounds(change, message):
+    inventory = _inventory()
+    manifest = _core_manifest(inventory)
+    change(manifest)
+
+    with pytest.raises(ContentPackError, match=message):
+        validate_pack_manifest(manifest, inventory)
 
 
 @pytest.mark.parametrize(
@@ -383,6 +429,10 @@ def test_manifest_credit_must_reproduce_cleared_inventory_rights():
     ("change", "message"),
     [
         (lambda manifest: manifest.update(id="vibesnake.radio.other"), "stationId"),
+        (
+            lambda manifest: manifest["radio"].update(stationId="flow-signal"),
+            "lowercase words separated by underscores",
+        ),
         (lambda manifest: manifest.update(dependencies=[]), "depend only"),
         (
             lambda manifest: manifest["files"][0].update(runtimeUse="required"),

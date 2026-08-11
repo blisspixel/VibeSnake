@@ -38,13 +38,13 @@ internal static class DisplayOptions
             throw new ArgumentOutOfRangeException(nameof(requested));
         }
 
-        var maximumWidth = Math.Max(640, screenSize.X - 80);
-        var maximumHeight = Math.Max(360, screenSize.Y - 80);
+        var maximumWidth = Math.Max(1, screenSize.X - (screenSize.X > 720 ? 80 : 0));
+        var maximumHeight = Math.Max(1, screenSize.Y - (screenSize.Y > 440 ? 80 : 0));
         var scale = Math.Min(
             1.0f,
             Math.Min(maximumWidth / (float)requested.X, maximumHeight / (float)requested.Y));
         return new Vector2I(
-            Math.Max(640, (int)MathF.Floor(requested.X * scale)),
-            Math.Max(360, (int)MathF.Floor(requested.Y * scale)));
+            Math.Max(1, (int)MathF.Floor(requested.X * scale)),
+            Math.Max(1, (int)MathF.Floor(requested.Y * scale)));
     }
 }

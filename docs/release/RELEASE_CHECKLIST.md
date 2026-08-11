@@ -8,6 +8,7 @@ The current alpha does not meet this checklist. See [STATUS.md](STATUS.md) for t
 - [x] Source snapshots cannot publish versioned releases.
 - [x] Native alpha assembly requires the exact Windows, macOS, and Linux Release matrix, deterministic package hashes, manifests, checksums, and detached provenance.
 - [x] Alpha assets are named and disclosed as unsigned previews without changing stable publication eligibility.
+- [x] Alpha publication requires a deterministic, separately attached radio archive bound to exact inventory, curation, manifest, size, and checksum evidence.
 - [ ] Core and radio content have approved export allowlists and a production optional-pack output.
 - [ ] The exact downloaded three-platform artifacts pass the manual launch, display, input, audio, and content review.
 - [ ] Create `v0.3.0-alpha.1` only after the two preceding gates close and hosted CI is green on its source revision.
@@ -40,9 +41,9 @@ The current alpha does not meet this checklist. See [STATUS.md](STATUS.md) for t
 ## Assets and packaging
 
 - [x] Core and optional-radio manifest schema fails closed on unsafe structure, stale inventory metadata, uncleared rights, incompatible versions, bad dependencies, and optional-pack corruption.
-- [ ] Radio delivery strategy is selected and documented.
+- [x] Radio delivery is a separate checked release download with bounded drag-and-drop installation below player data.
 - [ ] A minimal core asset pack is sufficient for offline play.
-- [ ] Optional radio packs use versioned manifests, hashes, and compatibility ranges.
+- [x] Optional radio-pack artifacts require versioned manifests, hashes, compatibility ranges, exact curation decisions, and native revalidation.
 - [ ] Every shipped asset has source and license metadata.
 - [ ] Runtime lookup works without the repository tree.
 - [ ] Wheel or desktop package builds reproducibly.

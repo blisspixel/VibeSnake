@@ -934,10 +934,10 @@ try {
             -LogPath (Join-Path $lifecycleRoot "repair-launch.log")
         $repairLaunchPassed = $repairProbe.Passed -and
             $repairProbe.Text.Contains(
-                "effective_schema=6 code=Success",
+                "effective_schema=7 code=Success",
                 [StringComparison]::Ordinal)
         if (-not $repairSnapshotMatched -or -not $repairLaunchPassed) {
-            throw "Candidate repair or reinstall copy did not match and launch."
+            throw "Candidate repair or reinstall copy failed: snapshotMatched=$repairSnapshotMatched launchPassed=$repairLaunchPassed"
         }
 
         $retainedPreferencesPath = Join-Path $lifecycleRetainedProfile "preferences.json"

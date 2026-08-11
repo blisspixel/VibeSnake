@@ -12,18 +12,19 @@ The contract and optional-pack resolver are implemented and tested in both the P
 | --- | --- |
 | [packs.py](../../src/vibesnake/content/packs.py) | Schema 1 structure, inventory matching, compatibility, dependency, core, radio, and resolution rules |
 | [content_packs.py](../../scripts/content_packs.py) | Build-time qualification command for canonical manifests |
+| [assemble_radio_pack.py](../../scripts/assemble_radio_pack.py) | Deterministic approved-station archive, evidence, and checksum assembly |
 | [test_content_packs.py](../../tests/qa/test_content_packs.py) | Normal, malformed, unsafe, incomplete, tampered, incompatible, missing, and duplicate-pack contracts |
 | [ContentPackManifest.cs](../../native/src/VibeSnake.Persistence/ContentPackManifest.cs) | Pure C# bounded schema, canonical encoding, allowlist, metadata, rights, and radio validation |
 | [ContentPackResolver.cs](../../native/src/VibeSnake.Persistence/ContentPackResolver.cs) | Pure C# compatibility decisions and core-safe optional-pack isolation |
-| [OptionalPackStore.cs](../../native/src/VibeSnake.Persistence/OptionalPackStore.cs) | User-data-only installed-pack validation, recoverable quarantine, and revalidated restore |
+| [OptionalPackStore.cs](../../native/src/VibeSnake.Persistence/OptionalPackStore.cs) | User-data-only atomic archive installation, installed-pack validation, recoverable quarantine, and revalidated restore |
 | [ContentPackManifestTests.cs](../../native/tests/VibeSnake.Rules.Tests/ContentPackManifestTests.cs) | Native schema, canonical, range, tamper, duplicate, and isolation contracts |
-| [OptionalPackStoreTests.cs](../../native/tests/VibeSnake.Rules.Tests/OptionalPackStoreTests.cs) | Native filesystem allowlist, hash, stale-consent, quarantine, restore, and player-data separation contracts |
+| [OptionalPackStoreTests.cs](../../native/tests/VibeSnake.Rules.Tests/OptionalPackStoreTests.cs) | Native archive, traversal, decompression bound, filesystem allowlist, hash, stale-consent, quarantine, restore, and player-data separation contracts |
 | [ContentService.cs](../../game/scripts/ContentService.cs) | Godot-facing inventory, manifest, and pack-set boundary |
 | [content_inventory.json](../../config/content_inventory.json) | Exact source file hashes, sizes, policy state, rights state, and export eligibility |
 | [CONTENT_PIPELINE.md](CONTENT_PIPELINE.md) | Source classification, rights review, media integrity, and approval workflow |
 | [CREATOR_CONTENT.md](CREATOR_CONTENT.md) | Creator-facing commands, schemas, examples, error codes, compatibility, and collision rules |
 
-The Python validator remains the frozen qualification oracle. The native implementation owns product runtime decisions and matches the same observable schema and compatibility codes before player assets enter Godot exports.
+The Python validator remains the frozen qualification oracle. The native implementation owns product runtime decisions. Both enforce the same 1 MiB manifest, 4,096 file, 1,024 credit, 64 dependency, 512-character text/path, 128-character identifier, and signed integer version bounds before player assets enter Godot exports.
 
 ## Boundary
 
@@ -130,7 +131,9 @@ Structurally valid manifests receive an actionable compatibility result before f
 
 The pack-set resolver treats an invalid core as fatal. It evaluates optional documents independently. Missing or removed optional content is normal, and malformed, incompatible, duplicate, or tampered optional content is reported and skipped while a compatible core stays ready. Removal requires an immutable, version-bound consent token that can target only one optional radio pack and has no save, profile, achievement, preference, or replay deletion capability.
 
-`OptionalPackStore` accepts only canonical radio manifests under an absolute user-data root. It rejects links and reparse points, bounds active and quarantined pack counts plus per-pack entries, requires the directory name to equal the pack ID, requires the complete manifest file allowlist with no extra file, and verifies every size and SHA-256 before exposing an installed pack. A requested asset is returned only as at most 32 MiB of bytes plus manifest media metadata after complete pack validation and a second size/hash check; callers never receive a machine path.
+`OptionalPackStore` accepts only canonical radio manifests under an absolute user-data root. For installation, it accepts one absolute `.vibesnake-pack.zip`, preserves the downloaded source, rejects traversal, backslashes, directory entries, duplicate and case-colliding names, symbolic-link metadata, oversized archives, excessive entries, and files outside the manifest allowlist. Extraction is bounded to the declared bytes, revalidated by complete size and SHA-256 checks in a same-volume `.staging` directory, and moved atomically into the pack-ID directory only after success. An existing pack is never overwritten, a full store refuses another pack, and malformed input leaves no partial installation.
+
+Installed discovery rejects links and reparse points, bounds active and quarantined pack counts plus per-pack entries, requires the directory name to equal the pack ID, requires the complete manifest file allowlist with no extra file, and verifies every size and SHA-256 before exposing a pack. A requested asset is returned only as at most 32 MiB of bytes plus manifest media metadata after complete pack validation and a second size/hash check; callers never receive a machine path.
 
 Confirmation moves the selected pack on the same volume into `packs/.removed/`; it does not recursively delete content. Quarantine inspection reconstructs version-bound receipts only from a valid canonical manifest and payload, so recovery remains available after restart. Restore revalidates the complete pack before moving it back. Tampered quarantine stays in place and cannot be restored. Invalid packs remain isolated, stale consent cannot move a changed pack, and a store lock serializes lifecycle operations.
 
@@ -157,6 +160,18 @@ python scripts/content_packs.py `
 
 The command first regenerates and compares the authoritative inventory, requires canonical manifest encoding, validates every allowlisted file and credit, then resolves compatibility. It exits nonzero on any build-time rejection. Runtime optional-pack isolation is a separate tested behavior and does not lower the release gate.
 
+After human review marks one station approved, assemble its player artifact with:
+
+```powershell
+python scripts/assemble_radio_pack.py `
+  config/packs/vibesnake.radio.flow-signal.json `
+  --output dist/approved-radio-pack
+```
+
+The builder requires exact curation coverage for every inventoried radio asset, no pending decisions for the selected station, and exact equality between approved tracks, manifest tracks, and packaged radio files. It emits one deterministic stored archive, canonical `pack.json`, `radio_pack_assembly.json`, and `SHA256SUMS.txt`. The whole archive is capped at 80 MiB and its payload at 120 MiB to match the native installer. The alpha publisher independently rechecks those facts before attaching the pack as a separate release download.
+
+In the game, drop the approved `.vibesnake-pack.zip` onto any non-running screen. The archive installs only below player data, activates immediately after validation, and leaves core play and the original download untouched on failure. The Content Packs screen reports the live installed station count.
+
 No production command can pass today because no inventory entry is export eligible. That is the intended fail-closed state.
 
 ## Order for the first real packs
@@ -170,10 +185,11 @@ No production command can pass today because no inventory entry is export eligib
 7. Make the native content service load the core only through the validated manifest.
 8. Prove core-only launch and the full required offline flow from a read-only installation.
 9. Add one station pack and prove missing, removed, incompatible, incomplete, hash-mismatched, and corrupt states without blocking core play.
-10. Connect export inspection so player artifacts contain exactly the manifest allowlists and generated credits.
-11. Measure compressed, installed, decoded-memory, scan, and startup impact for each real pack.
-12. Repeat the artifact and install lifecycle on Windows, macOS, and Linux.
+10. Build the deterministic separate radio archive and prove drag-and-drop installation, activation, duplicate refusal, and failure rollback.
+11. Connect export inspection so player artifacts contain exactly the manifest allowlists and generated credits.
+12. Measure compressed, installed, decoded-memory, scan, and startup impact for each real pack.
+13. Repeat the artifact and install lifecycle on Windows, macOS, and Linux.
 
 ## Completion gate
 
-V030-09 is complete only when one human-approved core manifest passes and supports the entire offline vertical slice, at least one approved station manifest passes independently, export inspection consumes those production allowlists and generated credits, actual size and performance evidence is retained, and player-facing removal and recovery UI explains failures without exposing machine paths. The strict native contract, core-only automated vertical slice, optional absence/removal/tamper/incompatibility/duplicate isolation, and recoverable installed-pack lifecycle are complete.
+V030-09 is complete only when one human-approved core manifest passes and supports the entire offline vertical slice, at least one approved station manifest passes independently, export inspection consumes those production allowlists and generated credits, actual size and performance evidence is retained, and player-facing removal and recovery management explains failures without exposing machine paths. The strict dual-language contract, atomic player-facing archive installation, core-only automated vertical slice, optional absence/removal/tamper/incompatibility/duplicate isolation, and recoverable installed-pack lifecycle are complete.

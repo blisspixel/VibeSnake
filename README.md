@@ -108,7 +108,7 @@ All gameplay and shell actions are available through remappable keyboard and con
 
 ## Development
 
-The native quality loop builds the Godot project, runs 892 C# tests with enforced line and branch coverage, checks formatting and analyzers, validates the pinned toolchain, and executes the real scene smoke:
+The native quality loop builds the Godot project, runs 899 C# tests with enforced line and branch coverage, checks formatting and analyzers, validates the pinned toolchain, and executes the real scene smoke:
 
 ```powershell
 ./scripts/test_native.ps1
