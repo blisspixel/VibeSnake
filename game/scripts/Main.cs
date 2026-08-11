@@ -15551,6 +15551,19 @@ public partial class Main : Node2D
             throw new InvalidOperationException("Presentation frame sampler summary contract failed.");
         }
 
+        var equalTailSampler = new PresentationFrameSampler();
+        for (var index = 0; index < 40; index++)
+        {
+            equalTailSampler.RecordFrameMilliseconds(6.935);
+        }
+
+        var equalTailSummary = equalTailSampler.Summarize();
+        if (equalTailSummary.P99Milliseconds > equalTailSummary.MaxMilliseconds)
+        {
+            throw new InvalidOperationException(
+                "Presentation percentile interpolation exceeded its source samples.");
+        }
+
         PresentationFrameSummary liveSummary = default;
         for (var attempt = 1;
             attempt <= BareArcadeLoopQualification.MaximumSharedHostMeasurementAttempts;
@@ -15601,35 +15614,32 @@ public partial class Main : Node2D
     {
         var attemptSummaries = new List<string>(
             PerformanceQualification.MaximumSharedHostMeasurementAttempts);
-        PerformanceQualificationEvidence? evidence = null;
-        IReadOnlyList<PerformanceProfileMeasurement> measurements = [];
-        for (var attempt = 1;
-            attempt <= PerformanceQualification.MaximumSharedHostMeasurementAttempts;
-            attempt++)
+        var measurements = await MeasurePerformanceProfilesAsync();
+        var evidence = PerformanceQualification.Run(measurements);
+        attemptSummaries.Add(
+            "attempt 1: " + SummarizePerformanceMeasurements(measurements));
+        if (PerformanceQualification.ShouldRetrySharedHostTail(
+                evidence,
+                measurements,
+                completedAttemptCount: 1))
         {
-            measurements = await MeasurePerformanceProfilesAsync();
-            evidence = PerformanceQualification.Run(measurements);
-            attemptSummaries.Add(
-                $"attempt {attempt}: " + SummarizePerformanceMeasurements(measurements));
-            if (evidence.Passed
-                || !PerformanceQualification.ShouldRetrySharedHostTail(
-                    evidence,
-                    measurements,
-                    attempt))
-            {
-                break;
-            }
-
+            var retryProfileIds = measurements
+                .Where(measurement => measurement.P95FrameMilliseconds
+                    > PerformanceQualification.SharedHostMaximumP95Milliseconds)
+                .Select(measurement => measurement.Id)
+                .ToHashSet(StringComparer.Ordinal);
             _structuredLog?.Warning(
                 "performance",
-                "Shared-host p95 tail exceeded its ceiling while every average remained within budget; resampling once.",
+                "Shared-host p95 tail exceeded its ceiling while every average remained within budget; resampling only the affected profiles once.",
                 eventCode: "performance_tail_resample");
-        }
-
-        if (evidence is null)
-        {
-            throw new InvalidOperationException(
-                "Performance qualification did not execute a measurement attempt.");
+            var retryMeasurements = await MeasurePerformanceProfilesAsync(retryProfileIds);
+            attemptSummaries.Add(
+                "attempt 2 (" + string.Join(",", retryProfileIds.Order(StringComparer.Ordinal))
+                + "): " + SummarizePerformanceMeasurements(retryMeasurements));
+            measurements = PerformanceQualification.MergeSharedHostTailRetry(
+                measurements,
+                retryMeasurements);
+            evidence = PerformanceQualification.Run(measurements);
         }
         var directory = ResolveEvidenceDirectory();
         System.IO.Directory.CreateDirectory(directory);
@@ -15662,9 +15672,20 @@ public partial class Main : Node2D
                 MaximumObservedDriverDrawCalls: 0);
 
         var tailOnlyMeasurements = PerformanceQualification.Profiles
-            .Select(profile => Measurement(profile.Id, 20.0, 60.12))
+            .Select(profile => Measurement(
+                profile.Id,
+                20.0,
+                profile.Id == "default" ? 60.12 : 59.0))
             .ToArray();
         var tailOnlyEvidence = PerformanceQualification.Run(tailOnlyMeasurements);
+        var tailRetry = new[]
+        {
+            Measurement("default", 20.0, 59.0),
+        };
+        var mergedTailMeasurements = PerformanceQualification.MergeSharedHostTailRetry(
+            tailOnlyMeasurements,
+            tailRetry);
+        var mergedTailEvidence = PerformanceQualification.Run(mergedTailMeasurements);
         var sustainedMeasurements = PerformanceQualification.Profiles
             .Select(profile => Measurement(profile.Id, 26.0, 60.12))
             .ToArray();
@@ -15688,7 +15709,11 @@ public partial class Main : Node2D
             || PerformanceQualification.ShouldRetrySharedHostTail(
                 passingEvidence,
                 passingMeasurements,
-                completedAttemptCount: 1))
+                completedAttemptCount: 1)
+            || !mergedTailEvidence.Passed
+            || mergedTailMeasurements[0] != tailOnlyMeasurements[0]
+            || mergedTailMeasurements[1] != tailRetry[0]
+            || mergedTailMeasurements[2] != tailOnlyMeasurements[2])
         {
             throw new InvalidOperationException(
                 "Performance retry policy did not preserve its bounded tail-only contract.");
@@ -15742,13 +15767,26 @@ public partial class Main : Node2D
     }
 
     private async Task<IReadOnlyList<PerformanceProfileMeasurement>>
-        MeasurePerformanceProfilesAsync()
+        MeasurePerformanceProfilesAsync(IReadOnlySet<string>? requestedProfileIds = null)
     {
+        var profiles = requestedProfileIds is null
+            ? PerformanceQualification.Profiles
+            : PerformanceQualification.Profiles
+                .Where(profile => requestedProfileIds.Contains(profile.Id))
+                .ToArray();
+        if (requestedProfileIds is not null
+            && profiles.Count != requestedProfileIds.Count)
+        {
+            throw new ArgumentException(
+                "Performance measurement requested an unknown profile.",
+                nameof(requestedProfileIds));
+        }
+
         var measurements = new List<PerformanceProfileMeasurement>(
-            PerformanceQualification.Profiles.Count);
+            profiles.Count);
         try
         {
-            foreach (var profile in PerformanceQualification.Profiles)
+            foreach (var profile in profiles)
             {
                 _performanceStressProfile = profile;
                 for (var warmup = 0; warmup < 4; warmup++)

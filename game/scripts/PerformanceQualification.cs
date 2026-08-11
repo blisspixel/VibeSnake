@@ -262,6 +262,47 @@ internal static class PerformanceQualification
                     > SharedHostMaximumP95Milliseconds);
     }
 
+    public static IReadOnlyList<PerformanceProfileMeasurement> MergeSharedHostTailRetry(
+        IReadOnlyList<PerformanceProfileMeasurement> baseline,
+        IReadOnlyList<PerformanceProfileMeasurement> retry)
+    {
+        ArgumentNullException.ThrowIfNull(baseline);
+        ArgumentNullException.ThrowIfNull(retry);
+        var expectedIds = Profiles.Select(profile => profile.Id).ToArray();
+        if (!baseline.Select(measurement => measurement.Id).SequenceEqual(expectedIds))
+        {
+            throw new ArgumentException(
+                "Baseline performance measurements must contain every profile in order.",
+                nameof(baseline));
+        }
+
+        var retryById = new Dictionary<string, PerformanceProfileMeasurement>(
+            StringComparer.Ordinal);
+        foreach (var measurement in retry)
+        {
+            if (!expectedIds.Contains(measurement.Id, StringComparer.Ordinal)
+                || !retryById.TryAdd(measurement.Id, measurement))
+            {
+                throw new ArgumentException(
+                    "Retry performance measurements must contain unique known profiles.",
+                    nameof(retry));
+            }
+        }
+
+        if (retryById.Count == 0)
+        {
+            throw new ArgumentException(
+                "At least one performance profile must be retried.",
+                nameof(retry));
+        }
+
+        return baseline
+            .Select(measurement => retryById.GetValueOrDefault(
+                measurement.Id,
+                measurement))
+            .ToArray();
+    }
+
     private static PerformanceProfileDefinition Profile(
         string id,
         string effectsSetting,

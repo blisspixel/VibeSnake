@@ -55,8 +55,12 @@ internal sealed class PresentationFrameSampler
         }
 
         var weight = rank - lower;
-        return (orderedAscending[lower] * (1.0 - weight))
+        var interpolated = (orderedAscending[lower] * (1.0 - weight))
             + (orderedAscending[upper] * weight);
+        return Math.Clamp(
+            interpolated,
+            orderedAscending[lower],
+            orderedAscending[upper]);
     }
 }
 
