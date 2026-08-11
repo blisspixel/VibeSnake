@@ -284,6 +284,13 @@ public partial class Main : Node2D
         Restore,
     }
 
+    private enum PlayerDataOperationCompletion
+    {
+        Pending,
+        Succeeded,
+        Failed,
+    }
+
     private readonly record struct PendingBindingConflict(
         string Action,
         string ConflictingAction);
@@ -1003,19 +1010,22 @@ public partial class Main : Node2D
             eventCode: "progression_load_failed");
     }
 
-    private void PersistProgression(SnakeRun run)
+    private bool TrySaveProgression(string failureEventCode)
     {
-        ArgumentNullException.ThrowIfNull(run);
+        ArgumentException.ThrowIfNullOrWhiteSpace(failureEventCode);
+        if (_progressionStore is null)
+        {
+            _structuredLog?.Warning(
+                "progression",
+                "Progression persistence is unavailable; changes remain session-only.",
+                eventCode: failureEventCode);
+            return false;
+        }
+
         try
         {
-            _progression = _progression.WithHumanRun(
-                run.ToAchievementMetrics(),
-                ScoreRunContextCatalog.NormalHuman);
-            _progressionStore?.Save(_progression);
-            _structuredLog?.Information(
-                "progression",
-                "Saved monotonic human goal progress.",
-                eventCode: "progression_saved");
+            _progressionStore.Save(_progression);
+            return true;
         }
         catch (Exception exception) when (
             exception is IOException
@@ -1025,12 +1035,47 @@ public partial class Main : Node2D
                 or InvalidOperationException
                 or OverflowException)
         {
+            _structuredLog?.Warning(
+                "progression",
+                exception.Message,
+                eventCode: failureEventCode);
+            return false;
+        }
+    }
+
+    private void PersistProgression(SnakeRun run)
+    {
+        ArgumentNullException.ThrowIfNull(run);
+        try
+        {
+            _progression = _progression.WithHumanRun(
+                run.ToAchievementMetrics(),
+                ScoreRunContextCatalog.NormalHuman);
+        }
+        catch (Exception exception) when (
+            exception is ArgumentException
+                or InvalidDataException
+                or InvalidOperationException
+                or OverflowException)
+        {
             _progressionStatusCaption = Localize("status.progression.save-failed");
             _structuredLog?.Warning(
                 "progression",
                 exception.Message,
-                eventCode: "progression_save_failed");
+                eventCode: "progression_update_rejected");
+            return;
         }
+
+        if (!TrySaveProgression("progression_save_failed"))
+        {
+            _progressionStatusCaption = Localize("status.progression.save-failed");
+            return;
+        }
+
+        _structuredLog?.Information(
+            "progression",
+            "Saved monotonic human goal progress.",
+            eventCode: "progression_saved");
     }
 
     private void HighlightProgressionGoal()
@@ -1046,16 +1091,21 @@ public partial class Main : Node2D
         try
         {
             _progression = _progression.WithHighlightedGoal(goal.Id);
-            _progressionStore?.Save(_progression);
-            _progressionStatusCaption = Localize(
-                "status.progression.highlighted",
-                ShellTextArgument.From("goal", goal.Name.ToUpperInvariant()));
-            PlayCue(AudioCue.Confirm);
+            if (TrySaveProgression("progression_highlight_save_failed"))
+            {
+                _progressionStatusCaption = Localize(
+                    "status.progression.highlighted",
+                    ShellTextArgument.From("goal", goal.Name.ToUpperInvariant()));
+                PlayCue(AudioCue.Confirm);
+            }
+            else
+            {
+                _progressionStatusCaption = Localize(
+                    "status.progression.highlight-save-failed");
+            }
         }
         catch (Exception exception) when (
-            exception is IOException
-                or UnauthorizedAccessException
-                or ArgumentException
+            exception is ArgumentException
                 or InvalidDataException
                 or InvalidOperationException)
         {
@@ -2137,9 +2187,8 @@ public partial class Main : Node2D
             GetTree().Quit();
         }
 
-        if (TryCompletePlayerDataOperation() && _quitAfterPlayerDataOperation)
+        if (ShouldQuitAfterPlayerDataWork())
         {
-            _quitAfterPlayerDataOperation = false;
             GetTree().Quit();
         }
     }
@@ -2276,10 +2325,10 @@ public partial class Main : Node2D
 
         if (inputEvent.IsActionPressed(GameActions.OpenDiagnostics))
         {
-            OpenDiagnosticsDirectory();
+            var diagnosticsStatus = OpenDiagnosticsDirectory();
             if (_screenState is ScreenState.Menu or ScreenState.Ended)
             {
-                ShowReplayStatus("DIAGNOSTICS PATH COPIED");
+                ShowReplayStatus(diagnosticsStatus);
             }
 
             return;
@@ -4474,24 +4523,29 @@ public partial class Main : Node2D
             }
 
             _progression = updated;
-            _progressionStore?.Save(_progression);
-            _cosmeticStatusCaption = saveLoadout
-                ? Localize(
-                    "status.cosmetics.loadout-saved",
-                    ShellTextArgument.From("cosmetic", cosmetic.Name.ToUpperInvariant()))
-                : Localize(
-                    "status.cosmetics.selected",
-                    ShellTextArgument.From("cosmetic", cosmetic.Name.ToUpperInvariant()));
-            _structuredLog?.Information(
-                "progression",
-                _cosmeticStatusCaption,
-                eventCode: saveLoadout ? "cosmetic_loadout_saved" : "cosmetic_selected");
+            if (TrySaveProgression("cosmetic_selection_save_failed"))
+            {
+                _cosmeticStatusCaption = saveLoadout
+                    ? Localize(
+                        "status.cosmetics.loadout-saved",
+                        ShellTextArgument.From("cosmetic", cosmetic.Name.ToUpperInvariant()))
+                    : Localize(
+                        "status.cosmetics.selected",
+                        ShellTextArgument.From("cosmetic", cosmetic.Name.ToUpperInvariant()));
+                _structuredLog?.Information(
+                    "progression",
+                    _cosmeticStatusCaption,
+                    eventCode: saveLoadout ? "cosmetic_loadout_saved" : "cosmetic_selected");
+            }
+            else
+            {
+                _cosmeticStatusCaption = Localize("status.progression.save-failed");
+            }
+
             PlayCue(AudioCue.Confirm);
         }
         catch (Exception exception) when (
-            exception is IOException
-                or UnauthorizedAccessException
-                or ArgumentException
+            exception is ArgumentException
                 or InvalidDataException
                 or InvalidOperationException)
         {
@@ -5930,9 +5984,11 @@ public partial class Main : Node2D
                     : Localize("status.settings.bindings-session-failed");
                 break;
             case "open_diagnostics":
-                OpenDiagnosticsDirectory();
-                _settingsStatusCaption = Localize("status.settings.diagnostics-copied");
-                break;
+                {
+                    var statusCaption = OpenDiagnosticsDirectory();
+                    _settingsStatusCaption = statusCaption;
+                    break;
+                }
             case "reset_tutorial":
                 ResetOnboardingProgress();
                 break;
@@ -6200,32 +6256,26 @@ public partial class Main : Node2D
             0,
             _playerDataBackups.Count - 1)];
 
-    private bool TryCompletePlayerDataOperation()
+    private PlayerDataOperationCompletion TryCompletePlayerDataOperation()
     {
         var operation = _playerDataOperation;
         if (operation is null || !operation.IsCompleted)
         {
-            return false;
+            return PlayerDataOperationCompletion.Pending;
         }
 
         _playerDataOperation = null;
+        var operationSucceeded = false;
         try
         {
             var result = operation.GetAwaiter().GetResult();
-            switch (result.Kind)
+            operationSucceeded = result.Kind switch
             {
-                case PlayerDataOperationKind.Reset:
-                    CompletePlayerDataReset(result);
-                    break;
-                case PlayerDataOperationKind.Inspect:
-                    CompletePlayerDataInspection(result);
-                    break;
-                case PlayerDataOperationKind.Restore:
-                    CompletePlayerDataRestore(result);
-                    break;
-                default:
-                    throw new ArgumentOutOfRangeException(nameof(result.Kind));
-            }
+                PlayerDataOperationKind.Reset => CompletePlayerDataReset(result),
+                PlayerDataOperationKind.Inspect => CompletePlayerDataInspection(result),
+                PlayerDataOperationKind.Restore => CompletePlayerDataRestore(result),
+                _ => throw new ArgumentOutOfRangeException(nameof(result.Kind)),
+            };
         }
         catch (Exception exception) when (
             exception is IOException
@@ -6241,10 +6291,32 @@ public partial class Main : Node2D
         }
 
         QueueRedraw();
-        return true;
+        return operationSucceeded
+            ? PlayerDataOperationCompletion.Succeeded
+            : PlayerDataOperationCompletion.Failed;
     }
 
-    private void CompletePlayerDataReset(PlayerDataOperationResult operation)
+    private bool ShouldQuitAfterPlayerDataWork()
+    {
+        var completion = TryCompletePlayerDataOperation();
+        if (completion == PlayerDataOperationCompletion.Pending
+            || !_quitAfterPlayerDataOperation)
+        {
+            return false;
+        }
+
+        _quitAfterPlayerDataOperation = false;
+        if (completion == PlayerDataOperationCompletion.Succeeded)
+        {
+            return true;
+        }
+
+        _settingsStatusCaption = Localize("status.player-data.quit-canceled");
+        QueueRedraw();
+        return false;
+    }
+
+    private bool CompletePlayerDataReset(PlayerDataOperationResult operation)
     {
         if (operation.ResetPlan is null || operation.ResetResult is null)
         {
@@ -6261,7 +6333,7 @@ public partial class Main : Node2D
                 "player-data",
                 result.Message,
                 eventCode: "player_data_reset_blocked");
-            return;
+            return false;
         }
 
         var backupLocation = result.BackupLocation
@@ -6276,9 +6348,10 @@ public partial class Main : Node2D
             "player-data",
             "Selected player data was reset after verified backup.",
             eventCode: "player_data_reset_complete");
+        return true;
     }
 
-    private void CompletePlayerDataInspection(PlayerDataOperationResult operation)
+    private bool CompletePlayerDataInspection(PlayerDataOperationResult operation)
     {
         _playerDataBackups = operation.Backups ?? [];
         _playerDataBackupCursor = 0;
@@ -6286,16 +6359,17 @@ public partial class Main : Node2D
         if (_playerDataBackups.Count == 0)
         {
             _settingsStatusCaption = Localize("status.player-data.no-backups");
-            return;
+            return true;
         }
 
         var selected = CurrentPlayerDataBackup();
         _settingsStatusCaption = selected.CanRestore
             ? Localize("status.player-data.backup-verified")
             : Localize("status.player-data.backup-corrupt");
+        return true;
     }
 
-    private void CompletePlayerDataRestore(PlayerDataOperationResult operation)
+    private bool CompletePlayerDataRestore(PlayerDataOperationResult operation)
     {
         if (operation.RestoreResult is null)
         {
@@ -6309,7 +6383,7 @@ public partial class Main : Node2D
                 ShellTextArgument.From(
                     "code",
                     operation.RestoreResult.Code.ToString().ToUpperInvariant()));
-            return;
+            return false;
         }
 
         LoadShellSettings();
@@ -6329,6 +6403,7 @@ public partial class Main : Node2D
             "player-data",
             "Verified player-data backup restored without overwrite.",
             eventCode: "player_data_restore_complete");
+        return true;
     }
 
     private void ApplyPlayerDataResetInMemory(
@@ -6399,7 +6474,24 @@ public partial class Main : Node2D
                 eventCode: "backup_path_clipboard_failed");
         }
 
-        OS.ShellOpen(path);
+        try
+        {
+            var openError = OS.ShellOpen(path);
+            if (openError != Error.Ok)
+            {
+                _structuredLog?.Warning(
+                    "player-data",
+                    $"Backup location open failed with {openError}.",
+                    eventCode: "backup_location_open_failed");
+            }
+        }
+        catch (Exception exception)
+        {
+            _structuredLog?.Warning(
+                "player-data",
+                exception.Message,
+                eventCode: "backup_location_open_failed");
+        }
     }
 
     private void ResetAllPlayerSettings()
@@ -8521,6 +8613,7 @@ public partial class Main : Node2D
             ?? throw new InvalidOperationException("A replay operation kind was not recorded.");
         _replayOperation = null;
         _replayOperationKind = null;
+        var operationSucceeded = false;
         try
         {
             var result = operation.GetAwaiter().GetResult();
@@ -8594,10 +8687,29 @@ public partial class Main : Node2D
             }
 
             ShowReplayStatus(result.Caption);
+            operationSucceeded = true;
         }
-        catch (Exception)
+        catch (Exception exception)
         {
             ShowReplayStatus("REPLAY OPERATION FAILED: AN UNEXPECTED LOCAL ERROR OCCURRED");
+            try
+            {
+                WriteLocalCrashReport(
+                    $"ReplayOperation_{completedKind}",
+                    exception,
+                    eventCode: "replay_operation_failed");
+            }
+            catch (Exception diagnosticException) when (
+                diagnosticException is IOException
+                    or UnauthorizedAccessException
+                    or ArgumentException
+                    or InvalidOperationException)
+            {
+                _structuredLog?.Warning(
+                    "replay",
+                    "Replay operation and diagnostic persistence both failed.",
+                    eventCode: "replay_operation_and_diagnostics_failed");
+            }
         }
 
         if (_queuedReplaySave is { } queuedSave)
@@ -8618,7 +8730,12 @@ public partial class Main : Node2D
         {
             _quitAfterReplaySave = false;
             _replayQuitDeadlineMilliseconds = null;
-            return true;
+            if (operationSucceeded)
+            {
+                return true;
+            }
+
+            ShowReplayStatus("QUIT CANCELED: REPLAY SAVE FAILED; RETRY OR QUIT AGAIN");
         }
 
         return false;
@@ -8711,37 +8828,65 @@ public partial class Main : Node2D
 
     /// <summary>
     /// Opens the local diagnostics directory in the host file manager and copies
-    /// the absolute path to the clipboard for support. No-op open in headless;
-    /// clipboard still receives the path when the display server allows it.
+    /// the absolute path to the clipboard for support. The returned localized
+    /// status never claims success when either interactive access route failed.
     /// </summary>
-    private void OpenDiagnosticsDirectory()
+    private string OpenDiagnosticsDirectory()
     {
         if (_diagnostics is null)
         {
-            return;
+            return Localize("status.settings.diagnostics-limited");
         }
 
-        var path = _diagnostics.EnsureDiagnosticsDirectory();
-        _structuredLog?.EnsureLogsDirectory();
-        _structuredLog?.Information(
-            "diagnostics",
-            "Opened local diagnostics directory for support.",
-            eventCode: "open_diagnostics");
+        string path;
+        try
+        {
+            path = _diagnostics.EnsureDiagnosticsDirectory();
+            _structuredLog?.EnsureLogsDirectory();
+            _structuredLog?.Information(
+                "diagnostics",
+                "Prepared local diagnostics directory for support.",
+                eventCode: "open_diagnostics");
+        }
+        catch (Exception exception) when (
+            exception is IOException
+                or UnauthorizedAccessException
+                or ArgumentException
+                or InvalidOperationException)
+        {
+            return Localize("status.settings.diagnostics-limited");
+        }
+
+        var pathCopied = true;
         try
         {
             DisplayServer.ClipboardSet(path);
         }
         catch (Exception)
         {
-            // Clipboard can fail on locked-down hosts; open still proceeds.
+            pathCopied = false;
         }
 
         if (DisplayServer.GetName() == "headless")
         {
-            return;
+            return pathCopied
+                ? Localize("status.settings.diagnostics-copied")
+                : Localize("status.settings.diagnostics-limited");
         }
 
-        OS.ShellOpen(path);
+        var directoryOpened = false;
+        try
+        {
+            directoryOpened = OS.ShellOpen(path) == Error.Ok;
+        }
+        catch (Exception)
+        {
+            directoryOpened = false;
+        }
+
+        return pathCopied && directoryOpened
+            ? Localize("status.settings.diagnostics-copied")
+            : Localize("status.settings.diagnostics-limited");
     }
 
     private static string SanitizeReplayStatus(string message)
@@ -12062,6 +12207,25 @@ public partial class Main : Node2D
             throw new InvalidOperationException("Quit was not released after the replay save completed.");
         }
 
+        _replayOperation = Task.FromException<ReplayOperationResult>(
+            new IOException("Synthetic replay save failure."));
+        _replayOperationKind = ReplayOperationKind.Save;
+        RequestQuit();
+        if (
+            TryCompleteReplayOperation()
+            || _quitAfterReplaySave
+            || _replayQuitDeadlineMilliseconds is not null
+            || _replayOperation is not null
+            || _replayStatusCaption
+                != "QUIT CANCELED: REPLAY SAVE FAILED; RETRY OR QUIT AGAIN"
+            || _structuredLog is null
+            || !System.IO.File.ReadAllText(_structuredLog.ActiveLogPath)
+                .Contains("replay_operation_failed", StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException(
+                "A failed replay save released quit or concealed the failed operation.");
+        }
+
         var blockedSave = new TaskCompletionSource<ReplayOperationResult>(
             TaskCreationOptions.RunContinuationsAsynchronously);
         _replayOperation = blockedSave.Task;
@@ -12081,6 +12245,49 @@ public partial class Main : Node2D
         _replayOperation = null;
         _replayOperationKind = null;
         _skipReplayShutdownDrain = false;
+    }
+
+    private void ExecuteUnavailableProgressionPersistenceSmokeTest()
+    {
+        var retainedStore = _progressionStore;
+        var retainedProgression = _progression;
+        var retainedGoalCursor = _progressionGoalCursor;
+        var retainedCosmeticCursor = _cosmeticCursor;
+        try
+        {
+            _progressionStore = null;
+            if (TrySaveProgression("progression_unavailable_smoke"))
+            {
+                throw new InvalidOperationException(
+                    "Unavailable progression persistence reported a successful save.");
+            }
+
+            _progressionGoalCursor = 0;
+            HighlightProgressionGoal();
+            if (_progressionStatusCaption
+                != Localize("status.progression.highlight-save-failed"))
+            {
+                throw new InvalidOperationException(
+                    "Goal highlighting concealed unavailable progression persistence.");
+            }
+
+            _cosmeticCursor = 0;
+            ApplyCosmeticSelection(saveLoadout: false);
+            if (_cosmeticStatusCaption != Localize("status.progression.save-failed"))
+            {
+                throw new InvalidOperationException(
+                    "Cosmetic selection concealed unavailable progression persistence.");
+            }
+        }
+        finally
+        {
+            _progressionStore = retainedStore;
+            _progression = retainedProgression;
+            _progressionGoalCursor = retainedGoalCursor;
+            _cosmeticCursor = retainedCosmeticCursor;
+            _progressionStatusCaption = null;
+            _cosmeticStatusCaption = null;
+        }
     }
 
     private static CoreOnlyOfflineQualificationEvidence ExecuteContentServiceSmokeTest(
@@ -12504,7 +12711,7 @@ public partial class Main : Node2D
 
         const int migratedRequiredFlowCount = 13;
         const double requiredExpansionRatio = 1.30;
-        var passed = ShellLocalization.All.Count == 516
+        var passed = ShellLocalization.All.Count == 518
             && ShellLocalization.All.Count(entry => entry.Parameters.Count > 0) == 73
             && migratedRequiredFlowCount == 13
             && minimumExpansionRatio >= requiredExpansionRatio
@@ -13377,6 +13584,7 @@ public partial class Main : Node2D
                 "Structured log missing required smoke event codes or kind marker.");
         }
 
+        ExecuteUnavailableProgressionPersistenceSmokeTest();
         ExecuteShellTransitionGraphSmokeTest();
         OpenAchievementsBrowse();
         if (_screenState != ScreenState.Achievements)
@@ -14496,7 +14704,7 @@ public partial class Main : Node2D
     {
         for (var attempt = 0; attempt < 2_000 && _playerDataOperation is not null; attempt++)
         {
-            if (!TryCompletePlayerDataOperation())
+            if (TryCompletePlayerDataOperation() == PlayerDataOperationCompletion.Pending)
             {
                 System.Threading.Thread.Sleep(1);
             }
@@ -14630,6 +14838,21 @@ public partial class Main : Node2D
             var recoveryLocationVisible = separateInspection.RelativeLocation
                     == "backups/separate"
                 && corruptInspection.RelativeLocation == "backups/corrupt";
+
+            _playerDataOperation = Task.FromException<PlayerDataOperationResult>(
+                new IOException("Synthetic player-data operation failure."));
+            RequestQuit();
+            if (!_quitAfterPlayerDataOperation
+                || ShouldQuitAfterPlayerDataWork()
+                || _quitAfterPlayerDataOperation
+                || _playerDataOperation is not null
+                || _settingsStatusCaption
+                    != Localize("status.player-data.quit-canceled"))
+            {
+                throw new InvalidOperationException(
+                    "A failed player-data operation released quit or concealed the failure.");
+            }
+
             var passed = exactConfirmationComplete
                 && cancelWithoutWriteComplete
                 && backupBeforeResetComplete

@@ -599,15 +599,23 @@ internal sealed partial class ProceduralCuePlayer : Node
         }
         catch (Exception exception)
         {
+            var cleanupFailures = new List<string>();
             if (grantedLease is not null)
             {
                 _allocator.Release(grantedLease.LeaseId);
                 _voicePlayers.Remove(grantedLease.LeaseId);
             }
 
-            TryStopAfterFailure(voicePlayer);
-            TryApplyMusicDuck(_allocator.EffectiveMusicDuckDecibels);
+            TryStopAfterFailure(voicePlayer, cleanupFailures);
+            TryApplyMusicDuck(
+                _allocator.EffectiveMusicDuckDecibels,
+                cleanupFailures);
             failureReason = $"{exception.GetType().Name}: {exception.Message}";
+            if (cleanupFailures.Count > 0)
+            {
+                failureReason += "; cleanup: " + string.Join(", ", cleanupFailures);
+            }
+
             return false;
         }
     }
@@ -704,9 +712,15 @@ internal sealed partial class ProceduralCuePlayer : Node
 
     public void StopAndDetach()
     {
-        StopAllVoices();
+        var failures = new List<string>();
+        StopAllVoices(failures);
         _allocator.Reset();
-        TryRestoreMusicDuck();
+        TryResetMusicDuck(failures);
+        if (failures.Count > 0)
+        {
+            throw new InvalidOperationException(
+                "Procedural audio cleanup failed: " + string.Join(", ", failures));
+        }
     }
 
     public void ReleaseStreams()
@@ -799,18 +813,16 @@ internal sealed partial class ProceduralCuePlayer : Node
         return (long)milliseconds;
     }
 
-    private static void TryRestoreMusicDuck()
-        => TryApplyMusicDuck(0.0f);
-
-    private static void TryApplyMusicDuck(float decibels)
+    private static void TryApplyMusicDuck(float decibels, List<string> failures)
     {
+        ArgumentNullException.ThrowIfNull(failures);
         try
         {
             AudioBuses.SetTransientMusicDuck(decibels);
         }
-        catch (Exception)
+        catch (Exception exception)
         {
-            // Optional audio cleanup must not escape into deterministic play.
+            failures.Add($"duck-apply: {exception.GetType().Name}");
         }
     }
 

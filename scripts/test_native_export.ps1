@@ -355,6 +355,7 @@ $installRoot = $null
 $installPermissionToken = $null
 $installSnapshotBefore = $null
 $readOnlyWriteRejected = $false
+$readOnlyWriteExceptionType = $null
 $writeProbePath = $null
 try {
     if (Test-Path -LiteralPath $smokeUserDataRoot) {
@@ -404,8 +405,11 @@ try {
     $writeProbePath = Join-Path $installRoot ".vibesnake-read-only-probe"
     try {
         [System.IO.File]::WriteAllText($writeProbePath, "write must fail")
-    } catch {
+    } catch [System.UnauthorizedAccessException] {
         $readOnlyWriteRejected = $true
+        $readOnlyWriteExceptionType = $_.Exception.GetType().FullName
+    } catch {
+        throw "Read-only write probe failed unexpectedly: $($_.Exception.GetType().FullName)"
     }
 
     $startInfo = [System.Diagnostics.ProcessStartInfo]::new()
@@ -903,6 +907,7 @@ try {
         $smokeUserDataRoot -match '[^\x00-\x7f]'
     $logPathQualified = $smokeLog.Contains(" ") -and $smokeLog -match '[^\x00-\x7f]'
     $evidencePassed = $readOnlyWriteRejected -and
+        $readOnlyWriteExceptionType -eq "System.UnauthorizedAccessException" -and
         $installUnchanged -and
         $userDataOutsideInstall -and
         $logOutsideInstall -and
@@ -1006,6 +1011,7 @@ try {
         sourceRevision = $sourceRevision
         smokeStateHash = $smokeStateHash
         writeProbeRejected = $readOnlyWriteRejected
+        writeProbeExceptionType = $readOnlyWriteExceptionType
         installFileCount = $installSnapshotAfter.FileCount
         beforeSha256 = $installSnapshotBefore.AggregateSha256
         afterSha256 = $installSnapshotAfter.AggregateSha256

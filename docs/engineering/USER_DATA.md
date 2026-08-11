@@ -1,6 +1,6 @@
 # User-data directory contracts
 
-Status: V080-11 native progression, replay, offline comparison, and recovery layout (2026-08-10).
+Status: V080-11 native progression, replay, offline comparison, and recovery layout (2026-08-11).
 
 This document is the authoritative layout for player-writable paths on Windows, macOS, and Linux. Domain rules never invent paths. Python uses `vibesnake.data.paths`. The Godot shell supplies an absolute user-data root to `VibeSnake.Persistence` (normally Godot `user://` resolved to a filesystem path, or an explicit smoke override).
 
@@ -106,6 +106,9 @@ Future native-owned rows (not yet writers in shipping code):
 | Removed optional pack | Validated pack moves to recoverable quarantine; restart-safe discovery and restore revalidate manifest and payload before activation |
 | Tampered installed or quarantined pack | Pack remains isolated and is not activated or moved into the active set |
 | Disk full / lock timeout | Fail closed; no partial replace of the previous good file |
+| Progression store unavailable or save rejected | Keep the valid in-memory change for the current session, show session-only status, and never emit a saved event |
+| Background replay save faults while quit is pending | Cancel quit, keep the session open, show the failed-save status, and retain a sanitized local diagnostic when storage permits |
+| Background player-data reset or restore faults while quit is pending | Cancel quit, keep the failure visible, and require a new deliberate quit request |
 | Confirmed category reset | Copy bounded allowlisted files, verify source/copy SHA-256 and strict manifest, recheck source stability, then remove only the listed targets |
 | Cancelled reset | Planning is read-only; no directory, manifest, or player-data write occurs |
 | Corrupt or incomplete reset backup | Preserve it, show `user://backups/<id>`, block restore, and offer keep/open-location choices |
@@ -128,11 +131,11 @@ Future native-owned rows (not yet writers in shipping code):
 - Native score-history ranking, identity, strict parsing, category and byte limits, existing-best migration, Python source preservation, exact-once import, and reset ownership: `ScoreHistoryDocumentTests` and `PlayerDataRecoveryServiceTests`.
 - Native goal, cosmetic, reward, and Tour identity, strict parsing, bounds, dependency closure, unearned-reward rejection, atomic writes, and reset ownership: `ProgressionCatalogTests`, `BroadcastTourSessionTests`, `ProgressionDocumentTests`, and `PlayerDataRecoveryServiceTests`.
 - Godot `local-playtest-summary-qualification-v1` evidence covers raw keyboard consent, preference round-trip, terminal capture, local export, raw controller deletion, lossless cancellation, permanent confirmation, the exact 26-field summary and nine-row nested allowlists, and upload absence. `power-decision-qualification-v1` separately proves all eight aggregate lifecycle stages and the bounded death-adjacency window.
-- Godot `player-data-recovery-qualification-v1` evidence covers exact confirmation, cancel-without-write, backup-before-removal, integrity, separate category reset, corruption/conflict rejection, restore, visible locations, and keyboard/controller routes.
+- Godot `player-data-recovery-qualification-v1` evidence covers exact confirmation, cancel-without-write, backup-before-removal, integrity, separate category reset, corruption/conflict rejection, restore, visible locations, keyboard/controller routes, and faulted-operation quit cancellation.
 - Godot `score-browser-qualification-v1` evidence covers raw keyboard/controller entry, navigation, confirmation, cancellation, top-ten bounds, exact score fields, source-preserving import, visible legacy classification, and recovery ownership.
 - Godot `replay-browser-qualification-v2` evidence covers raw keyboard/controller replay routes, complete metadata/status shape, closed speed set, HUD toggle, pause/step/restart/return, verified export, lossless delete cancel, exact confirmed delete, export preservation, and progression isolation.
 - Godot `offline-comparison-qualification-v1` evidence covers raw keyboard/controller comparison routes, stable tamper-evident seed codes, four fixed slots, source-preserving import, modified/incompatible rejection, a live equal-rules ghost, ghost isolation, private atomic run cards, exact deletion, progression isolation, and core-offline operation.
-- Godot `progression-qualification-v1` evidence covers raw keyboard/controller goal highlighting, Tour and cosmetic flows, store round-trip, fixed-seed practice isolation, reduced-motion notification bounds, canonical rival/station references, and zero human-distribution claims.
+- Godot `progression-qualification-v1` evidence covers raw keyboard/controller goal highlighting, Tour and cosmetic flows, store round-trip, explicit session-only behavior when the store is unavailable, fixed-seed practice isolation, reduced-motion notification bounds, canonical rival/station references, and zero human-distribution claims.
 - Godot smoke requires an explicit isolated user-data root.
 - Export smoke stages install, fresh user-data, and log paths containing spaces and non-ASCII characters, makes the install tree read-only, requires an adjacent write probe to fail, launches with isolated user data and logs outside that tree, and writes `artifact-read-only-install-v1` only after the complete installed-file digest remains unchanged.
 

@@ -243,6 +243,8 @@ public static class ContentPackResolver
         }
         catch (JsonException)
         {
+            // The caller already retains the parse rejection. A malformed
+            // claimed ID deliberately falls back to a bounded path identity.
         }
         return null;
     }

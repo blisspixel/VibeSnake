@@ -538,6 +538,9 @@ internal static class ShellLocalization
         Entry("status.settings.confirm-action", "PRESS CONFIRM TO USE THIS ACTION"),
         Entry("status.settings.diagnostics-copied", "DIAGNOSTICS PATH COPIED"),
         Entry(
+            "status.settings.diagnostics-limited",
+            "DIAGNOSTICS ACCESS LIMITED: COPY OR FOLDER OPEN FAILED"),
+        Entry(
             "status.settings.playtest-delete-confirm",
             "CONFIRM PERMANENT SUMMARY AND EXPORT DELETION"),
         Entry(
@@ -571,7 +574,7 @@ internal static class ShellLocalization
         Entry("status.player-data.no-backups", "NO PLAYER-DATA BACKUPS FOUND"),
         Entry(
             "status.player-data.restore-location-blocked",
-            "RESTORE BLOCKED: LOCATION OPENED FOR SUPPORT OR MANUAL REMOVAL"),
+            "RESTORE BLOCKED: BACKUP LOCATION ACCESS ATTEMPTED"),
         Entry(
             "status.player-data.restoring",
             "RESTORING VERIFIED BACKUP WITHOUT OVERWRITE"),
@@ -595,6 +598,9 @@ internal static class ShellLocalization
         Entry(
             "status.player-data.quit-paused",
             "QUIT PAUSED: FINISHING PLAYER-DATA OPERATION"),
+        Entry(
+            "status.player-data.quit-canceled",
+            "QUIT CANCELED: PLAYER-DATA OPERATION FAILED"),
         Entry("status.onboarding.reset-offered", "TUTORIAL WILL BE OFFERED AGAIN"),
         Entry(
             "status.onboarding.reset-save-failed",

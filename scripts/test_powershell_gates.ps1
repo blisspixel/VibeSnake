@@ -163,7 +163,7 @@ try {
         }
     }
     foreach ($requiredLocalizationFragment in @(
-        "ShellLocalization.All.Count == 516",
+        "ShellLocalization.All.Count == 518",
         "entry.Parameters.Count > 0) == 73"
     )) {
         if (-not $gameMainScript.Contains($requiredLocalizationFragment, [StringComparison]::Ordinal)) {
@@ -171,7 +171,7 @@ try {
         }
     }
     foreach ($requiredLocalizationFragment in @(
-        '($localizationEvidence.stringCount -ne 516)',
+        '($localizationEvidence.stringCount -ne 518)',
         '($localizationEvidence.parameterizedStringCount -ne 73)'
     )) {
         if (-not $nativeTestScript.Contains($requiredLocalizationFragment, [StringComparison]::Ordinal)) {
@@ -198,6 +198,44 @@ try {
         '"effective_schema=7 code=Success"',
         [StringComparison]::Ordinal)) {
         throw "Candidate repair launch must require the current preferences schema."
+    }
+    foreach ($requiredReadOnlyProbeFragment in @(
+        'catch [System.UnauthorizedAccessException]',
+        '$readOnlyWriteExceptionType = $_.Exception.GetType().FullName',
+        '$readOnlyWriteExceptionType -eq "System.UnauthorizedAccessException"',
+        'writeProbeExceptionType = $readOnlyWriteExceptionType'
+    )) {
+        if (-not $nativeExportScript.Contains(
+            $requiredReadOnlyProbeFragment,
+            [StringComparison]::Ordinal)) {
+            throw "Read-only install probe can hide an unrelated write failure: $requiredReadOnlyProbeFragment"
+        }
+    }
+    if ($gameMainScript.Contains("_progressionStore?.Save", [StringComparison]::Ordinal)) {
+        throw "Progression persistence can silently claim success without an initialized store."
+    }
+    foreach ($requiredProgressionFailureFragment in @(
+        'if (!TrySaveProgression("progression_save_failed"))',
+        'if (TrySaveProgression("progression_unavailable_smoke"))',
+        'ExecuteUnavailableProgressionPersistenceSmokeTest();'
+    )) {
+        if (-not $gameMainScript.Contains(
+            $requiredProgressionFailureFragment,
+            [StringComparison]::Ordinal)) {
+            throw "Progression failure qualification is missing: $requiredProgressionFailureFragment"
+        }
+    }
+    foreach ($requiredPlayerDataFailureFragment in @(
+        'PlayerDataOperationCompletion.Failed',
+        'if (ShouldQuitAfterPlayerDataWork())',
+        '!= Localize("status.player-data.quit-canceled")',
+        'A failed player-data operation released quit or concealed the failure.'
+    )) {
+        if (-not $gameMainScript.Contains(
+            $requiredPlayerDataFailureFragment,
+            [StringComparison]::Ordinal)) {
+            throw "Player-data failure qualification is missing: $requiredPlayerDataFailureFragment"
+        }
     }
     if ($ciWorkflow -match '\$\{\{\s*secrets\.') {
         throw "Ordinary CI must not reference signing or release secrets."
