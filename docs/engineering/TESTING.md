@@ -53,7 +53,7 @@ The automatic testing architecture, campaign policies, invariant catalog, balanc
 
 As of 2026-08-10:
 
-- 578 deterministic tests plus 14 subtests pass locally on Python 3.14; hosted CI runs the same suite across Python 3.11, 3.12, 3.13, and 3.14. Optional-content absence is an explicit tested state rather than a skipped release assumption.
+- 579 deterministic tests plus 14 subtests pass locally on Python 3.14; hosted CI runs the same suite across Python 3.11, 3.12, 3.13, and 3.14. Optional-content absence is an explicit tested state rather than a skipped release assumption.
 - Python line coverage is 87.15 percent on Python 3.14, above the enforced 80 percent gate that CI applies to every supported interpreter.
 - 899 native C# contract tests pass on .NET 10 with 90 percent line and 85 percent branch floors per measured module under Coverlet 10. Rules measures 95.77/88.69 percent line/branch, Persistence measures 93.86/87.12 percent, creator validation measures 95.98/94.00 percent, and aggregate native coverage is 94.61/87.76 percent. The gate rejects a coverage report that omits Rules or Persistence, and Coverlet's minimum-module threshold also gates the creator validator; `scripts/test_native.ps1` refreshes the exact report after each run. The 0.4 acceptance target remains 90 percent branch coverage.
 - Native progression tests cover canonical human-run identity, exact goal progress, Tour dependency closure, fixed-seed and effective-rules identity, every supported single-run Tour metric, style goals, expression-only rewards, unearned-reward rejection, cosmetic unlock/selection/loadout bounds, strict JSON, atomic persistence, and recovery ownership. Godot smoke separately exercises raw keyboard and controller goal, Tour, and cosmetic flows.

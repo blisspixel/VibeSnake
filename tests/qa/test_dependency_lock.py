@@ -1,3 +1,4 @@
+import tomllib
 from pathlib import Path
 
 import pytest
@@ -23,6 +24,19 @@ def test_repository_dependency_profiles_are_current(
     repository_root = Path(__file__).resolve().parents[2]
 
     assert check_lock(repository_root, profile) >= minimum_packages
+
+
+def test_pytest_asyncio_configuration_has_an_explicit_locked_dependency() -> None:
+    repository_root = Path(__file__).resolve().parents[2]
+    project = tomllib.loads((repository_root / "pyproject.toml").read_text(encoding="utf-8"))
+    pytest_options = project["tool"]["pytest"]["ini_options"]
+    assert "asyncio_default_fixture_loop_scope" in pytest_options
+    assert "asyncio_default_test_loop_scope" in pytest_options
+
+    development_requirements = (repository_root / "requirements-dev.txt").read_text(encoding="utf-8")
+    ci_lock = (repository_root / "requirements-ci.lock").read_text(encoding="utf-8")
+    assert "pytest-asyncio>=1.4,<2\n" in development_requirements
+    assert "pytest-asyncio==1.4.0 \\\n" in ci_lock
 
 
 def test_input_digest_is_path_and_content_sensitive(tmp_path: Path) -> None:

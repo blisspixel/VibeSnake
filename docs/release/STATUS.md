@@ -51,7 +51,7 @@ See [ROADMAP.md Product path](../../ROADMAP.md#product-path-read-this-first). Sh
 | Oracle / alpha checkout | Python 3.11-3.14 + Pygame CE 2.5.8 (reference only) |
 | Player delivery | Root launchers run the native Godot source build; floating `player-latest` provides source/reference packages only. Versioned alpha tags are owned exclusively by the native Release matrix, require all three platforms and provenance, and publish explicit unsigned-preview archives only after content approval. No native tag has been created yet. |
 | Hosted CI | Python oracle matrix (3.11-3.14), native rules on Windows/macOS/Linux, and native Godot player export smoke on all three platforms pass on tip of `main` |
-| Python deterministic tests | 578 passing plus 14 subtests locally on Python 3.14; hosted CI runs the supported 3.11 through 3.14 matrix |
+| Python deterministic tests | 579 passing plus 14 subtests locally on Python 3.14; hosted CI runs the supported 3.11 through 3.14 matrix |
 | Python line coverage | 87.15 percent locally with an 80 percent floor enforced by configuration and CI |
 | Native toolchain | Godot 4.7.1 Mono and .NET SDK 10.0.302 pinned and verified |
 | Native contract tests | **899** passing on .NET 10 with 90 percent line and 85 percent branch floors per measured module under Coverlet 10; Rules measures 95.77/88.69 percent line/branch, Persistence measures 93.86/87.12 percent, creator validation measures 95.98/94.00 percent, and aggregate native coverage is 94.61/87.76 percent. The 0.4 acceptance target remains 90 percent branch coverage. |
