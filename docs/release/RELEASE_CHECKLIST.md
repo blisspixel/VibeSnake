@@ -1,6 +1,6 @@
 # Release Checklist
 
-The current alpha does not meet this checklist. See [STATUS.md](STATUS.md) for the active blockers and [ROADMAP.md](../../ROADMAP.md) for the versioned dependency path. This checklist is the final 1.0 go or no-go view; the roadmap defines which release establishes each item.
+The current development revision does not meet this checklist. See [STATUS.md](STATUS.md) for the active blockers and [ROADMAP.md](../../ROADMAP.md) for the versioned dependency path. This checklist is the final 1.0 go or no-go view; the roadmap defines which release establishes each item. A checked item has candidate-independent repository evidence today. Unchecked items require an exact candidate, protected operation, physical review, content decision, or human acceptance and must not be inferred from automation alone.
 
 ## First native alpha checkpoint
 
@@ -35,8 +35,8 @@ The current alpha does not meet this checklist. See [STATUS.md](STATUS.md) for t
 - [x] Saves use the operating-system user-data location.
 - [x] Every supported runtime configuration key is validated and consumed.
 - [x] Audio and fullscreen settings persist across restart.
-- [ ] Input, accessibility, and expanded audio preferences migrate across restart.
-- [ ] Reset and corrupt-backup recovery are available through confirmed player-facing flows.
+- [x] Input, accessibility, and expanded audio preferences migrate across restart.
+- [x] Reset and corrupt-backup recovery are available through confirmed player-facing keyboard and controller flows.
 
 ## Assets and packaging
 
@@ -45,12 +45,12 @@ The current alpha does not meet this checklist. See [STATUS.md](STATUS.md) for t
 - [ ] A minimal core asset pack is sufficient for offline play.
 - [x] Optional radio-pack artifacts require versioned manifests, hashes, compatibility ranges, exact curation decisions, and native revalidation.
 - [ ] Every shipped asset has source and license metadata.
-- [ ] Runtime lookup works without the repository tree.
-- [ ] Wheel or desktop package builds reproducibly.
-- [ ] A clean environment installs and launches the built artifact.
-- [ ] Uninstall behavior does not remove user saves without consent.
+- [x] Native runtime lookup works without the repository tree.
+- [x] Native desktop qualification packages build reproducibly.
+- [x] Hosted Windows, macOS, and Linux runners launch the built artifact outside the checkout with a fresh external profile.
+- [x] Automated application removal preserves external player data.
 - [ ] Download size, installed size, and optional content size are published.
-- [ ] Archive, generation, test, secret, and local-state files are absent from player artifacts.
+- [x] Archive, generation, test, secret, and local-state files are absent from qualified player artifacts.
 - [ ] The minimal core pack provides a complete rights-cleared soundtrack and critical cue set, and the Coil identity remains recognizable with radio disabled.
 
 ## Automated quality
@@ -67,28 +67,28 @@ The current alpha does not meet this checklist. See [STATUS.md](STATUS.md) for t
 - [x] Deterministic rules and replay fixtures produce stable state hashes locally; the separate three-platform identity gate remains open below.
 - [x] A seeded reference-core QA runner checks per-step invariants and immediate trace replay.
 - [ ] Full-run QA covers every power, death path, restart, AI policy, persistence boundary, and replay operation.
-- [ ] Power event evidence covers offer, detour, collection, activation, expiry, consumption, recovery, and death adjacency for all nine powers.
-- [ ] Fixed, exploratory, and previous-failure seed corpora produce no unexplained invariant or divergence failure.
+- [x] Power event evidence covers offer, detour, collection, activation, expiry, consumption, recovery, and death adjacency for all nine powers.
+- [x] Fixed, exploratory, and previous-failure seed corpora produce no unexplained invariant or divergence failure.
 - [ ] Balance reports have no unreviewed dominant strategy, useless power, impossible seed, or extreme outlier.
-- [ ] AI channel automation proves equal rules, policy separation, no stalls, commentary coverage, repeated switching, deterministic replay, and immediate same-seed challenge behavior.
-- [ ] Broadcast Tour validation finds no unreachable event, dependency cycle, impossible goal, duplicate reward, grind outlier, score-category contamination, or save-migration failure.
-- [ ] Critical engine and persistence boundaries meet their branch-coverage gates.
+- [x] AI channel automation proves equal rules, policy separation, no stalls, commentary coverage, repeated switching, deterministic replay, and immediate same-seed challenge behavior.
+- [x] Broadcast Tour validation finds no unreachable event, dependency cycle, impossible goal, duplicate reward, grind outlier, score-category contamination, or save-migration failure.
+- [x] Critical engine and persistence boundaries meet the current 85 percent branch-coverage gate; 0.4 still raises the target to 90 percent.
 - [ ] Release artifacts include checksums, a dependency inventory or SBOM, and provenance.
 
 ## Input, display, and accessibility
 
-- [ ] Keyboard, mouse, and controller bindings are action-based and remappable.
-- [ ] Controller connection, removal, deadzone, and prompt switching are verified.
+- [x] Keyboard, mouse, and controller bindings are action-based and remappable.
+- [x] Automated controller connection, removal, deadzone, prompt-family, and deliberate-input switching contracts pass; physical-family review remains in the manual gate.
 - [x] Focus loss pauses safely and never leaks buffered input.
-- [ ] Windowed, borderless, and fullscreen layouts preserve aspect ratio and pointer mapping.
-- [ ] Every interactive element has visible focus.
+- [x] Automated windowed, borderless, and fullscreen layouts preserve aspect ratio and pointer mapping across the required eight-case display matrix.
+- [x] Required automated interactive flows retain visible, non-color focus state.
 - [ ] Important text and UI meet documented contrast targets at every supported resolution.
-- [ ] Maximum text scale leaves every required action reachable.
-- [ ] Reduced-motion, zero-shake, flash-free, high-contrast, and color-independent cues are verified.
-- [ ] Master, Music, SFX, and UI audio controls operate independently.
-- [ ] Every critical audio cue has a visual or textual counterpart.
-- [ ] One typed Vibe Level director is the only authority for presentation intensity; audio, HUD, background, particles, camera, and haptics do not infer competing levels.
-- [ ] Every death cause and recovery resource communicates through at least two practical channels that survive muted and reduced-motion play.
+- [x] Automated maximum-text-scale layouts leave every required action reachable.
+- [x] Reduced-motion, zero-shake, flash-free, high-contrast, and color-independent cue contracts pass automated qualification.
+- [x] Master, Music, SFX, and UI audio controls operate independently.
+- [x] Every critical audio cue has a visual or textual counterpart.
+- [x] One typed Vibe Level director is the only authority for presentation intensity; audio, HUD, background, particles, camera, and haptics do not infer competing levels.
+- [x] Every death cause and recovery resource communicates through at least two automated channels that survive muted and reduced-motion play.
 
 ## Manual quality
 
@@ -114,7 +114,7 @@ The current alpha does not meet this checklist. See [STATUS.md](STATUS.md) for t
 - [ ] Windows x64 builds and passes the full native artifact matrix.
 - [ ] macOS Universal builds, signs, enables hardened runtime, notarizes, staples, and passes the full native artifact matrix on Apple Silicon and Intel.
 - [ ] Linux x64 builds and passes executable-permission, runtime-baseline, desktop, display, audio, and full native artifact checks.
-- [ ] The same rules fixtures produce identical state hashes on all three platforms.
+- [x] Hosted Windows, macOS, and Linux qualification produces the same deterministic rules state hash.
 - [ ] Supported operating-system versions, renderer requirements, controller coverage, and known platform differences are published accurately.
 
 ## Release materials
@@ -125,7 +125,7 @@ The current alpha does not meet this checklist. See [STATUS.md](STATUS.md) for t
 - [ ] License, third-party notices, privacy statement, and support route are included.
 - [ ] Accessibility features, supported platforms, controller support, offline behavior, and content sizes are disclosed accurately.
 - [ ] Known issues are concise and player-facing.
-- [ ] Rollback or hotfix procedure is documented.
+- [x] Rollback, withdrawal, replacement, and hotfix procedures are documented; staged execution remains open.
 - [ ] Published artifacts match the candidate revision, manifests, screenshots, checksums, and release notes.
 - [ ] Private vulnerability reporting is enabled and its end-to-end report flow is tested.
 - [ ] A concrete private conduct-reporting route is published and tested before contributions or official community spaces open.

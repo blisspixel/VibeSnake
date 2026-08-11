@@ -2,13 +2,13 @@
 
 [Current status](STATUS.md) | [Roadmap](../../ROADMAP.md) | [Support](../../SUPPORT.md) | [Recovery](../guides/RECOVERY.md)
 
-Status: pre-candidate alpha issues as of 2026-08-10. Replace this page from the exact candidate review before release.
+Status: pre-candidate alpha issues as of 2026-08-11. Replace this page from the exact candidate review before release.
 
 ## Player-facing limitations
 
-- There is no public 0.9 or 1.0 native release candidate. The root launchers run the native Godot source build; the optional Python player is a frozen behavior reference and does not contain every native feature.
+- There is no versioned public native alpha or later release candidate yet. The root launchers run the native Godot source build; the optional Python player is a frozen behavior reference and does not contain every native feature.
 - No radio or optional-content pack is export eligible. The public source inventory contains candidates, but player artifacts must exclude them until manifest, provenance, media, listening, credit, and rights gates pass.
-- Native Windows x64 Release export passes local automated qualification. Final retained Windows, macOS Universal, and Linux x64 candidate artifacts, signing, notarization, Linux runtime-baseline review, and storefront delivery are pending.
+- Hosted Windows x64, macOS Universal, and Linux x64 Debug exports pass automated outside-checkout qualification, and a Windows x64 Release export passes locally. A retained three-platform Release run, exact artifact review, signing, notarization, Linux runtime-baseline review, and storefront delivery are pending.
 - Keyboard, mouse, D-pad, stick, Xbox-layout, and PlayStation-layout routes have automated coverage. Physical controller families, hot-plug combinations, pointer focus, and complete platform flows still need retained human evidence.
 - Accessibility settings and structural layout gates are implemented, but visible focus, readability, photosensitivity, physical input, and accessibility-user review remain open.
 - Performance evidence from shared headless runners is diagnostic only. Minimum and recommended hardware, target operating-system versions, both target resolutions, and long-session thermal and memory evidence are not yet published.
