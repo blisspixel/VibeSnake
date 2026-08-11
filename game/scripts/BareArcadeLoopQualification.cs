@@ -98,7 +98,27 @@ internal static class BareArcadeLoopQualification
 {
     private const ulong QualificationSeed = 20260808UL;
     private const double MinimumGraphicalContrast = 3.0;
-    private const double MaximumSmokeFrameMilliseconds = 100.0;
+    internal const double MaximumSmokeFrameMilliseconds = 100.0;
+    internal const int RequiredLiveFrameSamples = 40;
+    internal const int MaximumSharedHostMeasurementAttempts = 2;
+
+    public static bool ShouldRetrySharedHostTail(
+        PresentationFrameSummary summary,
+        int completedAttemptCount)
+    {
+        if (completedAttemptCount < 1)
+        {
+            throw new ArgumentOutOfRangeException(nameof(completedAttemptCount));
+        }
+
+        return completedAttemptCount < MaximumSharedHostMeasurementAttempts
+            && summary.SampleCount >= RequiredLiveFrameSamples
+            && summary.AverageMilliseconds
+                <= PerformanceQualification.SharedHostMaximumAverageMilliseconds
+            && summary.P95Milliseconds
+                > PerformanceQualification.SharedHostMaximumP95Milliseconds
+            && summary.MaxMilliseconds <= MaximumSmokeFrameMilliseconds;
+    }
 
     public static BareArcadeLoopQualificationEvidence Run(
         ShellTheme theme,
@@ -206,7 +226,7 @@ internal static class BareArcadeLoopQualification
             && foodBoardContrast >= MinimumGraphicalContrast
             && headFoodContrast >= MinimumGraphicalContrast
             && GameplayPresentation.HeadInset != GameplayPresentation.FoodInset;
-        var framePacingComplete = frameSummary.SampleCount >= 32
+        var framePacingComplete = frameSummary.SampleCount >= RequiredLiveFrameSamples
             && frameSummary.P95Milliseconds
                 <= PerformanceQualification.SharedHostMaximumP95Milliseconds
             && frameSummary.MaxMilliseconds <= MaximumSmokeFrameMilliseconds;

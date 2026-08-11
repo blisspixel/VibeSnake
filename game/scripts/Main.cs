@@ -15551,19 +15551,50 @@ public partial class Main : Node2D
             throw new InvalidOperationException("Presentation frame sampler summary contract failed.");
         }
 
-        // Capture a short live burst using process frames for host-dependent evidence.
+        PresentationFrameSummary liveSummary = default;
+        for (var attempt = 1;
+            attempt <= BareArcadeLoopQualification.MaximumSharedHostMeasurementAttempts;
+            attempt++)
+        {
+            liveSummary = await MeasurePresentationFrameBurstAsync();
+            if (!BareArcadeLoopQualification.ShouldRetrySharedHostTail(
+                    liveSummary,
+                    attempt))
+            {
+                break;
+            }
+
+            _structuredLog?.Warning(
+                "performance",
+                "Shared-host presentation p95 tail exceeded its ceiling while average and maximum remained within budget; resampling once.",
+                eventCode: "presentation_tail_resample");
+        }
+
+        WritePresentationFrameEvidence(liveSummary);
+        return liveSummary;
+    }
+
+    private async Task<PresentationFrameSummary> MeasurePresentationFrameBurstAsync()
+    {
+        for (var warmup = 0; warmup < 4; warmup++)
+        {
+            QueueRedraw();
+            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        }
+
         var live = new PresentationFrameSampler();
-        for (var index = 0; index < 32; index++)
+        for (var index = 0;
+            index < BareArcadeLoopQualification.RequiredLiveFrameSamples;
+            index++)
         {
             var started = Time.GetTicksUsec();
+            QueueRedraw();
             await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
             var elapsedMilliseconds = (Time.GetTicksUsec() - started) / 1000.0;
             live.RecordFrameMilliseconds(Math.Max(0.01, elapsedMilliseconds));
         }
 
-        var liveSummary = live.Summarize();
-        WritePresentationFrameEvidence(liveSummary);
-        return liveSummary;
+        return live.Summarize();
     }
 
     private async Task ExecutePerformanceQualificationSmokeTestAsync()
@@ -15661,6 +15692,52 @@ public partial class Main : Node2D
         {
             throw new InvalidOperationException(
                 "Performance retry policy did not preserve its bounded tail-only contract.");
+        }
+
+        var presentationTail = new PresentationFrameSummary(
+            SampleCount: BareArcadeLoopQualification.RequiredLiveFrameSamples,
+            AverageMilliseconds: 20.0,
+            P50Milliseconds: 10.0,
+            P95Milliseconds: 60.12,
+            P99Milliseconds: 61.0,
+            MaxMilliseconds: 61.0);
+        var presentationSustained = presentationTail with
+        {
+            AverageMilliseconds = 26.0,
+        };
+        var presentationLongFrame = presentationTail with
+        {
+            MaxMilliseconds = BareArcadeLoopQualification.MaximumSmokeFrameMilliseconds + 0.01,
+        };
+        var presentationPassing = presentationTail with
+        {
+            P95Milliseconds = 59.0,
+        };
+        var presentationIncomplete = presentationTail with
+        {
+            SampleCount = BareArcadeLoopQualification.RequiredLiveFrameSamples - 1,
+        };
+        if (!BareArcadeLoopQualification.ShouldRetrySharedHostTail(
+                presentationTail,
+                completedAttemptCount: 1)
+            || BareArcadeLoopQualification.ShouldRetrySharedHostTail(
+                presentationTail,
+                completedAttemptCount: 2)
+            || BareArcadeLoopQualification.ShouldRetrySharedHostTail(
+                presentationSustained,
+                completedAttemptCount: 1)
+            || BareArcadeLoopQualification.ShouldRetrySharedHostTail(
+                presentationLongFrame,
+                completedAttemptCount: 1)
+            || BareArcadeLoopQualification.ShouldRetrySharedHostTail(
+                presentationPassing,
+                completedAttemptCount: 1)
+            || BareArcadeLoopQualification.ShouldRetrySharedHostTail(
+                presentationIncomplete,
+                completedAttemptCount: 1))
+        {
+            throw new InvalidOperationException(
+                "Presentation retry policy did not preserve its bounded tail-only contract.");
         }
     }
 
