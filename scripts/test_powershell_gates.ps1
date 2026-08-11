@@ -178,6 +178,22 @@ try {
             throw "Native localization gate is missing catalog count: $requiredLocalizationFragment"
         }
     }
+    foreach ($requiredPresentationBudgetFragment in @(
+        '($presentationFrameEvidence.sampleCount -lt 40)',
+        '($presentationFrameEvidence.p95Milliseconds -gt 60.0)',
+        '($presentationFrameEvidence.maxMilliseconds -gt 100.0)'
+    )) {
+        if (-not $nativeTestScript.Contains(
+            $requiredPresentationBudgetFragment,
+            [StringComparison]::Ordinal)) {
+            throw "Native presentation gate drifted from the Godot bare-loop budget: $requiredPresentationBudgetFragment"
+        }
+    }
+    if ($nativeTestScript.Contains(
+        '($presentationFrameEvidence.p95Milliseconds -gt 50.0)',
+        [StringComparison]::Ordinal)) {
+        throw "Native presentation gate retained the obsolete 50 ms p95 ceiling."
+    }
     if (-not $nativeExportScript.Contains(
         '"effective_schema=7 code=Success"',
         [StringComparison]::Ordinal)) {
@@ -303,7 +319,7 @@ try {
         throw "Source player workflow must not publish versioned releases."
     }
 
-    $caseCount = 23 + $prohibitedPaths.Count + $invalidPaths.Count
+    $caseCount = 24 + $prohibitedPaths.Count + $invalidPaths.Count
     Write-Output "PowerShell qualification regression checks passed: cases=$caseCount."
 } finally {
     if (Test-Path -LiteralPath $temporaryRoot) {

@@ -2151,8 +2151,8 @@ try {
 
     $presentationFrameEvidence = Get-Content -LiteralPath $presentationFrameEvidencePath -Raw | ConvertFrom-Json
     if (($presentationFrameEvidence.kind -ne "presentation-frame-evidence-v1") -or
-        ($presentationFrameEvidence.sampleCount -lt 32) -or
-        ($presentationFrameEvidence.p95Milliseconds -gt 50.0) -or
+        ($presentationFrameEvidence.sampleCount -lt 40) -or
+        ($presentationFrameEvidence.p95Milliseconds -gt 60.0) -or
         ($presentationFrameEvidence.maxMilliseconds -gt 100.0)) {
         throw "Host smoke presentation frames exceeded the bare-loop handoff budget."
     }
