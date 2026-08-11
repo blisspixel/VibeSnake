@@ -48,6 +48,9 @@ public enum OptionalPackQuarantineCode : byte
     InvalidInstalledPack = 2,
     AlreadyRemoved = 3,
     RestoreConflict = 4,
+    StorageLimit = 5,
+    StoreBusy = 6,
+    IoError = 7,
 }
 
 public sealed record OptionalPackQuarantineReceipt(
@@ -346,9 +349,42 @@ public sealed class OptionalPackStore
     {
         ArgumentNullException.ThrowIfNull(consent);
         ArgumentNullException.ThrowIfNull(inventory);
-        Directory.CreateDirectory(_packsRoot);
-        RejectReparsePoint(_packsRoot, "Optional packs root");
-        using var operationLock = AcquireOperationLock();
+
+        var operation = OpenQuarantineOperation();
+        if (operation.Failure is not null)
+        {
+            return operation.Failure;
+        }
+
+        using (operation.OperationLock!)
+        {
+            try
+            {
+                return QuarantineLocked(consent, inventory);
+            }
+            catch (InvalidDataException)
+            {
+                return Failure(
+                    OptionalPackQuarantineCode.InvalidInstalledPack,
+                    "Optional pack storage failed validation and was not changed.");
+            }
+            catch (Exception exception) when (
+                exception is IOException
+                    or UnauthorizedAccessException
+                    or ArgumentException
+                    or NotSupportedException)
+            {
+                return Failure(
+                    OptionalPackQuarantineCode.IoError,
+                    "Optional pack could not be moved safely; no removal was confirmed.");
+            }
+        }
+    }
+
+    private OptionalPackQuarantineResult QuarantineLocked(
+        OptionalPackRemovalConsent consent,
+        ContentInventory inventory)
+    {
         var inspection = InspectInstalledCore(inventory);
         if (inspection.Rejected.ContainsKey(consent.PackId))
         {
@@ -374,6 +410,15 @@ public sealed class OptionalPackStore
         RejectReparsePoint(source, "Installed optional pack directory");
         Directory.CreateDirectory(_removedRoot);
         RejectReparsePoint(_removedRoot, "Optional pack quarantine root");
+        var quarantineCount = Directory.EnumerateDirectories(_removedRoot)
+            .Take(MaximumQuarantinedPacks)
+            .Count();
+        if (quarantineCount >= MaximumQuarantinedPacks)
+        {
+            return Failure(
+                OptionalPackQuarantineCode.StorageLimit,
+                $"Optional pack quarantine already contains {MaximumQuarantinedPacks} packs.");
+        }
         var quarantineName = $"{consent.PackId}-{Guid.NewGuid():N}";
         var destination = ResolveQuarantineDirectory(quarantineName);
         Directory.Move(source, destination);
@@ -392,15 +437,48 @@ public sealed class OptionalPackStore
     {
         ArgumentNullException.ThrowIfNull(receipt);
         ArgumentNullException.ThrowIfNull(inventory);
-        Directory.CreateDirectory(_packsRoot);
-        RejectReparsePoint(_packsRoot, "Optional packs root");
-        using var operationLock = AcquireOperationLock();
         if (!IsSafeQuarantineName(receipt))
         {
             return Failure(
                 OptionalPackQuarantineCode.InvalidInstalledPack,
                 "Optional pack quarantine receipt is invalid.");
         }
+
+        var operation = OpenQuarantineOperation();
+        if (operation.Failure is not null)
+        {
+            return operation.Failure;
+        }
+
+        using (operation.OperationLock!)
+        {
+            try
+            {
+                return RestoreLocked(receipt, inventory);
+            }
+            catch (InvalidDataException)
+            {
+                return Failure(
+                    OptionalPackQuarantineCode.InvalidInstalledPack,
+                    "Quarantined optional pack failed validation and was not restored.");
+            }
+            catch (Exception exception) when (
+                exception is IOException
+                    or UnauthorizedAccessException
+                    or ArgumentException
+                    or NotSupportedException)
+            {
+                return Failure(
+                    OptionalPackQuarantineCode.IoError,
+                    "Quarantined optional pack could not be restored safely.");
+            }
+        }
+    }
+
+    private OptionalPackQuarantineResult RestoreLocked(
+        OptionalPackQuarantineReceipt receipt,
+        ContentInventory inventory)
+    {
         if (!Directory.Exists(_removedRoot))
         {
             return Failure(
@@ -422,6 +500,16 @@ public sealed class OptionalPackStore
             return Failure(
                 OptionalPackQuarantineCode.RestoreConflict,
                 "An installed pack already uses this id.");
+        }
+        var installedCount = Directory.EnumerateDirectories(_packsRoot)
+            .Where(path => !IsManagedDirectory(path))
+            .Take(MaximumInstalledPacks)
+            .Count();
+        if (installedCount >= MaximumInstalledPacks)
+        {
+            return Failure(
+                OptionalPackQuarantineCode.StorageLimit,
+                $"Optional pack storage already contains {MaximumInstalledPacks} packs.");
         }
 
         ContentPackManifest manifest;
@@ -960,6 +1048,54 @@ public sealed class OptionalPackStore
         catch (IOException exception)
         {
             throw new IOException("Optional pack store is busy.", exception);
+        }
+    }
+
+    private (FileStream? OperationLock, OptionalPackQuarantineResult? Failure)
+        OpenQuarantineOperation()
+    {
+        try
+        {
+            Directory.CreateDirectory(_packsRoot);
+            RejectReparsePoint(_packsRoot, "Optional packs root");
+        }
+        catch (Exception exception) when (
+            exception is InvalidDataException
+                or IOException
+                or UnauthorizedAccessException
+                or ArgumentException
+                or NotSupportedException)
+        {
+            return (
+                null,
+                Failure(
+                    OptionalPackQuarantineCode.IoError,
+                    "Optional pack storage could not be opened safely."));
+        }
+
+        try
+        {
+            return (AcquireOperationLock(), null);
+        }
+        catch (IOException)
+        {
+            return (
+                null,
+                Failure(
+                    OptionalPackQuarantineCode.StoreBusy,
+                    "Optional pack storage is busy. Try again after the current operation finishes."));
+        }
+        catch (Exception exception) when (
+            exception is InvalidDataException
+                or UnauthorizedAccessException
+                or ArgumentException
+                or NotSupportedException)
+        {
+            return (
+                null,
+                Failure(
+                    OptionalPackQuarantineCode.IoError,
+                    "Optional pack storage could not be locked safely."));
         }
     }
 

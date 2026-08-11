@@ -31,6 +31,15 @@ class TestMenuNavigation:
         """Test that game starts at main menu."""
         assert game.state == GameState.MENU
 
+    def test_main_menu_input_does_not_emit_debug_prints(self, game, capsys):
+        """Player menu navigation must not leak per-key diagnostics to stdout."""
+        capsys.readouterr()
+
+        self.press_key(game, pygame.K_c)
+
+        assert "[Menu" not in capsys.readouterr().out
+        assert game.state == GameState.CUSTOMIZE
+
     def test_help_menu_opens_with_h(self, game):
         """Test that H key opens help menu."""
         # Simulate H key press

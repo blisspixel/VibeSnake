@@ -422,6 +422,110 @@ public sealed class OptionalPackStoreTests
 
             Assert.False(result.IsSuccess);
             Assert.Equal(OptionalPackQuarantineCode.InvalidInstalledPack, result.Code);
+            Assert.False(Directory.Exists(store.PacksRoot));
+        });
+    }
+
+    [Fact]
+    public void Quarantine_and_restore_report_a_busy_store_without_moving_data()
+    {
+        WithFixture((fixture, store) =>
+        {
+            fixture.Install();
+            var consent = OptionalPackRemovalConsent.Request(
+                store.InspectInstalled(fixture.Inventory).Installed,
+                PackId).Consent!;
+            var lockPath = Path.Combine(store.PacksRoot, ".optional-pack-store.lock");
+            using (var heldLock = new FileStream(
+                lockPath,
+                FileMode.OpenOrCreate,
+                FileAccess.ReadWrite,
+                FileShare.None))
+            {
+                var busyQuarantine = store.Quarantine(consent, fixture.Inventory);
+                Assert.Equal(OptionalPackQuarantineCode.StoreBusy, busyQuarantine.Code);
+                Assert.True(Directory.Exists(fixture.PackDirectory));
+            }
+            File.Delete(lockPath);
+            Directory.CreateDirectory(lockPath);
+            var invalidLockQuarantine = store.Quarantine(consent, fixture.Inventory);
+            Assert.Equal(OptionalPackQuarantineCode.IoError, invalidLockQuarantine.Code);
+            Assert.True(Directory.Exists(fixture.PackDirectory));
+            Directory.Delete(lockPath);
+
+            var removed = store.Quarantine(consent, fixture.Inventory);
+            var receipt = Assert.IsType<OptionalPackQuarantineReceipt>(removed.Receipt);
+            using (var heldLock = new FileStream(
+                lockPath,
+                FileMode.OpenOrCreate,
+                FileAccess.ReadWrite,
+                FileShare.None))
+            {
+                var busyRestore = store.Restore(receipt, fixture.Inventory);
+                Assert.Equal(OptionalPackQuarantineCode.StoreBusy, busyRestore.Code);
+                Assert.False(Directory.Exists(fixture.PackDirectory));
+            }
+            File.Delete(lockPath);
+            Directory.CreateDirectory(lockPath);
+            var invalidLockRestore = store.Restore(receipt, fixture.Inventory);
+            Assert.Equal(OptionalPackQuarantineCode.IoError, invalidLockRestore.Code);
+            Assert.False(Directory.Exists(fixture.PackDirectory));
+            Directory.Delete(lockPath);
+
+            Assert.True(store.Restore(receipt, fixture.Inventory).IsSuccess);
+        });
+    }
+
+    [Fact]
+    public void Quarantine_limit_does_not_move_an_installed_pack()
+    {
+        WithFixture((fixture, store) =>
+        {
+            fixture.Install();
+            var consent = OptionalPackRemovalConsent.Request(
+                store.InspectInstalled(fixture.Inventory).Installed,
+                PackId).Consent!;
+            var removedRoot = Path.Combine(store.PacksRoot, ".removed");
+            Directory.CreateDirectory(removedRoot);
+            for (var index = 0; index < OptionalPackStore.MaximumQuarantinedPacks; index++)
+            {
+                Directory.CreateDirectory(Path.Combine(removedRoot, $"occupied-{index:D3}"));
+            }
+
+            var result = store.Quarantine(consent, fixture.Inventory);
+
+            Assert.Equal(OptionalPackQuarantineCode.StorageLimit, result.Code);
+            Assert.True(Directory.Exists(fixture.PackDirectory));
+            Assert.Equal(
+                OptionalPackStore.MaximumQuarantinedPacks,
+                Directory.EnumerateDirectories(removedRoot).Count());
+        });
+    }
+
+    [Fact]
+    public void Restore_limit_keeps_the_valid_pack_in_quarantine()
+    {
+        WithFixture((fixture, store) =>
+        {
+            fixture.Install();
+            var consent = OptionalPackRemovalConsent.Request(
+                store.InspectInstalled(fixture.Inventory).Installed,
+                PackId).Consent!;
+            var removed = store.Quarantine(consent, fixture.Inventory);
+            var receipt = Assert.IsType<OptionalPackQuarantineReceipt>(removed.Receipt);
+            for (var index = 0; index < OptionalPackStore.MaximumInstalledPacks; index++)
+            {
+                Directory.CreateDirectory(Path.Combine(store.PacksRoot, $"occupied-{index:D3}"));
+            }
+
+            var result = store.Restore(receipt, fixture.Inventory);
+
+            Assert.Equal(OptionalPackQuarantineCode.StorageLimit, result.Code);
+            Assert.False(Directory.Exists(fixture.PackDirectory));
+            Assert.True(Directory.Exists(Path.Combine(
+                store.PacksRoot,
+                ".removed",
+                receipt.QuarantineName)));
         });
     }
 

@@ -52,9 +52,9 @@ The product remains incomplete for approved authored audio content, signed deliv
 
 The content inventory tooling scans source assets without loading them into either game runtime, requires every file to match exactly one human-reviewed policy rule, and generates deterministic hashes, integrity results, duplicate links, rights state, and export eligibility. Pure C# pack parsing and resolution validate dependency-free core and station-specific optional manifests against approved inventory, compatibility, credits, and exact file metadata. Godot uses that native service and isolates optional failure from core play. The native player continues to ship no legacy source assets while export eligibility remains zero.
 
-## Python oracle entry and lifecycle
+## Temporary Python oracle entry and lifecycle
 
-The console script and `python -m vibesnake` both call [__main__.py](../../src/vibesnake/__main__.py). It constructs `Game`, runs the loop, reports an unhandled exception, and always shuts down Pygame.
+The console script and `python -m vibesnake` both call [__main__.py](../../src/vibesnake/__main__.py). This path is retained only for frozen behavior reproduction while the remaining validators and fixture generators move to .NET. It is not a product runtime or a permanent repository architecture.
 
 The loop in [game_state.py](../../src/vibesnake/core/game_state.py) is:
 
@@ -124,15 +124,14 @@ Configuration is loaded once at import time by [config.py](../../src/vibesnake/d
 6. Some state changes bypass the transition validator.
 7. The frozen Python oracle has no reset/recovery workflow. The native product path now owns separated, verified backup/reset/recovery and must not be backported into Python.
 
-## Recommended refactor seams
+## Retirement seams
 
-While Python remains active, change it only through tested seams that improve the reference or unblock migration:
+While the temporary oracle remains, change it only through tested seams that repair a migration defect or unblock its removal:
 
-1. Extract `RunFinalizer` and `DeathResolver` from `Game`.
-2. Introduce an event stream for food, collision, power-up, achievement, and audio reactions.
-3. Give each game state a small input, update, and draw handler.
-4. Formalize a small repository protocol if additional save documents are introduced.
-5. Introduce content contracts that can be represented in shared fixtures and the target resource service.
-6. Move snake rendering behind a renderer while retaining the existing movement model.
+1. Do not refactor the Python player for architectural elegance. Put that effort into the native owner.
+2. Correct only behavior that invalidates reviewed parity, migration, or release evidence.
+3. Keep checked-in fixtures deterministic and move their generators to native QA.
+4. Move each remaining Python-owned validation command to a tested .NET tool before deleting its source command.
+5. Remove a Python subsystem as soon as its native owner, migration fixtures, rollback evidence, and CI replacement are complete.
 
-Do not build the same broad feature twice. Each extraction must either repair a release-blocking reference defect, create a reusable data contract, or provide trace evidence for the C# port. Every change preserves public behavior through integration tests and keeps the 80 percent project coverage floor.
+Do not build the same broad feature twice. Every temporary-oracle change must either repair a release-blocking reference defect, preserve a reusable data contract, or support verified removal. Keep its tests green until the deletion change replaces the gate. The repository-wide exit order is in [MIGRATION_MAP.md](MIGRATION_MAP.md#repository-wide-python-retirement).

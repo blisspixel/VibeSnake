@@ -6,6 +6,7 @@ import hashlib
 import json
 from pathlib import Path
 
+import scripts.check_release_matrix as release_matrix_module
 from scripts.check_release_matrix import PLATFORMS, validate_release_matrix
 
 
@@ -662,3 +663,64 @@ def test_release_matrix_rejects_accessibility_drift_or_unbound_source(tmp_path: 
     assert any("automatedPassed must be True" in error for error in errors)
     assert any("textScale must be 1.5" in error for error in errors)
     assert any("sha256 does not match accessibility_presentation.json" in error for error in errors)
+
+
+def test_release_matrix_rejects_booleans_substituted_for_integer_evidence(tmp_path: Path) -> None:
+    _write_matrix(tmp_path)
+    manifest_path = tmp_path / "vibesnake-windows-x64-manifest" / "artifact-manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest["fileCount"] = True
+    _write_json(manifest_path, manifest)
+
+    evidence_root = tmp_path / "vibesnake-windows-x64-qualification-evidence"
+    output_path = evidence_root / "release_output_plan.json"
+    output = json.loads(output_path.read_text(encoding="utf-8"))
+    output["schemaVersion"] = True
+    output["packageBytes"] = True
+    _write_json(output_path, output)
+    reliability_path = evidence_root / "candidate_reliability.json"
+    reliability = json.loads(reliability_path.read_text(encoding="utf-8"))
+    reliability["simulations"][0]["runCount"] = True
+    reliability["simulations"][0]["restartCount"] = 0
+    _write_json(reliability_path, reliability)
+
+    errors, evidence = validate_release_matrix(tmp_path, REVISION, "Release")
+
+    assert evidence["passed"] is False
+    assert any("manifest.fileCount must match files" in error for error in errors)
+    assert any("output.schemaVersion must be 1" in error for error in errors)
+    assert any("output.packageBytes must be a positive integer" in error for error in errors)
+    assert any("runCount must be a positive integer" in error for error in errors)
+
+
+def test_release_matrix_rejects_duplicate_fields_and_nonfinite_numbers(tmp_path: Path) -> None:
+    _write_matrix(tmp_path)
+    evidence_root = tmp_path / "vibesnake-linux-x64-qualification-evidence"
+    output_path = evidence_root / "release_output_plan.json"
+    source = output_path.read_text(encoding="utf-8")
+    output_path.write_text(
+        source.replace('"schemaVersion": 1,', '"schemaVersion": 1, "schemaVersion": 1,'),
+        encoding="utf-8",
+    )
+    performance_path = evidence_root / "performance.json"
+    performance_source = performance_path.read_text(encoding="utf-8")
+    performance_path.write_text(
+        performance_source.replace('"averageFrameMilliseconds": 7.0', '"averageFrameMilliseconds": NaN', 1),
+        encoding="utf-8",
+    )
+
+    errors, evidence = validate_release_matrix(tmp_path, REVISION, "Release")
+
+    assert evidence["passed"] is False
+    assert any("duplicate JSON field: schemaVersion" in error for error in errors)
+    assert any("non-finite JSON number: NaN" in error for error in errors)
+
+
+def test_release_matrix_bounds_every_downloaded_json_document(tmp_path: Path, monkeypatch) -> None:
+    _write_matrix(tmp_path)
+    monkeypatch.setattr(release_matrix_module, "MAXIMUM_JSON_BYTES", 32)
+
+    errors, evidence = validate_release_matrix(tmp_path, REVISION, "Release")
+
+    assert evidence["passed"] is False
+    assert any("exceeds the 32-byte limit" in error for error in errors)

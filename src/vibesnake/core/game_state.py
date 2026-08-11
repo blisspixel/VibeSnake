@@ -1144,18 +1144,12 @@ class Game:
                     self.user_settings.save()
 
             if self.state == GameState.MENU:
-                # Debug: Print all key presses in menu
-                if event.type == pygame.KEYDOWN:
-                    print(f"[Menu DEBUG] Key pressed: {pygame.key.name(event.key)} (code: {event.key})")
-
                 if self.input_manager.check_action_button(event, "select"):
-                    print("[Menu] ENTER detected - starting game!")
                     # Ensure game objects are initialized before starting
                     if not hasattr(self, "snake"):
-                        print("[Menu] No game objects - initializing before start")
                         self.reset()
                     self.state = GameState.RUNNING
-                    print(f"[Menu] State is now: {self.state}")
+                    logger.debug("Menu started a player run")
                     # IMPORTANT: Return immediately to prevent other handlers from processing this event
                     return
                 elif self.input_manager.check_action_button(event, "back"):
@@ -1163,24 +1157,20 @@ class Game:
                     exit()
                 elif event.type == pygame.KEYDOWN and event.key == pygame.K_c:
                     # Enter customization menu
-                    print("[Menu] C key pressed - opening customization")
                     self.state = GameState.CUSTOMIZE
                     self.customization_category = 0
                     self.customization_option = 0
                     self.customization_options = self.get_customization_options()
                 elif event.type == pygame.KEYDOWN and event.key == pygame.K_a:
                     # Enter achievements menu
-                    print("[Menu] A key pressed - opening achievements")
                     self.state = GameState.ACHIEVEMENTS
                     self.achievements_scroll_offset = 0
                 elif event.type == pygame.KEYDOWN and event.key == pygame.K_s:
                     # Enter settings menu
-                    print("[Menu] S key pressed - opening settings")
                     self.state = GameState.SETTINGS
                     self.settings_selected_option = 0
                 elif event.type == pygame.KEYDOWN and event.key == pygame.K_v:
                     # View high scores
-                    print("[Menu] V key pressed - viewing high scores")
                     self.state = GameState.HIGH_SCORES
 
             elif self.state == GameState.SETTINGS:

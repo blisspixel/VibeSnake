@@ -174,6 +174,18 @@ def _fixture(root: Path) -> tuple[Path, Path, Path, Path, Path, Path]:
     return channel_root, provenance_root, radio_root, matrix_path, version_root, root / "preview"
 
 
+def _refresh_radio_checksums(radio_root: Path) -> None:
+    paths = (
+        next(radio_root.glob("*.vibesnake-pack.zip")),
+        radio_root / "pack.json",
+        radio_root / "radio_pack_assembly.json",
+    )
+    (radio_root / "SHA256SUMS.txt").write_text(
+        "".join(f"{_sha256(path)}  {path.name}\n" for path in sorted(paths)),
+        encoding="utf-8",
+    )
+
+
 def _assemble(root: Path, tag: str = f"v{VERSION}") -> tuple[list[str], dict[str, object]]:
     channel_root, provenance_root, radio_root, matrix_path, version_root, output_root = _fixture(root)
     return assemble_unsigned_preview(
@@ -367,6 +379,75 @@ def test_duplicate_radio_evidence_fields_fail_closed(tmp_path: Path) -> None:
 
     assert evidence["passed"] is False
     assert any("duplicate JSON field" in error for error in errors)
+    assert not output_root.exists()
+
+
+def test_preview_rejects_boolean_schema_versions_in_qualified_evidence(tmp_path: Path) -> None:
+    channel_root, provenance_root, radio_root, matrix_path, version_root, output_root = _fixture(tmp_path)
+    plan_path = channel_root / "vibesnake-windows-x64-unsigned-channel-shape" / "release_output_plan.json"
+    plan = json.loads(plan_path.read_text(encoding="utf-8"))
+    plan["schemaVersion"] = True
+    _write_json(plan_path, plan)
+    assembly_path = radio_root / "radio_pack_assembly.json"
+    assembly = json.loads(assembly_path.read_text(encoding="utf-8"))
+    assembly["schemaVersion"] = True
+    _write_json(assembly_path, assembly)
+    _refresh_radio_checksums(radio_root)
+
+    errors, evidence = assemble_unsigned_preview(
+        channel_root,
+        provenance_root,
+        radio_root,
+        matrix_path,
+        version_root,
+        f"v{VERSION}",
+        REVISION,
+        output_root,
+    )
+
+    assert evidence["passed"] is False
+    assert any("radio-pack assembly.schemaVersion must be 1" in error for error in errors)
+    assert any("windows-x64 plan.schemaVersion must be 1" in error for error in errors)
+    assert not output_root.exists()
+
+
+@pytest.mark.parametrize(
+    ("mutate_manifest", "mutate_assembly"),
+    [
+        (lambda manifest: manifest["radio"].update(stationName="Conflicting Name"), lambda _assembly: None),
+        (lambda _manifest: None, lambda assembly: assembly.update(trackCount=True)),
+    ],
+)
+def test_radio_track_evidence_requires_exact_types_and_station_identity(
+    tmp_path: Path,
+    mutate_manifest,
+    mutate_assembly,
+) -> None:
+    channel_root, provenance_root, radio_root, matrix_path, version_root, output_root = _fixture(tmp_path)
+    manifest_path = radio_root / "pack.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    mutate_manifest(manifest)
+    _write_json(manifest_path, manifest)
+    assembly_path = radio_root / "radio_pack_assembly.json"
+    assembly = json.loads(assembly_path.read_text(encoding="utf-8"))
+    mutate_assembly(assembly)
+    assembly["manifestSha256"] = _sha256(manifest_path)
+    _write_json(assembly_path, assembly)
+    _refresh_radio_checksums(radio_root)
+
+    errors, evidence = assemble_unsigned_preview(
+        channel_root,
+        provenance_root,
+        radio_root,
+        matrix_path,
+        version_root,
+        f"v{VERSION}",
+        REVISION,
+        output_root,
+    )
+
+    assert evidence["passed"] is False
+    assert any("track evidence does not match" in error for error in errors)
     assert not output_root.exists()
 
 

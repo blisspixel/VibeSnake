@@ -15,6 +15,7 @@ PLATFORMS = ("windows-x64", "macos-universal", "linux-x64")
 SHA256_PATTERN = re.compile(r"[0-9a-f]{64}")
 REVISION_PATTERN = re.compile(r"[0-9a-f]{40}")
 STATE_HASH_PATTERN = re.compile(r"[0-9a-f]{16}")
+MAXIMUM_JSON_BYTES = 4 * 1024 * 1024
 EVIDENCE_FILES = {
     "readOnly": "artifact_read_only_install.json",
     "dependencies": "dependency_inventory.json",
@@ -35,15 +36,55 @@ def _sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
+def _unique_json_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    value: dict[str, Any] = {}
+    for key, item in pairs:
+        if key in value:
+            raise ValueError(f"duplicate JSON field: {key}")
+        value[key] = item
+    return value
+
+
+def _reject_json_constant(value: str) -> None:
+    raise ValueError(f"non-finite JSON number: {value}")
+
+
 def _read_json(path: Path, label: str, errors: list[str]) -> Any | None:
     if not path.is_file():
         errors.append(f"missing {label}: {path}")
         return None
     try:
-        return json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as exc:
+        if path.stat().st_size > MAXIMUM_JSON_BYTES:
+            errors.append(f"{label} exceeds the {MAXIMUM_JSON_BYTES}-byte limit")
+            return None
+        source = path.read_text(encoding="utf-8")
+        if len(source.encode("utf-8")) > MAXIMUM_JSON_BYTES:
+            errors.append(f"{label} exceeds the {MAXIMUM_JSON_BYTES}-byte limit")
+            return None
+        return json.loads(
+            source,
+            object_pairs_hook=_unique_json_object,
+            parse_constant=_reject_json_constant,
+        )
+    except (OSError, UnicodeError, ValueError) as exc:
         errors.append(f"unreadable {label}: {path}: {exc}")
         return None
+
+
+def _json_values_match(actual: Any, expected: Any) -> bool:
+    if type(expected) is bool:
+        return type(actual) is bool and actual == expected
+    if type(expected) is int:
+        return type(actual) is int and actual == expected
+    if type(expected) is float:
+        return type(actual) in (int, float) and actual == expected
+    if isinstance(expected, (list, tuple)):
+        return (
+            isinstance(actual, type(expected))
+            and len(actual) == len(expected)
+            and all(_json_values_match(left, right) for left, right in zip(actual, expected, strict=True))
+        )
+    return actual == expected
 
 
 def _expect(
@@ -54,7 +95,7 @@ def _expect(
     errors: list[str],
 ) -> None:
     actual = document.get(field)
-    if actual != expected:
+    if not _json_values_match(actual, expected):
         errors.append(f"{label}.{field} must be {expected!r}; got {actual!r}")
 
 
@@ -133,7 +174,8 @@ def validate_release_matrix(
             smoke_hashes.add(smoke_hash)
         if not isinstance(manifest.get("files"), list) or not manifest["files"]:
             errors.append(f"{platform} manifest.files must be a nonempty array")
-        if manifest.get("fileCount") != len(manifest.get("files", [])):
+        file_count = manifest.get("fileCount")
+        if type(file_count) is not int or file_count != len(manifest.get("files", [])):
             errors.append(f"{platform} manifest.fileCount must match files")
 
         _expect(read_only, "schemaVersion", 1, f"{platform} readOnly", errors)
@@ -216,7 +258,7 @@ def validate_release_matrix(
         package_sha = output.get("packageSha256")
         if not SHA256_PATTERN.fullmatch(str(package_sha)):
             errors.append(f"{platform} output.packageSha256 must be a SHA-256 digest")
-        if not isinstance(output.get("packageBytes"), int) or output["packageBytes"] <= 0:
+        if type(output.get("packageBytes")) is not int or output["packageBytes"] <= 0:
             errors.append(f"{platform} output.packageBytes must be a positive integer")
         expected_extension = ".tar.gz" if platform == "linux-x64" else ".zip"
         direct_download_file_name = output.get("directDownloadFileName")
@@ -306,12 +348,12 @@ def validate_release_matrix(
                 )
                 _expect(simulation, "firstDivergence", None, label, errors)
                 run_count = simulation.get("runCount")
-                if not isinstance(run_count, int) or run_count <= 0:
+                if type(run_count) is not int or run_count <= 0:
                     errors.append(f"{label}.runCount must be a positive integer")
-                elif simulation.get("restartCount") != run_count - 1:
+                elif type(simulation.get("restartCount")) is not int or simulation.get("restartCount") != run_count - 1:
                     errors.append(f"{label}.restartCount must equal runCount minus one")
                 checkpoint_count = simulation.get("stateHashCheckpointCount")
-                if not isinstance(checkpoint_count, int) or checkpoint_count < 100:
+                if type(checkpoint_count) is not int or checkpoint_count < 100:
                     errors.append(f"{label}.stateHashCheckpointCount must be at least 100")
                 trace_sha = simulation.get("decisionAndStateTraceSha256")
                 if not SHA256_PATTERN.fullmatch(str(trace_sha)):
@@ -359,7 +401,10 @@ def validate_release_matrix(
                 errors.append(f"{spectator_label}.resourceSamples must contain eleven samples")
             elif not all(isinstance(sample, dict) for sample in resource_samples):
                 errors.append(f"{spectator_label}.resourceSamples must contain objects")
-            elif [sample.get("completedRestarts") for sample in resource_samples] != expected_restarts:
+            elif not _json_values_match(
+                [sample.get("completedRestarts") for sample in resource_samples],
+                expected_restarts,
+            ):
                 errors.append(f"{spectator_label}.resourceSamples cadence must be 0 through 100 by ten")
             else:
                 baseline = resource_samples[0]
@@ -573,7 +618,7 @@ def validate_release_matrix(
                     profile.get("fullScreenFlashCount"),
                     profile.get("logicalDrawSubmissionCount"),
                 )
-                if actual_shape != expected_shape:
+                if not _json_values_match(actual_shape, expected_shape):
                     errors.append(f"{performance_label}.profiles[{index}] stress shape drifted")
 
         measurements = performance.get("measurements")
@@ -750,7 +795,7 @@ def validate_release_matrix(
                     row.get("effectiveWidth"),
                     row.get("effectiveHeight"),
                 )
-                if actual_display != expected_display:
+                if not _json_values_match(actual_display, expected_display):
                     errors.append(f"{row_label} display shape drifted")
                 _expect(row, "textScale", 1.5, row_label, errors)
                 _expect(row, "logicalLayoutComplete", True, row_label, errors)

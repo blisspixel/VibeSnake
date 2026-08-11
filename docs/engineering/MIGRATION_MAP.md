@@ -2,7 +2,7 @@
 
 Status: Native source default; frozen-oracle procedures retained (2026-08-10).
 
-This map assigns every Python reference subsystem to its target C# or Godot owner. **Product work lands in the target owner only.** Python is a frozen oracle: do not add major new player-facing features there, and never implement the same feature twice.
+This map assigns every Python reference subsystem to its target C# or Godot owner. **Product work lands in the target owner only.** Python is a temporary frozen oracle, not a permanent second architecture: do not add player-facing features there, never implement the same feature twice, and remove it after the native replacement gates below pass.
 
 ## Ownership matrix
 
@@ -92,6 +92,21 @@ Before ending dual-runtime for a subsystem:
 3. Migration fixtures for the last two schema versions pass.
 4. Rollback steps above remain operable from a clean checkout.
 5. STATUS and ROADMAP stop claiming Python ownership for that subsystem.
+
+## Repository-wide Python retirement
+
+The end state is one product and one implementation stack: Godot plus .NET. Shell launchers may remain for platform bootstrap, but neither gameplay, release qualification, fixture generation, nor CI should require a Python environment.
+
+Retirement proceeds in this order:
+
+1. Keep the existing Python behavior and checked-in parity fixtures frozen while native replacement work lands. Defect corrections are allowed only when they protect migration or release evidence.
+2. Move every authoritative content, version, source-policy, documentation, screenshot, dependency, and release validator to .NET tools with equivalent malformed-input and deterministic-output coverage.
+3. Move shared fixture generation and delta reduction to the pure C# QA surface. Preserve the reviewed JSON fixtures as historical contracts until the native generators reproduce them exactly.
+4. Replace the Python-version CI matrix with native tests, Godot import and packaged-player smoke on Windows, macOS, and Linux. No native artifact may acquire a Python runtime dependency during the transition.
+5. Remove the Python player, its tests, package metadata, dependency locks, and source-snapshot release path only after steps 2 through 4 pass from a clean checkout.
+6. Run source, artifact, documentation, license, and dependency inventories after removal. The repository is not Python-free until those gates find no Python runtime, package, launcher, or hidden release dependency.
+
+Until these exit gates pass, Python remains test-only scaffolding. It is never a reason to duplicate or delay native product work.
 
 ## Feature freeze rule
 

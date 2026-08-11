@@ -70,6 +70,10 @@ def _unique_json_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
     return value
 
 
+def _reject_json_constant(value: str) -> None:
+    raise ValueError(f"non-finite JSON number: {value}")
+
+
 def _read_json(path: Path, label: str, errors: list[str]) -> Any | None:
     if not path.is_file():
         errors.append(f"missing {label}: {path}")
@@ -82,7 +86,11 @@ def _read_json(path: Path, label: str, errors: list[str]) -> Any | None:
         if len(source.encode("utf-8")) > MAXIMUM_JSON_BYTES:
             errors.append(f"{label} exceeds the {MAXIMUM_JSON_BYTES}-byte limit")
             return None
-        return json.loads(source, object_pairs_hook=_unique_json_object)
+        return json.loads(
+            source,
+            object_pairs_hook=_unique_json_object,
+            parse_constant=_reject_json_constant,
+        )
     except (OSError, UnicodeError, ValueError) as error:
         errors.append(f"unreadable {label}: {path}: {error}")
         return None
@@ -90,7 +98,11 @@ def _read_json(path: Path, label: str, errors: list[str]) -> Any | None:
 
 def _expect(document: dict[str, Any], field: str, expected: Any, label: str, errors: list[str]) -> None:
     actual = document.get(field)
-    if actual != expected:
+    if (
+        (type(expected) is bool and type(actual) is not bool)
+        or (type(expected) is int and type(actual) is not int)
+        or actual != expected
+    ):
         errors.append(f"{label}.{field} must be {expected!r}; got {actual!r}")
 
 
@@ -211,6 +223,7 @@ def _approved_radio_pack(root: Path, errors: list[str]) -> dict[str, Any] | None
         errors.append("radio-pack manifest identity does not match assembly evidence")
     radio = manifest.get("radio")
     track_ids = assembly.get("trackIds")
+    track_count = assembly.get("trackCount")
     if (
         not isinstance(track_ids, list)
         or not 0 < len(track_ids) <= MAXIMUM_RADIO_PACK_FILES
@@ -219,9 +232,12 @@ def _approved_radio_pack(root: Path, errors: list[str]) -> dict[str, Any] | None
     ):
         errors.append("radio-pack assembly trackIds must be a unique nonempty array")
     elif (
-        assembly.get("trackCount") != len(track_ids)
+        not isinstance(track_count, int)
+        or isinstance(track_count, bool)
+        or track_count != len(track_ids)
         or not isinstance(radio, dict)
         or radio.get("stationId") != station_id
+        or radio.get("stationName") != station_name
         or radio.get("trackIds") != track_ids
     ):
         errors.append("radio-pack assembly track evidence does not match the manifest")
