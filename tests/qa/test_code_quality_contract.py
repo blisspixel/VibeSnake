@@ -111,6 +111,8 @@ def test_workflows_default_to_read_only_and_elevate_permissions_per_job() -> Non
 
 
 def test_dependency_automation_is_bounded_and_covers_every_package_ecosystem() -> None:
+    # This test covers committed ecosystem configuration. Live GitHub alert and
+    # security-update settings are verified separately by the release checklist.
     config_path = REPOSITORY_ROOT / ".github" / "dependabot.yml"
     config = yaml.safe_load(config_path.read_text(encoding="utf-8"))
 
@@ -164,6 +166,11 @@ def test_floating_source_release_uses_only_a_successful_ci_revision() -> None:
     assert "ref: ${{ github.event.workflow_run.head_sha || github.sha }}" in raw
     assert "python -m pip install --require-hashes --only-binary=:all: -r requirements-ci.lock" in raw
     assert "python -m build --no-isolation" in raw
+    assert "**Native source player**" in raw
+    assert ".\\\\play.ps1" in raw
+    assert "./play.sh" in raw
+    assert "**Frozen Python reference**" in raw
+    assert "vibesnake update" not in raw
     assert '"repos/${GITHUB_REPOSITORY}/git/refs/tags/player-latest"' in raw
     assert '"repos/${GITHUB_REPOSITORY}/git/ref/tags/player-latest"' in raw
     assert '"repos/${GITHUB_REPOSITORY}/releases?per_page=100"' in raw

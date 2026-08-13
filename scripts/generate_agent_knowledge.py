@@ -7,7 +7,9 @@ import json
 import re
 from pathlib import Path
 
-GENERATED_AT = "2026-08-13T00:00:00Z"
+CONTENT_CHANGED_AT = "2026-08-13T00:00:00Z"
+SOURCES_VERIFIED_AT = "2026-08-13T00:00:00Z"
+STALE_AFTER = "2026-11-13T00:00:00Z"
 GENERATOR_ACTOR = "process:vibesnake-okf-generator"
 VERIFIER_ACTOR = "process:vibesnake-ci"
 
@@ -32,8 +34,9 @@ def _frontmatter(
         f'title: "{title}"',
         f'description: "{description}"',
         "tags: [" + ", ".join(tags) + "]",
-        f"generated: {{ by: {GENERATOR_ACTOR}, at: {GENERATED_AT} }}",
-        f"verified: {{ by: {VERIFIER_ACTOR}, at: {GENERATED_AT} }}",
+        f"generated: {{ by: {GENERATOR_ACTOR}, at: {CONTENT_CHANGED_AT} }}",
+        f"verified: {{ by: {VERIFIER_ACTOR}, at: {SOURCES_VERIFIED_AT} }}",
+        f'stale_after: "{STALE_AFTER}"',
         "status: draft",
         "sources:",
     ]
@@ -43,7 +46,6 @@ def _frontmatter(
                 f"  - id: {source_id}",
                 f"    resource: {resource}",
                 f'    title: "{source_title}"',
-                f"    author: {VERIFIER_ACTOR}",
             )
         )
     lines.extend(("---", ""))
@@ -58,6 +60,7 @@ def render_bundle(repository_root: Path) -> dict[str, str]:
     tools_path = repository_root / "native/tools/VibeSnake.AgentHost/McpAgentTools.cs"
     resources_path = repository_root / "native/tools/VibeSnake.AgentHost/AgentResources.cs"
     program_path = repository_root / "native/tools/VibeSnake.AgentHost/Program.cs"
+    host_project_path = repository_root / "native/tools/VibeSnake.AgentHost/VibeSnake.AgentHost.csproj"
     plugin_path = repository_root / "integrations/vibesnake-agent-plugin/plugin.json"
 
     rules_identity = rules_identity_path.read_text(encoding="utf-8")
@@ -66,6 +69,7 @@ def render_bundle(repository_root: Path) -> dict[str, str]:
     tools = tools_path.read_text(encoding="utf-8")
     resources = resources_path.read_text(encoding="utf-8")
     program = program_path.read_text(encoding="utf-8")
+    host_project = host_project_path.read_text(encoding="utf-8")
     plugin = json.loads(plugin_path.read_text(encoding="utf-8"))
 
     ruleset_id = _match(rules_identity, r'CurrentId = "([^"]+)"', "ruleset ID")
@@ -81,6 +85,11 @@ def render_bundle(repository_root: Path) -> dict[str, str]:
         "result schema",
     )
     host_version = _match(program, r'HostVersion = "([^"]+)"', "host version")
+    sdk_version = _match(
+        host_project,
+        r'<PackageReference Include="ModelContextProtocol" Version="([^"]+)"',
+        "MCP SDK version",
+    )
     tool_names = sorted(set(re.findall(r'Name = "([a-z_]+)"', tools)))
     resource_uris = sorted(set(re.findall(r'UriTemplate = "([^"]+)"', resources)))
     style_ids = re.findall(r'public const string \w+Id = "([a-z-]+)";', experience)
@@ -99,7 +108,7 @@ def render_bundle(repository_root: Path) -> dict[str, str]:
             "* [Rules and observations](rules.md) - Public state, actions, modes, and authority boundaries.",
             "* [MCP protocol](protocol.md) - Local host tools, resources, versions, and transport limits.",
             "* [Agent experience](experience.md) - Signal School lessons and Style Contracts.",
-            "* [Verified replay handoff](replays.md) - Match receipts, explicit saving, and human viewing.",
+            "* [Verified replay handoff](replays.md) - Verified results, explicit saving, and human viewing.",
             "",
         )
     )
@@ -154,7 +163,8 @@ def render_bundle(repository_root: Path) -> dict[str, str]:
             "# Versions",
             "",
             f"The host version is `{host_version}`. The Agent Plugin version is `{plugin_version}` and targets `{plugin_schema}`.",
-            "The MCP server targets stable protocol `2026-07-28` through the official C# SDK.",
+            f"The MCP server targets stable protocol `2026-07-28` through the official C# SDK `{sdk_version}`.",
+            "Clients must initialize with exactly MCP `2026-07-28`; legacy initialize revisions are rejected and this preview provides no downlevel fallback.",
             "",
             "# Tools",
             "",
@@ -200,7 +210,7 @@ def render_bundle(repository_root: Path) -> dict[str, str]:
     replays = _frontmatter(
         "Replay Contract",
         "Verified agent replay handoff",
-        "How completed agent play becomes a deterministic receipt and a human-watchable replay.",
+        "How successfully finalized agent play becomes a verified result and human-watchable replay.",
         ["vibesnake", "replay", "verification", "spectator"],
         [
             ("agent-session", "../../native/src/VibeSnake.AgentPlay/AgentMatchSession.cs", "Agent match owner"),
@@ -209,9 +219,9 @@ def render_bundle(repository_root: Path) -> dict[str, str]:
         ],
     ) + "\n".join(
         (
-            "# Match receipt",
+            "# Verified result",
             "",
-            f"A completed, capped, or explicitly finished match returns `{result_schema}` with final state hash, replay payload hash, rules and mode identity, outcome, metrics, and verification code.",
+            f"A successfully finalized completed, capped, or explicitly finished match returns `{result_schema}` with final state hash, replay payload hash, rules and mode identity, outcome, metrics, and verification code. Failed-closed finalization returns neither a verified result nor a verified replay.",
             "",
             "# Persistence",
             "",

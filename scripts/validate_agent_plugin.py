@@ -25,10 +25,6 @@ PLUGIN_FIELDS = {
 SKILL_FIELDS = {
     "name",
     "description",
-    "license",
-    "compatibility",
-    "metadata",
-    "allowed-tools",
 }
 PLUGIN_NAME = re.compile(r"^(?!.*(?:--|\.\.))[a-z0-9](?:[a-z0-9.-]{0,62}[a-z0-9])?$")
 SKILL_NAME = re.compile(r"^(?!.*--)[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$")
@@ -195,19 +191,6 @@ def _validate_stdio(root: Path, label: str, value: dict[str, Any], problems: lis
             problems.append(f"{label}: cwd has an unsupported form")
 
 
-def _validate_http(label: str, value: dict[str, Any], problems: list[str]) -> None:
-    _reject_unknown(value, {"type", "url", "headers"}, label, problems)
-    url = value.get("url")
-    if not isinstance(url, str) or not url.startswith(("http://", "https://")):
-        problems.append(f"{label}: url must be an absolute HTTP or HTTPS URL")
-    headers = value.get("headers")
-    if headers is not None and (
-        not isinstance(headers, dict)
-        or any(not isinstance(key, str) or not isinstance(item, str) for key, item in headers.items())
-    ):
-        problems.append(f"{label}: headers must map strings to strings")
-
-
 def _validate_mcp(root: Path, require_mcp: bool, problems: list[str]) -> None:
     path = root / "mcp.json"
     if not path.exists():
@@ -237,10 +220,8 @@ def _validate_mcp(root: Path, require_mcp: bool, problems: list[str]) -> None:
         server_type = server.get("type")
         if server_type == "stdio":
             _validate_stdio(root, label, server, problems)
-        elif server_type in {"streamable-http", "sse"}:
-            _validate_http(label, server, problems)
         else:
-            problems.append(f"{label}: unsupported transport type")
+            problems.append(f"{label}: Vibe Snake's producer profile supports only stdio")
 
 
 def validate_plugin(root: Path, require_mcp: bool = False) -> tuple[str, ...]:

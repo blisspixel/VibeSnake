@@ -2,7 +2,7 @@
 
 [Engineering index](README.md) | [Agent Arena design](../design/AGENT_ARENA.md) | [ADR 0002](../decisions/ADR_0002_AGENT_ARENA.md)
 
-Status: post-1.0 developer preview. The development tree contains this code, but it is not part of the supported 1.0 release contract or release gates. A 1.0 candidate must remove or explicitly exclude its assemblies and entry points before artifact qualification.
+Status: post-1.0 developer preview. The development tree contains this code, but it is not part of the supported 1.0 release contract or release gates. A 1.0 candidate must exclude every preview assembly and entry point and pass the dedicated artifact assertion before artifact qualification.
 
 ## Product boundary
 
@@ -24,6 +24,18 @@ Godot read-only watch screen
 
 `VibeSnake.AgentPlay` depends only on `VibeSnake.Rules`. MCP, named pipes, storage, process launch, profiles, and Godot types remain outside that boundary. The viewer cannot send actions. A viewer failure or disconnect cannot advance, stop, or otherwise change a match.
 
+## Interoperability versions
+
+| Surface | Current pin | Vibe Snake boundary |
+| --- | --- | --- |
+| Model Context Protocol | Stable `2026-07-28` through the locked official C# SDK package `ModelContextProtocol` 2.2.0 | Local stdio transport and lifecycle only; never rules authority |
+| Agent Plugins | 1.0.0 Working Draft; reviewed schema SHA-256 values `0a4aad95ce337878ad38802ebf0daa3fde76abe3f65400c86bcbb1ec0b3ab883` for `plugin.json` and `6539175bfcdf43085855183e86da40ea94b166547a72b47ae9a0a390516d3acb` for assembled `mcp.json` | Portable discovery and launch configuration; never required for direct host use |
+| Agent Skill | Minimal non-experimental `SKILL.md` subset: `name`, `description`, and Markdown body | Advisory play instructions; never executable policy or hidden gameplay state |
+| Open Knowledge Format | 0.2 | Generated discovery, provenance, trust, and lifecycle metadata; never a runtime schema or second rules source |
+| MCP Apps | 2026-01-26 tracked only | Optional client-side viewer after neutral replay and frame contracts stabilize; not a host dependency |
+
+Rules, observation, action, replay, viewer-frame, MCP, plugin, skill, and knowledge identities remain independent. The interoperability baseline was last reviewed on 2026-08-13. Review it at least quarterly and whenever an upstream specification, schema, SDK release, or security advisory changes. A standards update is handled as an isolated compatibility change with locked dependency restore, source and assembled-package validation, generated-knowledge drift checks, exact-protocol transcripts, and full CI. Every client named as supported also requires an independent cross-client smoke. Vibe Snake does not fetch a remote schema while loading a plugin or silently reinterpret scored behavior when an ecosystem format changes. Bump the host version when MCP behavior or its public tool and resource contract changes. Bump the plugin version when packaged discovery, launch, or skill behavior changes.
+
 ## MCP host
 
 Run the source host with the .NET 10 SDK:
@@ -32,7 +44,7 @@ Run the source host with the .NET 10 SDK:
 dotnet run --project native/tools/VibeSnake.AgentHost/VibeSnake.AgentHost.csproj
 ```
 
-The process uses MCP 2026-07-28 over stdio and opens no network listener. Protocol output stays on stdout and diagnostics stay on stderr. A client should normally launch it through its MCP configuration instead of an interactive terminal.
+The process uses MCP 2026-07-28 over stdio and opens no network listener. A client must initialize with exactly protocol revision `2026-07-28`; pre-2026 initialize revisions are rejected and the preview provides no downlevel fallback. Protocol output stays on stdout and diagnostics stay on stderr. A client should normally launch it through its MCP configuration instead of an interactive terminal.
 
 The six tools are:
 
@@ -80,11 +92,11 @@ Observations are a closed public logical-state division. They include exact pend
 
 The pipe and token are ephemeral capabilities. Do not place them in logs, screenshots, reports, or shared command history. The server accepts one same-user client, consumes the token once, keeps only the latest pending frame, and never listens on TCP. Process arguments may still be visible to other software running as the same user, so this preview is a local trust boundary rather than a security boundary against a compromised account.
 
-The live screen consumes `vibesnake-agent-viewer-frame-v2`, reuses the normal run renderer, and displays only public identity, passport color, shed, station affinity, style progress, latest closed public intent, action acceptance or rejection reason, rival outcome, exact match end reason, and verified-result availability. It does not show chain of thought or private provider output. The verified replay remains the canonical complete record if frames are dropped and finalization succeeds. A disconnect says only that match control remains with the host; it does not claim that a replay already exists.
+The live screen consumes `vibesnake-agent-viewer-frame-v2` and reuses the normal run renderer. Its agent-specific overlay displays only public identity, passport color, shed, station affinity, style progress, latest closed public intent, action acceptance or rejection reason, rival outcome, exact match end reason, and verified-result availability. Ordinary board rendering, local cosmetic presentation, and local radio remain player-side presentation rather than pipe data. The screen does not show chain of thought or private provider output. The verified replay produced by successful finalization remains the canonical complete record if frames are dropped. A disconnect says only that match control remains with the host; it does not claim that a replay already exists.
 
 ## Agent experience surfaces
 
-Signal School currently publishes the exact lesson IDs `first-turn`, `wrap-line`, `hunger-route`, `power-route`, `combo-route`, and `recover-route`, each with a fixed seed, step cap, target metric, and threshold evaluator. The host does not yet accept a lesson selection in `start_match` or return lesson completion in a match result. AA-05 owns lesson-selectable sessions and the planned eight-behavior curriculum. Five closed Style Contracts report survival steps, peak combo, controlled near misses, powers activated, or food collected without reducing the game to one scalar reward. Expressive multi-metric objectives remain design targets. Episode summaries retain typed public metrics.
+Signal School currently publishes the exact lesson IDs `first-turn`, `wrap-line`, `hunger-route`, `power-route`, `combo-route`, and `recover-route`, each with a fixed seed, step cap, target metric, and threshold evaluator. The host does not yet accept a lesson selection in `start_match` or return lesson completion in a match result. AA-05 owns lesson-selectable sessions and the planned eight-behavior curriculum. Five closed Style Contracts report survival steps, peak combo, near misses, powers activated, or food collected without reducing the game to one scalar reward. The current Edge Prophet evaluator counts typed `NearMiss` events; it does not infer whether the route was intentional. Expressive multi-metric objectives remain design targets. Episode summaries retain typed public metrics.
 
 An Agent Passport contains only a stable bounded ID, policy version, display name, color, shed, station affinity, and fixed symbolic-step capability profiles. It is public presentation data for the current exhibition, not semantic memory. Vibe Snake never stores prompts, reasoning, credentials, provider responses, or agent-authored executable code.
 
@@ -98,6 +110,8 @@ The checked-in source bundle under `integrations/vibesnake-agent-plugin/` pins t
 python scripts/validate_agent_plugin.py integrations/vibesnake-agent-plugin
 ```
 
+This validator enforces Vibe Snake's intentionally narrow stdio producer profile, local containment rules, and assembled-package invariants. It is not a general Agent Plugins client conformance suite or a complete Agent Skills validator.
+
 Create the framework-dependent preview package with:
 
 ```powershell
@@ -106,7 +120,9 @@ Create the framework-dependent preview package with:
 
 The output is `dist/agent-plugins/portable/vibesnake-agent/`. It contains the published host, root `plugin.json` and `mcp.json`, the skill, license files, and `SHA256SUMS`. It requires a compatible .NET 10 runtime. Distribution signing, per-platform self-contained packages, SBOMs, artifact qualification, and installation UX remain release responsibilities because the format does not define them.
 
-The generated `integrations/vibesnake-agent-knowledge/` bundle uses Open Knowledge Format 0.2 for discoverable rules and protocol concepts. It is generated from canonical source and is never a runtime schema or a second rules authority.
+The floating `player-latest` release is a source and reference channel. Its source ZIP contains the checked-in plugin manifest and skill, MCP host source, packaging script, and generated knowledge bundle so a developer can reproduce this assembly. It does not contain the generated `mcp.json` or claim to be a standalone supported Agent Plugin. CI assembles that generated form into an isolated output, validates it with `--require-mcp`, and discards it after qualification until AA-10 defines supported cross-platform plugin artifacts.
+
+The generated `integrations/vibesnake-agent-knowledge/` bundle uses Open Knowledge Format 0.2 for discoverable rules and protocol concepts. It is generated from canonical source and is never a runtime schema or a second rules authority. Its `generated.at` value changes only when concept meaning changes, `verified.at` changes when the canonical sources and pinned specifications are reviewed, and `stale_after` requires a new quarterly review. CI proves deterministic derivation, but it does not replace that upstream review.
 
 ```powershell
 python scripts/generate_agent_knowledge.py --check
@@ -117,7 +133,7 @@ Use `--check` in normal validation. Use `--write` only after intentionally chang
 
 ## Verification
 
-Focused tests cover deterministic sessions, stale and duplicate calls, concurrency, privacy projection, style metrics, passports, rivals, official MCP transcripts, protocol-clean subprocess behavior, replay save and exact playback, named-pipe authentication, malformed frames, viewer disconnects, and Godot projection. The repository coverage gate requires at least 90 percent line and 85 percent branch coverage for every measured agent module.
+Focused tests cover deterministic sessions, stale and duplicate calls, concurrency, privacy projection, style metrics, passports, rivals, an official C# SDK subprocess integration transcript, protocol-clean subprocess behavior, replay save and exact playback, named-pipe authentication, malformed frames, viewer disconnects, and Godot projection. This is not broad client compatibility certification. The repository coverage gate requires at least 90 percent line and 85 percent branch coverage for every measured agent module.
 
 ```powershell
 dotnet test native/tests/VibeSnake.Rules.Tests/VibeSnake.Rules.Tests.csproj --filter "FullyQualifiedName~Agent"

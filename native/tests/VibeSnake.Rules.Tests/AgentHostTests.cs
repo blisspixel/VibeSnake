@@ -326,6 +326,13 @@ public sealed class AgentHostTests
             rivals.RootElement.GetProperty("rivals").GetArrayLength());
         Assert.Contains("start_match", playbook, StringComparison.Ordinal);
         Assert.Contains("save_verified_replay", playbook, StringComparison.Ordinal);
+        var replayContract = rules.RootElement.GetProperty("replay").GetString();
+        Assert.Contains("verified lane result", replayContract, StringComparison.Ordinal);
+        Assert.Contains("Failed-closed", replayContract, StringComparison.Ordinal);
+        Assert.DoesNotContain("replay receipt", replayContract, StringComparison.Ordinal);
+        Assert.Contains("request early finalization", playbook, StringComparison.Ordinal);
+        Assert.Contains("Confirm that finalization returned a verified result", playbook, StringComparison.Ordinal);
+        Assert.Contains("successful finalization", AgentViewerServer.ViewerRetentionPolicy, StringComparison.Ordinal);
         Assert.DoesNotContain("chain of thought", AgentResources.GetRules(), StringComparison.OrdinalIgnoreCase);
     }
 

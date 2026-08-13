@@ -123,26 +123,25 @@ jobs:
 
           This is a source and reference prerelease, not a signed supported player artifact. It includes the post-1.0 Agent Arena developer preview with local MCP play, verified replays, and a read-only Godot viewer.
 
-          **Download** \`VibeSnake-player-source.zip\`, unzip, then:
+          **Native source player**
+
+          Download \`VibeSnake-player-source.zip\`, verify it against \`SHA256SUMS.txt\`, and unzip it. PowerShell 7 and the .NET 10.0.302 SDK are required. The launcher downloads and verifies the pinned Godot 4.7.1 .NET editor on first use.
 
           \`\`\`powershell
           cd VibeSnake
-          py -3.14 -m venv .venv
-          .\\.venv\\Scripts\\Activate.ps1
-          python -m pip install --require-hashes --only-binary=:all: -r requirements-runtime.lock
-          python -m pip install --no-deps --no-build-isolation -e .
           .\\play.ps1
           \`\`\`
 
-          **Or clone and stay current**
-          \`\`\`text
-          git clone https://github.com/blisspixel/VibeSnake.git
+          On macOS or Linux:
+
+          \`\`\`bash
           cd VibeSnake
-          # install once, then:
-          vibesnake
-          vibesnake update
-          vibesnake status
+          ./play.sh
           \`\`\`
+
+          **Frozen Python reference**
+
+          The wheel and source distribution are the migration oracle and regression reference. They are not the default Godot/C# player and are not required by \`play.ps1\` or \`play.sh\`.
 
           Includes the eight-station offline radio catalog under \`assets/audio/radio/\`.
           EOF

@@ -5,16 +5,15 @@ description: "Deterministic lessons and self-selected public goals for agent-nat
 tags: [vibesnake, curriculum, styles, evaluation]
 generated: { by: process:vibesnake-okf-generator, at: 2026-08-13T00:00:00Z }
 verified: { by: process:vibesnake-ci, at: 2026-08-13T00:00:00Z }
+stale_after: "2026-11-13T00:00:00Z"
 status: draft
 sources:
   - id: agent-experience
     resource: ../../native/src/VibeSnake.AgentPlay/AgentExperience.cs
     title: "Agent experience catalog"
-    author: process:vibesnake-ci
   - id: experience-design
     resource: ../../docs/design/AGENT_ARENA.md
     title: "Agent Arena experience contract"
-    author: process:vibesnake-ci
 ---
 # Style Contracts
 

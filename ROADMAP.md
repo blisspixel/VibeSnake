@@ -69,7 +69,7 @@ Version rules:
 | Automated input coverage exceeds physical evidence | Native logical keyboard, mouse, any-controller, remapping, conflict handling, hot-plug safety, deadzone, prompt-family, and cadence gates pass | Physical Xbox-layout and PlayStation-layout devices, multi-controller changes, and real platform focus/window behavior still need retained review |
 | Display handling is partially qualified | Native smoke now requires an exact eight-case minimum/16:9/4:3/16:10/ultrawide/square/4K/5K matrix with aspect preservation, pointer round trips, and letterbox exclusion | Retained platform screenshots, window-manager behavior, and visible feel evidence remain |
 | Settings and player-data foundation is qualified | Godot persists remaps, stick deadzone, text scale, motion, flash-free, contrast, fullscreen, independent Master/Music/SFX/UI controls, Master-bus mono downmix, Vibe adaptation opt-out, and default-off local playtest consent through 34 described rows; five reset categories use verified backups and fail-closed recovery, while playtest summaries have separate local export and deletion | Physical-device accessibility/audio review and human recovery comprehension remain |
-| Authored feedback is not release-qualified | Radio tracks ship in public source; gameplay SFX still rely largely on procedural fallbacks | The game needs a typed event matrix, deliberate mix, minimal authored cue set, and accessibility alternatives |
+| Authored feedback is not release-qualified | The typed event matrix, procedural cue fallback, and accessibility alternatives exist, but no authored player cue or native export radio set is approved | Approve authored assets, retain listening and mix evidence on physical devices, and confirm warning and recovery readability with people |
 | Custom content executes no code | Native creator validation is strict, bounded, data-only, and rejects unsafe, unknown, duplicate, non-finite, reserved, or incompatible input | Production pack manifests remain unavailable until curation approval; that is a content gate, not a parser gap |
 | Release operations are prepared but unexecuted | Hosted multi-platform Debug smokes, deterministic package shapes, provenance routes, promotion guards, release handoffs, and rollback/rehearsal contracts exist | Exact retained Release artifacts, protected signing/notarization, selected-channel execution, support drills, and final human approval still separate continuous CI from a supportable release |
 
@@ -252,7 +252,7 @@ Only data-loss, crash, security, or release-blocking fixes should land on this l
 
 ## 0.3.0: technology qualification and native vertical slice
 
-Status: Current.
+Status: Promotion is current. Implementation has a complete native automated foundation; retained Release, physical-platform, content-approval, and human acceptance evidence remain open.
 
 ### Purpose
 
@@ -271,7 +271,7 @@ This checkpoint records verified work without treating a partial slice as a rele
 
 | Work package | State | Verified now | Required to close |
 | --- | --- | --- | --- |
-| V030-01 Python reference | Freeze in progress (oracle only) | Seeded policies, schema 2 reports, per-step invariants, property-generated commands, JSON action traces, immediate replay, 100 movement fixtures with 25,600 steps, 35 targeted core-rule cases, power fixtures (Shield/Phase Shift/Last Stand/remaining), explicit queue acceptance, stable off-path food, normalized random-stream use and respawns, ordered events, explicit `vibesnake-core@4` and randomness-policy declarations, strict source and pack-content gates, and 600 passing Python tests measured locally on Python 3.14 while hosted CI covers 3.11 through 3.14 | Keep the oracle green only until its validators and fixture generators have native replacements; **do not add product features or optional refactors in Python**. Follow V030-13 for complete removal. |
+| V030-01 Python reference | Frozen oracle; retirement in progress | Seeded policies, schema 2 reports, per-step invariants, property-generated commands, JSON action traces, immediate replay, 100 movement fixtures with 25,600 steps, 35 targeted core-rule cases, power fixtures (Shield/Phase Shift/Last Stand/remaining), explicit queue acceptance, stable off-path food, normalized random-stream use and respawns, ordered events, explicit `vibesnake-core@4` and randomness-policy declarations, strict source and pack-content gates, and 601 passing Python tests measured locally on Python 3.14 while hosted CI covers 3.11 through 3.14 | Keep the oracle green only until its validators and fixture generators have native replacements; **do not add product features or optional refactors in Python**. Follow V030-13 for complete removal. |
 | V030-02 toolchain scaffold | Complete | Godot 4.7.1 and .NET 10.0.302 pins, official editor and .NET template hashes, stable-only SDK resolution, Godot project and application solution, pure rules and test projects, shared fixture readers, export presets, a 51-package hash-locked universal Python graph with freshness enforcement, locked NuGet dependencies with transitive vulnerability audit, deterministic path mapping, warnings as errors, formatting, repository-owned local hooks, template bootstrap, and implementation ADR | Reopen only for a dedicated toolchain qualification change |
 | V030-03 pure C# slice | Complete for rules kernel | Core rules plus all nine powers; snapshots, restore, replay integrity, live Godot recorder; pure `RulesCadenceClock` for presentation tempo; collect-after-move for Segment Detach parity | Reopen only for rules defects or intentional contract expansion |
 | V030-04 differential parity | In progress | Shared fixtures for movement, core rules, Shield (8), Phase Shift (6), Last Stand (5), remaining powers (9), and achievement-candidate product-path (4, flag on); delta reduction on movement first-fail prefixes with clean re-execution proofs | Permanent regression corpus compaction; no default-on full corpus flip unless a ship gate requires it |
@@ -416,7 +416,7 @@ This checkpoint records verified work without treating a partial slice as a rele
 
 ## 0.4.0: deterministic runtime core
 
-Status: Queued after 0.3.0.
+Status: Promotion is queued after 0.3 acceptance. Implementation is active and substantially automated; the 90 percent branch target and remaining oracle retirement work stay open.
 
 ### Purpose
 
@@ -544,7 +544,7 @@ Complete the pure C# simulation boundary so gameplay defects can be reproduced, 
 
 ## 0.5.0: accessible shell, input, and onboarding
 
-Status: Automated foundation complete; physical-device, retained-platform-pixel, first-run, recovery-language, and feel evidence remain human acceptance gates.
+Status: Promotion is queued behind 0.3 and 0.4 acceptance. Implementation's automated foundation is complete; physical-device, retained-platform-pixel, first-run, recovery-language, and feel evidence remain human acceptance gates.
 
 ### Purpose
 
@@ -686,7 +686,7 @@ Make the complete front end and first-run experience operable, readable, configu
 
 ## 0.6.0: feedback, audio, and visual identity
 
-Status: Queued after 0.5.0.
+Status: Promotion is queued after 0.5 acceptance. Implementation foundations for typed feedback, fallback cues, radio, broadcast, and accessibility are complete; authored-asset approval, listening, mix, and human readability evidence remain open.
 
 ### Purpose
 
@@ -811,7 +811,7 @@ Turn the current collection of effects and audio files into one deliberate escal
 
 ## 0.7.0: fair modes and measured balance
 
-Status: In progress. V070-01 through V070-05, V070-08, and the V070-09 automated foundation are complete. V070-06 human observation is pending, V070-07 tuning remains gated on its targets, and V070-09 human synergy and Mutation Fork decisions remain open.
+Status: Promotion is queued behind 0.3 through 0.6 acceptance. Implementation foundations V070-01 through V070-05, V070-08, and V070-09 are complete; V070-06 human observation is pending, V070-07 tuning remains gated on its targets, and V070-09 human synergy and Mutation Fork decisions remain open.
 
 ### Purpose
 
@@ -932,7 +932,7 @@ Turn the current feature set into explicit, reproducible rulesets and tune them 
 
 ## 0.8.0: replayability, AI, progression, and content polish
 
-Status: All V080 automated foundations are complete. Version acceptance remains open for the explicit human, content-approval, physical-platform, and release gates below.
+Status: Promotion is queued behind earlier milestone acceptance. All V080 implementation foundations are complete; version acceptance remains open for the explicit human, content-approval, physical-platform, and release gates below.
 
 ### Purpose
 
@@ -1084,7 +1084,7 @@ Polish the systems that make Vibe Snake distinctive after core rules are stable,
 
 ## 0.9.0: release candidate and product hardening
 
-Status: Queued after 0.8.0.
+Status: Promotion is queued after 0.8 acceptance. Implementation foundations for freeze policy, release matrix, lifecycle, materials, rehearsal, and stable-promotion handoff exist; retained Release and protected operations remain open.
 
 ### Purpose
 
@@ -1113,7 +1113,7 @@ Freeze features and prove that the complete product can be built, installed, upd
 - Freeze rules, save schemas, replay schema, content manifests, input defaults, and accessibility defaults.
 - Permit only defect, compatibility, performance, documentation, and release-operation changes.
 - Require every candidate change to identify the failed gate it repairs.
-- **Progress (pre-freeze controls complete; activation blocked by dependencies):** `candidate-freeze-policy-v1` defines the six frozen contract surfaces, the four permitted candidate change classes plus release operations, exact P0 through P3 release effects, and eight mandatory change-evidence fields. CI resolves 115 current surface files and rejects unsafe, missing, empty, reordered, or broadened policy data. A deterministic baseline builder binds every resolved file and contract ID to SHA-256. The policy remains explicitly `pre-freeze`, with no baseline and all four prerequisites open, until the complete 0.8.0 acceptance gate, a clean revision, green CI, and release-matrix readiness are reviewed. Once activated, any added, removed, renamed, or changed frozen file fails CI. See [Candidate freeze](docs/release/CANDIDATE_FREEZE.md).
+- **Progress (pre-freeze controls complete; activation blocked by dependencies):** `candidate-freeze-policy-v1` defines the six frozen contract surfaces, the four permitted candidate change classes plus release operations, exact P0 through P3 release effects, and eight mandatory change-evidence fields. CI resolves 92 current surface files and rejects unsafe, missing, empty, reordered, or broadened policy data. A deterministic baseline builder binds every resolved file and contract ID to SHA-256. The policy remains explicitly `pre-freeze`, with no baseline and all four prerequisites open, until the complete 0.8.0 acceptance gate, a clean revision, green CI, and release-matrix readiness are reviewed. Once activated, any added, removed, renamed, or changed frozen file fails CI. See [Candidate freeze](docs/release/CANDIDATE_FREEZE.md).
 
 #### V090-02: build the release matrix
 
@@ -1259,7 +1259,7 @@ Promote a proven candidate into the first stable player contract. Version 1.0 ad
 
 ## After 1.0: Agent Arena
 
-Status: Developer preview implemented in the development tree; outside the supported 1.0 release contract and release gates. A 1.0 candidate must remove or explicitly exclude the preview assemblies and entry points before artifact qualification. Post-1.0 release qualification and human spectator validation remain pending.
+Status: Developer preview implemented in the development tree; outside the supported 1.0 release contract and release gates. A 1.0 candidate must exclude every preview assembly and entry point and pass the dedicated artifact assertion before artifact qualification. Post-1.0 release qualification and human spectator validation remain pending.
 
 ### Purpose
 
@@ -1292,13 +1292,13 @@ This post-1.0 preview queue uses `Implemented preview`, `Active preview`, `Plann
 | AA-01 | Local agent connection | Implemented preview | AA-00 | MCP 2026-07-28 stdio host; six closed tools and six resources; no listener, arbitrary path, rules override, or agent code execution |
 | AA-02 | Trustworthy live exhibition | Implemented preview | AA-00, AA-01 | Versioned `vibesnake-agent-viewer-frame-v2`; read-only same-user Godot viewer; exact action acceptance and rejection; exact terminal or failed-closed state; verified-result availability; equal-seed rival; viewer loss cannot affect match state |
 | AA-03 | Legible agent character | Active preview | AA-02 | Passport color plus shed and station labels, Style Contract, public intent, action result, and rival score are visible; next add closed-catalog passport validation, passport-owned avatar rendering, multi-metric style distinction, and observed risk/resources |
-| AA-04 | Efficient symbolic control | Planned preview | AA-00, AA-01 | Bounded event-stopping symbolic burst with independent contract identity, budgets, replay proof, idempotency, abuse limits, and no ranking overlap with symbolic step |
-| AA-05 | Learnable agent journey | Planned preview | AA-00, AA-03, AA-04 | Complete the eight-behavior Signal School; immutable replay-and-event evaluators; public practice deck; compact episode review; clear retry and recovery guidance |
+| AA-04 | Efficient symbolic control | Planned preview | AA-00, AA-01 | Bounded event-stopping symbolic burst with independent contract identity, budgets, replay proof, idempotency, abuse limits, no ranking overlap with symbolic step, and explicit bounded recovery for abandoned live sessions without using viewer disconnect as match control |
+| AA-05 | Learnable agent journey | Planned preview | AA-00, AA-03, AA-04 | Complete the eight-behavior Signal School; immutable replay-and-event evaluators; event-to-progress deltas and missed-threshold explanations; compact episode review; same-lesson retry followed by unseen-seed validation; action-call and context-cost evidence |
 | AA-06 | Exhibition receipt and human handoff | Planned preview | AA-02, AA-03 | One bounded public receipt hash-links agent and rival replays, outcome, passport, style, and accepted presentation events; replay browser exposes watch, exact same-seed challenge, and rematch without ordinary-score contamination |
 | AA-07 | Persistent public identity | Planned preview | AA-05, AA-06 | Versioned local Agent Passport store containing only verified exhibition receipts, styles, milestones, and rival records; migration, reset, deletion, corruption recovery, and strict size caps |
-| AA-08 | Fair local qualification | Planned preview | AA-05, AA-07 | Public practice and withheld qualification decks; immutable division manifest; agent and policy version separation; generalization report; multidimensional standings; Rival Breaker contract |
-| AA-09a | Live spectator polish | Active preview | AA-02 | Live waiting states; readable observed risk and recovery cues; mute, reduced-motion, high-contrast, and 150-percent-text evidence |
-| AA-09b | Recorded spectator story | Planned preview | AA-06, AA-09a | Typed highlights; deterministic turning-point selection; recorded-first broadcast pacing and montage bound to the exhibition receipt |
+| AA-08 | Fair local qualification | Planned preview | AA-05, AA-07 | Public practice and withheld qualification decks; immutable division manifest; agent and policy version separation; terminal and capped result eligibility with voluntary `finish_match` explicitly non-qualifying or separately classified; generalization report; multidimensional standings; Rival Breaker contract |
+| AA-09a | Live spectator polish | Active preview | AA-02 | Bounded and readable awaiting-agent state for slow control; visible coalescing or a small presentation buffer for fast latest-frame-only control without changing rules timing; observed risk and recovery cues; mute, reduced-motion, high-contrast, and 150-percent-text evidence |
+| AA-09b | Recorded spectator story | Planned preview | AA-06, AA-09a | Typed highlights; deterministic turning-point selection; recorded-first broadcast pacing and montage bound to the exhibition receipt; pause, seek, speed, restart, lane focus, lead-change context, and clean-capture controls at least as complete as ordinary replay viewing |
 | AA-10 | Supported symbolic desktop packaging | Planned preview | AA-01 through AA-09b | Self-contained Windows, macOS, and Linux host packages; viewer artifact qualification; exact manifests, checksums, SBOM, provenance, signing, install, update, rollback, and removal guidance |
 | AA-11 | Visual-agent division | Later option | AA-04, AA-09a | Rendered-frame observation and logical controls; declared cadence; accessibility profiles; no shared ranking with symbolic agents |
 | AA-12 | Optional ecosystem surfaces | Later option | Stable neutral contracts and AA-10 | MCP App replay viewer, separate Gymnasium or PettingZoo adapter, and only then separately decided authenticated remote play or hosted tournaments |
@@ -1333,7 +1333,7 @@ Do not hold objective Legible through Dramatic implementation work for later evi
 ### Preview implementation evidence
 
 - Complete in source: the decision and experience contracts; Rules-only session core; local stdio MCP 2026-07-28 host; explicit verified replay save; live read-only same-user pipe viewer with exact action and terminal truth; five Style Contracts; six named Signal School lesson definitions with deterministic metric evaluators; bounded visible Agent Passports; closed presentation-only public intents; equal-seed named rivals; minimal Agent Skill; Agent Plugins 1.0.0 source and package validators; and generated Open Knowledge Format 0.2 concepts. Symbolic burst remains AA-04 work. Selecting a lesson as a match contract and completing the planned eight-behavior curriculum remain AA-05 work.
-- Verified by focused automation: exact one-step and zero-step rejection semantics, stale and idempotent requests, concurrent serialization, closed observation projection, rival isolation, replay mirror verification, saved replay reload and final-hash playback, official MCP subprocess transcripts, protocol-clean stdout, viewer authentication and disconnect isolation, plugin containment, and knowledge drift.
+- Verified by focused automation: exact one-step and zero-step rejection semantics, stale and idempotent requests, concurrent serialization, closed observation projection, rival isolation, replay mirror verification, saved replay reload and final-hash playback, an official C# SDK subprocess integration transcript, protocol-clean stdout, viewer authentication and disconnect isolation, plugin containment, and knowledge drift. This is not broad client compatibility certification.
 - Still required before a supported symbolic Agent Arena release: bounded symbolic burst; multi-metric style distinction; hash-linked exhibition receipts; per-platform self-contained and signed packages; SBOM and artifact inspection; exported-player and cross-platform viewer qualification; persisted passport and local league policy; public and withheld seed decks; same-seed human handoff; accessibility review; and structured human evidence for pacing, clarity, personality, and rematch desire. Visual-input and other higher-throughput divisions remain separate later options with distinct qualification and rankings. Separately, the supported 1.0 candidate must gain and pass an artifact gate that excludes every preview assembly and entry point.
 - Explicitly deferred: remote HTTP, OAuth, accounts, uploads, matchmaking, hosted tournaments, MCP Apps presentation, and Gymnasium or PettingZoo adapters. Each needs a separate decision and evidence boundary.
 
@@ -1341,7 +1341,7 @@ Do not hold objective Legible through Dramatic implementation work for later evi
 
 - Rules, modes, configuration, observation, action, replay, protocol, plugin, and knowledge identities are explicit and independently versioned.
 - External agents receive only the closed public logical-state division. Exact pending directions and public rules timers support deterministic symbolic control, so equal rules do not imply identical human and agent observations. Random state and future outcomes are never transmitted; agents may infer or simulate from the revealed seed only in the separately identified open-seed division. Controller internals, private user data, prompts, hidden reasoning, credentials, paths, and diagnostics remain unavailable.
-- Agent response time never changes score. Stale, illegal, duplicate-conflicting, disconnected, or over-budget requests terminate or reject predictably without double-stepping.
+- Agent response time never changes score. Stale, illegal, and duplicate-conflicting requests reject predictably without double-stepping, and the declared step cap finalizes predictably. The current symbolic-step preview has no request timeout or disconnect-driven match termination; an abandoned live session remains owned by the host until explicit finish, process exit, or future bounded reclamation under AA-04.
 - A replay proves the captured action trace and final state. It does not claim that an external policy is deterministic.
 - Agent matches are local and ephemeral by default. Persistence is explicit, bounded, verified, and application-owned.
 - Agent code never executes in the game or rules process. Remote HTTP, OAuth, accounts, uploads, matchmaking, and hosted tournaments require separate decisions.
@@ -1408,17 +1408,17 @@ The player artifact must not contain:
 | Risk | Current signal | Control |
 | --- | --- | --- |
 | Radio provenance evidence is incomplete | Historical records identify service-assisted generation while the owner intends an Apache-2.0 release | Preserve exact generation and plan evidence, verify applicable provider terms, and keep player-pack approval separate from the owner's license declaration |
-| Artifact size grows without control | The local radio review library is 338,592,122 bytes before any track is approved for public source or a player pack | Keep only the small approved core in source; deliver hash-checked, versioned station packs as optional release assets; report size in CI |
-| Engine migration changes game feel | Rules live inside a large Python coordinator while the target is pure C# and Godot | Python reference traces, step-level differential tests, vertical slices, and reviewed mismatch decisions |
-| Determinism is contaminated by visuals or audio | Module-global random is widely used | Separate injected random streams and architectural import tests |
-| Controller claims exceed real support | One startup joystick and hard-coded indices | Hot-plug handling, instance IDs, action maps, device matrix |
+| Artifact size grows without control | All 95 radio tracks are already public source and contribute 338,592,122 bytes, while the native export-eligible set remains zero | Keep the native player core separate, deliver any approved station set as a hash-checked optional pack, and report source-archive and player-pack sizes independently |
+| Engine migration changes game feel | Pure C# Rules is the product kernel, but the frozen Python oracle still supplies some validators and fixture generators | Preserve trace and fixture parity, review mismatches, replace bounded Python tooling in .NET, then remove the oracle |
+| Determinism is contaminated by visuals or audio | Product Rules uses named injected streams; module-global randomness remains frozen-oracle debt | Keep architecture and replay checks on product streams and retire the remaining oracle dependency |
+| Controller claims exceed retained evidence | Production uses instance IDs, hot-plug tracking, logical action maps, and prompt families, but retained physical multi-controller sessions are absent | Run the physical device matrix on the exact candidate and retain disconnect, reconnect, remap, and prompt evidence |
 | Accessibility becomes a late cosmetic pass | Strong effects already exist | Accessibility release precedes feedback expansion and blocks required flows |
-| Save migrations overwrite newer data | Schema guards exist but UI recovery is absent | Future-schema write block, backups, reset confirmation, full fixture chain |
+| Save migrations overwrite newer data | Version guards, backup, restore, reset confirmation, and recovery UI exist; human comprehension and platform permission evidence remain open | Retain full migration fixtures and review recovery language and real platform behavior on the exact candidate |
 | Feature scope prevents release | Many possible modes and content extensions | Scope lock and no new features in 0.9 |
-| CI passes while the player artifact fails | Current CI tests an editable checkout | Clean artifact jobs and launch outside the repository |
-| One platform becomes second-class | Development currently happens on Windows and no native release matrix has run | Matching acceptance gates, native CI runners, platform owners, and no 1.0 promotion with a missing artifact |
+| CI passes while the player artifact fails | Every platform now exports and smokes outside the checkout from a read-only install, but no exact three-platform Release candidate is retained | Retain one cross-bound Release matrix and execute its selected-channel lifecycle before promotion |
+| One platform becomes second-class | A three-platform Debug matrix passes, but no retained three-platform Release matrix has run | Matching acceptance gates, native runners, platform owners, and no 1.0 promotion with a missing Release artifact |
 | Automated agents optimize the fun out of the game | Simulation rewards measurable outcomes more easily than delight, clarity, or taste | Separate correctness and balance automation from structured human experience gates |
-| Store claims drift from the build | No release material pipeline exists | Capture and documentation only from the candidate revision |
+| Store claims drift from the build | Release-material, rehearsal, and stable-promotion handoff validators exist, but candidate-bound media, channel execution, and approval are pending | Generate claims and media only from the accepted candidate, then bind them through the existing handoffs |
 
 ## Research basis
 
@@ -1428,6 +1428,10 @@ The roadmap applies these primary references:
 - [.NET support policy](https://dotnet.microsoft.com/en-us/platform/support/policy): .NET 10 is an active LTS line and the project pins its SDK and runtime contract.
 - [Python `importlib.resources`](https://docs.python.org/3.12/library/importlib.resources.html), [PyInstaller multi-OS guidance](https://pyinstaller.org/en/stable/usage.html#supporting-multiple-operating-systems), and [SDL platform support](https://wiki.libsdl.org/SDL2/Introduction): these define the incumbent's portability and packaging constraints while it remains the reference.
 - [Semantic Versioning 2.0.0](https://semver.org/): version numbers communicate compatibility for declared public contracts.
+- [MCP 2026-07-28](https://modelcontextprotocol.io/specification/2026-07-28) and the [official C# SDK 2.2.0 release](https://github.com/modelcontextprotocol/csharp-sdk/releases/tag/v2.2.0): the agent host pins one stable initialize revision and rejects downlevel negotiation rather than silently changing behavior.
+- [Agent Plugins 1.0.0](https://agent-plugins.org/specification) and the [Agent Skills specification](https://agentskills.io/specification): portable discovery and advisory instructions remain optional, versioned developer-preview surfaces with narrow producer validation.
+- [MCP Apps](https://modelcontextprotocol.io/extensions/apps/overview): client-side interactive rendering remains a tracked optional viewer path after neutral replay and frame contracts stabilize.
+- [Open Knowledge Format 0.2](https://github.com/GoogleCloudPlatform/knowledge-catalog/blob/main/okf/SPEC.md): generated agent knowledge carries deterministic provenance, verification, and lifecycle metadata without becoming gameplay authority.
 - [Hypothesis stateful testing](https://hypothesis.readthedocs.io/en/latest/stateful.html) and [search-based model game testing](https://zenodo.org/records/5140432): operation generation, invariants, minimization, model coverage, and mutation detection shape the automated QA laboratory.
 - [Ryan, Rigby, and Przybylski](https://selfdeterminationtheory.org/SDT/documents/2006_RyanRigbyPrzybylski_MandE.pdf), [MDA](https://aaai.org/papers/ws04-04-001-mda-a-formal-approach-to-game-design-and-game-research/), and [GameFlow](https://www.valuesatplay.org/wp-content/uploads/2007/09/sweetser.pdf): competence, autonomy, relatedness, control, challenge, feedback, and the mechanics-to-experience chain shape the fun gates.
 - [Xbox Accessibility Guideline 101: text](https://learn.microsoft.com/en-us/xbox/accessibility/xbox-accessibility-guidelines/101), [102: contrast](https://learn.microsoft.com/en-us/xbox/accessibility/xbox-accessibility-guidelines/102), [105: audio](https://learn.microsoft.com/en-us/gaming/accessibility/xbox-accessibility-guidelines/105), [107: input](https://learn.microsoft.com/en-us/xbox/accessibility/xbox-accessibility-guidelines/107), [113: focus](https://learn.microsoft.com/en-us/xbox/accessibility/xbox-accessibility-guidelines/113), [117: motion](https://learn.microsoft.com/en-us/gaming/accessibility/xbox-accessibility-guidelines/117), [118: photosensitivity](https://learn.microsoft.com/en-us/gaming/accessibility/xbox-accessibility-guidelines/118), and [121: feature documentation](https://learn.microsoft.com/en-us/gaming/accessibility/xbox-accessibility-guidelines/121): these define concrete game accessibility behaviors and disclosure.

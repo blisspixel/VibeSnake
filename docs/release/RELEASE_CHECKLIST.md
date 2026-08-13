@@ -129,7 +129,7 @@ The current development revision does not meet this checklist. See [STATUS.md](S
 - [ ] Published artifacts match the candidate revision, manifests, screenshots, checksums, and release notes.
 - [ ] Private vulnerability reporting is enabled and its end-to-end report flow is tested.
 - [ ] A concrete private conduct-reporting route is published and tested before contributions or official community spaces open.
-- [ ] Dependabot alerts and security updates are enabled; automated fixes follow the project's review policy.
+- [x] Dependabot alerts and security updates are enabled; the GitHub API verified alerts plus unpaused automated security fixes on 2026-08-13, and every proposed fix still follows the project's review policy.
 - [ ] The default branch is protected by a ruleset that requires the complete CI workflow and prevents force pushes and deletion.
 - [ ] Repository description, topics, issue forms, support links, and security links resolve from a clean signed-out browser session.
 - [ ] Secret scanning and push protection are enabled, and no `.env`, credential, signing key, private report, or player data is in source or artifacts.

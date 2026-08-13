@@ -22,7 +22,7 @@ internal sealed class AgentViewerServer : IAgentViewerSink, IDisposable
 {
     public const int MaximumTokenBytes = 128;
     public const string ViewerRetentionPolicy =
-        "One local same-user viewer may attach with the one-time capability while this host retains the match. Frames are best-effort and the verified replay remains canonical.";
+        "One local same-user viewer may attach with the one-time capability while this host retains the match. Frames are best-effort and the verified replay produced by successful finalization remains canonical.";
 
     private static readonly JsonSerializerOptions SerializerOptions = CreateSerializerOptions();
     private readonly Channel<AgentViewerFrameV2> _frames = Channel.CreateBounded<AgentViewerFrameV2>(

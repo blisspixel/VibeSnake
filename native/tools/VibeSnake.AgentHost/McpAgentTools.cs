@@ -52,7 +52,7 @@ public sealed class McpAgentTools
         ReadOnly = true,
         Idempotent = true,
         OpenWorld = false)]
-    [Description("Returns the current allowlisted player-visible observation. It never advances rules state.")]
+    [Description("Returns the current closed public logical-state observation. It never advances rules state and is not a serialization of the human screen.")]
     public AgentObservationV1 ObserveMatch(
         [Description("Opaque handle returned by start_match.")] string matchHandle) =>
         Execute(() => _registry.Observe(matchHandle));

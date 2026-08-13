@@ -5,29 +5,27 @@ description: "The local stdio MCP surface and its portable Agent Plugin packagin
 tags: [vibesnake, mcp, agent-plugins, stdio]
 generated: { by: process:vibesnake-okf-generator, at: 2026-08-13T00:00:00Z }
 verified: { by: process:vibesnake-ci, at: 2026-08-13T00:00:00Z }
+stale_after: "2026-11-13T00:00:00Z"
 status: draft
 sources:
   - id: mcp-tools
     resource: ../../native/tools/VibeSnake.AgentHost/McpAgentTools.cs
     title: "MCP tool adapter"
-    author: process:vibesnake-ci
   - id: mcp-resources
     resource: ../../native/tools/VibeSnake.AgentHost/AgentResources.cs
     title: "MCP resources"
-    author: process:vibesnake-ci
   - id: plugin-manifest
     resource: ../vibesnake-agent-plugin/plugin.json
     title: "Agent Plugin manifest"
-    author: process:vibesnake-ci
   - id: agent-plugins-spec
     resource: https://agent-plugins.org/specification
     title: "Agent Plugins 1.0.0 specification"
-    author: process:vibesnake-ci
 ---
 # Versions
 
 The host version is `0.1.0`. The Agent Plugin version is `0.1.0` and targets `https://agent-plugins.org/schemas/1.0.0/plugin.schema.json`.
-The MCP server targets stable protocol `2026-07-28` through the official C# SDK.
+The MCP server targets stable protocol `2026-07-28` through the official C# SDK `2.2.0`.
+Clients must initialize with exactly MCP `2026-07-28`; legacy initialize revisions are rejected and this preview provides no downlevel fallback.
 
 # Tools
 

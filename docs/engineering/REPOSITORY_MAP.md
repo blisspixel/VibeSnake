@@ -110,7 +110,7 @@ scripts/
 |-- assemble_radio_pack.py      Build one approved deterministic radio archive
 |-- assemble_unsigned_preview.py  Join the qualified players, provenance, and radio pack
 |-- lock_python_dependencies.py Verify or regenerate the hash-locked Python graph
-|-- install_player.ps1/.sh      One-shot clone, venv, and player install
+|-- install_player.ps1/.sh      Legacy frozen-Python reference bootstrap
 |-- assert_godot_toolchain.ps1  Checksum-bound pinned editor-build gate
 |-- native_artifact_policy.ps1  Shared prohibited native-bundle path rules
 |-- platform_path_policy.ps1    Absolute environment-path policy for tooling
@@ -129,7 +129,7 @@ play.ps1 / play.sh / play.bat     Verify, build, and launch the native Godot gam
 
 The Godot and C# paths are the default source-playable product. The Python package remains a frozen behavior oracle, fixture producer, and optional migration reference. New product behavior belongs in `game/` and `native/`.
 
-The optional post-1.0 interoperability source lives under `integrations/vibesnake-agent-plugin/` and `integrations/vibesnake-agent-knowledge/`. It is not part of the current 1.0 player artifact. See [agent play integration](AGENT_PLAY.md).
+The optional post-1.0 interoperability source lives under `integrations/vibesnake-agent-plugin/` and `integrations/vibesnake-agent-knowledge/`. The checked-in plugin directory contains the source manifest and skill; `scripts/package_agent_plugin.ps1` publishes the host and generates the root `mcp.json` only in its isolated output. The source forms are present in `player-latest`, but neither the assembled plugin nor any Agent Arena entry point is part of the supported 1.0 player artifact. See [agent play integration](AGENT_PLAY.md).
 
 Persistence and configuration boundaries:
 

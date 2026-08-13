@@ -1,4 +1,4 @@
-# Bootstrap a playable Vibe Snake checkout from GitHub main.
+# Bootstrap the frozen Python reference from GitHub main.
 # Usage:
 #   irm https://raw.githubusercontent.com/blisspixel/VibeSnake/main/scripts/install_player.ps1 | iex
 #   or: ./scripts/install_player.ps1 [-InstallDir path]
@@ -26,7 +26,7 @@ function Invoke-Python {
     }
 }
 
-Write-Host "Installing Vibe Snake into $InstallDir (branch $Branch)"
+Write-Host "Installing the frozen Vibe Snake Python reference into $InstallDir (branch $Branch)"
 
 if (-not (Test-Path -LiteralPath $InstallDir)) {
     git clone --branch $Branch $RepoUrl $InstallDir
@@ -53,7 +53,7 @@ $venvPython = Join-Path $InstallDir ".venv\Scripts\python.exe"
 & $venvPython -m pip install --no-deps --no-build-isolation -e .
 
 Write-Host ""
-Write-Host "Installed. Play with:"
+Write-Host "Frozen reference installed. Run it with:"
 Write-Host "  cd `"$InstallDir`""
 Write-Host "  .\.venv\Scripts\Activate.ps1"
 Write-Host "  vibesnake"

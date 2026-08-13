@@ -44,8 +44,8 @@ These entry points are kept at `scripts/` root because README, CI, and release d
 
 | Script | Purpose |
 | --- | --- |
-| `install_player.ps1` | Windows one-shot clone + venv + runtime install |
-| `install_player.sh` | macOS/Linux one-shot clone + venv + runtime install |
+| `install_player.ps1` | Legacy Windows bootstrap for the frozen Python reference |
+| `install_player.sh` | Legacy macOS/Linux bootstrap for the frozen Python reference |
 
 After install, players use the package CLI:
 

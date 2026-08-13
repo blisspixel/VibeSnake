@@ -6,6 +6,21 @@ The three native jobs are joined by `release-matrix-qualification-v1`. The aggre
 
 Release rows also require `candidate-install-lifecycle-preflight-v1`. The exact exported player must pass first launch and a hash-identical repair copy; preserve source bytes while migrating preferences schemas 1 through 6, personal-best schema 1, and local-playtest-summary schema 1; reject and preserve a future preferences schema; bind optional-pack and player-data recovery evidence; and prove application removal does not remove external player data. This preflight is not a substitute for selected-channel installer update, rollback, and removal tests.
 
+## Floating source and reference channel
+
+`player-latest` is deliberately separate from native artifact qualification. A same-repository push to `main` must complete the full CI workflow successfully before the source workflow checks out that exact qualified SHA. Manual dispatch may build the package for diagnosis but cannot publish or replace the floating release.
+
+The release contains exactly:
+
+- `VibeSnake-player-source.zip`.
+- One normalized Python reference wheel.
+- One normalized Python reference sdist.
+- `SHA256SUMS.txt` covering those three payloads.
+
+The source ZIP includes development-only Agent Arena inputs: the Agent Plugins 1.0.0 manifest and skill, MCP host source, deterministic plugin assembly script, and generated Open Knowledge Format 0.2 bundle. The assembled `mcp.json` and framework-dependent host output are generated and validated in CI but are not published as a supported plugin in this channel. `player-latest` is therefore neither a native player artifact nor the AA-10 supported symbolic desktop package.
+
+Publication occurs in a checkout-free, least-privilege job. It independently reconciles the floating Git tag to the CI-qualified commit, removes any prior release or partial draft, creates with tag verification, and rechecks the exact commit plus non-draft prerelease state. The bounded convergence loop makes reruns safe after a partial GitHub API failure; uninterrupted GitHub availability is still an external dependency. Consumers must verify `SHA256SUMS.txt` after download.
+
 ## Output contract
 
 The qualified Godot export is an input, not the final download. `ReleaseOutputPlan` converts its platform identity and signing-readiness state into exact direct-download and store-depot shapes. `ValidateArtifactManifest` rehashes every input file, rejects an added or missing file, builds the qualification package twice, requires byte-identical package hashes, and writes separate manifest, checksum, and output-plan files.

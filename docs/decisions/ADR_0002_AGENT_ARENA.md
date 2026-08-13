@@ -4,7 +4,7 @@ Status: Accepted for post-1.0 development
 
 Decision date: 2026-08-12
 
-Implementation note: the development tree now exercises this post-1.0 boundary through a Rules-only session assembly, local stdio MCP host, explicit replay save, and read-only same-user pipe viewer. The preview is not part of the supported 1.0 release contract. A 1.0 candidate must remove or explicitly exclude the preview assemblies and entry points before artifact qualification. Human experience acceptance is still open.
+Implementation note: the development tree now exercises this post-1.0 boundary through a Rules-only session assembly, local stdio MCP host, explicit replay save, and read-only same-user pipe viewer. The preview is not part of the supported 1.0 release contract. A 1.0 candidate must exclude every preview assembly and entry point and pass the dedicated artifact assertion before artifact qualification. Human experience acceptance is still open.
 
 ## Context
 
@@ -31,14 +31,14 @@ External agent play introduces different trust, pacing, privacy, and compatibili
 
 | Standard | Decision | Boundary |
 | --- | --- | --- |
-| MCP 2026-07-28 | Adopt for the local agent host | Official C# SDK, transport adapter only, local stdio first |
-| Agent Skills | Adopt the minimal stable `SKILL.md` subset | Advisory play instructions, no bundled executable scripts or experimental `allowed-tools` |
+| MCP 2026-07-28 | Adopt for the local agent host | Official C# SDK 2.2.0, exact 2026-07-28 initialize required, no downlevel fallback, transport adapter only, local stdio first |
+| Agent Skills | Adopt the minimal non-experimental `SKILL.md` subset | `name`, `description`, and Markdown body only; no bundled executable scripts or experimental `allowed-tools` |
 | Agent Plugins 1.0.0 | Package as a developer preview | Working Draft format, per-platform signed host bundles required before distribution, never the only connection route |
 | MCP Apps 2026-01-26 | Track for an optional client-side viewer | Secondary renderer after neutral replay and frame contracts stabilize |
-| Open Knowledge Format 0.2 | Generate optionally from canonical sources | Discovery and provenance only, never runtime or gameplay authority |
+| Open Knowledge Format 0.2 | Generate a deterministic optional bundle from canonical sources | Discovery and provenance only, never runtime or gameplay authority |
 | Gymnasium and PettingZoo | Preserve adapter compatibility | Separate research package, no Python dependency in player artifacts |
 
-Protocol, skill, plugin, knowledge, observation, and rules versions remain independent. A standards update cannot silently change scored behavior.
+Protocol, skill, plugin, knowledge, observation, and rules versions remain independent. The baseline was last reviewed on 2026-08-13 and is reviewed at least quarterly or whenever an upstream specification, schema, SDK release, or security advisory changes. Every claimed client requires an independent cross-client smoke. Host versions change with MCP behavior or public tool and resource contracts; plugin versions change with packaged discovery, launch, or skill behavior. A standards update cannot silently change scored behavior.
 
 ## Product contract
 

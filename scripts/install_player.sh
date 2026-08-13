@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Bootstrap a playable Vibe Snake checkout from GitHub main.
+# Bootstrap the frozen Python reference from GitHub main.
 # Usage:
 #   curl -fsSL https://raw.githubusercontent.com/blisspixel/VibeSnake/main/scripts/install_player.sh | bash
 #   or: ./scripts/install_player.sh [install_dir]
@@ -11,7 +11,7 @@ BRANCH="${VIBESNAKE_BRANCH:-main}"
 REPO_URL="${VIBESNAKE_REPO:-https://github.com/blisspixel/VibeSnake.git}"
 PYTHON_BIN="${VIBESNAKE_PYTHON:-python3.14}"
 
-echo "Installing Vibe Snake into ${INSTALL_DIR} (branch ${BRANCH})"
+echo "Installing the frozen Vibe Snake Python reference into ${INSTALL_DIR} (branch ${BRANCH})"
 
 if [[ ! -d "${INSTALL_DIR}" ]]; then
   git clone --branch "${BRANCH}" "${REPO_URL}" "${INSTALL_DIR}"
@@ -35,7 +35,7 @@ python -m pip install --no-deps --no-build-isolation -e .
 
 cat <<EOF
 
-Installed. Play with:
+Frozen reference installed. Run it with:
   cd "${INSTALL_DIR}"
   source .venv/bin/activate
   vibesnake

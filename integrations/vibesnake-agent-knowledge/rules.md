@@ -5,20 +5,18 @@ description: "The public, deterministic rules boundary available to an external 
 tags: [vibesnake, rules, observation, agents]
 generated: { by: process:vibesnake-okf-generator, at: 2026-08-13T00:00:00Z }
 verified: { by: process:vibesnake-ci, at: 2026-08-13T00:00:00Z }
+stale_after: "2026-11-13T00:00:00Z"
 status: draft
 sources:
   - id: rules-identity
     resource: ../../native/src/VibeSnake.Rules/RulesetIdentity.cs
     title: "Ruleset identity"
-    author: process:vibesnake-ci
   - id: agent-contracts
     resource: ../../native/src/VibeSnake.AgentPlay/AgentContracts.cs
     title: "Agent contracts"
-    author: process:vibesnake-ci
   - id: mode-catalog
     resource: ../../native/src/VibeSnake.Rules/RunModeCatalog.cs
     title: "Official mode catalog"
-    author: process:vibesnake-ci
 ---
 # Authority
 

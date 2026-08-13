@@ -83,6 +83,40 @@ def test_invalid_plugin_reports_closed_schema_and_runtime_boundaries(tmp_path: P
     assert "env cannot override PLUGIN_ROOT or PLUGIN_DATA" in result.stdout
 
 
+def test_narrow_producer_profile_rejects_http_and_experimental_skill_metadata(tmp_path: Path) -> None:
+    plugin = tmp_path / "vibesnake-agent"
+    shutil.copytree(SOURCE_PLUGIN, plugin)
+    skill = plugin / "skills" / "play-vibesnake" / "SKILL.md"
+    skill.write_text(
+        skill.read_text(encoding="utf-8").replace(
+            "description:",
+            "metadata: experimental\ndescription:",
+            1,
+        ),
+        encoding="utf-8",
+    )
+    (plugin / "mcp.json").write_text(
+        json.dumps(
+            {
+                "$schema": "https://agent-plugins.org/schemas/1.0.0/mcp.schema.json",
+                "mcpServers": {
+                    "vibesnake-agent": {
+                        "type": "streamable-http",
+                        "url": "https://example.invalid/mcp",
+                    }
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    result = run_validator(plugin, require_mcp=True)
+
+    assert result.returncode == 1
+    assert "unknown frontmatter field metadata" in result.stdout
+    assert "Vibe Snake's producer profile supports only stdio" in result.stdout
+
+
 def test_missing_plugin_root_is_rejected(tmp_path: Path) -> None:
     result = run_validator(tmp_path / "missing")
 

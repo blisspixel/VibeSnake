@@ -1,28 +1,26 @@
 ---
 type: "Replay Contract"
 title: "Verified agent replay handoff"
-description: "How completed agent play becomes a deterministic receipt and a human-watchable replay."
+description: "How successfully finalized agent play becomes a verified result and human-watchable replay."
 tags: [vibesnake, replay, verification, spectator]
 generated: { by: process:vibesnake-okf-generator, at: 2026-08-13T00:00:00Z }
 verified: { by: process:vibesnake-ci, at: 2026-08-13T00:00:00Z }
+stale_after: "2026-11-13T00:00:00Z"
 status: draft
 sources:
   - id: agent-session
     resource: ../../native/src/VibeSnake.AgentPlay/AgentMatchSession.cs
     title: "Agent match owner"
-    author: process:vibesnake-ci
   - id: replay-store
     resource: ../../native/src/VibeSnake.Persistence/ReplayStore.cs
     title: "Bounded replay store"
-    author: process:vibesnake-ci
   - id: replay-doc
     resource: ../../docs/engineering/REPLAYS.md
     title: "Replay engineering contract"
-    author: process:vibesnake-ci
 ---
-# Match receipt
+# Verified result
 
-A completed, capped, or explicitly finished match returns `vibesnake-agent-match-result-v1` with final state hash, replay payload hash, rules and mode identity, outcome, metrics, and verification code.
+A successfully finalized completed, capped, or explicitly finished match returns `vibesnake-agent-match-result-v1` with final state hash, replay payload hash, rules and mode identity, outcome, metrics, and verification code. Failed-closed finalization returns neither a verified result nor a verified replay.
 
 # Persistence
 

@@ -38,7 +38,7 @@ public sealed class AgentResources
             stale_action_guard = StaleActionGuards,
             seed_divisions = SeedDivisions,
             maximum_steps = AgentMatchOptions.MaximumAllowedSteps,
-            replay = "Every completed, capped, or explicitly finished match returns a deterministic verified replay receipt.",
+            replay = "A successfully finalized completed, capped, or explicitly finished match returns a deterministic verified lane result and replay. Failed-closed finalization returns neither; an exhibition receipt is not part of this contract.",
             rivalry = "An optional built-in rival advances once per accepted agent step on the same seed and exact configuration. Each lane has an independent verified replay.",
             privacy = "Observations exclude random state, future outcomes, controller internals, profiles, progression, paths, prompts, credentials, diagnostics, and hidden reasoning.",
         },
@@ -126,8 +126,8 @@ public sealed class AgentResources
         3. Read the returned observation. Use only visible board state.
         4. Call `play_move` with the exact tick and state hash plus a new idempotency key. Optionally declare one closed public intent so a viewer can follow the plan.
         5. On rejection, inspect the rejection and refreshed observation. Rejected requests do not step the rules.
-        6. Continue until the result appears, or call `finish_match` to end early with a verified replay.
-        7. Call `save_verified_replay` only when persistence for later human viewing is desired.
+        6. Continue until the result appears, or call `finish_match` to request early finalization.
+        7. Confirm that finalization returned a verified result. Call `save_verified_replay` only when persistence for later human viewing is desired.
 
         Public intents are `seek_food`, `seek_power`, `preserve_space`, `take_risk`, and `recover`. They are self-reported presentation only. `continue` preserves the current direction for one step. Never submit the current direction or its opposite as a turn. Response latency has no scoring effect.
         """;

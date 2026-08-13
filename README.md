@@ -50,7 +50,7 @@ These are direct 1280 by 720 captures from the current Godot renderer. Their has
 - Idle pointer hiding, focus-safe pausing, reduced motion, flash-free presentation, high contrast, mono audio, and scalable text.
 - Curated cosmetic sets, progression goals, Broadcast Tour, achievements, local scores, replays, and recovery tools.
 - Let's Play / AI channels with equal-rules matches, a thin live ticker, contextual playback controls, standings, lore, and seed challenges.
-- Post-1.0 Agent Arena developer preview with local MCP play, verified replays, named rivals, Style Contracts, closed public intent, and a read-only live Godot viewer.
+- Post-1.0 Agent Arena source developer preview where an external agent plays through a separately launched local MCP host while a human joins through the command-line watch handoff and a read-only live Godot viewer, with named rivals, Style Contracts, and closed public intent.
 - Offline-first saves and content with no account or network requirement.
 
 The complete player-facing behavior is in the [player guide](docs/guides/PLAYER_GUIDE.md).
@@ -75,7 +75,7 @@ cd VibeSnake
 ./play.sh
 ```
 
-The current floating source build and checksums are published under [player-latest](https://github.com/blisspixel/VibeSnake/releases/tag/player-latest) from every green `main` revision. It includes development-source previews such as Agent Arena but is not a signed supported player release. Versioned native alpha releases have a separate fail-closed pipeline, and the first tag remains blocked on approved packaged content and an exact artifact review. See [native release outputs](docs/release/PACKAGING.md).
+The current floating source build and checksums are published under [player-latest](https://github.com/blisspixel/VibeSnake/releases/tag/player-latest) from every green `main` revision. It contains the source archive, Python reference wheel and sdist, and `SHA256SUMS.txt`. The source archive includes development previews such as the Agent Plugin manifest and skill, the MCP host source and assembly script, and the generated Open Knowledge Format bundle. It is not a signed native player or a preassembled supported Agent Plugin. Versioned native alpha releases have a separate fail-closed pipeline, and the first tag remains blocked on approved packaged content and an exact artifact review. See [native release outputs](docs/release/PACKAGING.md) and [agent play integration](docs/engineering/AGENT_PLAY.md).
 
 ## Controls
 

@@ -156,7 +156,7 @@ Replay verification must authenticate its canonical payload, validate compatibil
 
 Content hashes prove reviewed-byte integrity. Platform signatures and build attestations prove origin. Neither replaces schema validation, runtime isolation, or player-facing recovery.
 
-The committed Dependabot policy covers pip, both NuGet roots, and GitHub Actions. Routine version-update pull requests remain disabled while the repository keeps one public `main` branch; vulnerability audits in CI remain release-blocking, and dependency or action updates are reviewed as isolated qualification changes. Packaging workflows install build tools from the hash-locked CI graph rather than upgrading from the network.
+The committed Dependabot policy covers pip, both NuGet roots, and GitHub Actions. Repository vulnerability alerts and Dependabot security updates are enabled and were verified through the GitHub API on 2026-08-13. Routine version-update pull requests remain disabled while the repository keeps one public `main` branch; vulnerability audits in CI remain release-blocking, and dependency or action updates are reviewed as isolated qualification changes. The committed policy test verifies ecosystem coverage only, while the release checklist owns the live repository-setting check. Packaging workflows install build tools from the hash-locked CI graph rather than upgrading from the network.
 
 The floating `player-latest` source release runs only for the exact `main` revision that completed CI successfully. Manual dispatch may build the package for diagnosis, but it does not publish or replace the floating release.
 

@@ -50,9 +50,11 @@ def test_checked_in_agent_knowledge_is_current_and_okf_02_conformant() -> None:
         assert metadata["status"] == "draft"
         assert metadata["generated"]["by"] == "process:vibesnake-okf-generator"
         assert metadata["verified"]["by"] == "process:vibesnake-ci"
+        assert metadata["stale_after"] == "2026-11-13T00:00:00Z"
         sources = metadata["sources"]
         assert isinstance(sources, list) and sources
         for source in sources:
+            assert "author" not in source
             resource = source["resource"]
             if resource.startswith("https://"):
                 continue

@@ -8,7 +8,7 @@ The target Agent Arena experience will let an external agent learn Vibe Snake, d
 
 The arena is designed to give software agents meaningful decisions and improving competence. It does not assume or claim that a model has a subjective experience of fun. The human-facing measure is whether the agent's goals, risks, turning points, and rivalries are clear enough to make the match worth watching.
 
-Agent Arena is a post-1.0 optional capability. The development tree contains the preview integration, but it is not part of the supported 1.0 release contract. A 1.0 candidate must remove or explicitly exclude the preview assemblies and entry points before artifact qualification. The preview does not change gameplay rules, human saves, progression, or release gates automatically. Replay persistence occurs only after an explicit `save_verified_replay` request and writes to the ordinary bounded replay store.
+Agent Arena is a post-1.0 optional capability. The development tree contains the preview integration, but it is not part of the supported 1.0 release contract. A 1.0 candidate must exclude every preview assembly and entry point and pass the dedicated artifact assertion before artifact qualification. The preview does not change gameplay rules, human saves, progression, or release gates automatically. Replay persistence occurs only after an explicit `save_verified_replay` request and writes to the ordinary bounded replay store.
 
 ## Developer preview status
 
@@ -27,6 +27,8 @@ Choose identity, rival, mode, seed division, and Style Contract
 ```
 
 The current preview implements play, live read-only watching, result retrieval, and a separate explicit replay save. It does not yet implement the target recorded-first broadcast route, same-seed human handoff, or retained public result history. Agent response time never affects score. The current live viewer waits for agent actions without advancing rules; the finished verified replay remains canonical when finalization succeeds.
+
+The failure branch is part of the loop, not an implementation detail. If replay finalization fails, the match becomes failed closed, no verified result or saveable replay is available, and the viewer must say so explicitly. The current recovery is to start a new match or restart the local host. Supported session reclamation, compact failure review, and retry guidance remain roadmap work.
 
 ## Play divisions
 
@@ -63,7 +65,7 @@ Score alone should not define successful agent play. A Style Contract combines o
 | --- | --- | --- |
 | Stillwater | Survive 200 steps | Preserve open exits and avoid dead ends |
 | Crownchaser | Reach a four-food peak combo | Sustain combo continuity |
-| Edge Prophet | Produce three controlled near misses | Add intentional wraps without needless danger |
+| Edge Prophet | Produce three near misses | Add intentional wraps without needless danger |
 | Mutagenist | Activate two powers | Demonstrate useful power timing and synergy |
 | Redline | Collect six food | Reach food efficiently while preserving recovery space |
 | Rival Breaker | Beat a named verified outcome | Win on the rival's characteristic terms |
@@ -105,7 +107,7 @@ The service returns factual events rather than a fabricated dense reward. The pr
 The preview accepts an ephemeral public Agent Passport containing:
 
 - Stable agent ID and policy version.
-- Safe display name plus bounded color, shed, and station labels.
+- Bounded, trimmed, control-character-free display name plus bounded color, shed, and station labels.
 - Supported observation and action profiles.
 
 A later persisted passport may add:
