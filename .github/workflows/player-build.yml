@@ -146,8 +146,8 @@ jobs:
 
           Includes the eight-station offline radio catalog under \`assets/audio/radio/\`.
           EOF
-          if gh release view player-latest >/dev/null 2>&1; then
-            gh release delete player-latest --yes --cleanup-tag
+          if gh release view player-latest --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
+            gh release delete player-latest --repo "${GITHUB_REPOSITORY}" --yes --cleanup-tag
           fi
           gh release create player-latest \
             dist/*.whl \
@@ -155,6 +155,7 @@ jobs:
             dist/VibeSnake-player-source.zip \
             dist/SHA256SUMS.txt \
             --target "${QUALIFIED_SHA}" \
+            --repo "${GITHUB_REPOSITORY}" \
             --prerelease \
             --latest=false \
             --notes-file "${NOTES}" \

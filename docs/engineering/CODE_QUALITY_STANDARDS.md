@@ -105,6 +105,7 @@ The repository pins its SDK and analyzer behavior. Analyzer suppressions require
 - Verify downloaded tools before extraction or execution using a pinned cryptographic digest.
 - Pin third-party GitHub Actions to a full immutable commit SHA and retain the release tag in a comment for reviewability.
 - Grant the workflow and each job only the permissions it needs.
+- A credential-only publisher without a checkout must pass the explicit repository to every repository-scoped CLI command.
 - Never print secrets, credential fragments, authorization headers, or signed URLs.
 
 ## Testing standard

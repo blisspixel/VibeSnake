@@ -165,4 +165,5 @@ def test_floating_source_release_uses_only_a_successful_ci_revision() -> None:
     assert "python -m pip install --require-hashes --only-binary=:all: -r requirements-ci.lock" in raw
     assert "python -m build --no-isolation" in raw
     assert '--target "${QUALIFIED_SHA}"' in raw
+    assert raw.count('--repo "${GITHUB_REPOSITORY}"') == 3
     assert "pip install --upgrade" not in raw
