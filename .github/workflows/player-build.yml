@@ -146,17 +146,83 @@ jobs:
 
           Includes the eight-station offline radio catalog under \`assets/audio/radio/\`.
           EOF
-          if gh release view player-latest --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
-            gh release delete player-latest --repo "${GITHUB_REPOSITORY}" --yes --cleanup-tag
-          fi
-          gh release create player-latest \
-            dist/*.whl \
-            dist/*.tar.gz \
-            dist/VibeSnake-player-source.zip \
-            dist/SHA256SUMS.txt \
-            --target "${QUALIFIED_SHA}" \
-            --repo "${GITHUB_REPOSITORY}" \
-            --prerelease \
-            --latest=false \
-            --notes-file "${NOTES}" \
-            --title "Vibe Snake player latest (main)"
+
+          retry() {
+            local attempt=1
+            while ! "$@"; do
+              if (( attempt >= 5 )); then
+                return 1
+              fi
+              echo "player-latest convergence attempt ${attempt} failed; retrying" >&2
+              sleep "$((1 << (attempt - 1)))"
+              attempt="$((attempt + 1))"
+            done
+          }
+
+          point_player_tag() {
+            if gh api \
+              --method PATCH \
+              "repos/${GITHUB_REPOSITORY}/git/refs/tags/player-latest" \
+              -f sha="${QUALIFIED_SHA}" \
+              -F force=true >/dev/null 2>&1; then
+              return 0
+            fi
+            gh api \
+              --method POST \
+              "repos/${GITHUB_REPOSITORY}/git/refs" \
+              -f ref="refs/tags/player-latest" \
+              -f sha="${QUALIFIED_SHA}" >/dev/null
+          }
+
+          verify_player_tag() {
+            local ref_state
+            ref_state="$(
+              gh api \
+                "repos/${GITHUB_REPOSITORY}/git/ref/tags/player-latest" \
+                --jq '[.object.type, .object.sha] | @tsv'
+            )" || return 1
+            [[ "${ref_state}" == $'commit\t'"${QUALIFIED_SHA}" ]]
+          }
+
+          remove_player_releases() {
+            local release_id release_ids
+            release_ids="$(
+              gh api \
+                --paginate \
+                "repos/${GITHUB_REPOSITORY}/releases?per_page=100" \
+                --jq '.[] | select(.tag_name == "player-latest") | .id'
+            )" || return 1
+            for release_id in ${release_ids}; do
+              gh api \
+                --method DELETE \
+                "repos/${GITHUB_REPOSITORY}/releases/${release_id}" \
+                >/dev/null || return 1
+            done
+          }
+
+          publish_player_release() {
+            local release_state
+            remove_player_releases || return 1
+            point_player_tag || return 1
+            verify_player_tag || return 1
+            gh release create player-latest \
+              dist/*.whl \
+              dist/*.tar.gz \
+              dist/VibeSnake-player-source.zip \
+              dist/SHA256SUMS.txt \
+              --verify-tag \
+              --repo "${GITHUB_REPOSITORY}" \
+              --prerelease \
+              --latest=false \
+              --notes-file "${NOTES}" \
+              --title "Vibe Snake player latest (main)" || return 1
+            verify_player_tag || return 1
+            release_state="$(
+              gh api \
+                "repos/${GITHUB_REPOSITORY}/releases/tags/player-latest" \
+                --jq '[.tag_name, .draft, .prerelease] | @tsv'
+            )" || return 1
+            [[ "${release_state}" == $'player-latest\tfalse\ttrue' ]]
+          }
+
+          retry publish_player_release

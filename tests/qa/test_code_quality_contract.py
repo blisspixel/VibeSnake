@@ -164,6 +164,23 @@ def test_floating_source_release_uses_only_a_successful_ci_revision() -> None:
     assert "ref: ${{ github.event.workflow_run.head_sha || github.sha }}" in raw
     assert "python -m pip install --require-hashes --only-binary=:all: -r requirements-ci.lock" in raw
     assert "python -m build --no-isolation" in raw
-    assert '--target "${QUALIFIED_SHA}"' in raw
-    assert raw.count('--repo "${GITHUB_REPOSITORY}"') == 3
+    assert '"repos/${GITHUB_REPOSITORY}/git/refs/tags/player-latest"' in raw
+    assert '"repos/${GITHUB_REPOSITORY}/git/ref/tags/player-latest"' in raw
+    assert '"repos/${GITHUB_REPOSITORY}/releases?per_page=100"' in raw
+    assert '"repos/${GITHUB_REPOSITORY}/releases/tags/player-latest"' in raw
+    assert '"repos/${GITHUB_REPOSITORY}/releases/${release_id}"' in raw
+    assert "retry publish_player_release" in raw
+    assert "if (( attempt >= 5 ))" in raw
+    assert "-F force=true" in raw
+    assert "[.object.type, .object.sha] | @tsv" in raw
+    assert "$'commit\\t'\"${QUALIFIED_SHA}\"" in raw
+    assert "[.tag_name, .draft, .prerelease] | @tsv" in raw
+    assert "--verify-tag" in raw
+    assert '--repo "${GITHUB_REPOSITORY}"' in raw
+    assert "--cleanup-tag" not in raw
+    assert '--target "${QUALIFIED_SHA}"' not in raw
+    assert workflow["jobs"]["publish"]["permissions"] == {
+        "actions": "read",
+        "contents": "write",
+    }
     assert "pip install --upgrade" not in raw
