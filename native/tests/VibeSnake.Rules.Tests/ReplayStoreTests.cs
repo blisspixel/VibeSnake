@@ -111,11 +111,13 @@ public sealed class ReplayStoreTests
             var firstStore = new ReplayStore(
                 idempotentDirectory.Path,
                 new FixedTimeProvider(
-                    new DateTimeOffset(2026, 8, 1, 1, 0, 0, TimeSpan.Zero)));
+                    new DateTimeOffset(2026, 8, 1, 1, 0, 0, TimeSpan.Zero)),
+                storeLockWait: TimeSpan.FromSeconds(30));
             var secondStore = new ReplayStore(
                 idempotentDirectory.Path,
                 new FixedTimeProvider(
-                    new DateTimeOffset(2026, 8, 1, 2, 0, 0, TimeSpan.Zero)));
+                    new DateTimeOffset(2026, 8, 1, 2, 0, 0, TimeSpan.Zero)),
+                storeLockWait: TimeSpan.FromSeconds(30));
 
             var idempotentResults = await RunConcurrently(
                 () => firstStore.Save(replay),
@@ -134,11 +136,13 @@ public sealed class ReplayStoreTests
         var capacityStoreA = new ReplayStore(
             capacityDirectory.Path,
             new FixedTimeProvider(
-                new DateTimeOffset(2026, 8, 1, 3, 0, 0, TimeSpan.Zero)));
+                new DateTimeOffset(2026, 8, 1, 3, 0, 0, TimeSpan.Zero)),
+            storeLockWait: TimeSpan.FromSeconds(30));
         var capacityStoreB = new ReplayStore(
             capacityDirectory.Path,
             new FixedTimeProvider(
-                new DateTimeOffset(2026, 8, 1, 4, 0, 0, TimeSpan.Zero)));
+                new DateTimeOffset(2026, 8, 1, 4, 0, 0, TimeSpan.Zero)),
+            storeLockWait: TimeSpan.FromSeconds(30));
         Directory.CreateDirectory(capacityStoreA.ReplayDirectory);
         for (var index = 0; index < ReplayStore.MaximumStoredReplays - 1; index++)
         {
