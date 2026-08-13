@@ -141,7 +141,7 @@ public sealed class ScoreIdentityQualificationTests
         Directory.CreateDirectory(outputDirectory);
         File.WriteAllText(
             Path.Combine(outputDirectory, "score_identity.json"),
-            JsonSerializer.Serialize(evidence, new JsonSerializerOptions { WriteIndented = true }) + "\n",
+            JsonSerializer.Serialize(evidence, TestJsonSerializerOptions.Indented) + "\n",
             new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
     }
 

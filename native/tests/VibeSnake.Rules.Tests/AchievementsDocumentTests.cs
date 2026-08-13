@@ -4,6 +4,9 @@ namespace VibeSnake.Rules.Tests;
 
 public sealed class AchievementsDocumentTests
 {
+    private static readonly string[] CenturyAndFirstBite = ["century", "first_bite"];
+    private static readonly string[] FirstBite = ["first_bite"];
+
     [Fact]
     public void Defaults_have_empty_unlock_set()
     {
@@ -66,7 +69,7 @@ public sealed class AchievementsDocumentTests
             Assert.True(loaded.IsSuccess);
             Assert.NotNull(loaded.Document);
             Assert.Equal(
-                new[] { "century", "first_bite" },
+                CenturyAndFirstBite,
                 loaded.Document.UnlockedIds);
             Assert.Equal(
                 document.SerializeCanonical(),
@@ -126,7 +129,7 @@ public sealed class AchievementsDocumentTests
 
         Assert.True(result.IsSuccess);
         Assert.NotNull(result.Document);
-        Assert.Equal(new[] { "first_bite" }, result.Document.UnlockedIds);
+        Assert.Equal(FirstBite, result.Document.UnlockedIds);
     }
 
     [Fact]
@@ -181,7 +184,7 @@ public sealed class AchievementsDocumentTests
         var document = AchievementsDocument.CreateDefaults()
             .WithUnlocks(["first_bite"]);
         var merged = document.WithUnlocks(["century", "first_bite"]);
-        Assert.Equal(new[] { "century", "first_bite" }, merged.UnlockedIds);
+        Assert.Equal(CenturyAndFirstBite, merged.UnlockedIds);
         Assert.Throws<ArgumentException>(
             () => document.WithUnlocks(["totally_fake"]));
     }

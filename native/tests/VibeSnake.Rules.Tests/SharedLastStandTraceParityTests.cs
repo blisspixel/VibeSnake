@@ -10,10 +10,7 @@ public sealed class SharedLastStandTraceParityTests
         var fixturePath = Path.Combine(AppContext.BaseDirectory, "Fixtures", "last_stand_rules_v1.json");
         var fixture = JsonSerializer.Deserialize<LastStandFixture>(
             File.ReadAllText(fixturePath),
-            new JsonSerializerOptions
-            {
-                PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
-            });
+            TestJsonSerializerOptions.SnakeCase);
 
         Assert.NotNull(fixture);
         Assert.Equal(1, fixture.SchemaVersion);

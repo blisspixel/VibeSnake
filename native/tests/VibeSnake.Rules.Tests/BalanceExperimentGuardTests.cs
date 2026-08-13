@@ -74,11 +74,11 @@ public sealed class BalanceExperimentGuardTests
         Directory.CreateDirectory(outputDirectory);
         File.WriteAllText(
             Path.Combine(outputDirectory, "balance_experiment_guard.json"),
-            JsonSerializer.Serialize(evidence, new JsonSerializerOptions { WriteIndented = true }) + "\n",
+            JsonSerializer.Serialize(evidence, TestJsonSerializerOptions.Indented) + "\n",
             new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
     }
 
-    private static IReadOnlyList<string> ReadStrings(JsonElement parent, string property) =>
+    private static string[] ReadStrings(JsonElement parent, string property) =>
         parent.GetProperty(property)
             .EnumerateArray()
             .Select(item => item.GetString() ?? string.Empty)

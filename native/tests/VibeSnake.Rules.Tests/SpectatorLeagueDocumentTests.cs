@@ -523,8 +523,5 @@ public sealed class SpectatorLeagueDocumentTests
     private static string Raw(SpectatorLeagueDocument document) =>
         JsonSerializer.Serialize(
             document,
-            new JsonSerializerOptions
-            {
-                PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-            });
+            TestJsonSerializerOptions.CamelCase);
 }

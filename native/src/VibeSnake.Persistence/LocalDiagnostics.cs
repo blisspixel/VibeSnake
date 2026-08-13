@@ -21,6 +21,12 @@ public sealed class LocalDiagnostics
     public const int MaximumCommandCharacters = 64;
     public const int MaximumReportsRetained = 32;
 
+    private static readonly JsonSerializerOptions ReportSerializerOptions = new()
+    {
+        WriteIndented = true,
+        Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
+    };
+
     public LocalDiagnostics(string userDataRoot)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(userDataRoot);
@@ -100,11 +106,7 @@ public sealed class LocalDiagnostics
 
         var json = JsonSerializer.Serialize(
             payload,
-            new JsonSerializerOptions
-            {
-                WriteIndented = true,
-                Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
-            }) + "\n";
+            ReportSerializerOptions) + "\n";
         var temporaryPath = path + ".tmp";
         File.WriteAllText(temporaryPath, json, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
         File.Move(temporaryPath, path, overwrite: true);
@@ -139,15 +141,8 @@ public sealed class LocalDiagnostics
         ArgumentException.ThrowIfNullOrWhiteSpace(campaignId);
         ArgumentException.ThrowIfNullOrWhiteSpace(modeId);
         ArgumentNullException.ThrowIfNull(recentCommands);
-        if (runIndex < 0)
-        {
-            throw new ArgumentOutOfRangeException(nameof(runIndex));
-        }
-
-        if (firstDivergentStep < 0)
-        {
-            throw new ArgumentOutOfRangeException(nameof(firstDivergentStep));
-        }
+        ArgumentOutOfRangeException.ThrowIfNegative(runIndex);
+        ArgumentOutOfRangeException.ThrowIfNegative(firstDivergentStep);
 
         if (!IsLowerHex(expectedStateHash, 16))
         {
@@ -196,11 +191,7 @@ public sealed class LocalDiagnostics
         };
         var json = JsonSerializer.Serialize(
             payload,
-            new JsonSerializerOptions
-            {
-                WriteIndented = true,
-                Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
-            }) + "\n";
+            ReportSerializerOptions) + "\n";
         var temporaryPath = path + ".tmp";
         File.WriteAllText(
             temporaryPath,
@@ -244,7 +235,7 @@ public sealed class LocalDiagnostics
         }
     }
 
-    private IReadOnlyList<string> ListReportFileNames(string extension)
+    private string[] ListReportFileNames(string extension)
     {
         if (!Directory.Exists(DiagnosticsDirectory))
         {

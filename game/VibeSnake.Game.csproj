@@ -7,6 +7,8 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\native\src\VibeSnake.AgentPlay\VibeSnake.AgentPlay.csproj" />
+    <ProjectReference Include="..\native\src\VibeSnake.AgentViewer\VibeSnake.AgentViewer.csproj" />
     <ProjectReference Include="..\native\src\VibeSnake.Persistence\VibeSnake.Persistence.csproj" />
     <ProjectReference Include="..\native\src\VibeSnake.Rules\VibeSnake.Rules.csproj" />
   </ItemGroup>

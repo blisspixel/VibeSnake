@@ -634,7 +634,7 @@ internal sealed partial class ProceduralCuePlayer : Node
         AudioBuses.SetTransientMusicDuck(advance.EffectiveMusicDuckDecibels);
     }
 
-    public void ValidateCue(AudioCue cue)
+    public static void ValidateCue(AudioCue cue)
     {
         var policy = AudioCueMixPolicy.For(cue);
         var specification = CueSpecification.For(cue);

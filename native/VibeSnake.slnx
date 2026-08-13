@@ -5,6 +5,8 @@
     </Project>
   </Folder>
   <Folder Name="/src/">
+    <Project Path="src/VibeSnake.AgentPlay/VibeSnake.AgentPlay.csproj" />
+    <Project Path="src/VibeSnake.AgentViewer/VibeSnake.AgentViewer.csproj" />
     <Project Path="src/VibeSnake.Persistence/VibeSnake.Persistence.csproj" />
     <Project Path="src/VibeSnake.Rules/VibeSnake.Rules.csproj" />
   </Folder>
@@ -12,6 +14,7 @@
     <Project Path="tests/VibeSnake.Rules.Tests/VibeSnake.Rules.Tests.csproj" />
   </Folder>
   <Folder Name="/tools/">
+    <Project Path="tools/VibeSnake.AgentHost/VibeSnake.AgentHost.csproj" />
     <Project Path="tools/ValidateArtifactManifest/ValidateArtifactManifest.csproj" />
     <Project Path="tools/ValidateCreatorContent/ValidateCreatorContent.csproj" />
   </Folder>

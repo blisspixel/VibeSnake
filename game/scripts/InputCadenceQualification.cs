@@ -235,7 +235,7 @@ internal static class InputCadenceQualification
             FinalStateHash: run.ComputeStateHash());
     }
 
-    private static InputEvent CreateKeyboardEvent(RulesDirection direction) =>
+    private static InputEventKey CreateKeyboardEvent(RulesDirection direction) =>
         new InputEventKey
         {
             Pressed = true,
@@ -250,7 +250,7 @@ internal static class InputCadenceQualification
             },
         };
 
-    private static InputEvent CreateDpadEvent(RulesDirection direction) =>
+    private static InputEventJoypadButton CreateDpadEvent(RulesDirection direction) =>
         new InputEventJoypadButton
         {
             Device = 0,
@@ -265,7 +265,7 @@ internal static class InputCadenceQualification
             },
         };
 
-    private static InputEvent CreateStickEvent(RulesDirection direction) =>
+    private static InputEventJoypadMotion CreateStickEvent(RulesDirection direction) =>
         new InputEventJoypadMotion
         {
             Device = 0,

@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text;
 
 namespace VibeSnake.Persistence;
@@ -79,7 +80,7 @@ public static class ContentCreditsDocument
         builder.Append("Kind: ")
             .AppendLine(manifest.Kind == ContentPackKind.Core ? "Core" : "Optional radio");
         builder.Append("Description: ").AppendLine(SingleLine(manifest.Description));
-        builder.Append("Files: ").AppendLine(manifest.Files.Count.ToString());
+        builder.Append("Files: ").AppendLine(manifest.Files.Count.ToString(CultureInfo.InvariantCulture));
         builder.Append("Inventory policy SHA-256: `")
             .Append(manifest.Inventory.PolicySha256)
             .AppendLine("`");

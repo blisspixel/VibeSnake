@@ -9,8 +9,8 @@ namespace VibeSnake.Game;
 /// </summary>
 internal sealed class SnakeMotionPresentation
 {
-    private IReadOnlyList<GridPoint> _previousBody = [];
-    private IReadOnlyList<GridPoint> _currentBody = [];
+    private GridPoint[] _previousBody = [];
+    private GridPoint[] _currentBody = [];
     private ulong _startedAtMilliseconds;
     private int _durationMilliseconds = RunConfig.RulesTickMilliseconds;
 
@@ -35,10 +35,7 @@ internal sealed class SnakeMotionPresentation
         {
             throw new ArgumentException("Snake presentation bodies must not be empty.");
         }
-        if (durationMilliseconds <= 0)
-        {
-            throw new ArgumentOutOfRangeException(nameof(durationMilliseconds));
-        }
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(durationMilliseconds);
 
         _previousBody = previousBody.ToArray();
         _currentBody = currentBody.ToArray();
@@ -47,7 +44,7 @@ internal sealed class SnakeMotionPresentation
     }
 
     public bool IsAnimating(ulong nowMilliseconds) =>
-        _currentBody.Count > 0
+        _currentBody.Length > 0
         && nowMilliseconds >= _startedAtMilliseconds
         && nowMilliseconds - _startedAtMilliseconds < (ulong)_durationMilliseconds;
 
@@ -63,19 +60,19 @@ internal sealed class SnakeMotionPresentation
             throw new ArgumentOutOfRangeException(nameof(gridWidth));
         }
 
-        if (!MatchesCurrentBody(currentBody) || _previousBody.Count == 0)
+        if (!MatchesCurrentBody(currentBody) || _previousBody.Length == 0)
         {
             return currentBody.Select(ToVector).ToArray();
         }
 
         var progress = ResolveProgress(nowMilliseconds);
         var positions = new Vector2[currentBody.Count];
-        var removedFromTail = Math.Max(0, _previousBody.Count - currentBody.Count);
+        var removedFromTail = Math.Max(0, _previousBody.Length - currentBody.Count);
         for (var index = 0; index < currentBody.Count; index++)
         {
-            var previousIndex = currentBody.Count > _previousBody.Count
-                ? Math.Min(index, _previousBody.Count - 1)
-                : Math.Min(index + removedFromTail, _previousBody.Count - 1);
+            var previousIndex = currentBody.Count > _previousBody.Length
+                ? Math.Min(index, _previousBody.Length - 1)
+                : Math.Min(index + removedFromTail, _previousBody.Length - 1);
             var start = ToVector(_previousBody[previousIndex]);
             var end = ToVector(currentBody[index]);
             positions[index] = CrossesWrapBoundary(start, end, gridWidth, gridHeight)
@@ -87,7 +84,7 @@ internal sealed class SnakeMotionPresentation
     }
 
     private bool MatchesCurrentBody(IReadOnlyList<GridPoint> body) =>
-        body.Count == _currentBody.Count
+        body.Count == _currentBody.Length
         && body.Count > 0
         && body[^1] == _currentBody[^1]
         && body[0] == _currentBody[0];

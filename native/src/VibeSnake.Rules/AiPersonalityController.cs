@@ -201,6 +201,10 @@ public sealed class AiPersonalityController
     /// session observes a bounded target stall. It favors open exits, then low
     /// hazard exposure, without reading hidden state or consuming random data.
     /// </summary>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage(
+        "Performance",
+        "CA1822:Mark members as static",
+        Justification = "The established instance member is retained for public API compatibility.")]
     public AiDecision SelectStallRecoveryDecision(SnakeRun run)
     {
         ArgumentNullException.ThrowIfNull(run);

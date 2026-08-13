@@ -22,6 +22,7 @@ internal enum ShellScreen : byte
     Spectator = 13,
     Lore = 14,
     Comparisons = 15,
+    AgentWatch = 16,
 }
 
 internal static class ShellTransitions
@@ -40,6 +41,7 @@ internal static class ShellTransitions
         (ShellScreen.Menu, ShellScreen.Tour) => true,
         (ShellScreen.Menu, ShellScreen.Cosmetics) => true,
         (ShellScreen.Menu, ShellScreen.Spectator) => true,
+        (ShellScreen.Menu, ShellScreen.AgentWatch) => true,
         (ShellScreen.Running, ShellScreen.Paused) => true,
         (ShellScreen.Running, ShellScreen.Ended) => true,
         (ShellScreen.Running, ShellScreen.Menu) => true,
@@ -95,6 +97,7 @@ internal static class ShellTransitions
         (ShellScreen.Comparisons, ShellScreen.Replays) => true,
         (ShellScreen.Comparisons, ShellScreen.Comparisons) => true,
         (ShellScreen.Comparisons, ShellScreen.Running) => true,
+        (ShellScreen.AgentWatch, ShellScreen.Menu) => true,
         _ => false,
     };
 

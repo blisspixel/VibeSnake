@@ -251,7 +251,7 @@ public sealed partial class RunReplay
         }
     }
 
-    private static IReadOnlyList<ReplayStep> ReadSteps(JsonElement element)
+    private static List<ReplayStep> ReadSteps(JsonElement element)
     {
         if (element.ValueKind != JsonValueKind.Array)
         {
@@ -298,7 +298,7 @@ public sealed partial class RunReplay
         return steps;
     }
 
-    private static IReadOnlyList<ReplayCheckpoint> ReadCheckpoints(
+    private static List<ReplayCheckpoint> ReadCheckpoints(
         JsonElement element,
         int stepCount,
         int checkpointInterval)

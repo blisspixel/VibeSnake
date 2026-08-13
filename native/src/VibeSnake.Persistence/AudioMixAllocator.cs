@@ -62,7 +62,7 @@ public sealed class AudioMixAllocator
     public const int MaximumExpectedDurationMilliseconds = 60_000;
     public const float MinimumMusicDuckDecibels = -12.0f;
 
-    private readonly IReadOnlyDictionary<string, int> _busCapacities;
+    private readonly Dictionary<string, int> _busCapacities;
     private readonly Dictionary<long, AudioVoiceLease> _active = [];
     private readonly Dictionary<string, long> _lastGrantByCooldownGroup =
         new(StringComparer.Ordinal);

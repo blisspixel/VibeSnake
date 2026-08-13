@@ -24,10 +24,7 @@ internal static class MouseInputPolicy
 
     public static IReadOnlyList<MouseMenuTarget> MenuTargetsForWidth(float logicalWidth)
     {
-        if (logicalWidth < MenuTargetWidth + 40.0f)
-        {
-            throw new ArgumentOutOfRangeException(nameof(logicalWidth));
-        }
+        ArgumentOutOfRangeException.ThrowIfLessThan(logicalWidth, MenuTargetWidth + 40.0f);
 
         var left = (logicalWidth - MenuTargetWidth) * 0.5f;
         return

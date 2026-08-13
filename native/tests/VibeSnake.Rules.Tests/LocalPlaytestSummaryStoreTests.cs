@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using VibeSnake.Persistence;
@@ -25,7 +26,7 @@ public sealed class LocalPlaytestSummaryStoreTests
         Assert.Equal(64, summary.SummaryId.Length);
         Assert.Equal("2026-08-08T20:10:12.345Z", summary.CapturedAtUtc);
         Assert.Equal(LocalPlaytestSummary.HumanRunKind, summary.RunKind);
-        Assert.Equal(run.MasterSeed!.Value.ToString(), summary.Seed);
+        Assert.Equal(run.MasterSeed!.Value.ToString(CultureInfo.InvariantCulture), summary.Seed);
         Assert.Equal(run.ScoreCategoryId, summary.ScoreCategoryId);
         Assert.Equal(run.ConfigHash, summary.ConfigHash);
         Assert.Equal(run.Tick, summary.SurvivalSteps);
@@ -453,12 +454,7 @@ public sealed class LocalPlaytestSummaryStoreTests
         var identityFacts = summary with { SummaryId = string.Empty };
         var bytes = JsonSerializer.SerializeToUtf8Bytes(
             identityFacts,
-            new JsonSerializerOptions
-            {
-                PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-                PropertyNameCaseInsensitive = false,
-                UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow,
-            });
+            TestJsonSerializerOptions.StrictCamelCase);
         var hash = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(bytes))
             .ToLowerInvariant();
         return summary with { SummaryId = hash };

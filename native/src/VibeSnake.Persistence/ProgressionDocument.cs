@@ -277,7 +277,7 @@ public sealed record ProgressionDocument(
             throw new InvalidDataException("Selected and saved cosmetic sets must be unlocked.");
         }
 
-        if (document.Metrics.SavedLoadouts != savedCosmetics.Count)
+        if (document.Metrics.SavedLoadouts != savedCosmetics.Length)
         {
             throw new InvalidDataException("Saved loadout count does not match saved cosmetic IDs.");
         }
@@ -289,7 +289,7 @@ public sealed record ProgressionDocument(
             throw new InvalidDataException(
                 "Unlocked cosmetic count does not match earned cosmetic rewards.");
         }
-        if (document.Metrics.TourEventsCompleted != completed.Count)
+        if (document.Metrics.TourEventsCompleted != completed.Length)
         {
             throw new InvalidDataException("Tour completion count does not match completed event IDs.");
         }
@@ -320,7 +320,7 @@ public sealed record ProgressionDocument(
         };
     }
 
-    private static IReadOnlySet<string> ExpectedRewardIds(
+    private static HashSet<string> ExpectedRewardIds(
         ProgressionMetrics metrics,
         IReadOnlyList<string> completedTourEventIds)
     {
@@ -335,7 +335,7 @@ public sealed record ProgressionDocument(
         return rewards;
     }
 
-    private static IReadOnlyList<string> NormalizeKnownIds(
+    private static string[] NormalizeKnownIds(
         IReadOnlyList<string> ids,
         IEnumerable<string> knownIds,
         int maximum,

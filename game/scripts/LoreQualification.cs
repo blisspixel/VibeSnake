@@ -30,13 +30,15 @@ internal sealed record LoreQualificationEvidence(
     string HumanReviewStatus,
     IReadOnlyList<string> PendingHumanChecks)
 {
+    private static readonly JsonSerializerOptions SerializerOptions = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        WriteIndented = true,
+    };
+
     public string Serialize() => JsonSerializer.Serialize(
         this,
-        new JsonSerializerOptions
-        {
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-            WriteIndented = true,
-        }) + "\n";
+        SerializerOptions) + "\n";
 }
 
 internal static class LoreQualification

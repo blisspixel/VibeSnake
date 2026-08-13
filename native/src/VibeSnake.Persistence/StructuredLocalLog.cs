@@ -35,6 +35,11 @@ public sealed class StructuredLocalLog
     public const long MaximumActiveLogBytes = 1_048_576;
     public const int MaximumRotatedFiles = 4;
 
+    private static readonly JsonSerializerOptions LogSerializerOptions = new()
+    {
+        Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
+    };
+
     private readonly object _gate = new();
     private readonly TimeProvider _timeProvider;
 
@@ -142,10 +147,7 @@ public sealed class StructuredLocalLog
         };
         var line = JsonSerializer.Serialize(
             payload,
-            new JsonSerializerOptions
-            {
-                Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
-            }) + "\n";
+            LogSerializerOptions) + "\n";
 
         lock (_gate)
         {

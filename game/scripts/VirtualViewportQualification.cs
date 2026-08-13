@@ -19,15 +19,13 @@ internal sealed record VirtualViewportMatrixEvidence(
     bool Passed,
     IReadOnlyList<VirtualViewportCaseResult> Cases)
 {
-    public string Serialize()
+    private static readonly JsonSerializerOptions SerializerOptions = new()
     {
-        var options = new JsonSerializerOptions
-        {
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-            WriteIndented = true,
-        };
-        return JsonSerializer.Serialize(this, options) + "\n";
-    }
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        WriteIndented = true,
+    };
+
+    public string Serialize() => JsonSerializer.Serialize(this, SerializerOptions) + "\n";
 }
 
 /// <summary>
@@ -122,7 +120,7 @@ internal static class VirtualViewportQualification
             var roundTrip = viewport.WindowToLogical(viewport.LogicalToWindow(logicalPoint));
             AssertClose(id, "pointer X", roundTrip.X, logicalPoint.X);
             AssertClose(id, "pointer Y", roundTrip.Y, logicalPoint.Y);
-            if (!viewport.ContainsLogicalPoint(roundTrip))
+            if (!VirtualViewport.ContainsLogicalPoint(roundTrip))
             {
                 throw new InvalidOperationException(id + " rejected an in-bounds pointer round trip.");
             }
@@ -137,7 +135,7 @@ internal static class VirtualViewportQualification
                 ? new Vector2(viewport.WindowWidth * 0.5f, viewport.OffsetY - 1.0f)
                 : null;
         if (windowPoint is { } point
-            && viewport.ContainsLogicalPoint(viewport.WindowToLogical(point)))
+            && VirtualViewport.ContainsLogicalPoint(viewport.WindowToLogical(point)))
         {
             throw new InvalidOperationException(id + " accepted a pointer in the letterbox safe area.");
         }

@@ -30,7 +30,7 @@ public sealed class BalanceBaselineTests
         var distributions = BuildDistributions(variants, runs);
         var observedJson = BalanceBaselineReport.SerializeDistributions(distributions);
         var observedHash = BalanceBaselineReport.ComputeSha256(observedJson);
-        var baselineMatched = distributions.Count == 27
+        var baselineMatched = distributions.Length == 27
             && observedHash == expected.ObservedDistributionSha256;
         var passed = baselineMatched
             && runs.Count == 2_700
@@ -133,7 +133,7 @@ public sealed class BalanceBaselineTests
             run.ComputeStateHash());
     }
 
-    private static IReadOnlyList<ObservedBalanceDistribution> BuildDistributions(
+    private static ObservedBalanceDistribution[] BuildDistributions(
         IReadOnlyList<BalanceBaselineVariant> variants,
         IReadOnlyList<BalanceBaselineRunSummary> runs) =>
         variants.SelectMany(variant => BalancePolicyCatalog.All.Select(policy =>

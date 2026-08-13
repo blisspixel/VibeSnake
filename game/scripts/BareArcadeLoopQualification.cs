@@ -106,10 +106,7 @@ internal static class BareArcadeLoopQualification
         PresentationFrameSummary summary,
         int completedAttemptCount)
     {
-        if (completedAttemptCount < 1)
-        {
-            throw new ArgumentOutOfRangeException(nameof(completedAttemptCount));
-        }
+        ArgumentOutOfRangeException.ThrowIfLessThan(completedAttemptCount, 1);
 
         return completedAttemptCount < MaximumSharedHostMeasurementAttempts
             && summary.SampleCount >= RequiredLiveFrameSamples
@@ -131,8 +128,8 @@ internal static class BareArcadeLoopQualification
             StarvationTicks: 1_000,
             MaximumDirectionQueue: 3,
             PowerSpawnIntervalTicks: 1_000);
-        var standardPalette = theme.Palette(highContrast: false);
-        var highContrastPalette = theme.Palette(highContrast: true);
+        var standardPalette = ShellTheme.Palette(highContrast: false);
+        var highContrastPalette = ShellTheme.Palette(highContrast: true);
 
         var inputRun = SnakeRun.CreateForTesting(
             config,

@@ -24,10 +24,7 @@ public sealed class SharedTraceParityTests
         var fixturePath = Path.Combine(AppContext.BaseDirectory, "Fixtures", "core_movement_v2.json");
         var fixture = JsonSerializer.Deserialize<TraceFixture>(
             File.ReadAllText(fixturePath),
-            new JsonSerializerOptions
-            {
-                PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
-            });
+            TestJsonSerializerOptions.SnakeCase);
 
         Assert.NotNull(fixture);
         Assert.Equal(2, fixture.SchemaVersion);
@@ -218,7 +215,7 @@ public sealed class SharedTraceParityTests
         return false;
     }
 
-    private static CompactTraceStep DecodeStep(IReadOnlyList<JsonElement> values)
+    private static CompactTraceStep DecodeStep(List<JsonElement> values)
     {
         Assert.Equal(ExpectedStepEncoding.Length, values.Count);
         var commandSymbols = RequireString(values[0]);

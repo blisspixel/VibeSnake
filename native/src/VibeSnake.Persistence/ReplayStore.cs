@@ -670,6 +670,10 @@ public sealed partial class ReplayStore
         return ReadFromPath(Path.Combine(ReplayDirectory, fileName), fileName);
     }
 
+    [System.Diagnostics.CodeAnalysis.SuppressMessage(
+        "Performance",
+        "CA1822:Mark members as static",
+        Justification = "The established instance member is retained for public API compatibility.")]
     public ReplayLoadResult InspectExternal(string absolutePath)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(absolutePath);
@@ -771,7 +775,7 @@ public sealed partial class ReplayStore
         return true;
     }
 
-    private ReplayLoadResult ReadFromPath(string path, string? fileName)
+    private static ReplayLoadResult ReadFromPath(string path, string? fileName)
     {
         try
         {

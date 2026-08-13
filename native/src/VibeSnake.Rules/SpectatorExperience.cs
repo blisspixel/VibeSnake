@@ -149,7 +149,7 @@ public static class SpectatorSeedCatalog
 {
     public const int SeedsPerClass = 4;
 
-    private static readonly IReadOnlyDictionary<SpectatorSeedClass, IReadOnlyList<ulong>> Seeds =
+    private static readonly Dictionary<SpectatorSeedClass, IReadOnlyList<ulong>> Seeds =
         new Dictionary<SpectatorSeedClass, IReadOnlyList<ulong>>
         {
             [SpectatorSeedClass.ReviewedFixed] = [0UL, 1UL, 7UL, 42UL],
@@ -583,10 +583,7 @@ public sealed class SpectatorMatchSession
 
     public SpectatorExperienceOverlay BuildOverlay(int localRecordScore, string vibeLevelId)
     {
-        if (localRecordScore < 0)
-        {
-            throw new ArgumentOutOfRangeException(nameof(localRecordScore));
-        }
+        ArgumentOutOfRangeException.ThrowIfNegative(localRecordScore);
 
         ArgumentException.ThrowIfNullOrWhiteSpace(vibeLevelId);
         var lane = ViewedLane;
@@ -720,7 +717,7 @@ public sealed class SpectatorMatchSession
             PresentationFallbackChangedRules: false);
     }
 
-    private string? SelectCommentary(SpectatorLane lane, RunStepResult? step)
+    private static string? SelectCommentary(SpectatorLane lane, RunStepResult? step)
     {
         if (step is null)
         {

@@ -25,7 +25,12 @@ function Assert-NativeCoverageReport {
     }
 
     [xml]$coverage = Get-Content -LiteralPath $coveragePath -Raw
-    foreach ($requiredModule in @("VibeSnake.Rules", "VibeSnake.Persistence")) {
+    foreach ($requiredModule in @(
+        "VibeSnake.Rules",
+        "VibeSnake.Persistence",
+        "VibeSnake.AgentPlay",
+        "VibeSnake.AgentViewer",
+        "VibeSnake.AgentHost")) {
         $module = @($coverage.coverage.packages.package | Where-Object {
             $_.name -eq $requiredModule
         })
@@ -63,6 +68,13 @@ $testArguments = @(
 
 Push-Location $repositoryRoot
 try {
+    Invoke-Dotnet -CommandArguments @(
+        "build",
+        "native/tests/VibeSnake.Rules.Tests/VibeSnake.Rules.Tests.csproj",
+        "--configuration",
+        "Release",
+        "--no-restore"
+    )
     $coverageAccepted = $false
     for ($attempt = 1; $attempt -le 2; $attempt++) {
         if (Test-Path -LiteralPath $coveragePath -PathType Leaf) {

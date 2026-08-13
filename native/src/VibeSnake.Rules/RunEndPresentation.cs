@@ -80,20 +80,14 @@ public sealed class RestartIntentGate
 
     public void NoteTerminal(long inputSequence)
     {
-        if (inputSequence < 0)
-        {
-            throw new ArgumentOutOfRangeException(nameof(inputSequence));
-        }
+        ArgumentOutOfRangeException.ThrowIfNegative(inputSequence);
 
         _terminalInputSequence = inputSequence;
     }
 
     public bool CanRestart(long inputSequence)
     {
-        if (inputSequence < 0)
-        {
-            throw new ArgumentOutOfRangeException(nameof(inputSequence));
-        }
+        ArgumentOutOfRangeException.ThrowIfNegative(inputSequence);
 
         return _terminalInputSequence >= 0 && inputSequence > _terminalInputSequence;
     }

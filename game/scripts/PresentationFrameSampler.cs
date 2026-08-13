@@ -39,14 +39,14 @@ internal sealed class PresentationFrameSampler
             MaxMilliseconds: ordered[^1]);
     }
 
-    private static double Percentile(IReadOnlyList<double> orderedAscending, double percentile)
+    private static double Percentile(double[] orderedAscending, double percentile)
     {
-        if (orderedAscending.Count == 1)
+        if (orderedAscending.Length == 1)
         {
             return orderedAscending[0];
         }
 
-        var rank = percentile * (orderedAscending.Count - 1);
+        var rank = percentile * (orderedAscending.Length - 1);
         var lower = (int)Math.Floor(rank);
         var upper = (int)Math.Ceiling(rank);
         if (lower == upper)

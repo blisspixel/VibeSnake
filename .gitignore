@@ -162,6 +162,7 @@ logs/
 artifacts/
 /game/export/
 /native/export/
+/dist/agent-plugins/
 
 # Repository-local .NET SDK and native build output
 .dotnet/

@@ -380,7 +380,7 @@ internal static class CandidateAccessibilityAuditQualification
         }
     }
 
-    private static IReadOnlyList<AccessibilityDisplayClassEvidence> ValidateDisplayMatrix(
+    private static List<AccessibilityDisplayClassEvidence> ValidateDisplayMatrix(
         JsonElement viewport,
         JsonElement shell)
     {

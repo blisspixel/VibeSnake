@@ -319,7 +319,7 @@ public sealed record ContentPackManifest(
             {
                 throw new InvalidDataException($"The core pack id must be {CorePackId}.");
             }
-            if (dependencies.Count != 0)
+            if (dependencies.Length != 0)
             {
                 throw new InvalidDataException("The offline core pack cannot have dependencies.");
             }
@@ -331,7 +331,7 @@ public sealed record ContentPackManifest(
         }
         else
         {
-            if (dependencies.Count != 1 || dependencies[0].Id != CorePackId)
+            if (dependencies.Length != 1 || dependencies[0].Id != CorePackId)
             {
                 throw new InvalidDataException(
                     $"A radio pack must depend only on {CorePackId}.");
@@ -451,7 +451,7 @@ public sealed record ContentPackManifest(
         return new ContentPackInventoryBinding(schema, assetRoot, policySha256);
     }
 
-    private static IReadOnlyList<ContentPackDependency> ParseDependencies(
+    private static ContentPackDependency[] ParseDependencies(
         JsonElement element,
         string packId)
     {
@@ -487,7 +487,7 @@ public sealed record ContentPackManifest(
         return dependencies.ToArray();
     }
 
-    private static IReadOnlyList<ContentPackCredit> ParseCredits(JsonElement element)
+    private static ContentPackCredit[] ParseCredits(JsonElement element)
     {
         RequireArray(element, "content pack credits", MaximumCredits);
         var credits = new List<ContentPackCredit>();
@@ -521,9 +521,9 @@ public sealed record ContentPackManifest(
         return credits.ToArray();
     }
 
-    private static IReadOnlyList<ContentPackFile> ParseFiles(
+    private static ContentPackFile[] ParseFiles(
         JsonElement element,
-        IReadOnlyList<ContentPackCredit> credits)
+        ContentPackCredit[] credits)
     {
         RequireArray(element, "content pack files", MaximumFiles);
         var files = new List<ContentPackFile>();

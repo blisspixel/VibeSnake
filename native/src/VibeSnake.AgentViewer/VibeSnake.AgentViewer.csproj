@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Description>Read-only local viewer client for live Vibe Snake agent frames.</Description>
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\VibeSnake.AgentPlay\VibeSnake.AgentPlay.csproj" />
+  </ItemGroup>
+
+</Project>

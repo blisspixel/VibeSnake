@@ -144,10 +144,7 @@ public sealed partial class SnakeRun
 
         ValidatePowerState();
 
-        if (hungerTicksRemaining < 0)
-        {
-            throw new ArgumentOutOfRangeException(nameof(hungerTicksRemaining));
-        }
+        ArgumentOutOfRangeException.ThrowIfNegative(hungerTicksRemaining);
 
         if (hungerTicksRemaining > config.StarvationTicks)
         {
@@ -161,10 +158,7 @@ public sealed partial class SnakeRun
             throw new ArgumentOutOfRangeException(nameof(score));
         }
 
-        if (comboCount < 0)
-        {
-            throw new ArgumentOutOfRangeException(nameof(comboCount));
-        }
+        ArgumentOutOfRangeException.ThrowIfNegative(comboCount);
 
         if (ticksSinceLastFood < 0 || ticksSinceLastFood > MaximumRestorableTick)
         {
@@ -328,6 +322,10 @@ public sealed partial class SnakeRun
             HungerTicksRemaining);
 
     /// <summary>Algorithm id for <see cref="ConfigHash"/>.</summary>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage(
+        "Performance",
+        "CA1822:Mark members as static",
+        Justification = "The established instance property is retained for public API compatibility.")]
     public string ConfigHashAlgorithm => RunConfig.ConfigHashAlgorithmId;
 
     internal long GetNextStepVerificationWorkUnits()
@@ -1113,7 +1111,7 @@ public sealed partial class SnakeRun
 
     private void AdvancePowerLifecycle(
         ref RunEvent events,
-        ICollection<RunEventDetail> orderedEvents)
+        List<RunEventDetail> orderedEvents)
     {
         if (PowerPickup is { } pickup)
         {
@@ -1308,7 +1306,7 @@ public sealed partial class SnakeRun
     private void ResolveStarvation(
         GridPoint position,
         ref RunEvent events,
-        ICollection<RunEventDetail> orderedEvents)
+        List<RunEventDetail> orderedEvents)
     {
         if (!_config.EnableStarvation || HungerTicksRemaining > 0)
         {
@@ -1339,7 +1337,7 @@ public sealed partial class SnakeRun
         GridPoint triggerPosition,
         DeathCause preventedCause,
         ref RunEvent events,
-        ICollection<RunEventDetail> orderedEvents)
+        List<RunEventDetail> orderedEvents)
     {
         LastStandHeld = false;
         ShrinkBodyToHalfRoundedUp();
@@ -1385,7 +1383,7 @@ public sealed partial class SnakeRun
     private void AdvancePowerSpawnClock(
         GridPoint reservedDestination,
         ref RunEvent events,
-        ICollection<RunEventDetail> orderedEvents)
+        List<RunEventDetail> orderedEvents)
     {
         if (_config.PowerSpawnIntervalTicks == 0)
         {
@@ -1424,7 +1422,7 @@ public sealed partial class SnakeRun
     private void CollectPowerAtHead(
         GridPoint head,
         ref RunEvent events,
-        ICollection<RunEventDetail> orderedEvents)
+        List<RunEventDetail> orderedEvents)
     {
         if (PowerPickup is not { } pickup || pickup.Position != head)
         {
@@ -1803,7 +1801,7 @@ public sealed partial class SnakeRun
         throw new InvalidOperationException("The free-cell count did not match power spawn occupancy.");
     }
 
-    private IReadOnlyList<PowerKind> ActivePowerKinds()
+    private List<PowerKind> ActivePowerKinds()
     {
         var active = new List<PowerKind>(9);
         if (HasShield)
@@ -2007,7 +2005,7 @@ public sealed partial class SnakeRun
         }
     }
 
-    private static void ValidateBody(IReadOnlyCollection<GridPoint> body, RunConfig config)
+    private static void ValidateBody(List<GridPoint> body, RunConfig config)
     {
         if (body.Count == 0)
         {

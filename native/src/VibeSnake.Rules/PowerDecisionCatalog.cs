@@ -186,15 +186,8 @@ public static class PowerDecisionCatalog
             return null;
         }
 
-        if (firstRoll < 0)
-        {
-            throw new ArgumentOutOfRangeException(nameof(firstRoll));
-        }
-
-        if (secondRoll < 0)
-        {
-            throw new ArgumentOutOfRangeException(nameof(secondRoll));
-        }
+        ArgumentOutOfRangeException.ThrowIfNegative(firstRoll);
+        ArgumentOutOfRangeException.ThrowIfNegative(secondRoll);
 
         var eligible = EligibleOffers(activePowers);
         if (eligible.Count < MutationFork.ChoiceCount)

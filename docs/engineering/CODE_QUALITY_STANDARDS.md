@@ -77,15 +77,16 @@ Files, saves, replays, imported personalities, manifests, and content packs are 
 ### C# and .NET
 
 - Keep nullable reference types enabled and resolve every warning.
+- Pin the stable SDK analyzer wave explicitly. The August 2026 baseline is `.NET 10.0-recommended`; newer stable waves require a dedicated qualification change rather than silent drift.
 - Treat compiler and analyzer warnings as errors in normal and CI builds.
-- Enforce formatting and code style at build time.
+- Enforce root EditorConfig formatting and selected code style at build time, including braces, final newlines, whitespace, and formatter diagnostics.
 - Prefer immutable records and readonly value types for state and events.
 - Use precise exception types and validate arguments at public boundaries.
 - Avoid reflection, culture-sensitive serialization, platform-default encodings, and unspecified iteration order in deterministic code.
 - Dispose owned resources deterministically. Do not rely on finalizers for routine cleanup.
 - Keep package restore locked and dependency versions explicit.
 
-The repository pins its SDK and analyzer behavior. Analyzer suppressions require a narrow scope, a written reason, and a test or invariant that protects the suppressed behavior.
+The repository pins its SDK and analyzer behavior. Analyzer suppressions require a narrow scope, a written reason, and a test or invariant that protects the suppressed behavior. A future SDK or analyzer wave is reviewed against current Microsoft and Godot guidance, applied in one isolated change, and qualified across the complete matrix before it becomes the new baseline.
 
 ### Python
 
@@ -143,6 +144,8 @@ Replay verification must authenticate its canonical payload, validate compatibil
 
 - Keep real secrets outside source, fixtures, logs, manifests, artifacts, screenshots, and `.agent/` files.
 - Use least-privilege workflow permissions and isolated release credentials.
+- Default every workflow to read-only repository contents. Grant write permissions only on the job that performs attestation or publication.
+- Pin every external GitHub Action to a full commit SHA and retain its reviewed release tag in a comment. The quality suite checks both `.yml` and `.yaml` workflows.
 - Audit Python and NuGet dependencies in CI and before release. A known exploitable vulnerability blocks release unless an explicit, evidence-backed exception is recorded.
 - Retain dependency locks, artifact SHA-256 manifests, an SBOM or equivalent inventory, and build provenance.
 - Build release artifacts from a clean version-controlled revision on an isolated hosted runner.
@@ -150,6 +153,10 @@ Replay verification must authenticate its canonical payload, validate compatibil
 - Separate signing and notarization from ordinary build logic. Never store signing material in the repository.
 
 Content hashes prove reviewed-byte integrity. Platform signatures and build attestations prove origin. Neither replaces schema validation, runtime isolation, or player-facing recovery.
+
+The committed Dependabot policy covers pip, both NuGet roots, and GitHub Actions. Routine version-update pull requests remain disabled while the repository keeps one public `main` branch; vulnerability audits in CI remain release-blocking, and dependency or action updates are reviewed as isolated qualification changes. Packaging workflows install build tools from the hash-locked CI graph rather than upgrading from the network.
+
+The floating `player-latest` source release runs only for the exact `main` revision that completed CI successfully. Manual dispatch may build the package for diagnosis, but it does not publish or replace the floating release.
 
 ## Performance and resource quality
 
@@ -202,6 +209,8 @@ Before handoff, answer yes with evidence:
 - Is there any dead, commented-out, placeholder, or silently ignored code left?
 
 ## Research basis
+
+Standards review date: 2026-08-13. The repository follows stable generally available guidance and tracks future stable revisions through dedicated qualification changes. It does not enable preview analyzer or language waves in release work.
 
 - [.NET code analysis](https://learn.microsoft.com/en-us/dotnet/fundamentals/code-analysis/overview) documents SDK analyzers, recommended analysis modes, build-time style enforcement, and warning escalation.
 - [.NET unit-testing practices](https://learn.microsoft.com/en-us/dotnet/core/testing/unit-testing-best-practices) emphasize fast, isolated, readable tests that protect design and regression behavior.

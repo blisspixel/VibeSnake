@@ -121,7 +121,7 @@ internal static class ReliabilityQualification
         var spectatorRestarts = RunSpectatorRestartCampaign(captureEngineResources);
         var rulesetCount = RunModeCatalog.All.Count;
         var totalComparedSteps = simulations.Sum(row => row.ComparedSteps);
-        var simulationsPassed = simulations.Count == rulesetCount
+        var simulationsPassed = simulations.Length == rulesetCount
             && simulations.Select(row => row.ModeId)
                 .SequenceEqual(RunModeCatalog.All.Select(mode => mode.Id))
             && simulations.All(row => row.RequiredComparedSteps == RequiredStepsPerRuleset
@@ -165,7 +165,7 @@ internal static class ReliabilityQualification
             ]);
     }
 
-    private static IReadOnlyList<ReliabilitySimulationRow> RunSimulationCampaign(
+    private static ReliabilitySimulationRow[] RunSimulationCampaign(
         Action<ReliabilityFirstDivergence>? captureFirstDivergence) =>
         RunModeCatalog.All
             .Select(mode => RunSimulation(mode, captureFirstDivergence))

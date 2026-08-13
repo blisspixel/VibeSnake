@@ -530,6 +530,33 @@ try {
         throw "Godot headless import reported an error, warning, or leaked object."
     }
 
+    $agentViewerGodotVariable = "VIBESNAKE_AGENT_VIEWER_GODOT_EXECUTABLE"
+    $previousAgentViewerGodot = [Environment]::GetEnvironmentVariable(
+        $agentViewerGodotVariable,
+        [EnvironmentVariableTarget]::Process)
+    try {
+        [Environment]::SetEnvironmentVariable(
+            $agentViewerGodotVariable,
+            $resolvedGodotExecutable,
+            [EnvironmentVariableTarget]::Process)
+        Invoke-Dotnet -CommandArguments @(
+            "test",
+            "native/tests/VibeSnake.Rules.Tests/VibeSnake.Rules.Tests.csproj",
+            "--configuration",
+            "Release",
+            "--no-build",
+            "--no-restore",
+            "--filter",
+            "FullyQualifiedName~Godot_watch_screen_receives_real_host_frame_when_qualified"
+        )
+    }
+    finally {
+        [Environment]::SetEnvironmentVariable(
+            $agentViewerGodotVariable,
+            $previousAgentViewerGodot,
+            [EnvironmentVariableTarget]::Process)
+    }
+
     $smokeUserDataRoot = Join-Path ([System.IO.Path]::GetTempPath()) ("vibesnake-godot-user-data-{0}" -f [Guid]::NewGuid())
     New-Item -ItemType Directory -Path $smokeUserDataRoot | Out-Null
     $smokeOutput = & $resolvedGodotExecutable --headless --path game -- --smoke-test "--smoke-user-data-root=$smokeUserDataRoot" 2>&1
@@ -616,8 +643,8 @@ try {
         ($localizationEvidence.catalogId -ne "shell-copy-v1") -or
         ($localizationEvidence.requiredLocale -ne "en") -or
         ($localizationEvidence.pseudoLocale -ne "qps-ploc") -or
-        ($localizationEvidence.stringCount -ne 518) -or
-        ($localizationEvidence.parameterizedStringCount -ne 73) -or
+        ($localizationEvidence.stringCount -ne 540) -or
+        ($localizationEvidence.parameterizedStringCount -ne 77) -or
         ($localizationEvidence.migratedRequiredFlowCount -ne 13) -or
         ($localizationEvidence.minimumPseudoExpansionRatio -lt 1.3) -or
         ($localizationEvidence.missingGlyphCount -ne 0) -or

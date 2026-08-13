@@ -44,7 +44,7 @@ internal sealed class ShellTheme
 
     public Font InterfaceFont { get; }
 
-    public ShellPalette Palette(bool highContrast) =>
+    public static ShellPalette Palette(bool highContrast) =>
         highContrast ? HighContrastPalette : StandardPalette;
 
     public static double ContrastRatio(Color foreground, Color background)

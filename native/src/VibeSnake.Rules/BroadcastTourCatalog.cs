@@ -244,7 +244,7 @@ public static class BroadcastTourCatalog
         }
     }
 
-    private static int CountReachable(IReadOnlySet<string> ids)
+    private static int CountReachable(HashSet<string> ids)
     {
         var reachable = new HashSet<string>(StringComparer.Ordinal);
         var changed = true;

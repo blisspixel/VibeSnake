@@ -10,10 +10,7 @@ public sealed class SharedPhaseShiftTraceParityTests
         var fixturePath = Path.Combine(AppContext.BaseDirectory, "Fixtures", "phase_shift_rules_v1.json");
         var fixture = JsonSerializer.Deserialize<PhaseFixture>(
             File.ReadAllText(fixturePath),
-            new JsonSerializerOptions
-            {
-                PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
-            });
+            TestJsonSerializerOptions.SnakeCase);
 
         Assert.NotNull(fixture);
         Assert.Equal(1, fixture.SchemaVersion);

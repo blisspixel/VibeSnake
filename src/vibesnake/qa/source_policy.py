@@ -13,6 +13,7 @@ from typing import Iterable
 _SCAN_ROOTS = (".github", "docs", "game", "native", "scripts", "src", "tests")
 _ROOT_FILES = (
     ".gitattributes",
+    ".editorconfig",
     ".gitignore",
     ".pre-commit-config.yaml",
     "CHANGELOG.md",

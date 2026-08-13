@@ -10,10 +10,7 @@ internal readonly record struct StepFeedback(AudioCue? Cue, ShellTextReference? 
         VibeLevelTransition? vibeTransition = null)
     {
         ArgumentNullException.ThrowIfNull(events);
-        if (comboCount < 0)
-        {
-            throw new ArgumentOutOfRangeException(nameof(comboCount));
-        }
+        ArgumentOutOfRangeException.ThrowIfNegative(comboCount);
 
         if (Contains(events, RunEventKind.CollisionPrevented, PowerKind.LastStand))
         {

@@ -16,6 +16,18 @@ Logs and diagnostics remain local. Production boundaries sanitize private path p
 
 Core play remains offline. Optional content is installed from explicit local packages and validated before use. The game does not download or update a content pack by itself. Any future storefront may perform delivery or updates under that storefront's separate terms, but it must not become a gameplay service or receive game telemetry from Vibe Snake.
 
+## Agent Arena developer preview
+
+The optional post-1.0 Agent Arena source uses a local stdio MCP host and opens no network listener. Agent matches are ephemeral by default and receive only player-visible game state. They cannot read or update human profiles, settings, achievements, progression, scores, household comparisons, or the built-in spectator league.
+
+An optional public Agent Passport may contain a bounded agent ID, policy version, display name, color, shed, station affinity, and fixed capability profile. It must not contain prompts, hidden reasoning, credentials, provider responses, account data, or other personal information. The host does not persist the passport as agent memory.
+
+Each move may carry one closed public intent label: seek food, seek power, preserve space, take risk, recover, or undeclared. It contains no free-form text, is visible to the agent and local viewer, has no gameplay authority, and is not written into human profiles or progression.
+
+Live watching uses a one-time same-user local-pipe capability. The capability is not written to the replay or application logs and should not be copied into screenshots, reports, or shared command history. A verified replay is stored only after the agent explicitly calls the path-free save tool, and it uses the same bounded application-owned replay store and deletion controls as other local replays.
+
+This preview provides no upload, matchmaking, remote transport, hosted tournament, model-provider integration, or agent analytics. Any such feature requires a separate architecture and privacy review before it is enabled.
+
 ## External testing and reports
 
 Controlled external validation uses pseudonymous participant IDs. Consent records stay separate from session observations and outside the public repository. Retained reports must be reviewed and de-identified. Names, accounts, contact details, private paths, device serials, raw input, raw timing, and unrelated device data are forbidden from the validation record.

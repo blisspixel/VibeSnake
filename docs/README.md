@@ -7,11 +7,12 @@ This directory is the indexed source of truth for Vibe Snake. The root [README](
 | Goal | Start here | Continue with |
 | --- | --- | --- |
 | Play the current alpha | [Player guide](guides/PLAYER_GUIDE.md) | [Accessibility features](guides/ACCESSIBILITY.md), [save and recovery](guides/RECOVERY.md), [privacy](../PRIVACY.md), [input and lifecycle](design/INPUT.md), [configuration](guides/CONFIGURATION.md) |
-| Understand the game vision | [Game design](design/GAME_DESIGN.md) | [Fun strategy](design/FUN_DESIGN.md), [observed balance baselines](design/BALANCE_BASELINES.md), [balance experiments](design/BALANCE_EXPERIMENTS.md), [local playtest summaries](design/PLAYTEST_SUMMARIES.md), [human playtesting](design/HUMAN_PLAYTESTING.md), [power-ups](design/POWERUPS.md), [progression](design/PROGRESSION.md) |
+| Understand the game vision | [Game design](design/GAME_DESIGN.md) | [Fun strategy](design/FUN_DESIGN.md), [Agent Arena](design/AGENT_ARENA.md), [observed balance baselines](design/BALANCE_BASELINES.md), [balance experiments](design/BALANCE_EXPERIMENTS.md), [local playtest summaries](design/PLAYTEST_SUMMARIES.md), [human playtesting](design/HUMAN_PLAYTESTING.md), [power-ups](design/POWERUPS.md), [progression](design/PROGRESSION.md) |
 | See what exists and what is next | [Current status](release/STATUS.md) | [Roadmap](../ROADMAP.md), [release checklist](release/RELEASE_CHECKLIST.md), [manual product matrix](release/MANUAL_PRODUCT_MATRIX.md), [external validation](release/EXTERNAL_VALIDATION.md), [release rehearsal](release/REHEARSAL.md), [stable promotion](release/STABLE_PROMOTION.md), [changelog](../CHANGELOG.md) |
 | Maintain or retire the frozen Python oracle | [Migration ownership map](engineering/MIGRATION_MAP.md) | [Architecture](engineering/ARCHITECTURE.md), [parity decisions](engineering/PARITY_DECISIONS.md), [testing](engineering/TESTING.md) |
 | Develop the native product | [Architecture](engineering/ARCHITECTURE.md) | [Development](guides/DEVELOPMENT.md), [technology strategy](decisions/TECHNOLOGY_STRATEGY.md), [ADR 0001](decisions/ADR_0001_NATIVE_RUNTIME.md), [native foundation](../native/README.md) |
 | Extend automatic game testing | [Automated QA laboratory](engineering/AUTOMATED_QA.md) | [Testing](engineering/TESTING.md), [parity decisions](engineering/PARITY_DECISIONS.md) |
+| Build or connect an agent player | [Agent play integration](engineering/AGENT_PLAY.md) | [Agent Arena design](design/AGENT_ARENA.md), [ADR 0002](decisions/ADR_0002_AGENT_ARENA.md) |
 | Work on music or assets | [Audio system](content/AUDIO.md) | [Content pipeline](content/CONTENT_PIPELINE.md), [content packs](content/CONTENT_PACKS.md) |
 | Find a file or owner | [Repository map](engineering/REPOSITORY_MAP.md) | [Architecture](engineering/ARCHITECTURE.md), [contributing](../CONTRIBUTING.md) |
 
@@ -53,6 +54,7 @@ The root keeps the four project-wide entry artifacts: `README.md`, `ROADMAP.md`,
 - [Score identity and achievement audit](design/SCORE_IDENTITY.md): run-purpose and seed taxonomy, schema-2 score metadata, legacy categories, and all 25 mode decisions.
 - [Input and lifecycle](design/INPUT.md): logical actions, controller defaults, focus behavior, remapping, and proof boundaries.
 - [AI players](design/AI_PLAYERS.md): personality schema, loading, behavior, and extension points.
+- [Agent Arena](design/AGENT_ARENA.md): the post-1.0 external-agent loop, curriculum, style, observation, fairness, and broadcast contract.
 
 ## Engineering
 
@@ -62,6 +64,7 @@ The root keeps the four project-wide entry artifacts: `README.md`, `ROADMAP.md`,
 - [Testing](engineering/TESTING.md): deterministic suites, coverage policy, manual checks, and CI.
 - [Automated QA laboratory](engineering/AUTOMATED_QA.md): seeded simulation, policies, invariants, reports, balance campaigns, and human handoff.
 - [Replay recording and storage](engineering/REPLAYS.md): native replay capture, compatibility, deterministic verification, bounded atomic persistence, and import behavior.
+- [Agent play integration](engineering/AGENT_PLAY.md): post-1.0 local MCP tools, privacy boundary, live read-only viewing, verified replay handoff, and portable packaging.
 - [User-data directories](engineering/USER_DATA.md): platform roots, Python and native layouts, recovery, and separation rules.
 - [Migration ownership map](engineering/MIGRATION_MAP.md): Python-to-native owners, port order, data-migration procedures, dual-runtime freeze.
 - [Parity decisions](engineering/PARITY_DECISIONS.md): reviewed Python-to-C# mismatches, target corrections, and open differences.
@@ -78,6 +81,7 @@ The root keeps the four project-wide entry artifacts: `README.md`, `ROADMAP.md`,
 
 - [Technology strategy](decisions/TECHNOLOGY_STRATEGY.md): Godot and C# target architecture, cross-platform contract, qualification gates, and migration sequence.
 - [ADR 0001](decisions/ADR_0001_NATIVE_RUNTIME.md): accepted native runtime and rules boundary.
+- [ADR 0002](decisions/ADR_0002_AGENT_ARENA.md): accepted post-1.0 Agent Arena architecture and standards boundary.
 - [Current status](release/STATUS.md): verified implementation snapshot and release blockers.
 - [Release checklist](release/RELEASE_CHECKLIST.md): final 1.0 go or no-go gates.
 - [Manual product matrix](release/MANUAL_PRODUCT_MATRIX.md): exact physical platform, flow, input, settings-profile, session, and evidence contract.

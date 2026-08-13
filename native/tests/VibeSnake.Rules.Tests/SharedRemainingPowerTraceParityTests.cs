@@ -13,10 +13,7 @@ public sealed class SharedRemainingPowerTraceParityTests
             "remaining_powers_rules_v1.json");
         var fixture = JsonSerializer.Deserialize<RemainingFixture>(
             File.ReadAllText(fixturePath),
-            new JsonSerializerOptions
-            {
-                PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
-            });
+            TestJsonSerializerOptions.SnakeCase);
 
         Assert.NotNull(fixture);
         Assert.Equal(1, fixture.SchemaVersion);

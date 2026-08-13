@@ -14,15 +14,8 @@ public sealed record ContentTimingReport(
         int inventoryScanMilliseconds,
         int coldStartMilliseconds)
     {
-        if (inventoryScanMilliseconds < 0)
-        {
-            throw new ArgumentOutOfRangeException(nameof(inventoryScanMilliseconds));
-        }
-
-        if (coldStartMilliseconds < 0)
-        {
-            throw new ArgumentOutOfRangeException(nameof(coldStartMilliseconds));
-        }
+        ArgumentOutOfRangeException.ThrowIfNegative(inventoryScanMilliseconds);
+        ArgumentOutOfRangeException.ThrowIfNegative(coldStartMilliseconds);
 
         return new ContentTimingReport(
             InventoryScanMilliseconds: inventoryScanMilliseconds,

@@ -36,10 +36,7 @@ internal static class HungerFeedback
         int maximumTicks = DefaultMaximumTicks,
         int warningTicks = RunConfig.DefaultStarvationWarningTicks)
     {
-        if (maximumTicks <= 0)
-        {
-            throw new ArgumentOutOfRangeException(nameof(maximumTicks));
-        }
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(maximumTicks);
 
         if (remainingTicks < 0 || remainingTicks > maximumTicks)
         {
@@ -73,7 +70,7 @@ internal static class HungerFeedback
             HungerPhase.Warning => ("LOW", "notched-segment-bar", "gold"),
             HungerPhase.Critical => ("CRITICAL", "chevron-segment-bar", "warning"),
             HungerPhase.Empty => ("EMPTY", "crossed-empty-bar", "warning"),
-            _ => throw new ArgumentOutOfRangeException(nameof(phase)),
+            _ => throw new InvalidOperationException("Unknown hunger phase."),
         };
 
         return new HungerFeedbackState(
@@ -109,10 +106,7 @@ internal static class ComboFeedback
         AccessibilityPresentationPolicy accessibility,
         VibeLevelDefinition vibeLevel)
     {
-        if (count < 0)
-        {
-            throw new ArgumentOutOfRangeException(nameof(count));
-        }
+        ArgumentOutOfRangeException.ThrowIfNegative(count);
 
         if (double.IsNaN(multiplier) || double.IsInfinity(multiplier) || multiplier < 0.0)
         {
@@ -322,7 +316,7 @@ internal static class MultimodalFeedbackQualification
         var timerShapeTextColorProgression =
             hungerStates.Select(state => state.Phase).Distinct().Count() == 4
             && hungerStates.All(state => state.Label.Contains("HUNGER", StringComparison.Ordinal)
-                && state.Label.EndsWith("s", StringComparison.Ordinal)
+                && state.Label.EndsWith('s')
                 && !string.IsNullOrWhiteSpace(state.Shape)
                 && !string.IsNullOrWhiteSpace(state.ColorRole))
             && hungerStates.Select(state => state.Shape).Distinct(StringComparer.Ordinal).Count() == 4
@@ -342,7 +336,7 @@ internal static class MultimodalFeedbackQualification
             combo.MotionAllowed
             && combo.VerticalOffset < 0.0f
             && combo.Label.Contains("COMBO", StringComparison.Ordinal)
-            && combo.Label.EndsWith("x", StringComparison.Ordinal));
+            && combo.Label.EndsWith('x'));
 
         var powers = PowerFeedbackCatalog.All.Select(definition =>
             new MultimodalPowerEvidence(

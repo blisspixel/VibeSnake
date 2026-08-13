@@ -10,10 +10,7 @@ public sealed class SharedRuleTraceParityTests
         var fixturePath = Path.Combine(AppContext.BaseDirectory, "Fixtures", "core_rules_v4.json");
         var fixture = JsonSerializer.Deserialize<RuleFixture>(
             File.ReadAllText(fixturePath),
-            new JsonSerializerOptions
-            {
-                PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
-            });
+            TestJsonSerializerOptions.SnakeCase);
 
         Assert.NotNull(fixture);
         Assert.Equal(4, fixture.SchemaVersion);

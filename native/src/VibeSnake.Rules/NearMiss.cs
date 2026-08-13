@@ -43,15 +43,8 @@ public sealed class NearMissDetector
         int cooldownTicks = DefaultCooldownTicks,
         int eventTimeoutTicks = DefaultEventTimeoutTicks)
     {
-        if (cooldownTicks < 0)
-        {
-            throw new ArgumentOutOfRangeException(nameof(cooldownTicks));
-        }
-
-        if (eventTimeoutTicks <= 0)
-        {
-            throw new ArgumentOutOfRangeException(nameof(eventTimeoutTicks));
-        }
+        ArgumentOutOfRangeException.ThrowIfNegative(cooldownTicks);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(eventTimeoutTicks);
 
         CooldownTicks = cooldownTicks;
         EventTimeoutTicks = eventTimeoutTicks;
@@ -87,10 +80,7 @@ public sealed class NearMissDetector
     /// </summary>
     public void AdvanceTicks(int ticks = 1)
     {
-        if (ticks < 0)
-        {
-            throw new ArgumentOutOfRangeException(nameof(ticks));
-        }
+        ArgumentOutOfRangeException.ThrowIfNegative(ticks);
 
         if (ticks == 0)
         {
@@ -202,6 +192,10 @@ public sealed class NearMissDetector
     /// Rewards motion parallel to a wrapping boundary. Bonus is
     /// <c>clamp(snakeLength / 10, 1, 10)</c>.
     /// </summary>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage(
+        "Performance",
+        "CA1822:Mark members as static",
+        Justification = "The established instance member is retained for public API compatibility.")]
     public NearMissEvent? CheckEdgeRide(
         GridPoint head,
         Direction direction,
@@ -249,12 +243,13 @@ public sealed class NearMissDetector
     /// Rewards food collection when fewer than <see cref="ClutchRemainingTicks"/>
     /// hunger ticks remain.
     /// </summary>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage(
+        "Performance",
+        "CA1822:Mark members as static",
+        Justification = "The established instance member is retained for public API compatibility.")]
     public NearMissEvent? CheckClutchEat(int hungerTicksRemaining)
     {
-        if (hungerTicksRemaining < 0)
-        {
-            throw new ArgumentOutOfRangeException(nameof(hungerTicksRemaining));
-        }
+        ArgumentOutOfRangeException.ThrowIfNegative(hungerTicksRemaining);
 
         if (hungerTicksRemaining >= ClutchRemainingTicks)
         {
@@ -272,6 +267,10 @@ public sealed class NearMissDetector
     /// <summary>
     /// Rewards food collection while Boost is active.
     /// </summary>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage(
+        "Performance",
+        "CA1822:Mark members as static",
+        Justification = "The established instance member is retained for public API compatibility.")]
     public NearMissEvent? CheckStylePoints(bool hasBoost)
     {
         if (!hasBoost)

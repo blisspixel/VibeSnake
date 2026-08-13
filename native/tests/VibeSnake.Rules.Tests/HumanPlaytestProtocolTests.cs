@@ -170,8 +170,8 @@ public sealed class HumanPlaytestProtocolTests
             ReadStrings(root, "decisionValues"));
 
         var requiredArtifacts = ReadStrings(root, "requiredArtifactPaths");
-        Assert.Equal(11, requiredArtifacts.Count);
-        Assert.Equal(requiredArtifacts.Count, requiredArtifacts.Distinct(StringComparer.Ordinal).Count());
+        Assert.Equal(11, requiredArtifacts.Length);
+        Assert.Equal(requiredArtifacts.Length, requiredArtifacts.Distinct(StringComparer.Ordinal).Count());
         Assert.All(requiredArtifacts, path =>
         {
             Assert.StartsWith("TestResults/native/", path, StringComparison.Ordinal);
@@ -191,7 +191,7 @@ public sealed class HumanPlaytestProtocolTests
             scenarioCount = scenarios.Length,
             recoveryProfileCount = ExpectedProfiles.Length,
             requiredBuildFieldCount = root.GetProperty("requiredBuildFields").GetArrayLength(),
-            requiredObservationFieldCount = requiredObservationFields.Count,
+            requiredObservationFieldCount = requiredObservationFields.Length,
             severityCount = severities.Length,
             requiredArtifactPaths = requiredArtifacts,
             privacyForbiddenFieldFamilyCount = privacy
@@ -212,19 +212,19 @@ public sealed class HumanPlaytestProtocolTests
         var outputPath = Path.Combine(outputDirectory, "human_playtest_handoff.json");
         File.WriteAllText(
             outputPath,
-            JsonSerializer.Serialize(evidence, new JsonSerializerOptions { WriteIndented = true }) + "\n",
+            JsonSerializer.Serialize(evidence, TestJsonSerializerOptions.Indented) + "\n",
             new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
 
         Assert.True(File.Exists(outputPath));
     }
 
-    private static IReadOnlyList<string> ReadStrings(JsonElement parent, string property) =>
+    private static string[] ReadStrings(JsonElement parent, string property) =>
         parent.GetProperty(property)
             .EnumerateArray()
             .Select(item => item.GetString() ?? string.Empty)
             .ToArray();
 
-    private static IReadOnlySet<ulong> ReadReviewedSeeds(string repositoryRoot)
+    private static HashSet<ulong> ReadReviewedSeeds(string repositoryRoot)
     {
         var path = Path.Combine(repositoryRoot, "config", "qa_seed_corpora.json");
         using var parsed = JsonDocument.Parse(File.ReadAllBytes(path));

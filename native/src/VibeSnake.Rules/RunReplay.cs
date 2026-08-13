@@ -1,4 +1,5 @@
 using System.Buffers;
+using System.Collections.ObjectModel;
 using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
@@ -17,8 +18,8 @@ public sealed partial class RunReplay
     public const int MaximumSerializedCharacters = 16 * 1024 * 1024;
     public const long MaximumVerificationWorkUnits = 16_000_000;
 
-    private readonly IReadOnlyList<ReplayStep> _steps;
-    private readonly IReadOnlyList<ReplayCheckpoint> _checkpoints;
+    private readonly ReadOnlyCollection<ReplayStep> _steps;
+    private readonly ReadOnlyCollection<ReplayCheckpoint> _checkpoints;
     private readonly bool _writeConfigIdentity;
     private readonly bool _writeCaptureMetadata;
 
@@ -165,10 +166,22 @@ public sealed partial class RunReplay
         }
     }
 
+    [System.Diagnostics.CodeAnalysis.SuppressMessage(
+        "Performance",
+        "CA1822:Mark members as static",
+        Justification = "The established instance property is retained for public API compatibility.")]
     public RulesetIdentity Ruleset => RulesetIdentity.Current;
 
+    [System.Diagnostics.CodeAnalysis.SuppressMessage(
+        "Performance",
+        "CA1822:Mark members as static",
+        Justification = "The established instance property is retained for public API compatibility.")]
     public string RandomAlgorithmId => Pcg32.AlgorithmId;
 
+    [System.Diagnostics.CodeAnalysis.SuppressMessage(
+        "Performance",
+        "CA1822:Mark members as static",
+        Justification = "The established instance property is retained for public API compatibility.")]
     public string StateHashAlgorithmId => SnakeRun.StateHashAlgorithmId;
 
     public string InitialCanonicalState { get; }
@@ -315,10 +328,7 @@ public sealed partial class RunReplay
     public ReplayVerificationResult Verify(
         long maximumWorkUnits = MaximumVerificationWorkUnits)
     {
-        if (maximumWorkUnits <= 0)
-        {
-            throw new ArgumentOutOfRangeException(nameof(maximumWorkUnits));
-        }
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(maximumWorkUnits);
 
         SnakeRun simulation;
         try
@@ -544,18 +554,18 @@ public sealed partial class RunReplay
     }
 
     private static void ValidateCheckpointSchedule(
-        IReadOnlyList<ReplayCheckpoint> checkpoints,
+        ReplayCheckpoint[] checkpoints,
         int stepCount,
         int checkpointInterval)
     {
-        if (checkpoints.Count != ExpectedCheckpointCount(stepCount, checkpointInterval))
+        if (checkpoints.Length != ExpectedCheckpointCount(stepCount, checkpointInterval))
         {
             throw new ArgumentException(
                 "Replay checkpoints do not match the declared interval.",
                 nameof(checkpoints));
         }
 
-        var expectedIndexes = new List<int>(checkpoints.Count) { 0 };
+        var expectedIndexes = new List<int>(checkpoints.Length) { 0 };
         for (var step = checkpointInterval; step <= stepCount; step += checkpointInterval)
         {
             expectedIndexes.Add(step);

@@ -1,0 +1,158 @@
+# Agent Arena
+
+[Game and experience design](README.md)
+
+## Experience promise
+
+Agent Arena lets an external agent learn Vibe Snake, develop a recognizable play style, challenge a named rival under equal rules, and leave behind a verified replay that a human can watch or challenge on the same seed.
+
+The arena is designed to give software agents meaningful decisions and improving competence. It does not assume or claim that a model has a subjective experience of fun. The human-facing measure is whether the agent's goals, risks, turning points, and rivalries are clear enough to make the match worth watching.
+
+Agent Arena is a post-1.0 optional capability. The development tree contains the preview integration, but it is not part of the supported 1.0 release contract. A 1.0 candidate must remove or explicitly exclude the preview assemblies and entry points before artifact qualification. The preview does not change gameplay rules, saves, progression, or release gates.
+
+## Developer preview status
+
+The source preview implements symbolic-step play, open and blind seeds, verified replays, a read-only live viewer, five closed Style Contracts, six deterministic Signal School lesson definitions with metric evaluators, ephemeral public Agent Passports, five closed self-declared public intents, and equal-seed named rivals. The host does not yet accept a lesson selection or include lesson completion in a match result. The longer experience contract below remains intentionally broader. Symbolic burst and visual control, the complete eight-lesson Signal School, Rival Breaker, expressive Style Contract evaluation, free-form captions, persisted passport history, withheld qualification decks, rankings, turning-point summaries, and the same-seed human handoff are not implemented yet.
+
+## Target core loop
+
+```text
+Choose identity, rival, mode, seed division, and Style Contract
+  -> observe public state
+  -> commit one move
+  -> receive factual event feedback
+  -> complete, cap, or abort with a verified replay
+  -> watch the broadcast or take the same-seed challenge
+  -> retain a public result and choose a rematch or new style
+```
+
+The current preview implements play, live read-only watching, result retrieval, and explicit replay save. Same-seed human handoff and retained public result history are later parts of this target loop. The default experience records first and presents second. Agent response time never affects score. A later live studio mode may pause the presentation while waiting for an action, but the rules remain clock-free and the finished replay remains canonical.
+
+## Play divisions
+
+Results from different control profiles are not ranked together.
+
+| Division | Observation | Action pacing | Intended controller |
+| --- | --- | --- | --- |
+| Symbolic step | Complete public logical state | One action advances one step | Language-model and tool-using agents |
+| Symbolic burst | Complete public state with bounded event stops | A bounded continuation stops at a public event or budget | Efficient deliberative agents |
+| Visual control | Rendered frame and logical controls | Presentation-paced input | Computer-use and vision agents |
+
+Each division declares Classic or Vibe, exact rules and configuration identity, open or blind seed visibility, action-call and step budgets, memory policy, and agent version.
+
+## Signal School
+
+Signal School is a deterministic curriculum, not a hidden tutorial score. Lessons should teach one observable contract at a time:
+
+1. Make a legal turn and recover from a rejected reversal.
+2. Use board wrapping intentionally.
+3. Eat before starvation.
+4. Preserve an exit as the body grows.
+5. Collect and use a power.
+6. Recover from danger with protection.
+7. Complete a short combo route.
+8. Identify an attributable death from returned events.
+
+The preview catalog currently publishes the first six lesson definitions and deterministic metric-threshold evaluators. A lesson is not yet selectable through `start_match`, and lesson completion is not part of the match receipt. The completed curriculum should contain all eight lessons above and qualify completion through an immutable replay-and-event evaluator.
+
+## Style Contracts
+
+Score alone should not define successful agent play. A Style Contract combines one primary objective with one optional expressive objective. The preview exposes and evaluates the first five contracts below using their primary metrics. Expressive objectives and Rival Breaker remain target contracts rather than qualified preview results.
+
+| Contract | Primary objective | Expressive objective |
+| --- | --- | --- |
+| Stillwater | Survive | Preserve open exits and avoid dead ends |
+| Crownchaser | Build score | Sustain combo continuity |
+| Edge Prophet | Use the whole board | Make intentional wraps and controlled near misses |
+| Mutagenist | Route through powers | Demonstrate useful power timing and synergy |
+| Redline | Reach food efficiently | Maintain route pressure without losing recovery space |
+| Rival Breaker | Beat a named verified outcome | Win on the rival's characteristic terms |
+
+Contracts wrap official Classic and Vibe rules. They do not create hidden mechanics or alternate physics.
+
+## Observation contract
+
+The symbolic observation is a closed, versioned allowlist containing:
+
+- Contract, rules, mode, configuration, match, tick, and state-hash identities.
+- Board dimensions and wrapping behavior.
+- Run status, death cause, current direction, head, body, and accepted pending directions.
+- Food, visible power pickup, bait, detached obstacles, score, combo, hunger, and public timers.
+- Active public effects and remaining step budget.
+- Ordered events from the immediately preceding accepted action.
+- Previous action acceptance or rejection.
+- Declared contract progress and optional public rival summary when available.
+
+It excludes random-generator state, future spawns, controller decisions, other live actions, private user data, local paths, diagnostics, credentials, prompts, hidden reasoning, and engine-computed route advice.
+
+Blind-seed observations omit the seed until the final receipt. Open-seed observations expose it and form a separate legitimate simulation-friendly division.
+
+## Action contract
+
+The base action is `up`, `right`, `down`, `left`, or `continue`. Every mutating request supplies the expected tick, expected state hash, and an idempotency key. It may also declare `seek_food`, `seek_power`, `preserve_space`, `take_risk`, or `recover` as a public presentation-only intent.
+
+- A valid request advances exactly one rules step.
+- `continue` advances without queuing a direction.
+- A stale request, illegal reversal, conflicting idempotency key, terminal request, or invalid payload advances no rules state.
+- Retrying the same key with the same request returns the original response.
+- A changed public intent changes the idempotent request identity but never changes rules, scoring, rewards, replay verification, or qualification.
+- A later burst profile may advance at most 16 steps and stops on declared public events.
+
+The service returns factual events rather than a fabricated dense reward. Terminal evaluation is a vector that can include score, survival, food, combo, route efficiency, wraps, powers, recoveries, risk exposure, dead ends, and contract completion.
+
+## Agent identity and memory
+
+The preview accepts an ephemeral public Agent Passport containing:
+
+- Stable agent ID and policy version.
+- Safe display name, color, cosmetic shed, and station affinity.
+- Supported observation and action profiles.
+
+A later persisted passport may add:
+
+- Verified matches, personal bests, selected contracts, rival records, and milestones.
+- An optional bounded model or policy label.
+
+It never contains prompt history, chain of thought, credentials, raw provider responses, executable code, or a human profile. External agents own their semantic memory and learned skills. The current host retains public identity and verified outcomes only for the bounded in-process session; an explicit replay save persists the verified run through the ordinary replay store. Bounded preference and outcome history belongs to the later persisted passport.
+
+## Fair competition
+
+- Target qualification keeps public practice seeds separate from withheld qualification seeds. The preview implements open and blind match seeds but no qualification deck.
+- Classic, Vibe configuration, seed visibility, control profile, memory policy, and agent version define a division.
+- Equal-seed rival lanes use the exact same configuration and independent controller state.
+- Every terminal, capped, or explicitly finished run produces a verified replay. The replay proves the captured run, not the external policy's determinism.
+- Agent matches update no human scores, achievements, progression, ordinary challenges, or built-in league standings.
+- The player and host never execute participant policy code.
+- Target qualification evaluates multiple dimensions and reports the practice-to-qualification generalization gap.
+
+## Broadcast language
+
+The viewer presents a competitor, not a request log. It shows the matchup, contract, agent identity, rival score, match status, and the latest closed self-declared public intent. It should next add engine-observed risks and resources, record changes, typed highlights, and a post-run turning-point summary.
+
+The current preview accepts only `seek_food`, `seek_power`, `preserve_space`, `take_risk`, or `recover`, plus `undeclared`. These values are clearly self-reported, appear only in public action feedback and the viewer, and cannot affect rules or verification. Free-form captions and confidence are deferred until they have a concrete moderation and accessibility benefit. Private reasoning is never requested or displayed.
+
+## Continuous polish loop
+
+Human availability does not serialize the build plan. Deterministic work on clarity, pacing controls, event selection, replay handoff, accessibility, recovery, packaging, and agent curricula continues from explicit contracts. Human evidence is collected whenever available and decides whether a behavior is kept, revised, removed, or promoted as fun.
+
+The target order is:
+
+1. Make every action correct, recoverable, and replay-verifiable.
+2. Make goal, style, public intent, risk, resources, and outcomes readable without diagnostics.
+3. Make fixed-seed styles and rivalries visibly distinct without hidden rewards or altered physics.
+4. Add deterministic turning-point selection and recorded-first broadcast pacing.
+5. Add one-step replay-to-human challenge and rematch routes.
+6. Add learning, memory, and qualification only after public identity and division contracts stabilize.
+7. Package supported desktop artifacts only after the experience and storage surfaces stop changing rapidly.
+
+Automation may establish the first four contracts. Claims that viewers want to keep watching, rematch, or return require retained structured observations, including neutral and negative results.
+
+## Evidence required
+
+Agent usability evidence asks whether an unfamiliar agent can complete Signal School, recover from protocol errors, use the context efficiently, improve on withheld seeds, and express distinct Style Contracts.
+
+Fairness evidence proves cross-platform trace determinism, observation privacy, idempotent concurrency, bounded resources, clean timeout and disconnect handling, replay verification, agent-version separation, and zero human-progression mutation.
+
+Human spectator evidence asks whether viewers understand the selected goal and style, recognize turning points, tolerate waiting in live mode, want a rematch or same-seed challenge, and retain the story under reduced motion, maximum text, high contrast, and muted audio.
+
+Protocol completeness, test count, score, and an agent's statement that play was fun are not substitutes for human experience evidence.

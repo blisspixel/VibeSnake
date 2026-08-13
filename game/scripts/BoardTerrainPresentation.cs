@@ -41,7 +41,7 @@ internal sealed record BoardTerrainDefinition(
 internal static class BoardTerrainCatalog
 {
     private const int ElementCount = 72;
-    private static readonly IReadOnlyDictionary<BoardEnvironment, BoardTerrainDefinition>
+    private static readonly Dictionary<BoardEnvironment, BoardTerrainDefinition>
         Definitions = new Dictionary<BoardEnvironment, BoardTerrainDefinition>
         {
             [BoardEnvironment.Garden] = Definition(

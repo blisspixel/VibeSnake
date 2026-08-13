@@ -54,7 +54,7 @@ public sealed class AiPersonalityQualificationTests
             .All(sensitivity => sensitivity.MateriallyAffectedDecisions);
         var passed = compatibilityIdsRetained
             && namesMatch
-            && claims.Count == 10
+            && claims.Length == 10
             && claims.All(claim => claim.Passed)
             && league.TraitSensitivities.Count == 60
             && allTraitsMaterial
@@ -68,7 +68,7 @@ public sealed class AiPersonalityQualificationTests
             AiPersonalityController.AlgorithmId,
             PersonalityDocument.CurrentSchemaVersion,
             AiPersonalityCatalog.BuiltIn.Count,
-            claims.Count,
+            claims.Length,
             league.TraitSensitivities.Count,
             league.TraitSensitivities.Count(sensitivity =>
                 !sensitivity.MateriallyAffectedDecisions),
@@ -99,7 +99,7 @@ public sealed class AiPersonalityQualificationTests
         Assert.True(passed);
     }
 
-    private static IReadOnlyList<AiBehaviorClaimEvidence> EvaluateClaims(
+    private static AiBehaviorClaimEvidence[] EvaluateClaims(
         IReadOnlyList<AiLeagueDistribution> distributions) =>
         AiPersonalityCatalog.BehaviorClaims
             .Select(claim =>
@@ -122,7 +122,10 @@ public sealed class AiPersonalityQualificationTests
                     AiBehaviorMetric.DeadEndBasisPoints => distribution.DeadEndBasisPoints,
                     AiBehaviorMetric.RouteEfficiencyBasisPoints =>
                         distribution.RouteEfficiencyBasisPoints,
-                    _ => throw new ArgumentOutOfRangeException(),
+                    _ => throw new ArgumentOutOfRangeException(
+                        nameof(claim),
+                        claim.Metric,
+                        "Unknown AI behavior metric."),
                 };
                 return new AiBehaviorClaimEvidence(
                     claim.PersonalityId,

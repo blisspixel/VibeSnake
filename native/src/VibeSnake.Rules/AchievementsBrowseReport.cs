@@ -99,10 +99,7 @@ public sealed record AchievementsBrowseReport(
     /// </summary>
     public string FormatUnlockedPreview(int limit = DefaultPreviewLimit)
     {
-        if (limit < 0)
-        {
-            throw new ArgumentOutOfRangeException(nameof(limit));
-        }
+        ArgumentOutOfRangeException.ThrowIfNegative(limit);
 
         if (UnlockedCount == 0 || limit == 0)
         {

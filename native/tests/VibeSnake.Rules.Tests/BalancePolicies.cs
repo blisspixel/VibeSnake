@@ -103,7 +103,7 @@ internal sealed class BalancePolicyController
                     run.PowerPickup?.Position ?? run.Food)),
             BalancePolicyKind.BoundaryWalker => SelectBoundaryDirection(run, candidates),
             BalancePolicyKind.Personality => SelectPersonalityDirection(run, candidates),
-            _ => throw new ArgumentOutOfRangeException(),
+            _ => throw new InvalidOperationException("Unknown balance policy kind."),
         };
 
         return [selected];

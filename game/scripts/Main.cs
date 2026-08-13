@@ -1,5 +1,7 @@
 using Godot;
 using System.Globalization;
+using VibeSnake.AgentPlay;
+using VibeSnake.AgentViewer;
 using VibeSnake.Persistence;
 using VibeSnake.Rules;
 using RulesDirection = VibeSnake.Rules.Direction;
@@ -27,6 +29,11 @@ public partial class Main : Node2D
     private const string TourRouteMarker = "T";
     private const string WarningMarker = "!";
     private static readonly double[] ReplayPlaybackSpeeds = [0.5, 1.0, 2.0, 4.0];
+    private static readonly System.Text.Json.JsonSerializerOptions CoreOnlyOfflineSerializerOptions = new()
+    {
+        PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase,
+        WriteIndented = true,
+    };
     private static readonly string[] MainMenuCopyIds =
     [
         "menu.start",
@@ -159,6 +166,12 @@ public partial class Main : Node2D
     private int _activeSpectatorAiScore;
     private bool _spectatorKeyboardRouteQualified;
     private bool _spectatorControllerRouteQualified;
+    private AgentViewerClient? _agentViewer;
+    private AgentViewerFrameV1? _agentViewerFrame;
+    private RunSnapshot? _agentViewerSnapshot;
+    private string _agentViewerStatusId = "status.agent-viewer.connecting";
+    private bool _agentViewerSmokeEnabled;
+    private ulong? _agentViewerSmokeDeadlineMilliseconds;
     private int _loreDepthFilterIndex;
     private int _loreBrowseCursor;
     private LoreUnlockContext _loreUnlockContext = LoreUnlockContext.Empty;
@@ -239,6 +252,7 @@ public partial class Main : Node2D
         Spectator,
         Lore,
         Comparisons,
+        AgentWatch,
     }
 
     private enum MainMenuItem
@@ -333,19 +347,45 @@ public partial class Main : Node2D
         var readmeCaptureDirectory = GetArgumentValue(
             userArguments,
             "--readme-capture-dir=");
+        var agentWatchPipe = GetArgumentValue(userArguments, "--agent-watch-pipe=");
+        var agentWatchToken = GetArgumentValue(userArguments, "--agent-watch-token=");
+        var agentWatchSmoke = userArguments.Contains(
+            "--agent-watch-smoke",
+            StringComparer.Ordinal);
+        if ((agentWatchPipe is null) != (agentWatchToken is null))
+        {
+            throw new ArgumentException(
+                "Agent watch mode requires both a pipe name and access token.");
+        }
+        if (agentWatchSmoke && agentWatchPipe is null)
+        {
+            throw new ArgumentException(
+                "Agent watch smoke requires the local viewer capability.");
+        }
         var automatedModeCount = (smokeTest ? 1 : 0)
             + (launchProbe ? 1 : 0)
-            + (readmeCaptureDirectory is null ? 0 : 1);
+            + (readmeCaptureDirectory is null ? 0 : 1)
+            + (agentWatchSmoke ? 1 : 0);
         if (automatedModeCount > 1)
         {
             throw new ArgumentException(
                 "Smoke, launch-probe, and README-capture modes are mutually exclusive.");
         }
+        if (automatedModeCount > 0
+            && agentWatchPipe is not null
+            && !agentWatchSmoke)
+        {
+            throw new ArgumentException(
+                "Agent watch mode cannot be combined with an automated launch mode.");
+        }
 
         var smokeUserDataRoot = GetArgumentValue(
             userArguments,
             "--smoke-user-data-root=");
-        if ((smokeTest || launchProbe || readmeCaptureDirectory is not null)
+        if ((smokeTest
+                || launchProbe
+                || readmeCaptureDirectory is not null
+                || agentWatchSmoke)
             && smokeUserDataRoot is null)
         {
             throw new ArgumentException(
@@ -415,6 +455,16 @@ public partial class Main : Node2D
         }
 
         ApplyWindowModeFromSettings();
+        if (agentWatchPipe is not null && agentWatchToken is not null)
+        {
+            _agentViewer = new AgentViewerClient(agentWatchPipe, agentWatchToken);
+            TransitionToScreen(ScreenState.AgentWatch);
+            _agentViewerStatusId = AgentViewerStatusCopyId(_agentViewer.State);
+            _agentViewerSmokeEnabled = agentWatchSmoke;
+            _agentViewerSmokeDeadlineMilliseconds = agentWatchSmoke
+                ? Time.GetTicksMsec() + 30_000UL
+                : null;
+        }
         QueueRedraw();
     }
 
@@ -1536,7 +1586,7 @@ public partial class Main : Node2D
         _shellTheme ?? throw new InvalidOperationException("Shell theme was not initialized.");
 
     private ShellPalette ActiveShellPalette =>
-        ActiveShellTheme.Palette(_shellSettings.HighContrast);
+        ShellTheme.Palette(_shellSettings.HighContrast);
 
     private string Localize(string id, params ShellTextArgument[] arguments) =>
         ShellLocalization.Format(id, _shellLocale, arguments);
@@ -2069,7 +2119,7 @@ public partial class Main : Node2D
                 : DeathFeedback.Describe(_run.DeathCause).Cue);
     }
 
-    private IReadOnlyList<string> PersistTourCompletion(
+    private string[] PersistTourCompletion(
         BroadcastTourEvent tourEvent,
         SnakeRun run)
     {
@@ -2156,11 +2206,14 @@ public partial class Main : Node2D
     {
         _ = delta;
         var nowMilliseconds = Time.GetTicksMsec();
+        PollAgentViewer(nowMilliseconds);
+        CheckAgentViewerSmokeTimeout(nowMilliseconds);
         if (_snakeMotionPresentation.IsAnimating(nowMilliseconds)
             && _screenState is ScreenState.Running
                 or ScreenState.Ended
                 or ScreenState.Replays
-                or ScreenState.Spectator)
+                or ScreenState.Spectator
+                or ScreenState.AgentWatch)
         {
             QueueRedraw();
         }
@@ -2218,12 +2271,16 @@ public partial class Main : Node2D
             _window.SizeChanged -= OnWindowSizeChanged;
         }
 
+        _agentViewer?.Dispose();
+        _agentViewer = null;
+
         Input.JoyConnectionChanged -= OnJoyConnectionChanged;
         GameActions.ReleaseRuntimeDefaults();
     }
 
-    public override void _Input(InputEvent inputEvent)
+    public override void _Input(InputEvent @event)
     {
+        var inputEvent = @event;
         if (inputEvent is InputEventMouseMotion mouseMotion)
         {
             NotePointerActivity(Time.GetTicksMsec());
@@ -2348,6 +2405,20 @@ public partial class Main : Node2D
         if (_screenState == ScreenState.Spectator)
         {
             HandleSpectatorInput(inputEvent);
+            return;
+        }
+
+        if (_screenState == ScreenState.AgentWatch)
+        {
+            if (inputEvent.IsActionPressed(GameActions.Back))
+            {
+                ReturnToMenu();
+            }
+            else if (inputEvent.IsActionPressed(GameActions.Help))
+            {
+                ToggleCleanCaptureMode();
+            }
+
             return;
         }
 
@@ -3016,6 +3087,9 @@ public partial class Main : Node2D
             case ScreenState.Comparisons:
                 DrawOfflineComparisons();
                 break;
+            case ScreenState.AgentWatch:
+                DrawAgentWatch();
+                break;
             case ScreenState.Menu:
                 DrawMainMenu();
                 break;
@@ -3558,26 +3632,26 @@ public partial class Main : Node2D
         }
 
         var entries = FilteredLoreEntries();
-        if (entries.Count == 0)
+        if (entries.Length == 0)
         {
             return;
         }
 
         if (inputEvent.IsActionPressed(GameActions.MoveUp))
         {
-            _loreBrowseCursor = (_loreBrowseCursor + entries.Count - 1) % entries.Count;
+            _loreBrowseCursor = (_loreBrowseCursor + entries.Length - 1) % entries.Length;
             PlayCue(AudioCue.Navigate);
             QueueRedraw();
         }
         else if (inputEvent.IsActionPressed(GameActions.MoveDown))
         {
-            _loreBrowseCursor = (_loreBrowseCursor + 1) % entries.Count;
+            _loreBrowseCursor = (_loreBrowseCursor + 1) % entries.Length;
             PlayCue(AudioCue.Navigate);
             QueueRedraw();
         }
     }
 
-    private IReadOnlyList<LoreEntry> FilteredLoreEntries()
+    private LoreEntry[] FilteredLoreEntries()
     {
         var depth = _loreDepthFilterIndex == 0
             ? (LoreDepth?)null
@@ -3699,7 +3773,7 @@ public partial class Main : Node2D
     }
 
     private static string CycleDistinctPersonality(
-        IReadOnlyList<string> personalities,
+        string[] personalities,
         string current,
         string excluded,
         int offset)
@@ -3707,7 +3781,7 @@ public partial class Main : Node2D
         var index = personalities.ToList().IndexOf(current);
         do
         {
-            index = (index + offset + personalities.Count) % personalities.Count;
+            index = (index + offset + personalities.Length) % personalities.Length;
         }
         while (personalities[index] == excluded);
 
@@ -4041,6 +4115,13 @@ public partial class Main : Node2D
         _spectatorMatch = null;
         _spectatorMatchPersisted = false;
         _spectatorStatusCaption = null;
+        _agentViewer?.Dispose();
+        _agentViewer = null;
+        _agentViewerFrame = null;
+        _agentViewerSnapshot = null;
+        _agentViewerStatusId = "status.agent-viewer.connecting";
+        _agentViewerSmokeEnabled = false;
+        _agentViewerSmokeDeadlineMilliseconds = null;
         _activeSpectatorChallenge = null;
         _activeSpectatorChallengePersonalityId = null;
         _activeSpectatorAiScore = 0;
@@ -4131,6 +4212,7 @@ public partial class Main : Node2D
             ScreenState.Spectator => ShellScreen.Spectator,
             ScreenState.Lore => ShellScreen.Lore,
             ScreenState.Comparisons => ShellScreen.Comparisons,
+            ScreenState.AgentWatch => ShellScreen.AgentWatch,
             _ => throw new ArgumentOutOfRangeException(nameof(state)),
         };
 
@@ -5391,7 +5473,7 @@ public partial class Main : Node2D
             ? _keyboardBindings
             : _controllerBindings;
 
-    private IReadOnlyList<string> ListRemappableActions() =>
+    private string[] ListRemappableActions() =>
         CurrentBindingsDocument().ActionToBinding.Keys
             .Where(static action =>
                 !string.Equals(action, "restore_defaults", StringComparison.Ordinal))
@@ -5477,10 +5559,10 @@ public partial class Main : Node2D
         if (inputEvent.IsActionPressed(GameActions.MoveUp))
         {
             var actions = ListRemappableActions();
-            if (actions.Count > 0)
+            if (actions.Length > 0)
             {
                 var previousCursor = _bindingsCursor;
-                _bindingsCursor = (_bindingsCursor - 1 + actions.Count) % actions.Count;
+                _bindingsCursor = (_bindingsCursor - 1 + actions.Length) % actions.Length;
                 if (_bindingsCursor != previousCursor)
                 {
                     PlayCue(AudioCue.Navigate);
@@ -5494,10 +5576,10 @@ public partial class Main : Node2D
         if (inputEvent.IsActionPressed(GameActions.MoveDown))
         {
             var actions = ListRemappableActions();
-            if (actions.Count > 0)
+            if (actions.Length > 0)
             {
                 var previousCursor = _bindingsCursor;
-                _bindingsCursor = (_bindingsCursor + 1) % actions.Count;
+                _bindingsCursor = (_bindingsCursor + 1) % actions.Length;
                 if (_bindingsCursor != previousCursor)
                 {
                     PlayCue(AudioCue.Navigate);
@@ -5511,12 +5593,12 @@ public partial class Main : Node2D
         if (inputEvent.IsActionPressed(GameActions.Confirm))
         {
             var actions = ListRemappableActions();
-            if (actions.Count == 0)
+            if (actions.Length == 0)
             {
                 return;
             }
 
-            _bindingsCursor = Math.Clamp(_bindingsCursor, 0, actions.Count - 1);
+            _bindingsCursor = Math.Clamp(_bindingsCursor, 0, actions.Length - 1);
             _bindingsCapturePending = true;
             _bindingsStatusCaption = _bindingsDeviceTab == BindingsDeviceTab.Keyboard
                 ? Localize(
@@ -5544,13 +5626,13 @@ public partial class Main : Node2D
     private void ApplyBindingRemap(string token)
     {
         var actions = ListRemappableActions();
-        if (actions.Count == 0)
+        if (actions.Length == 0)
         {
             _bindingsCapturePending = false;
             return;
         }
 
-        _bindingsCursor = Math.Clamp(_bindingsCursor, 0, actions.Count - 1);
+        _bindingsCursor = Math.Clamp(_bindingsCursor, 0, actions.Length - 1);
         var action = actions[_bindingsCursor];
         var current = CurrentBindingsDocument();
         var result = current.TryRemapAction(action, token);
@@ -6448,7 +6530,7 @@ public partial class Main : Node2D
                 case PlayerDataCategory.OptionalContent:
                     break;
                 default:
-                    throw new ArgumentOutOfRangeException(nameof(category));
+                    throw new InvalidOperationException("Unknown player data category.");
             }
         }
     }
@@ -7199,16 +7281,13 @@ public partial class Main : Node2D
                     PlayerDataCategory.PersonalBests => "LOCAL SCORES + PERSONAL BESTS",
                     PlayerDataCategory.Replays => "REPLAYS",
                     PlayerDataCategory.OptionalContent => "OPTIONAL CONTENT",
-                    _ => throw new ArgumentOutOfRangeException(nameof(category)),
+                    _ => throw new InvalidOperationException("Unknown player data category."),
                 }));
 
     private static string BoundPlayerDataCaption(string caption, int maximumCharacters)
     {
         ArgumentNullException.ThrowIfNull(caption);
-        if (maximumCharacters <= 0)
-        {
-            throw new ArgumentOutOfRangeException(nameof(maximumCharacters));
-        }
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(maximumCharacters);
 
         var sanitized = string.Concat(caption.Select(character =>
             char.IsControl(character) ? ' ' : character));
@@ -7250,7 +7329,7 @@ public partial class Main : Node2D
             OnboardingStatus.NotStarted => "NOT STARTED",
             OnboardingStatus.Skipped => "SKIPPED",
             OnboardingStatus.Completed => "COMPLETED",
-            _ => throw new ArgumentOutOfRangeException(),
+            _ => throw new InvalidOperationException("Unknown onboarding status."),
         },
         "reset_preferences" => "CONFIRM TWICE",
         "reset_progression" => "BACKUP + RESET",
@@ -7315,7 +7394,7 @@ public partial class Main : Node2D
             ? InputPromptFamily.Keyboard
             : _controllerPromptFamily;
         var actions = ListRemappableActions();
-        for (var index = 0; index < actions.Count; index++)
+        for (var index = 0; index < actions.Length; index++)
         {
             var action = actions[index];
             var token = document.ActionToBinding[action];
@@ -8160,7 +8239,7 @@ public partial class Main : Node2D
             SecondaryTextColor());
     }
 
-    private int AchievementPageCount(int? entryCount = null) =>
+    private static int AchievementPageCount(int? entryCount = null) =>
         Math.Max(
             1,
             ((entryCount ?? ProgressionGoalCatalog.Goals.Count) + ProgressionGoalsPerPage - 1)
@@ -8321,10 +8400,7 @@ public partial class Main : Node2D
     private static string BoundRadioLine(string value, int maximumCharacters)
     {
         ArgumentNullException.ThrowIfNull(value);
-        if (maximumCharacters < 4)
-        {
-            throw new ArgumentOutOfRangeException(nameof(maximumCharacters));
-        }
+        ArgumentOutOfRangeException.ThrowIfLessThan(maximumCharacters, 4);
 
         var sanitized = new string(
             value.Select(character => char.IsControl(character) ? ' ' : character).ToArray());
@@ -8336,14 +8412,8 @@ public partial class Main : Node2D
     private string FitLabelToWidth(string value, int fontSize, float maximumWidth)
     {
         ArgumentNullException.ThrowIfNull(value);
-        if (fontSize <= 0)
-        {
-            throw new ArgumentOutOfRangeException(nameof(fontSize));
-        }
-        if (maximumWidth <= 0.0f)
-        {
-            throw new ArgumentOutOfRangeException(nameof(maximumWidth));
-        }
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(fontSize);
+        ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(maximumWidth, 0.0f);
 
         var sanitized = new string(
             value.Select(character => char.IsControl(character) ? ' ' : character).ToArray());
@@ -9409,6 +9479,230 @@ public partial class Main : Node2D
         }
     }
 
+    private void PollAgentViewer(ulong nowMilliseconds)
+    {
+        if (_screenState != ScreenState.AgentWatch || _agentViewer is null)
+        {
+            return;
+        }
+
+        _agentViewerStatusId = AgentViewerStatusCopyId(_agentViewer.State);
+        if (!_agentViewer.TryTakeLatest(out var frame) || frame is null)
+        {
+            return;
+        }
+
+        try
+        {
+            var previous = _agentViewerSnapshot;
+            var projected = AgentViewerPresentation.ProjectSnapshot(frame.Observation);
+            if (previous is not null && previous.StateHash != projected.StateHash)
+            {
+                _snakeMotionPresentation.Begin(
+                    previous.Body,
+                    projected.Body,
+                    nowMilliseconds,
+                    Math.Max(1, projected.EffectiveRulesStepMilliseconds));
+            }
+
+            _agentViewerFrame = frame;
+            _agentViewerSnapshot = projected;
+            _vibeLevelDirector.Update(projected.ComboCount);
+            QueueRedraw();
+            if (_agentViewerSmokeEnabled && !frame.Observation.IsActionAwaited)
+            {
+                _agentViewerSmokeEnabled = false;
+                _agentViewerSmokeDeadlineMilliseconds = null;
+                _ = CompleteAgentViewerSmokeAsync(projected.StateHash, frame.Sequence);
+            }
+        }
+        catch (ArgumentException)
+        {
+            _agentViewerStatusId = "status.agent-viewer.rejected";
+            _agentViewer.Dispose();
+            _agentViewer = null;
+            QueueRedraw();
+        }
+    }
+
+    private static string AgentViewerStatusCopyId(AgentViewerClientState state) => state switch
+    {
+        AgentViewerClientState.Connecting => "status.agent-viewer.connecting",
+        AgentViewerClientState.Watching => "status.agent-viewer.watching",
+        AgentViewerClientState.Completed => "status.agent-viewer.completed",
+        AgentViewerClientState.Disconnected => "status.agent-viewer.disconnected",
+        AgentViewerClientState.Rejected => "status.agent-viewer.rejected",
+        _ => throw new ArgumentOutOfRangeException(nameof(state)),
+    };
+
+    private static string AgentIntentCopyId(AgentPublicIntent intent) => intent switch
+    {
+        AgentPublicIntent.Undeclared => "agent-arena.intent.undeclared",
+        AgentPublicIntent.SeekFood => "agent-arena.intent.seek-food",
+        AgentPublicIntent.SeekPower => "agent-arena.intent.seek-power",
+        AgentPublicIntent.PreserveSpace => "agent-arena.intent.preserve-space",
+        AgentPublicIntent.TakeRisk => "agent-arena.intent.take-risk",
+        AgentPublicIntent.Recover => "agent-arena.intent.recover",
+        _ => throw new ArgumentOutOfRangeException(nameof(intent)),
+    };
+
+    private void CheckAgentViewerSmokeTimeout(ulong nowMilliseconds)
+    {
+        if (!_agentViewerSmokeEnabled
+            || _agentViewerSmokeDeadlineMilliseconds is not { } deadline
+            || nowMilliseconds < deadline)
+        {
+            return;
+        }
+
+        _agentViewerSmokeEnabled = false;
+        _agentViewerSmokeDeadlineMilliseconds = null;
+        GD.PushError("VIBESNAKE_AGENT_VIEWER_SMOKE_FAILED timeout");
+        GetTree().Quit(1);
+    }
+
+    private async Task CompleteAgentViewerSmokeAsync(string stateHash, long frameSequence)
+    {
+        try
+        {
+            await SettlePlayedAudio();
+            await ReleaseAgentViewerSmokeRadio();
+            await ReleaseSmokeAudio();
+            GD.Print(
+                "VIBESNAKE_AGENT_VIEWER_SMOKE_OK "
+                + $"hash={stateHash} frame={frameSequence}");
+            GetTree().Quit();
+        }
+        catch (Exception exception)
+        {
+            GD.PushError($"VIBESNAKE_AGENT_VIEWER_SMOKE_FAILED {exception}");
+            GetTree().Quit(1);
+        }
+    }
+
+    private async Task ReleaseAgentViewerSmokeRadio()
+    {
+        if (_radioPlayer is null)
+        {
+            return;
+        }
+
+        var radioPlayer = _radioPlayer;
+        _radioPlayer = null;
+        if (!radioPlayer.TryStopAndRelease(out var failure))
+        {
+            throw new InvalidOperationException(
+                "Agent viewer smoke radio cleanup failed: " + failure);
+        }
+
+        using (var timer = GetTree().CreateTimer(0.10))
+        {
+            await ToSignal(timer, SceneTreeTimer.SignalName.Timeout);
+        }
+
+        radioPlayer.Free();
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+    }
+
+    private void DrawAgentWatch()
+    {
+        if (_agentViewerSnapshot is null || _agentViewerFrame is null)
+        {
+            DrawLabel(
+                Localize("screen.agent-arena.title"),
+                new Vector2(42.0f, 108.0f),
+                ScaledFontSize(28),
+                ActiveShellPalette.GoldText);
+            DrawLabel(
+                Localize(_agentViewerStatusId),
+                new Vector2(42.0f, 158.0f),
+                ScaledFontSize(17),
+                ActiveShellPalette.BodyText);
+            DrawLabel(
+                Localize("agent-arena.waiting-score"),
+                new Vector2(42.0f, 196.0f),
+                ScaledFontSize(13),
+                SecondaryTextColor());
+            DrawActionPromptSegment(
+                "back",
+                Localize("action.return-menu"),
+                new Vector2(42.0f, 680.0f),
+                ScaledFontSize(14),
+                SecondaryTextColor());
+            return;
+        }
+
+        var observation = _agentViewerFrame.Observation;
+        var mode = RunModeCatalog.Get(observation.ModeId, observation.ModeVersion);
+        DrawRun(
+            _agentViewerSnapshot,
+            Localize(observation.IsActionAwaited
+                ? "agent-arena.run.live"
+                : "agent-arena.run.complete"),
+            mode);
+        if (!_capturePresentation.ShowSpectatorOverlays)
+        {
+            return;
+        }
+
+        var panel = ActiveShellPalette.CanvasBackground;
+        panel.A = 0.90f;
+        DrawRect(new Rect2(20.0f, 648.0f, 1240.0f, 70.0f), panel);
+        var style = observation.StyleContract is null
+            ? Localize("agent-arena.style.open")
+            : Localize(
+                "agent-arena.style.progress",
+                ShellTextArgument.From(
+                    "style",
+                    observation.StyleContract.DisplayName.ToUpperInvariant()),
+                ShellTextArgument.From("current", observation.StyleContract.Current),
+                ShellTextArgument.From("target", observation.StyleContract.Target));
+        var rival = observation.Rival is null
+            ? Localize("agent-arena.rival.solo")
+            : Localize(
+                "agent-arena.rival.score",
+                ShellTextArgument.From(
+                    "rival",
+                    observation.Rival.DisplayName.ToUpperInvariant()),
+                ShellTextArgument.From(
+                    "agent_score",
+                    observation.Score.ToString("D6", CultureInfo.InvariantCulture)),
+                ShellTextArgument.From(
+                    "rival_score",
+                    observation.Rival.Score.ToString("D6", CultureInfo.InvariantCulture)));
+        var publicIntent = Localize(AgentIntentCopyId(
+            observation.PreviousAction?.DeclaredIntent ?? AgentPublicIntent.Undeclared));
+        DrawLabel(
+            Localize(
+                "agent-arena.identity",
+                ShellTextArgument.From(
+                    "agent",
+                    observation.Passport.DisplayName.ToUpperInvariant()),
+                ShellTextArgument.From("style", style),
+                ShellTextArgument.From("rival", rival)),
+            new Vector2(38.0f, 670.0f),
+            ScaledFontSize(13),
+            ActiveShellPalette.GoldText);
+        DrawLabel(
+            Localize(
+                "agent-arena.status",
+                ShellTextArgument.From("status", Localize(_agentViewerStatusId)),
+                ShellTextArgument.From("intent", publicIntent),
+                ShellTextArgument.From("step", observation.Tick),
+                ShellTextArgument.From("maximum", observation.MaximumSteps),
+                ShellTextArgument.From("frame", _agentViewerFrame.Sequence)),
+            new Vector2(38.0f, 697.0f),
+            ScaledFontSize(11),
+            ActiveShellPalette.BodyText);
+        DrawActionPromptSegment(
+            "back",
+            Localize("action.return-menu"),
+            new Vector2(1050.0f, 697.0f),
+            ScaledFontSize(10),
+            SecondaryTextColor());
+    }
+
     private void DrawSpectatorSelection()
     {
         var featured = SpectatorRivalCatalog.Get(_spectatorSelection.PersonalityId);
@@ -9527,12 +9821,12 @@ public partial class Main : Node2D
     private void DrawLoreArchive()
     {
         var entries = FilteredLoreEntries();
-        if (entries.Count == 0)
+        if (entries.Length == 0)
         {
             throw new InvalidOperationException("The lore depth filter cannot be empty.");
         }
 
-        _loreBrowseCursor = Math.Clamp(_loreBrowseCursor, 0, entries.Count - 1);
+        _loreBrowseCursor = Math.Clamp(_loreBrowseCursor, 0, entries.Length - 1);
         var selected = entries[_loreBrowseCursor];
         var unlocked = LoreCatalog.IsUnlocked(selected, _loreUnlockContext);
         var unlockedCount = entries.Count(entry =>
@@ -9549,7 +9843,7 @@ public partial class Main : Node2D
             Localize(
                 "lore.summary",
                 ShellTextArgument.From("unlocked", unlockedCount),
-                ShellTextArgument.From("total", entries.Count),
+                ShellTextArgument.From("total", entries.Length),
                 ShellTextArgument.From("depth", depthLabel)),
             new Vector2(46.0f, 122.0f),
             ScaledFontSize(15),
@@ -9564,8 +9858,8 @@ public partial class Main : Node2D
         var start = Math.Clamp(
             _loreBrowseCursor - (visibleRows / 2),
             0,
-            Math.Max(0, entries.Count - visibleRows));
-        var end = Math.Min(entries.Count, start + visibleRows);
+            Math.Max(0, entries.Length - visibleRows));
+        var end = Math.Min(entries.Length, start + visibleRows);
         for (var index = start; index < end; index++)
         {
             var entry = entries[index];
@@ -10555,7 +10849,7 @@ public partial class Main : Node2D
                 PowerKind.Magnet => (1.5f, 5.0f),
                 PowerKind.SlowMo => (1.5f, -1.0f),
                 PowerKind.Boost => (1.5f, -2.5f),
-                _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, "Unsupported head effect."),
+                _ => throw new InvalidOperationException($"Unsupported head effect: {kind}."),
             };
             DrawCellOutline(presentedHead, PowerPresentation.SignalColor(kind), width, inset);
         }
@@ -10856,7 +11150,7 @@ public partial class Main : Node2D
         var accessibility = AccessibilityPresentationPolicy.FromSettings(_shellSettings);
         if (feedback.Cue is { } cue)
         {
-            if (accessibility.ShouldPlayCue(cue))
+            if (AccessibilityPresentationPolicy.ShouldPlayCue(cue))
             {
                 PlayCue(cue);
             }
@@ -11232,7 +11526,7 @@ public partial class Main : Node2D
         DispatchSmokeMainMenuSelection(MainMenuItem.Spectator, controller: false);
         DispatchSmokeKey(Key.U);
         if (_screenState != ScreenState.Lore
-            || FilteredLoreEntries().Count != LoreCatalog.All.Count)
+            || FilteredLoreEntries().Length != LoreCatalog.All.Count)
         {
             throw new InvalidOperationException(
                 "Keyboard did not open the complete optional lore archive.");
@@ -11241,7 +11535,7 @@ public partial class Main : Node2D
         DispatchSmokeKey(Key.Right);
         DispatchSmokeKey(Key.Down);
         var keyboardSurfaceRoute = _loreDepthFilterIndex == 1
-            && FilteredLoreEntries().Count == 19
+            && FilteredLoreEntries().Length == 19
             && _loreBrowseCursor == 1;
         DispatchSmokeKey(Key.Left);
         DispatchSmokeKey(Key.Escape, physical: false);
@@ -11252,7 +11546,7 @@ public partial class Main : Node2D
         DispatchSmokeMainMenuSelection(MainMenuItem.Spectator, controller: true);
         DispatchSmokeJoyButton(JoyButton.LeftShoulder);
         if (_screenState != ScreenState.Lore
-            || FilteredLoreEntries().Count != LoreCatalog.All.Count)
+            || FilteredLoreEntries().Length != LoreCatalog.All.Count)
         {
             throw new InvalidOperationException(
                 "Controller did not open the complete optional lore archive.");
@@ -11261,7 +11555,7 @@ public partial class Main : Node2D
         DispatchSmokeJoyButton(JoyButton.DpadRight);
         DispatchSmokeJoyButton(JoyButton.DpadDown);
         var controllerSurfaceRoute = _loreDepthFilterIndex == 1
-            && FilteredLoreEntries().Count == 19
+            && FilteredLoreEntries().Length == 19
             && _loreBrowseCursor == 1;
         DispatchSmokeJoyButton(JoyButton.DpadLeft);
         DispatchSmokeJoyButton(JoyButton.B);
@@ -11953,10 +12247,10 @@ public partial class Main : Node2D
             && sourceBytes.SequenceEqual(System.IO.File.ReadAllBytes(sourcePath));
         var atomicNoOverwriteImport = duplicate.Code == GhostImportCode.SlotOccupied
             && importedSlotOneBytes.SequenceEqual(System.IO.File.ReadAllBytes(slotOnePath))
-            && !System.IO.Directory.GetFiles(
+            && System.IO.Directory.GetFiles(
                 store.GhostDirectory,
                 "*.tmp-*",
-                System.IO.SearchOption.TopDirectoryOnly).Any();
+                System.IO.SearchOption.TopDirectoryOnly).Length == 0;
 
         DispatchSmokeKey(Key.Enter, physical: false);
         await DrainReplayOperationForSmokeAsync("keyboard ghost race start");
@@ -12018,10 +12312,10 @@ public partial class Main : Node2D
                 == RunCardExportCode.AlreadyExists
             && idempotentCard.Card is not null
             && System.IO.File.Exists(runCardPath)
-            && !System.IO.Directory.GetFiles(
+            && System.IO.Directory.GetFiles(
                 store.RunCardDirectory,
                 "*.tmp-*",
-                System.IO.SearchOption.TopDirectoryOnly).Any();
+                System.IO.SearchOption.TopDirectoryOnly).Length == 0;
         var runCard = idempotentCard.Card
             ?? throw new InvalidOperationException(
                 "The idempotent offline run-card export omitted its card.");
@@ -12409,11 +12703,7 @@ public partial class Main : Node2D
         var path = System.IO.Path.Combine(directory, "core_only_offline.json");
         var json = System.Text.Json.JsonSerializer.Serialize(
             evidence,
-            new System.Text.Json.JsonSerializerOptions
-            {
-                PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase,
-                WriteIndented = true,
-            });
+            CoreOnlyOfflineSerializerOptions);
         System.IO.File.WriteAllText(
             path,
             json + "\n",
@@ -12515,8 +12805,8 @@ public partial class Main : Node2D
 
         AssertMaximumTextLayout(theme.InterfaceFont);
 
-        var standard = theme.Palette(highContrast: false);
-        var highContrast = theme.Palette(highContrast: true);
+        var standard = ShellTheme.Palette(highContrast: false);
+        var highContrast = ShellTheme.Palette(highContrast: true);
         var evidence = new ShellPresentationQualificationEvidence(
             SchemaVersion: 1,
             Kind: "shell-presentation-v1",
@@ -12640,20 +12930,20 @@ public partial class Main : Node2D
         {
             var source = System.IO.File.ReadAllText(sourcePath);
             remainingDirectDrawLabelLiteralCount =
-                System.Text.RegularExpressions.Regex.Matches(
+                System.Text.RegularExpressions.Regex.Count(
                     source,
-                    "DrawLabel\\s*\\(\\s*\"").Count;
+                    "DrawLabel\\s*\\(\\s*\"");
             remainingDirectPromptLiteralCount =
-                System.Text.RegularExpressions.Regex.Matches(
+                System.Text.RegularExpressions.Regex.Count(
                     source,
-                    "DrawActionPromptSegment\\s*\\(\\s*\"[^\"]+\"\\s*,\\s*\"").Count
-                + System.Text.RegularExpressions.Regex.Matches(
+                    "DrawActionPromptSegment\\s*\\(\\s*\"[^\"]+\"\\s*,\\s*\"")
+                + System.Text.RegularExpressions.Regex.Count(
                     source,
-                    "DrawStaticPromptSegment\\s*\\(\\s*\"[^\"]+\"\\s*,\\s*\"[^\"]+\"\\s*,\\s*\"").Count;
+                    "DrawStaticPromptSegment\\s*\\(\\s*\"[^\"]+\"\\s*,\\s*\"[^\"]+\"\\s*,\\s*\"");
             remainingDirectStatusLiteralCount =
-                System.Text.RegularExpressions.Regex.Matches(
+                System.Text.RegularExpressions.Regex.Count(
                     source,
-                    "_\\w*(?:StatusCaption|Caption)\\s*=\\s*\\$?\"").Count;
+                    "_\\w*(?:StatusCaption|Caption)\\s*=\\s*\\$?\"");
             remainingComposedStatusLiteralCount =
                 System.Text.RegularExpressions.Regex.Matches(
                     source,
@@ -12711,8 +13001,8 @@ public partial class Main : Node2D
 
         const int migratedRequiredFlowCount = 13;
         const double requiredExpansionRatio = 1.30;
-        var passed = ShellLocalization.All.Count == 518
-            && ShellLocalization.All.Count(entry => entry.Parameters.Count > 0) == 73
+        var passed = ShellLocalization.All.Count == 540
+            && ShellLocalization.All.Count(entry => entry.Parameters.Count > 0) == 77
             && migratedRequiredFlowCount == 13
             && minimumExpansionRatio >= requiredExpansionRatio
             && missingGlyphs.Count == 0
@@ -12985,7 +13275,7 @@ public partial class Main : Node2D
         var rulesHashBefore = rulesProbe.ComputeStateHash();
         foreach (var cue in cues)
         {
-            _cuePlayer.ValidateCue(cue);
+            ProceduralCuePlayer.ValidateCue(cue);
         }
 
         var rapidRetriggerAttempts = 0;
@@ -15442,6 +15732,7 @@ public partial class Main : Node2D
             (ShellScreen.Menu, ShellScreen.Tour),
             (ShellScreen.Menu, ShellScreen.Cosmetics),
             (ShellScreen.Menu, ShellScreen.Spectator),
+            (ShellScreen.Menu, ShellScreen.AgentWatch),
             (ShellScreen.Running, ShellScreen.Paused),
             (ShellScreen.Running, ShellScreen.Ended),
             (ShellScreen.Running, ShellScreen.Menu),
@@ -15497,6 +15788,7 @@ public partial class Main : Node2D
             (ShellScreen.Comparisons, ShellScreen.Replays),
             (ShellScreen.Comparisons, ShellScreen.Comparisons),
             (ShellScreen.Comparisons, ShellScreen.Running),
+            (ShellScreen.AgentWatch, ShellScreen.Menu),
         ];
 
         foreach (var from in Enum.GetValues<ShellScreen>())
@@ -15700,7 +15992,7 @@ public partial class Main : Node2D
 
         var letterboxViewport = new VirtualViewport(1024.0f, 768.0f);
         var letterboxPoint = letterboxViewport.WindowToLogical(new Vector2(512.0f, 10.0f));
-        var letterboxInputRejected = !letterboxViewport.ContainsLogicalPoint(letterboxPoint);
+        var letterboxInputRejected = !VirtualViewport.ContainsLogicalPoint(letterboxPoint);
         var keyboardBindingsUnchanged = string.Equals(
             keyboardBefore,
             _keyboardBindings.SerializeCanonical(),
@@ -15990,7 +16282,7 @@ public partial class Main : Node2D
     }
 
     private async Task<IReadOnlyList<PerformanceProfileMeasurement>>
-        MeasurePerformanceProfilesAsync(IReadOnlySet<string>? requestedProfileIds = null)
+        MeasurePerformanceProfilesAsync(HashSet<string>? requestedProfileIds = null)
     {
         var profiles = requestedProfileIds is null
             ? PerformanceQualification.Profiles

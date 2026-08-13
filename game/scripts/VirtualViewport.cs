@@ -92,7 +92,7 @@ internal sealed class VirtualViewport
             OffsetX + (logicalPoint.X * Scale),
             OffsetY + (logicalPoint.Y * Scale));
 
-    public bool ContainsLogicalPoint(Vector2 logicalPoint) =>
+    public static bool ContainsLogicalPoint(Vector2 logicalPoint) =>
         logicalPoint.X >= 0.0f
         && logicalPoint.Y >= 0.0f
         && logicalPoint.X < LogicalWidth

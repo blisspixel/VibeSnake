@@ -69,7 +69,7 @@ Progression outside the run should invite another attempt without making a fresh
 
 ### Dynamic difficulty
 
-No dynamic difficulty policy is active in the current runtime. The previous Python scaffolding calculated an unvalidated aggregate but never applied its cadence or spawn-weight outputs, so it was removed instead of being represented as a working feature. Any future policy must run inside the deterministic rules engine, be versioned and disclosed, support opt-out where applicable, and use a separate score category. Fixed-seed sweeps must prove bounds and stability before structured observation evaluates whether the policy is legible or worthwhile.
+Vibe mode uses the deterministic, versioned, and disclosed `vibe-bounded-hunger-v1` policy described below. Classic disables adaptation, and a player can opt out in Vibe through a separate unranked score category. The removed Python scaffolding remains historical only: it calculated an unvalidated aggregate but never applied its cadence or spawn-weight outputs. Any future policy change must remain inside the deterministic rules engine, be independently versioned and disclosed, preserve an opt-out where applicable, and use an appropriate separate score category. Fixed-seed sweeps must prove bounds and stability before structured observation evaluates whether the policy is legible or worthwhile.
 
 ### Progression
 
@@ -77,7 +77,7 @@ Cosmetic unlocks and achievements provide self-chosen mastery, discovery, and id
 
 ### Spectator AI
 
-AI channels provide entertainment, simulation, strategy learning, and offline rivalry. AI personalities alter target preference, safety tolerance, patience, and randomness. The final mode needs seed choice, speed and explanation controls, truthful behavior, rival records, and immediate human challenges. It is not currently a fair benchmark suite because seeded tournaments and replay capture do not yet exist.
+AI channels provide entertainment, simulation, strategy learning, and offline rivalry. AI personalities alter target preference, safety tolerance, patience, and randomness. The native automated foundation includes a same-seed league, deterministic replay capture, seed choice, speed and explanation controls, measured behavior claims, local rival records, and immediate equal-rules human challenges. These contracts support regression and comparison, not a claim that the channels are entertaining or a general-purpose external-agent benchmark. Human pacing, comprehension, editorial, and entertainment review remain open.
 
 ## Content principles
 

@@ -25,17 +25,14 @@ internal readonly record struct AccessibilityPresentationPolicy(
 
     public int CaptionVisibilityTicks(int standardTicks)
     {
-        if (standardTicks <= 0)
-        {
-            throw new ArgumentOutOfRangeException(nameof(standardTicks));
-        }
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(standardTicks);
 
         // Reduced motion changes motion, never the reading window. Flash-free
         // adds time because no brief visual emphasis may carry information.
         return FlashFree ? standardTicks + 10 : standardTicks;
     }
 
-    public bool ShouldPlayCue(AudioCue cue)
+    public static bool ShouldPlayCue(AudioCue cue)
     {
         _ = cue;
         // Photosensitivity settings do not silently alter the audio mix.
@@ -99,7 +96,7 @@ internal static class AccessibilityPresentationQualification
             settings.ReducedMotion = definition.ReducedMotion;
             settings.FlashFree = definition.FlashFree;
             var policy = AccessibilityPresentationPolicy.FromSettings(settings);
-            var cueCountRetained = cues.Count(policy.ShouldPlayCue);
+            var cueCountRetained = cues.Count(AccessibilityPresentationPolicy.ShouldPlayCue);
             profiles.Add(new AccessibilityProfileEvidence(
                 Id: definition.Id,
                 ReducedMotion: policy.ReducedMotion,

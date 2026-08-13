@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Description>Transport-neutral, deterministic external-agent matches for Vibe Snake.</Description>
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\VibeSnake.Rules\VibeSnake.Rules.csproj" />
+  </ItemGroup>
+
+</Project>

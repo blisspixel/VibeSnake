@@ -47,7 +47,7 @@ public sealed record ScoreBrowseReport(IReadOnlyList<ScoreBrowseCategory> Catego
         {
             historyByCategory.TryGetValue(categoryKey, out var scores);
             bestByCategory.TryGetValue(categoryKey, out var personalBest);
-            var representative = scores?.FirstOrDefault()?.ToPersonalBestEntry() ?? personalBest!;
+            var representative = scores?[0].ToPersonalBestEntry() ?? personalBest!;
             var context = ScoreRunContextCatalog.Get(
                 representative.RunKindId,
                 representative.SeedCategoryId);

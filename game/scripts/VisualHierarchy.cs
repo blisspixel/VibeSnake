@@ -331,12 +331,12 @@ internal static class VisualHierarchyQualification
             PendingHumanChecks: pendingHumanChecks);
     }
 
-    private static IReadOnlyList<VisualReviewScenario> CreateScenarios(
+    private static List<VisualReviewScenario> CreateScenarios(
         ShellTheme theme,
         string framesDirectory,
         bool contrastQualified)
     {
-        var palette = theme.Palette(highContrast: false);
+        var palette = ShellTheme.Palette(highContrast: false);
         var definitions = new[]
         {
             new ScenarioDefinition("quiet", "running-safe", "default", 0, 0, 0.0f, 0, 0, 0, 3, false, false, false),
@@ -390,7 +390,7 @@ internal static class VisualHierarchyQualification
             PowerPresentation.SignalColor(PowerKind.SegmentDetach),
         };
         foregrounds.AddRange(Enum.GetValues<PowerKind>().Select(PowerPresentation.SignalColor));
-        return new[] { theme.Palette(false), theme.Palette(true) }
+        return new[] { ShellTheme.Palette(false), ShellTheme.Palette(true) }
             .SelectMany(palette => foregrounds.Select(color =>
                 ShellTheme.ContrastRatio(color, palette.BoardBackground)))
             .Min();

@@ -785,7 +785,7 @@ public sealed class OptionalPackStore
             {
                 if (string.IsNullOrWhiteSpace(entry.Name)
                     || entry.FullName.Contains('\\')
-                    || entry.FullName.StartsWith("/", StringComparison.Ordinal)
+                    || entry.FullName.StartsWith('/')
                     || entry.FullName.Split('/').Any(part => part is "" or "." or "..")
                     || !entries.TryAdd(entry.FullName, entry)
                     || !caseFolded.Add(entry.FullName))
@@ -979,7 +979,7 @@ public sealed class OptionalPackStore
         }
     }
 
-    private Dictionary<string, string> EnumerateSafeFiles(string packDirectory)
+    private static Dictionary<string, string> EnumerateSafeFiles(string packDirectory)
     {
         var files = new Dictionary<string, string>(StringComparer.Ordinal);
         var directories = new Stack<string>();

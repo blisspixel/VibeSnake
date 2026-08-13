@@ -80,7 +80,7 @@ public sealed class RulesThroughputEvidenceTests
             path,
             JsonSerializer.Serialize(
                 evidence,
-                new JsonSerializerOptions { WriteIndented = true }) + "\n");
+                TestJsonSerializerOptions.Indented) + "\n");
 
         Assert.True(
             stepsPerSecond >= MinimumStepsPerSecond,

@@ -49,8 +49,8 @@ public sealed class AiLeagueTests
         var comparedSteps = executions.Sum(execution => execution.ComparedSteps);
         var passed = corpora.All(corpus => corpus.Reviewed)
             && runs.Length == expectedRunCount
-            && distributions.Count == AiPersonalityCatalog.BuiltIn.Count
-            && sensitivities.Count == AiPersonalityCatalog.BuiltIn.Count
+            && distributions.Length == AiPersonalityCatalog.BuiltIn.Count
+            && sensitivities.Length == AiPersonalityCatalog.BuiltIn.Count
                 * Enum.GetValues<AiPersonalityTrait>().Length
             && inertTraits.Length == 0
             && executions.All(execution => execution.Deterministic)
@@ -234,7 +234,7 @@ public sealed class AiLeagueTests
         return new AiLeagueExecution(run, comparedSteps, deterministic, counterfactuals);
     }
 
-    private static IReadOnlyList<AiLeagueDistribution> BuildDistributions(
+    private static AiLeagueDistribution[] BuildDistributions(
         IReadOnlyList<AiLeagueRun> runs) =>
         runs
             .GroupBy(run => (run.PersonalityId, run.RulesVersion))
@@ -265,7 +265,7 @@ public sealed class AiLeagueTests
             })
             .ToArray();
 
-    private static IReadOnlyList<AiTraitSensitivity> BuildSensitivities(
+    private static AiTraitSensitivity[] BuildSensitivities(
         IReadOnlyList<AiLeagueExecution> executions) =>
         executions
             .SelectMany(execution => execution.Counterfactuals.Select(pair => new

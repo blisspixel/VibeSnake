@@ -89,10 +89,22 @@ public sealed class OnboardingSession
 
     public bool IsComplete => Lesson == OnboardingLesson.Complete;
 
+    [System.Diagnostics.CodeAnalysis.SuppressMessage(
+        "Performance",
+        "CA1822:Mark members as static",
+        Justification = "The established instance property is retained for public API compatibility.")]
     public bool CompetitiveScoreEligible => false;
 
+    [System.Diagnostics.CodeAnalysis.SuppressMessage(
+        "Performance",
+        "CA1822:Mark members as static",
+        Justification = "The established instance property is retained for public API compatibility.")]
     public bool PersistsAchievements => false;
 
+    [System.Diagnostics.CodeAnalysis.SuppressMessage(
+        "Performance",
+        "CA1822:Mark members as static",
+        Justification = "The established instance property is retained for public API compatibility.")]
     public bool RecordsReplay => false;
 
     public OnboardingAdvance SubmitDirection(Direction direction)

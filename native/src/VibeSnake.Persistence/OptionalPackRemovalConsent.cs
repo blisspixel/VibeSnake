@@ -54,12 +54,28 @@ public sealed record OptionalPackRemovalConsent
 
     public string DisplayName { get; }
 
+    [System.Diagnostics.CodeAnalysis.SuppressMessage(
+        "Performance",
+        "CA1822:Mark members as static",
+        Justification = "The established instance property is retained for public API compatibility.")]
     public bool RequiresExplicitConfirmation => true;
 
+    [System.Diagnostics.CodeAnalysis.SuppressMessage(
+        "Performance",
+        "CA1822:Mark members as static",
+        Justification = "The established instance property is retained for public API compatibility.")]
     public bool RemovesSaveData => false;
 
+    [System.Diagnostics.CodeAnalysis.SuppressMessage(
+        "Performance",
+        "CA1822:Mark members as static",
+        Justification = "The established instance property is retained for public API compatibility.")]
     public bool RemovesProfiles => false;
 
+    [System.Diagnostics.CodeAnalysis.SuppressMessage(
+        "Performance",
+        "CA1822:Mark members as static",
+        Justification = "The established instance property is retained for public API compatibility.")]
     public bool RemovesReplays => false;
 
     public static OptionalPackRemovalRequest Request(
@@ -159,6 +175,10 @@ public sealed record OptionalPackRemovalConsent
             installedPacks.Where(pack => pack.Id != PackId).ToArray());
     }
 
+    [System.Diagnostics.CodeAnalysis.SuppressMessage(
+        "Performance",
+        "CA1822:Mark members as static",
+        Justification = "The established instance member is retained for public API compatibility.")]
     public OptionalPackRemovalResult Cancel(
         IReadOnlyList<InstalledOptionalPack> installedPacks)
     {

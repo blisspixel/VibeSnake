@@ -54,10 +54,7 @@ public sealed record ReplayStep
 
     public ReplayStep(int stepIndex, IEnumerable<Direction> commands)
     {
-        if (stepIndex <= 0)
-        {
-            throw new ArgumentOutOfRangeException(nameof(stepIndex));
-        }
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(stepIndex);
 
         ArgumentNullException.ThrowIfNull(commands);
         var commandCopy = new List<Direction>();
@@ -91,10 +88,7 @@ public sealed record ReplayCheckpoint
 {
     public ReplayCheckpoint(int stepIndex, string stateHash)
     {
-        if (stepIndex < 0)
-        {
-            throw new ArgumentOutOfRangeException(nameof(stepIndex));
-        }
+        ArgumentOutOfRangeException.ThrowIfNegative(stepIndex);
 
         if (!RunReplay.IsStateHash(stateHash))
         {
@@ -122,15 +116,8 @@ public sealed record ReplayOutcome
         int score,
         string stateHash)
     {
-        if (stepCount < 0)
-        {
-            throw new ArgumentOutOfRangeException(nameof(stepCount));
-        }
-
-        if (finalTick < 0)
-        {
-            throw new ArgumentOutOfRangeException(nameof(finalTick));
-        }
+        ArgumentOutOfRangeException.ThrowIfNegative(stepCount);
+        ArgumentOutOfRangeException.ThrowIfNegative(finalTick);
 
         if (!Enum.IsDefined(status))
         {
@@ -142,10 +129,7 @@ public sealed record ReplayOutcome
             throw new ArgumentOutOfRangeException(nameof(deathCause));
         }
 
-        if (score < 0)
-        {
-            throw new ArgumentOutOfRangeException(nameof(score));
-        }
+        ArgumentOutOfRangeException.ThrowIfNegative(score);
 
         if (!RunReplay.IsStateHash(stateHash))
         {

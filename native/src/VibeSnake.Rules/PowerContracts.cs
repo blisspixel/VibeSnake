@@ -25,10 +25,7 @@ public sealed record PowerPickup
             throw new ArgumentOutOfRangeException(nameof(kind));
         }
 
-        if (visibilityTicksRemaining <= 0)
-        {
-            throw new ArgumentOutOfRangeException(nameof(visibilityTicksRemaining));
-        }
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(visibilityTicksRemaining);
 
         Kind = kind;
         Position = position;

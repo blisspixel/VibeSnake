@@ -43,15 +43,8 @@ public static class AdaptiveDifficultyPolicy
         int hungerTicksRemaining)
     {
         ArgumentNullException.ThrowIfNull(config);
-        if (tick < 0)
-        {
-            throw new ArgumentOutOfRangeException(nameof(tick));
-        }
-
-        if (comboCount < 0)
-        {
-            throw new ArgumentOutOfRangeException(nameof(comboCount));
-        }
+        ArgumentOutOfRangeException.ThrowIfNegative(tick);
+        ArgumentOutOfRangeException.ThrowIfNegative(comboCount);
 
         if (hungerTicksRemaining < 0 || hungerTicksRemaining > config.StarvationTicks)
         {

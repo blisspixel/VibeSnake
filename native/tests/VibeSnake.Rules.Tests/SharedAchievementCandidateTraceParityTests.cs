@@ -17,10 +17,7 @@ public sealed class SharedAchievementCandidateTraceParityTests
             "achievement_candidates_rules_v1.json");
         var fixture = JsonSerializer.Deserialize<AchievementFixture>(
             File.ReadAllText(fixturePath),
-            new JsonSerializerOptions
-            {
-                PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
-            });
+            TestJsonSerializerOptions.SnakeCase);
 
         Assert.NotNull(fixture);
         Assert.Equal(1, fixture.SchemaVersion);

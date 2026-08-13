@@ -551,7 +551,7 @@ public sealed class OfflineChallengeStore
         }
     }
 
-    private GhostSlotEntry ProjectSlot(int slot, ReplayLoadResult loaded)
+    private static GhostSlotEntry ProjectSlot(int slot, ReplayLoadResult loaded)
     {
         if (loaded.IsSuccess && loaded.Replay is { } replay)
         {

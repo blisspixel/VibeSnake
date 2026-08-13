@@ -6,15 +6,8 @@ public readonly record struct GridPoint(int X, int Y)
 
     public GridPoint Wrap(int width, int height)
     {
-        if (width <= 0)
-        {
-            throw new ArgumentOutOfRangeException(nameof(width));
-        }
-
-        if (height <= 0)
-        {
-            throw new ArgumentOutOfRangeException(nameof(height));
-        }
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(width);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(height);
 
         return new GridPoint(PositiveModulo(X, width), PositiveModulo(Y, height));
     }

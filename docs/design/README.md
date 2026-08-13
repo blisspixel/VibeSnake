@@ -11,3 +11,4 @@ Canonical rules and experience intent:
 - [Progression](PROGRESSION.md): achievements, cosmetics, persistence, and recovery.
 - [Input and lifecycle](INPUT.md): player actions, controller expectations, focus behavior, and remapping.
 - [AI players](AI_PLAYERS.md): spectator personalities, schemas, and behavior boundaries.
+- [Agent Arena](AGENT_ARENA.md): external-agent play, Signal School, Style Contracts, observations, fairness, and spectator goals.

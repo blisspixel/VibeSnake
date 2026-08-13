@@ -156,11 +156,7 @@ public sealed class CreatorContentQualificationTests
             evidencePath,
             JsonSerializer.Serialize(
                 evidence,
-                new JsonSerializerOptions
-                {
-                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-                    WriteIndented = true,
-                }) + "\n",
+                TestJsonSerializerOptions.CamelCaseIndented) + "\n",
             new UTF8Encoding(false));
 
         Assert.True(File.Exists(evidencePath));

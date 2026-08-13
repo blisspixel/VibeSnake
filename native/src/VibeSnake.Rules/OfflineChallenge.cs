@@ -352,10 +352,10 @@ public sealed record SeedChallengeDescriptor(
         }
     }
 
-    private static bool HasExactProperties(JsonElement element, IReadOnlyList<string> names)
+    private static bool HasExactProperties(JsonElement element, string[] names)
     {
         var actual = element.EnumerateObject().Select(property => property.Name).ToArray();
-        return actual.Length == names.Count
+        return actual.Length == names.Length
             && actual.SequenceEqual(names, StringComparer.Ordinal);
     }
 

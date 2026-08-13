@@ -238,10 +238,7 @@ internal static class PerformanceQualification
     {
         ArgumentNullException.ThrowIfNull(evidence);
         ArgumentNullException.ThrowIfNull(measurements);
-        if (completedAttemptCount < 1)
-        {
-            throw new ArgumentOutOfRangeException(nameof(completedAttemptCount));
-        }
+        ArgumentOutOfRangeException.ThrowIfLessThan(completedAttemptCount, 1);
 
         return completedAttemptCount < MaximumSharedHostMeasurementAttempts
             && !evidence.Passed

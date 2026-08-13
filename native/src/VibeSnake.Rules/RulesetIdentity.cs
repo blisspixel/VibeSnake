@@ -10,10 +10,7 @@ public sealed record RulesetIdentity
     public RulesetIdentity(string id, int version)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(id);
-        if (version <= 0)
-        {
-            throw new ArgumentOutOfRangeException(nameof(version));
-        }
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(version);
 
         Id = id;
         Version = version;

@@ -478,7 +478,7 @@ internal static class FaultCampaignQualification
                     File.WriteAllText(path, contents, encoding);
                     break;
                 default:
-                    throw new ArgumentOutOfRangeException(nameof(fault));
+                    throw new InvalidOperationException("Unknown injected preference write fault.");
             }
         }
 

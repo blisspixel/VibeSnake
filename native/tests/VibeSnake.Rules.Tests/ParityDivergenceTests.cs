@@ -4,6 +4,10 @@ namespace VibeSnake.Rules.Tests;
 
 public sealed class ParityDivergenceTests
 {
+    private static readonly string[] CommandPrefix = ["UP", "LEFT"];
+    private static readonly int[] DifferentHead = [2, 3];
+    private static readonly int[] InitialHead = [1, 1];
+
     [Fact]
     public void Equivalent_normalized_documents_ignore_runtime_object_types()
     {
@@ -11,7 +15,7 @@ public sealed class ParityDivergenceTests
         var actual = new { Tick = 1, Head = new[] { 2, 3 } };
 
         Assert.True(ParityDivergence.AreEquivalent(expected, actual));
-        Assert.False(ParityDivergence.AreEquivalent(expected, new { Tick = 2, Head = new[] { 2, 3 } }));
+        Assert.False(ParityDivergence.AreEquivalent(expected, new { Tick = 2, Head = DifferentHead }));
     }
 
     [Fact]
@@ -30,8 +34,8 @@ public sealed class ParityDivergenceTests
                 CaseId: "case/unsafe",
                 Seed: 42,
                 FirstDivergentStep: 3,
-                InitialState: new { Head = new[] { 1, 1 } },
-                CommandPrefix: new[] { "UP", "LEFT" },
+                InitialState: new { Head = InitialHead },
+                CommandPrefix: CommandPrefix,
                 ExpectedState: new { Tick = 3 },
                 ExpectedEvents: Array.Empty<object>(),
                 ActualState: new { Tick = 4 },

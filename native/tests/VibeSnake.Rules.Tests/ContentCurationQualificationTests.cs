@@ -35,7 +35,7 @@ public sealed class ContentCurationQualificationTests
         }
         var plan = JsonSerializer.Deserialize<ContentCurationPlanSource>(
             planJson,
-            new JsonSerializerOptions { PropertyNameCaseInsensitive = true })!;
+            TestJsonSerializerOptions.CaseInsensitive)!;
 
         Assert.Equal(1, plan.SchemaVersion);
         Assert.Equal("vibesnake-content-curation-v1", plan.PlanId);
@@ -155,11 +155,7 @@ public sealed class ContentCurationQualificationTests
             evidencePath,
             JsonSerializer.Serialize(
                 evidence,
-                new JsonSerializerOptions
-                {
-                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-                    WriteIndented = true,
-                }) + "\n",
+                TestJsonSerializerOptions.CamelCaseIndented) + "\n",
             new UTF8Encoding(false));
 
         Assert.True(File.Exists(evidencePath));

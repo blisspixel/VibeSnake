@@ -163,16 +163,16 @@ try {
         }
     }
     foreach ($requiredLocalizationFragment in @(
-        "ShellLocalization.All.Count == 518",
-        "entry.Parameters.Count > 0) == 73"
+        "ShellLocalization.All.Count == 540",
+        "entry.Parameters.Count > 0) == 77"
     )) {
         if (-not $gameMainScript.Contains($requiredLocalizationFragment, [StringComparison]::Ordinal)) {
             throw "Godot localization evidence is missing catalog count: $requiredLocalizationFragment"
         }
     }
     foreach ($requiredLocalizationFragment in @(
-        '($localizationEvidence.stringCount -ne 518)',
-        '($localizationEvidence.parameterizedStringCount -ne 73)'
+        '($localizationEvidence.stringCount -ne 540)',
+        '($localizationEvidence.parameterizedStringCount -ne 77)'
     )) {
         if (-not $nativeTestScript.Contains($requiredLocalizationFragment, [StringComparison]::Ordinal)) {
             throw "Native localization gate is missing catalog count: $requiredLocalizationFragment"
@@ -250,6 +250,9 @@ try {
     $radioPackJobStart = $ciWorkflow.IndexOf(
         "  package-approved-radio-content:",
         [StringComparison]::Ordinal)
+    $alphaAssembleJobStart = $ciWorkflow.IndexOf(
+        "  assemble-native-alpha:",
+        [StringComparison]::Ordinal)
     $alphaPublishJobStart = $ciWorkflow.IndexOf(
         "  publish-native-alpha:",
         [StringComparison]::Ordinal)
@@ -258,7 +261,8 @@ try {
         $releaseMatrixJobStart -le $godotJobStart -or
         $attestationJobStart -le $releaseMatrixJobStart -or
         $radioPackJobStart -le $attestationJobStart -or
-        $alphaPublishJobStart -le $radioPackJobStart
+        $alphaAssembleJobStart -le $radioPackJobStart -or
+        $alphaPublishJobStart -le $alphaAssembleJobStart
     ) {
         throw "CI must keep artifact smoke, aggregate matrix, and provenance in ordered separate jobs."
     }
@@ -313,7 +317,7 @@ try {
     }
     $radioPackJob = $ciWorkflow.Substring(
         $radioPackJobStart,
-        $alphaPublishJobStart - $radioPackJobStart)
+        $alphaAssembleJobStart - $radioPackJobStart)
     foreach ($requiredRadioPackFragment in @(
         "startsWith(github.ref, 'refs/tags/v') && contains(github.ref_name, '-alpha.')",
         "needs: quality",
@@ -325,17 +329,34 @@ try {
             throw "Approved alpha radio-pack job is missing: $requiredRadioPackFragment"
         }
     }
-    $alphaPublishJob = $ciWorkflow.Substring($alphaPublishJobStart)
-    foreach ($requiredAlphaPublishFragment in @(
+    $alphaAssembleJob = $ciWorkflow.Substring(
+        $alphaAssembleJobStart,
+        $alphaPublishJobStart - $alphaAssembleJobStart)
+    foreach ($requiredAlphaAssembleFragment in @(
         "startsWith(github.ref, 'refs/tags/v') && contains(github.ref_name, '-alpha.')",
         "needs: [release-matrix, attest-qualified-manifests, package-approved-radio-content]",
-        "contents: write",
+        "contents: read",
         "python scripts/content_inventory.py --check --release-ready",
         "python scripts/assemble_unsigned_preview.py preview-channel",
         "name: vibesnake-approved-radio-pack",
         "--radio-pack-root preview-radio",
         '--tag "${{ github.ref_name }}"',
         '--expected-revision "${{ github.sha }}"',
+        "name: vibesnake-native-alpha"
+    )) {
+        if (-not $alphaAssembleJob.Contains($requiredAlphaAssembleFragment, [StringComparison]::Ordinal)) {
+            throw "Native alpha assembly job is missing: $requiredAlphaAssembleFragment"
+        }
+    }
+    if ($alphaAssembleJob.Contains("contents: write", [StringComparison]::Ordinal)) {
+        throw "Native alpha assembly must not receive release write permission."
+    }
+    $alphaPublishJob = $ciWorkflow.Substring($alphaPublishJobStart)
+    foreach ($requiredAlphaPublishFragment in @(
+        "startsWith(github.ref, 'refs/tags/v') && contains(github.ref_name, '-alpha.')",
+        "needs: assemble-native-alpha",
+        "contents: write",
+        "name: vibesnake-native-alpha",
         "gh release create",
         "--verify-tag",
         "--prerelease",

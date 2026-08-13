@@ -94,7 +94,7 @@ public sealed class PlayerDataRecoveryService
     private const string PayloadDirectoryName = "payload";
     private const string LockFileName = ".player-data-recovery.lock";
 
-    private static readonly IReadOnlyDictionary<PlayerDataCategory, string[]> CategoryTargets =
+    private static readonly Dictionary<PlayerDataCategory, string[]> CategoryTargets =
         new Dictionary<PlayerDataCategory, string[]>
         {
             [PlayerDataCategory.Preferences] =
@@ -163,6 +163,10 @@ public sealed class PlayerDataRecoveryService
             System.Globalization.CultureInfo.InvariantCulture,
             $"reset-{timestamp.UtcDateTime:yyyyMMddTHHmmssfffZ}-{nonce:N}");
 
+    [System.Diagnostics.CodeAnalysis.SuppressMessage(
+        "Performance",
+        "CA1822:Mark members as static",
+        Justification = "The established instance member is retained for public API compatibility.")]
     public PlayerDataResetPlan CreateResetPlan(
         IEnumerable<PlayerDataCategory> categories,
         string backupId)
@@ -416,7 +420,7 @@ public sealed class PlayerDataRecoveryService
         }
     }
 
-    private List<BackupFile> CaptureSnapshot(
+    private static List<BackupFile> CaptureSnapshot(
         IReadOnlyList<PlayerDataCategory> categories,
         string sourceRoot)
     {
@@ -573,7 +577,7 @@ public sealed class PlayerDataRecoveryService
         }
     }
 
-    private PlayerDataBackupInspection ValidateBackupDirectory(string path, string expectedId)
+    private static PlayerDataBackupInspection ValidateBackupDirectory(string path, string expectedId)
     {
         AssertDirectoryTreeSafe(path);
         var rootFiles = Directory.EnumerateFiles(path)

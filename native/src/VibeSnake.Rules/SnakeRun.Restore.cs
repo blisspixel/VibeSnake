@@ -346,7 +346,7 @@ public sealed partial class SnakeRun
         return parsed;
     }
 
-    private static IReadOnlyList<GridPoint> ReadPoints(
+    private static List<GridPoint> ReadPoints(
         JsonElement element,
         RunConfig config)
     {
@@ -379,7 +379,7 @@ public sealed partial class SnakeRun
             ReadInt32(point, "y"));
     }
 
-    private static IReadOnlyList<Direction> ReadDirections(
+    private static List<Direction> ReadDirections(
         JsonElement element,
         int maximumCount)
     {

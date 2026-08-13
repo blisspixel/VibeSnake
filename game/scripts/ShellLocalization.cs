@@ -206,6 +206,44 @@ internal static class ShellLocalization
         Entry("action.export-run-card", "export run card"),
         Entry("action.delete-ghost", "delete selected ghost"),
         Entry("menu.action.spectator", "AI channels and same-seed rivalries"),
+        Entry("screen.agent-arena.title", "AGENT ARENA"),
+        Entry(
+            "agent-arena.waiting-score",
+            "THE MATCH OWNS THE CLOCK. WAITING NEVER CHANGES SCORE."),
+        Entry("agent-arena.run.live", "AGENT LIVE"),
+        Entry("agent-arena.run.complete", "AGENT COMPLETE"),
+        Entry("agent-arena.style.open", "OPEN EXHIBITION"),
+        Entry("agent-arena.rival.solo", "SOLO"),
+        Entry(
+            "agent-arena.style.progress",
+            "{style} {current}/{target}"),
+        Entry(
+            "agent-arena.rival.score",
+            "VS {rival} {agent_score}-{rival_score}"),
+        Entry(
+            "agent-arena.identity",
+            "{agent}  {style}  {rival}"),
+        Entry(
+            "agent-arena.status",
+            "{status}  {intent}  STEP {step}/{maximum}  FRAME {frame}"),
+        Entry("agent-arena.intent.undeclared", "PLAN UNDECLARED"),
+        Entry("agent-arena.intent.seek-food", "PLAN SEEK FOOD"),
+        Entry("agent-arena.intent.seek-power", "PLAN SEEK POWER"),
+        Entry("agent-arena.intent.preserve-space", "PLAN PRESERVE SPACE"),
+        Entry("agent-arena.intent.take-risk", "PLAN TAKE RISK"),
+        Entry("agent-arena.intent.recover", "PLAN RECOVER"),
+        Entry("status.agent-viewer.connecting", "CONNECTING TO AGENT MATCH"),
+        Entry("status.agent-viewer.watching", "WATCHING AGENT LIVE"),
+        Entry(
+            "status.agent-viewer.completed",
+            "AGENT MATCH COMPLETE; VERIFIED REPLAY READY"),
+        Entry(
+            "status.agent-viewer.disconnected",
+            "AGENT VIEWER DISCONNECTED; VERIFIED REPLAY REMAINS AVAILABLE"),
+        Entry(
+            "status.agent-viewer.rejected",
+            "AGENT VIEWER CAPABILITY OR FRAME REJECTED"),
+        Entry("action.return-menu", "return to menu"),
         Entry("screen.spectator.title", "AI BROADCAST CIRCUIT"),
         Entry("spectator.selection.channel", "CHANNEL  {channel}"),
         Entry("spectator.selection.rivalry", "RIVALRY  {rival}"),
@@ -909,7 +947,7 @@ internal static class ShellLocalization
             "Molt One: THE GAPS ARE PART OF THE BEAT."),
     ];
 
-    private static readonly IReadOnlyDictionary<string, ShellTextEntry> ById =
+    private static readonly Dictionary<string, ShellTextEntry> ById =
         Entries.ToDictionary(entry => entry.Id, StringComparer.Ordinal);
 
     static ShellLocalization()
@@ -1082,11 +1120,13 @@ internal sealed record LocalizationQualificationEvidence(
     int RemainingDomainStatusExpressionCount,
     string MigrationStatus)
 {
+    private static readonly JsonSerializerOptions SerializerOptions = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        WriteIndented = true,
+    };
+
     public string Serialize() => JsonSerializer.Serialize(
         this,
-        new JsonSerializerOptions
-        {
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-            WriteIndented = true,
-        }) + "\n";
+        SerializerOptions) + "\n";
 }

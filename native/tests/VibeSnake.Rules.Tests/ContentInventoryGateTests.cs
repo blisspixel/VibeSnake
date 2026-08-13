@@ -87,11 +87,7 @@ public sealed class ContentInventoryGateTests
             path,
             JsonSerializer.Serialize(
                 payload,
-                new JsonSerializerOptions
-                {
-                    WriteIndented = true,
-                    PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
-                }) + "\n");
+                TestJsonSerializerOptions.SnakeCaseIndented) + "\n");
         return path;
     }
 

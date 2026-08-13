@@ -50,6 +50,7 @@ These are direct 1280 by 720 captures from the current Godot renderer. Their has
 - Idle pointer hiding, focus-safe pausing, reduced motion, flash-free presentation, high contrast, mono audio, and scalable text.
 - Curated cosmetic sets, progression goals, Broadcast Tour, achievements, local scores, replays, and recovery tools.
 - Let's Play / AI channels with equal-rules matches, a thin live ticker, contextual playback controls, standings, lore, and seed challenges.
+- Post-1.0 Agent Arena developer preview with local MCP play, verified replays, named rivals, Style Contracts, closed public intent, and a read-only live Godot viewer.
 - Offline-first saves and content with no account or network requirement.
 
 The complete player-facing behavior is in the [player guide](docs/guides/PLAYER_GUIDE.md).
@@ -74,7 +75,7 @@ cd VibeSnake
 ./play.sh
 ```
 
-The current floating source build and checksums are published under [player-latest](https://github.com/blisspixel/VibeSnake/releases/tag/player-latest). Versioned native alpha releases now have a separate fail-closed pipeline, but the first tag remains blocked on approved packaged content and an exact artifact review. See [native release outputs](docs/release/PACKAGING.md).
+The current floating source build and checksums are published under [player-latest](https://github.com/blisspixel/VibeSnake/releases/tag/player-latest) from every green `main` revision. It includes development-source previews such as Agent Arena but is not a signed supported player release. Versioned native alpha releases have a separate fail-closed pipeline, and the first tag remains blocked on approved packaged content and an exact artifact review. See [native release outputs](docs/release/PACKAGING.md).
 
 ## Controls
 
@@ -97,10 +98,11 @@ All gameplay and shell actions are available through remappable keyboard and con
 | Browse all documentation | [Documentation hub](docs/README.md) |
 | Play, configure, or troubleshoot | [Player guide](docs/guides/PLAYER_GUIDE.md) |
 | Review accessibility features and limitations | [Accessibility guide](docs/guides/ACCESSIBILITY.md) |
-| Understand the game and experience goals | [Game design](docs/design/GAME_DESIGN.md) and [fun strategy](docs/design/FUN_DESIGN.md) |
+| Understand the game and experience goals | [Game design](docs/design/GAME_DESIGN.md), [fun strategy](docs/design/FUN_DESIGN.md), and the post-1.0 [Agent Arena](docs/design/AGENT_ARENA.md) |
 | See verified implementation status | [Current status](docs/release/STATUS.md) |
 | Follow the path through 1.0 | [Roadmap](ROADMAP.md) |
 | Understand Godot, C#, and the Python migration | [Technology strategy](docs/decisions/TECHNOLOGY_STRATEGY.md) |
+| Connect an agent in the post-1.0 preview | [Agent play integration](docs/engineering/AGENT_PLAY.md) |
 | Find code and directory ownership | [Repository map](docs/engineering/REPOSITORY_MAP.md) |
 | Set up development and run checks | [Development guide](docs/guides/DEVELOPMENT.md) and [testing guide](docs/engineering/TESTING.md) |
 | Work on audio, assets, or content packs | [Audio](docs/content/AUDIO.md), [content pipeline](docs/content/CONTENT_PIPELINE.md), and [content packs](docs/content/CONTENT_PACKS.md) |
@@ -108,7 +110,7 @@ All gameplay and shell actions are available through remappable keyboard and con
 
 ## Development
 
-The native quality loop builds the Godot project, runs 902 C# tests with enforced line and branch coverage, checks formatting and analyzers, validates the pinned toolchain, and executes the real scene smoke:
+The native quality loop builds the Godot project, runs the C# contract suite with enforced line and branch coverage, checks formatting and analyzers, validates the pinned toolchain, and executes the real scene smoke:
 
 ```powershell
 ./scripts/test_native.ps1

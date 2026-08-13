@@ -10,6 +10,10 @@ public sealed record ProgressionNotification(
 /// Bounded FIFO for progression celebrations. It deduplicates pending IDs and
 /// preserves readable time while reduced motion disables transition movement.
 /// </summary>
+[System.Diagnostics.CodeAnalysis.SuppressMessage(
+    "Naming",
+    "CA1711:Identifiers should not have incorrect suffix",
+    Justification = "The established public type name is retained for API compatibility.")]
 public sealed class ProgressionNotificationQueue
 {
     public const int MaximumPending = 16;

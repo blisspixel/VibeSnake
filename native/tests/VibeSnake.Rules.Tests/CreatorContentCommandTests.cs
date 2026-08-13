@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using ValidateCreatorContent;
@@ -111,7 +112,7 @@ public sealed class CreatorContentCommandTests
             fixture.InventoryPath,
             "0.3.0",
             RulesetIdentity.CurrentId,
-            RulesetIdentity.CurrentVersion.ToString(),
+            RulesetIdentity.CurrentVersion.ToString(CultureInfo.InvariantCulture),
             fixture.CorePath,
             fixture.RadioPath,
         ]);
@@ -133,7 +134,7 @@ public sealed class CreatorContentCommandTests
             fixture.InventoryPath,
             "2.0.0",
             RulesetIdentity.CurrentId,
-            RulesetIdentity.CurrentVersion.ToString(),
+            RulesetIdentity.CurrentVersion.ToString(CultureInfo.InvariantCulture),
             fixture.CorePath,
             fixture.RadioPath,
         };
@@ -150,7 +151,7 @@ public sealed class CreatorContentCommandTests
             fixture.InventoryPath,
             "0.3.0",
             RulesetIdentity.CurrentId,
-            RulesetIdentity.CurrentVersion.ToString(),
+            RulesetIdentity.CurrentVersion.ToString(CultureInfo.InvariantCulture),
             fixture.CorePath,
             fixture.RadioPath,
             fixture.RadioPath,
@@ -165,7 +166,7 @@ public sealed class CreatorContentCommandTests
             fixture.InventoryPath,
             "0.3.0",
             RulesetIdentity.CurrentId,
-            RulesetIdentity.CurrentVersion.ToString(),
+            RulesetIdentity.CurrentVersion.ToString(CultureInfo.InvariantCulture),
             fixture.RadioPath,
         ]);
         Assert.Equal(1, wrongFirst.ExitCode);
@@ -177,7 +178,7 @@ public sealed class CreatorContentCommandTests
             fixture.InventoryPath,
             "0.3.0",
             RulesetIdentity.CurrentId,
-            RulesetIdentity.CurrentVersion.ToString(),
+            RulesetIdentity.CurrentVersion.ToString(CultureInfo.InvariantCulture),
             fixture.CorePath,
             fixture.CorePath,
         ]);
@@ -197,18 +198,19 @@ public sealed class CreatorContentCommandTests
             new[]
             {
                 "pack-set", fixture.InventoryPath, "0.3.0", RulesetIdentity.CurrentId,
-                RulesetIdentity.CurrentVersion.ToString(), fixture.CorePath, noncanonicalPath,
+                RulesetIdentity.CurrentVersion.ToString(CultureInfo.InvariantCulture), fixture.CorePath, noncanonicalPath,
             },
             new[]
             {
                 "pack-set", fixture.InventoryPath, "0.3.0", RulesetIdentity.CurrentId,
-                RulesetIdentity.CurrentVersion.ToString(), fixture.CorePath,
+                RulesetIdentity.CurrentVersion.ToString(CultureInfo.InvariantCulture), fixture.CorePath,
                 Path.Combine(fixture.DirectoryPath, "missing.json"),
             },
             new[]
             {
                 "pack-set", Path.Combine(fixture.DirectoryPath, "missing-inventory.json"),
-                "0.3.0", RulesetIdentity.CurrentId, RulesetIdentity.CurrentVersion.ToString(),
+                "0.3.0", RulesetIdentity.CurrentId,
+                RulesetIdentity.CurrentVersion.ToString(CultureInfo.InvariantCulture),
                 fixture.CorePath,
             },
         })
@@ -225,7 +227,7 @@ public sealed class CreatorContentCommandTests
         var invalidInventory = Invoke(
         [
             "pack-set", invalidInventoryPath, "0.3.0", RulesetIdentity.CurrentId,
-            RulesetIdentity.CurrentVersion.ToString(), fixture.CorePath,
+            RulesetIdentity.CurrentVersion.ToString(CultureInfo.InvariantCulture), fixture.CorePath,
         ]);
         Assert.Equal(1, invalidInventory.ExitCode);
         Assert.Equal("pack-set-invalid", invalidInventory.Report.GetProperty("code").GetString());

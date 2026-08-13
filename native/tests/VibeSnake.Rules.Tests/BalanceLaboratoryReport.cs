@@ -255,7 +255,7 @@ internal static class BalanceLaboratoryReport
     public static string ReproductionCommand =>
         $"dotnet test {TestProject} --filter FullyQualifiedName~Balance_laboratory";
 
-    private static void ValidateCorpora(IReadOnlyList<BalanceSeedCorpus> corpora)
+    private static void ValidateCorpora(List<BalanceSeedCorpus> corpora)
     {
         string[] classifications = ["reviewed-fixed", "exploratory", "previous-failure"];
         if (corpora.Count != classifications.Length

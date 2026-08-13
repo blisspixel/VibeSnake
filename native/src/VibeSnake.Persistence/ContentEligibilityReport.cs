@@ -25,10 +25,7 @@ public sealed record ContentEligibilityReport(
         int sampleBlockedPathLimit = DefaultSampleBlockedPathLimit)
     {
         ArgumentNullException.ThrowIfNull(inventory);
-        if (sampleBlockedPathLimit < 0)
-        {
-            throw new ArgumentOutOfRangeException(nameof(sampleBlockedPathLimit));
-        }
+        ArgumentOutOfRangeException.ThrowIfNegative(sampleBlockedPathLimit);
 
         var byShip = new Dictionary<string, int>(StringComparer.Ordinal);
         var byRights = new Dictionary<string, int>(StringComparer.Ordinal);

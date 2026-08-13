@@ -21,10 +21,7 @@ internal static class PromptBadgeRenderer
         int fontSize)
     {
         ArgumentNullException.ThrowIfNull(font);
-        if (fontSize <= 0)
-        {
-            throw new ArgumentOutOfRangeException(nameof(fontSize));
-        }
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(fontSize);
 
         var textSize = font.GetStringSize(
             glyph.Label,

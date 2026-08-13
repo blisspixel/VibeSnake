@@ -5,6 +5,8 @@ namespace VibeSnake.Rules.Tests;
 
 public sealed class ContentEligibilityReportTests
 {
+    private static readonly string[] BlockedPaths = ["b.mp3"];
+
     [Fact]
     public void Synthetic_inventory_counts_eligible_blocked_and_samples()
     {
@@ -54,7 +56,7 @@ public sealed class ContentEligibilityReportTests
         Assert.True(report.HasAnyExportEligible);
         Assert.Equal(1, report.BlockedCount);
         Assert.Equal(1, report.ExcludedCount);
-        Assert.Equal(new[] { "b.mp3" }, report.SampleBlockedPaths);
+        Assert.Equal(BlockedPaths, report.SampleBlockedPaths);
         Assert.Equal(1, report.CountsByMediaTypePrefix["image"]);
         Assert.Equal(1, report.CountsByMediaTypePrefix["audio"]);
         Assert.Equal(1, report.CountsByRightsStatus["unknown"]);

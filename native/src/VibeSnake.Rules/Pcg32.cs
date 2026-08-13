@@ -50,10 +50,7 @@ public sealed class Pcg32
 
     public int NextInt(int exclusiveUpperBound)
     {
-        if (exclusiveUpperBound <= 0)
-        {
-            throw new ArgumentOutOfRangeException(nameof(exclusiveUpperBound));
-        }
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(exclusiveUpperBound);
 
         var bound = (uint)exclusiveUpperBound;
         var threshold = unchecked(0U - bound) % bound;

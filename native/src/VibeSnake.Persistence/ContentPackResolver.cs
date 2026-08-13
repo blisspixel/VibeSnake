@@ -249,7 +249,7 @@ public static class ContentPackResolver
         return null;
     }
 
-    private static IReadOnlyDictionary<string, ContentPackCompatibilityResult> SortRejected(
+    private static Dictionary<string, ContentPackCompatibilityResult> SortRejected(
         IReadOnlyDictionary<string, ContentPackCompatibilityResult> rejected) =>
         rejected
             .OrderBy(pair => pair.Key, StringComparer.Ordinal)

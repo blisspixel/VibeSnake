@@ -33,10 +33,7 @@ public sealed class ControllerConnectionTracker
     /// </summary>
     public ControllerConnectionEvent? NoteConnected(int deviceId, string? deviceName)
     {
-        if (deviceId < 0)
-        {
-            throw new ArgumentOutOfRangeException(nameof(deviceId));
-        }
+        ArgumentOutOfRangeException.ThrowIfNegative(deviceId);
 
         if (_connected.ContainsKey(deviceId))
         {
@@ -61,10 +58,7 @@ public sealed class ControllerConnectionTracker
     /// </summary>
     public ControllerConnectionEvent? NoteDisconnected(int deviceId)
     {
-        if (deviceId < 0)
-        {
-            throw new ArgumentOutOfRangeException(nameof(deviceId));
-        }
+        ArgumentOutOfRangeException.ThrowIfNegative(deviceId);
 
         if (!_connected.Remove(deviceId, out var name))
         {

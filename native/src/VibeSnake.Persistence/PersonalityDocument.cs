@@ -62,7 +62,7 @@ public sealed record PersonalityDocument(
     public const int MaximumNameCharacters = 48;
     public const int MaximumDescriptionCharacters = 192;
 
-    private static readonly IReadOnlySet<string> AllowedFields = new HashSet<string>(
+    private static readonly HashSet<string> AllowedFields = new(
         [
             "schema_version",
             "schemaVersion",
@@ -438,7 +438,7 @@ public sealed record PersonalityDocument(
         return value;
     }
 
-    private static IReadOnlyList<int>? ReadColor(
+    private static List<int>? ReadColor(
         JsonElement root,
         List<PersonalityValidationIssue> issues)
     {

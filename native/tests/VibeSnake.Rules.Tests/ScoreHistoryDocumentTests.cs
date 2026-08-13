@@ -6,6 +6,10 @@ namespace VibeSnake.Rules.Tests;
 
 public sealed class ScoreHistoryDocumentTests
 {
+    private static readonly string[] ImportedPlayerLabels = ["Top", "Lower"];
+    private static readonly int[] ImportedScores = [100, 25];
+    private static readonly int[] RankedScores = [110, 100, 90, 80, 70, 60, 50, 40, 30, 20];
+
     [Fact]
     public void Player_label_truncation_never_splits_a_surrogate_pair()
     {
@@ -45,7 +49,7 @@ public sealed class ScoreHistoryDocumentTests
         Assert.Equal(1, first.Rank);
         Assert.Equal(10, first.Document.Entries.Count);
         Assert.Equal(
-            new[] { 110, 100, 90, 80, 70, 60, 50, 40, 30, 20 },
+            RankedScores,
             first.Document.ScoresForCategory(first.Document.Entries[0].CategoryKey)
                 .Select(entry => entry.Score));
 
@@ -240,8 +244,8 @@ public sealed class ScoreHistoryDocumentTests
             Assert.Equal(2, imported.ImportedEntryCount);
             Assert.NotNull(imported.SourceSha256);
             Assert.Equal(sourceBefore, File.ReadAllBytes(store.PythonImportInboxPath));
-            Assert.Equal(new[] { 100, 25 }, imported.Document!.Entries.Select(entry => entry.Score));
-            Assert.Equal(new[] { "Top", "Lower" }, imported.Document.Entries.Select(entry => entry.PlayerLabel));
+            Assert.Equal(ImportedScores, imported.Document!.Entries.Select(entry => entry.Score));
+            Assert.Equal(ImportedPlayerLabels, imported.Document.Entries.Select(entry => entry.PlayerLabel));
             Assert.All(imported.Document.Entries, entry =>
             {
                 Assert.Equal(ScoreRunContextCatalog.LegacyDisplayCategory, entry.DisplayCategoryId);

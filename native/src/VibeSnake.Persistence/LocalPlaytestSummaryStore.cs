@@ -529,7 +529,7 @@ public sealed record LocalPlaytestSummaryDocument(
 
     private static void RequireExactFields(
         JsonElement element,
-        IReadOnlySet<string> expected,
+        HashSet<string> expected,
         string label)
     {
         if (element.ValueKind != JsonValueKind.Object)

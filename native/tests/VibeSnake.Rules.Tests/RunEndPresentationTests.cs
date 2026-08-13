@@ -4,6 +4,8 @@ namespace VibeSnake.Rules.Tests;
 
 public sealed class RunEndPresentationTests
 {
+    private static readonly string[] CenturyAndFirstBite = ["century", "first_bite"];
+
     [Fact]
     public void Self_collision_summary_has_ordered_metrics_recovery_and_unlocks()
     {
@@ -23,7 +25,7 @@ public sealed class RunEndPresentationTests
         Assert.True(summary.IsNewPersonalBest);
         Assert.Equal(run.Body.Count, summary.Length);
         Assert.Equal(run.Tick, summary.SurvivalSteps);
-        Assert.Equal(new[] { "century", "first_bite" }, summary.NewlyUnlockedIds);
+        Assert.Equal(CenturyAndFirstBite, summary.NewlyUnlockedIds);
     }
 
     [Fact]

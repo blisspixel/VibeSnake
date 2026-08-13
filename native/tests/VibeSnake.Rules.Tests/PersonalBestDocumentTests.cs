@@ -1,3 +1,4 @@
+using System.Globalization;
 using VibeSnake.Persistence;
 using VibeSnake.Rules;
 
@@ -119,7 +120,7 @@ public sealed class PersonalBestDocumentTests
             .Select(index => Entry(
                 score: index,
                 ruleset: "rules-" + index,
-                hashCharacter: index.ToString("x64")[0]))
+                hashCharacter: index.ToString("x64", CultureInfo.InvariantCulture)[0]))
             .ToArray();
         var full = new PersonalBestDocument(
             PersonalBestDocument.CurrentSchemaVersion,

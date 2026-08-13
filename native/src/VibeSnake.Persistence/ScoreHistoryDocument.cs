@@ -873,7 +873,7 @@ public sealed class ScoreHistoryStore
         }
     }
 
-    private static IReadOnlyList<PythonScoreEntry> ParsePythonTopTen(byte[] bytes)
+    private static List<PythonScoreEntry> ParsePythonTopTen(byte[] bytes)
     {
         JsonDocument parsed;
         try

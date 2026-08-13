@@ -134,10 +134,7 @@ internal sealed class VibeLevelDirector
 
     public VibeLevelTransition? Update(int comboCount)
     {
-        if (comboCount < 0)
-        {
-            throw new ArgumentOutOfRangeException(nameof(comboCount));
-        }
+        ArgumentOutOfRangeException.ThrowIfNegative(comboCount);
 
         var target = Resolve(comboCount);
         if (target == CurrentLevel)
@@ -255,13 +252,15 @@ internal static class VibeLevelQualification
 {
     private const int FatalPriority = 100;
     private const int VibePriority = 60;
+    private static readonly int[] ExpectedComboThresholds = [0, 3, 5, 10, 20];
+    private static readonly bool[] ContrastProfiles = [false, true];
 
     public static VibeLevelQualificationEvidence Run(ShellTheme theme)
     {
         ArgumentNullException.ThrowIfNull(theme);
         var definitions = VibeLevelDirector.Definitions;
         var milestonesExact = definitions.Select(definition => definition.ComboThreshold)
-            .SequenceEqual(new[] { 0, 3, 5, 10, 20 });
+            .SequenceEqual(ExpectedComboThresholds);
         var director = new VibeLevelDirector();
         var transitions = new List<VibeLevelTransition>();
         foreach (var combo in new[] { 0, 3, 3, 5, 5, 10, 10, 20, 20, 0, 0 })
@@ -308,10 +307,10 @@ internal static class VibeLevelQualification
             PowerPresentation.SignalColor(PowerKind.SegmentDetach),
         };
         foregrounds.AddRange(Enum.GetValues<PowerKind>().Select(PowerPresentation.SignalColor));
-        var minimumObservedContrast = new[] { false, true }
+        var minimumObservedContrast = ContrastProfiles
             .SelectMany(highContrast => definitions.SelectMany(definition =>
             {
-                var palette = theme.Palette(highContrast);
+                var palette = ShellTheme.Palette(highContrast);
                 var background = VibeLevelDirector.BoardBackground(
                     palette.BoardBackground,
                     highContrast,
@@ -412,7 +411,7 @@ internal static class VibeLevelQualification
             PendingHumanChecks: pendingHumanChecks);
     }
 
-    private static IReadOnlyList<VibeAccessibilityProfileEvidence> CreateAccessibilityProfiles()
+    private static List<VibeAccessibilityProfileEvidence> CreateAccessibilityProfiles()
     {
         var baselineRun = SnakeRun.Create(20260808UL);
         baselineRun.Step();
@@ -467,7 +466,7 @@ internal static class VibeLevelQualification
         return evidence;
     }
 
-    private static IReadOnlyList<VibeReviewScene> CreateScenes()
+    private static List<VibeReviewScene> CreateScenes()
     {
         var scenes = new List<VibeReviewScene>();
         foreach (var definition in VibeLevelDirector.Definitions)

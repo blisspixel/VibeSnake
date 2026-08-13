@@ -385,7 +385,7 @@ public sealed record ReleaseSigningPolicy(
     }
 
     private static string? ValidatePlatformContracts(
-        IReadOnlyList<ReleasePlatformSigningPolicy> platforms)
+        List<ReleasePlatformSigningPolicy> platforms)
     {
         if (platforms.Count != ReleaseArtifactManifest.SupportedPlatforms.Length)
         {

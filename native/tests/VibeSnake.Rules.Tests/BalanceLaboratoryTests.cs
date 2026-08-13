@@ -49,8 +49,8 @@ public sealed class BalanceLaboratoryTests
             && traces.Count == expectedRunCount
             && scenarios.Count == 10
             && scenarios.All(scenario => scenario.Passed)
-            && distributions.Count == variants.Count * BalancePolicyCatalog.All.Count
-            && outliers.Count >= 6
+            && distributions.Length == variants.Count * BalancePolicyCatalog.All.Count
+            && outliers.Length >= 6
             && outliers.All(outlier => outlier.Verified)
             && traces.All(trace => trace.FinalStateHash.Length == 16);
 
@@ -200,7 +200,7 @@ public sealed class BalanceLaboratoryTests
         return new BalanceRunExecution(trace, comparedSteps, divergence);
     }
 
-    private static IReadOnlyList<BalanceDistribution> BuildDistributions(
+    private static BalanceDistribution[] BuildDistributions(
         IReadOnlyList<BalanceRunTrace> traces) =>
         traces
             .GroupBy(trace => (trace.VariantId, trace.PolicyId))
@@ -234,7 +234,7 @@ public sealed class BalanceLaboratoryTests
             })
             .ToArray();
 
-    private static IReadOnlyList<BalanceOutlierReplay> WriteOutliers(
+    private static BalanceOutlierReplay[] WriteOutliers(
         string repositoryRoot,
         IReadOnlyList<BalanceRunTrace> traces)
     {

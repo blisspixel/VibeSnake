@@ -1,0 +1,168 @@
+from pathlib import Path
+import re
+import xml.etree.ElementTree as ET
+
+import yaml
+
+
+REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
+FULL_COMMIT_SHA = re.compile(r"^[0-9a-f]{40}$")
+RELEASE_TAG = re.compile(r"^v\d+(?:\.\d+){1,2}$")
+ACTION_REFERENCE = re.compile(r"^\s*(?:-\s*)?uses:\s*([^\s@]+)@([^\s#]+)\s*(?:#\s*(\S+))?\s*$")
+
+
+def workflow_paths() -> list[Path]:
+    workflows = REPOSITORY_ROOT / ".github" / "workflows"
+    return sorted((*workflows.glob("*.yml"), *workflows.glob("*.yaml")))
+
+
+def load_workflow(path: Path) -> dict[str, object]:
+    loaded = yaml.load(path.read_text(encoding="utf-8"), Loader=yaml.BaseLoader)
+    assert isinstance(loaded, dict), path
+    return loaded
+
+
+def test_dotnet_quality_contract_is_explicit_and_stable() -> None:
+    root = ET.parse(REPOSITORY_ROOT / "Directory.Build.props").getroot()
+    properties = {child.tag: (child.text or "").strip() for group in root.findall("PropertyGroup") for child in group}
+
+    assert properties["LangVersion"] == "14.0"
+    assert properties["Nullable"] == "enable"
+    assert properties["AnalysisLevel"] == "10.0-recommended"
+    assert properties["EnforceCodeStyleInBuild"] == "true"
+    assert properties["TreatWarningsAsErrors"] == "true"
+    assert properties["Deterministic"] == "true"
+    assert properties["RestorePackagesWithLockFile"] == "true"
+    assert properties["NuGetAudit"] == "true"
+    assert properties["NuGetAuditMode"] == "all"
+    assert properties["NuGetAuditLevel"] == "low"
+
+
+def test_root_editorconfig_enforces_portable_text_and_csharp_formatting() -> None:
+    editorconfig = (REPOSITORY_ROOT / ".editorconfig").read_text(encoding="utf-8")
+
+    for required in (
+        "root = true",
+        "charset = utf-8",
+        "end_of_line = lf",
+        "insert_final_newline = true",
+        "trim_trailing_whitespace = true",
+        "csharp_prefer_braces = true:warning",
+        "dotnet_diagnostic.IDE0055.severity = warning",
+    ):
+        assert required in editorconfig
+
+
+def test_every_external_github_action_uses_a_full_commit_sha() -> None:
+    references: list[tuple[Path, int, str, str, str | None]] = []
+    malformed: list[str] = []
+    for workflow in workflow_paths():
+        for line_number, line in enumerate(
+            workflow.read_text(encoding="utf-8").splitlines(),
+            start=1,
+        ):
+            if re.match(r"^\s*(?:-\s*)?uses:", line) is None:
+                continue
+            match = ACTION_REFERENCE.fullmatch(line)
+            if match is None:
+                malformed.append(f"{workflow.relative_to(REPOSITORY_ROOT)}:{line_number} {line.strip()}")
+                continue
+            if not match.group(1).startswith(("./", "docker://")):
+                references.append((workflow, line_number, match.group(1), match.group(2), match.group(3)))
+
+    assert malformed == []
+    assert references
+    invalid_references = [
+        f"{path.relative_to(REPOSITORY_ROOT)}:{line_number} {action}@{reference}"
+        for path, line_number, action, reference, _tag in references
+        if FULL_COMMIT_SHA.fullmatch(reference) is None
+    ]
+    invalid_tag_comments = [
+        f"{path.relative_to(REPOSITORY_ROOT)}:{line_number} {action}@{reference}"
+        for path, line_number, action, reference, tag in references
+        if tag is None or RELEASE_TAG.fullmatch(tag) is None
+    ]
+    assert invalid_references == []
+    assert invalid_tag_comments == []
+
+
+def test_workflows_default_to_read_only_and_elevate_permissions_per_job() -> None:
+    for path in workflow_paths():
+        workflow = load_workflow(path)
+        assert workflow.get("permissions") == {"contents": "read"}, path
+        triggers = workflow.get("on")
+        assert isinstance(triggers, dict), path
+        assert "pull_request_target" not in triggers, path
+
+        jobs = workflow.get("jobs")
+        assert isinstance(jobs, dict), path
+        for job_name, job in jobs.items():
+            assert isinstance(job, dict), f"{path}:{job_name}"
+            permissions = job.get("permissions")
+            if permissions is None:
+                continue
+            assert isinstance(permissions, dict), f"{path}:{job_name}"
+            assert set(permissions.values()) <= {"read", "write", "none"}, f"{path}:{job_name}"
+            if "write" in permissions.values():
+                steps = job.get("steps")
+                assert isinstance(steps, list), f"{path}:{job_name}"
+                action_names = [step.get("uses", "") for step in steps if isinstance(step, dict)]
+                assert not any(action.startswith("actions/checkout@") for action in action_names), f"{path}:{job_name}"
+
+
+def test_dependency_automation_is_bounded_and_covers_every_package_ecosystem() -> None:
+    config_path = REPOSITORY_ROOT / ".github" / "dependabot.yml"
+    config = yaml.safe_load(config_path.read_text(encoding="utf-8"))
+
+    assert config["version"] == 2
+    updates = config["updates"]
+    actual = {(entry["package-ecosystem"], entry["directory"]) for entry in updates}
+    assert actual == {
+        ("github-actions", "/"),
+        ("nuget", "/game"),
+        ("nuget", "/native"),
+        ("pip", "/"),
+    }
+    for entry in updates:
+        assert entry["schedule"]["interval"] == "monthly"
+        assert entry["open-pull-requests-limit"] == 0
+
+
+def test_ci_runs_the_documented_quality_and_dependency_gates() -> None:
+    workflow = (REPOSITORY_ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+
+    for required in (
+        "python -m ruff check src tests scripts",
+        "python -m ruff format --check src tests scripts",
+        "python -m pytest --cov=vibesnake",
+        "python -m pip_audit --strict --disable-pip --require-hashes --requirement requirements-ci.lock",
+        "python -m pip_audit --strict --disable-pip --require-hashes --requirement requirements-runtime.lock",
+        "dotnet restore native/VibeSnake.slnx --locked-mode",
+        "dotnet build native/VibeSnake.slnx --configuration Release --no-restore",
+        "dotnet format native/VibeSnake.slnx --verify-no-changes --no-restore",
+        "./scripts/test_native_coverage.ps1",
+    ):
+        assert required in workflow
+
+
+def test_floating_source_release_uses_only_a_successful_ci_revision() -> None:
+    path = REPOSITORY_ROOT / ".github" / "workflows" / "player-build.yml"
+    workflow = load_workflow(path)
+    triggers = workflow["on"]
+    assert isinstance(triggers, dict)
+    assert "push" not in triggers
+    assert triggers["workflow_run"] == {
+        "workflows": ["CI"],
+        "types": ["completed"],
+        "branches": ["main"],
+    }
+
+    raw = path.read_text(encoding="utf-8")
+    assert "github.event.workflow_run.conclusion == 'success'" in raw
+    assert "github.event.workflow_run.event == 'push'" in raw
+    assert "github.event.workflow_run.head_repository.full_name == github.repository" in raw
+    assert "ref: ${{ github.event.workflow_run.head_sha || github.sha }}" in raw
+    assert "python -m pip install --require-hashes --only-binary=:all: -r requirements-ci.lock" in raw
+    assert "python -m build --no-isolation" in raw
+    assert '--target "${QUALIFIED_SHA}"' in raw
+    assert "pip install --upgrade" not in raw

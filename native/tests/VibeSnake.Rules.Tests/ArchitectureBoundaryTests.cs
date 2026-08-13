@@ -1,5 +1,8 @@
 using System.Reflection;
 using System.Text.RegularExpressions;
+using VibeSnake.AgentHost;
+using VibeSnake.AgentPlay;
+using VibeSnake.AgentViewer;
 using VibeSnake.Persistence;
 
 namespace VibeSnake.Rules.Tests;
@@ -83,6 +86,70 @@ public sealed class ArchitectureBoundaryTests
             name => name.Equals("VibeSnake.Game", StringComparison.Ordinal));
     }
 
+    [Fact]
+    public void Agent_play_depends_only_on_rules_and_platform_libraries()
+    {
+        var referencedNames = typeof(AgentMatchSession).Assembly.GetReferencedAssemblies()
+            .Select(name => name.Name ?? string.Empty)
+            .ToArray();
+
+        Assert.Contains(
+            referencedNames,
+            name => name.Equals("VibeSnake.Rules", StringComparison.Ordinal));
+        Assert.DoesNotContain(
+            referencedNames,
+            name => name.Equals("VibeSnake.Persistence", StringComparison.Ordinal));
+        Assert.DoesNotContain(
+            referencedNames,
+            name => name.Equals("VibeSnake.Game", StringComparison.Ordinal));
+        Assert.DoesNotContain(
+            referencedNames,
+            name => name.Contains("Godot", StringComparison.OrdinalIgnoreCase));
+        Assert.DoesNotContain(
+            referencedNames,
+            name => name.Contains("ModelContextProtocol", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public void Agent_host_does_not_reference_human_progression_store_types()
+    {
+        var hostDirectory = Path.Combine(
+            ResolveRepositoryRoot(),
+            "native",
+            "tools",
+            "VibeSnake.AgentHost");
+        string[] forbiddenIdentifiers =
+        [
+            nameof(AchievementsStore),
+            nameof(OnboardingStore),
+            nameof(PreferencesStore),
+            nameof(ProgressionStore),
+            nameof(ScoreHistoryStore),
+        ];
+        var offenders = Directory.EnumerateFiles(hostDirectory, "*.cs", SearchOption.AllDirectories)
+            .Where(file => !IsGeneratedPath(file))
+            .SelectMany(file => forbiddenIdentifiers
+                .Where(identifier => File.ReadAllText(file).Contains(
+                    identifier,
+                    StringComparison.Ordinal))
+                .Select(identifier => Path.GetFileName(file) + " (" + identifier + ")"))
+            .ToArray();
+
+        Assert.True(
+            offenders.Length == 0,
+            "Agent host sources reference human progression stores: "
+                + string.Join(", ", offenders));
+
+        var registryFields = typeof(AgentSessionRegistry)
+            .GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+            .Select(field => field.FieldType)
+            .ToArray();
+        Assert.Contains(typeof(ReplayStore), registryFields);
+        Assert.DoesNotContain(typeof(AchievementsStore), registryFields);
+        Assert.DoesNotContain(typeof(ProgressionStore), registryFields);
+        Assert.DoesNotContain(typeof(ScoreHistoryStore), registryFields);
+    }
+
     private static readonly string[] ForbiddenRulesSourceFragments =
     [
         "using Godot",
@@ -131,8 +198,7 @@ public sealed class ArchitectureBoundaryTests
         var offenders = new List<string>();
         foreach (var file in Directory.EnumerateFiles(rulesDirectory, "*.cs", SearchOption.AllDirectories))
         {
-            if (file.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.Ordinal)
-                || file.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.Ordinal))
+            if (IsGeneratedPath(file))
             {
                 continue;
             }
@@ -164,8 +230,7 @@ public sealed class ArchitectureBoundaryTests
             "*.cs",
             SearchOption.AllDirectories))
         {
-            if (file.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.Ordinal)
-                || file.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.Ordinal))
+            if (IsGeneratedPath(file))
             {
                 continue;
             }
@@ -223,6 +288,14 @@ public sealed class ArchitectureBoundaryTests
 
     private static string ResolveRulesSourceDirectory() =>
         ResolveSourceDirectory("VibeSnake.Rules");
+
+    private static bool IsGeneratedPath(string file) =>
+        file.Contains(
+            $"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}",
+            StringComparison.Ordinal)
+        || file.Contains(
+            $"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}",
+            StringComparison.Ordinal);
 
     private static string ResolveRepositoryRoot()
     {
