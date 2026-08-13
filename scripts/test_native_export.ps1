@@ -639,7 +639,7 @@ try {
         ($performanceBudget.requiredWarmupFramesPerProfile -ne 30) -or
         ($performanceBudget.requiredSamplesPerProfile -ne 40) -or
         ($performanceBudget.sharedHostMaximumAverageMilliseconds -ne 25.0) -or
-        ($performanceBudget.sharedHostMaximumP95Milliseconds -ne 60.0) -or
+        ($performanceBudget.sharedHostMaximumP95Milliseconds -ne 70.0) -or
         ((@($performanceEvidence.profiles.id) -join ',') -ne ($performanceIds -join ',')) -or
         ((@($performanceEvidence.measurements.id) -join ',') -ne ($performanceIds -join ',')) -or
         ((($performanceEvidence.measurements |

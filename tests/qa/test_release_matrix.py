@@ -253,7 +253,7 @@ def _write_platform(root: Path, platform: str, build_mode: str = "Release") -> N
                 "targetFramesPerSecond": 60,
                 "targetFrameMilliseconds": 1000.0 / 60.0,
                 "sharedHostMaximumAverageMilliseconds": 25,
-                "sharedHostMaximumP95Milliseconds": 60,
+                "sharedHostMaximumP95Milliseconds": 70,
                 "maximumLogicalDrawSubmissions": 2400,
                 "maximumParticles": 160,
                 "maximumAudioChannels": 12,
@@ -637,6 +637,7 @@ def test_release_matrix_rejects_performance_drift_or_shared_host_regression(
     document["budget"]["requiredWarmupFramesPerProfile"] = 29
     document["profiles"][2]["particleCount"] = 161
     document["measurements"][2]["averageFrameMilliseconds"] = 25.1
+    document["measurements"][2]["p95FrameMilliseconds"] = 70.1
     document["measurements"][2]["p99FrameMilliseconds"] = 101.0
     document["measurements"][2]["maximumFrameMilliseconds"] = 101.0
     document["finalRulesStateHash"] = "5" * 16

@@ -218,6 +218,7 @@ try {
     }
     foreach ($requiredPackagedPerformanceFragment in @(
         'Remove-Item -LiteralPath $packagedPerformancePath -Force',
+        '($performanceBudget.sharedHostMaximumP95Milliseconds -ne 70.0)',
         '"The exported player did not retain presentation frame evidence."',
         '($presentationFrameEvidence.averageMilliseconds -gt 25.0)',
         '"The exported player did not retain bare arcade-loop evidence."',

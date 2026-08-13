@@ -141,9 +141,9 @@ The target order is:
 2. Make goal, style, public intent, risk, resources, and outcomes readable without diagnostics.
 3. Add a bounded event-stopping symbolic burst before asking language-model agents to complete long curricula or qualification decks.
 4. Make fixed-seed styles and rivalries visibly distinct without hidden rewards or altered physics.
-5. Persist one bounded public exhibition receipt that hash-links both lane replays before building history, broadcast, or handoff around it.
-6. Add deterministic turning-point selection, recorded-first broadcast pacing, and one-step replay-to-human challenge routes.
-7. Add learning, memory, and qualification only after public identity and division contracts stabilize.
+5. Complete the curriculum and public practice route once symbolic burst and visible style contracts stabilize.
+6. Persist one bounded public exhibition receipt that hash-links both lane replays before building history, recorded broadcast, or handoff around it.
+7. Add deterministic turning-point selection, recorded-first broadcast pacing, and one-step replay-to-human challenge routes; add bounded public memory after the receipt, then qualification after curriculum and identity stabilize.
 8. Package supported desktop artifacts only after the experience and storage surfaces stop changing rapidly.
 
 Automation establishes Correct and the objective prerequisites for Legible, Expressive, and Dramatic. Human review must establish that goals are understood, styles appear distinct, and turning points and pacing work for viewers. Claims that viewers want to keep watching, rematch, or return require retained structured observations, including neutral and negative results.

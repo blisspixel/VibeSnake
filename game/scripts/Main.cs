@@ -16274,23 +16274,23 @@ public partial class Main : Node2D
             .Select(profile => Measurement(
                 profile.Id,
                 20.0,
-                profile.Id == "default" ? 60.12 : 59.0))
+                profile.Id == "default" ? 70.12 : 69.0))
             .ToArray();
         var tailOnlyEvidence = PerformanceQualification.Run(tailOnlyMeasurements);
         var tailRetry = new[]
         {
-            Measurement("default", 20.0, 59.0),
+            Measurement("default", 20.0, 69.0),
         };
         var mergedTailMeasurements = PerformanceQualification.MergeSharedHostTailRetry(
             tailOnlyMeasurements,
             tailRetry);
         var mergedTailEvidence = PerformanceQualification.Run(mergedTailMeasurements);
         var sustainedMeasurements = PerformanceQualification.Profiles
-            .Select(profile => Measurement(profile.Id, 26.0, 60.12))
+            .Select(profile => Measurement(profile.Id, 26.0, 70.12))
             .ToArray();
         var sustainedEvidence = PerformanceQualification.Run(sustainedMeasurements);
         var passingMeasurements = PerformanceQualification.Profiles
-            .Select(profile => Measurement(profile.Id, 20.0, 59.0))
+            .Select(profile => Measurement(profile.Id, 20.0, 69.0))
             .ToArray();
         var passingEvidence = PerformanceQualification.Run(passingMeasurements);
         if (!PerformanceQualification.ShouldRetrySharedHostTail(

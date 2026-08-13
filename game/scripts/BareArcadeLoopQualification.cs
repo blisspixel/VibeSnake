@@ -98,6 +98,7 @@ internal static class BareArcadeLoopQualification
 {
     private const ulong QualificationSeed = 20260808UL;
     private const double MinimumGraphicalContrast = 3.0;
+    internal const double MaximumSmokeP95Milliseconds = 60.0;
     internal const double MaximumSmokeFrameMilliseconds = 100.0;
     internal const int RequiredWarmupFrameSamples = 30;
     internal const int RequiredLiveFrameSamples = 40;
@@ -113,8 +114,7 @@ internal static class BareArcadeLoopQualification
             && summary.SampleCount >= RequiredLiveFrameSamples
             && summary.AverageMilliseconds
                 <= PerformanceQualification.SharedHostMaximumAverageMilliseconds
-            && summary.P95Milliseconds
-                > PerformanceQualification.SharedHostMaximumP95Milliseconds
+            && summary.P95Milliseconds > MaximumSmokeP95Milliseconds
             && summary.MaxMilliseconds <= MaximumSmokeFrameMilliseconds;
     }
 
@@ -225,8 +225,7 @@ internal static class BareArcadeLoopQualification
             && headFoodContrast >= MinimumGraphicalContrast
             && GameplayPresentation.HeadInset != GameplayPresentation.FoodInset;
         var framePacingComplete = frameSummary.SampleCount >= RequiredLiveFrameSamples
-            && frameSummary.P95Milliseconds
-                <= PerformanceQualification.SharedHostMaximumP95Milliseconds
+            && frameSummary.P95Milliseconds <= MaximumSmokeP95Milliseconds
             && frameSummary.MaxMilliseconds <= MaximumSmokeFrameMilliseconds;
 
         var quietRun = SnakeRun.CreateForTesting(
@@ -407,7 +406,7 @@ internal static class BareArcadeLoopQualification
                 HeadFoodContrast: headFoodContrast,
                 FatalOutlineBoardContrast: fatalOutlineBoardContrast,
                 MaximumSmokeP95Milliseconds:
-                    PerformanceQualification.SharedHostMaximumP95Milliseconds,
+                    MaximumSmokeP95Milliseconds,
                 ObservedSmokeP95Milliseconds: frameSummary.P95Milliseconds,
                 MaximumSmokeFrameMilliseconds: MaximumSmokeFrameMilliseconds,
                 ObservedSmokeFrameMilliseconds: frameSummary.MaxMilliseconds,

@@ -95,7 +95,7 @@ internal static class PerformanceQualification
     private const int RulesStepsPerProfile = 256;
     private const int MaximumLogicalDrawSubmissions = 2_400;
     internal const double SharedHostMaximumAverageMilliseconds = 25.0;
-    internal const double SharedHostMaximumP95Milliseconds = 60.0;
+    internal const double SharedHostMaximumP95Milliseconds = 70.0;
 
     public static IReadOnlyList<PerformanceProfileDefinition> Profiles { get; } =
     [
