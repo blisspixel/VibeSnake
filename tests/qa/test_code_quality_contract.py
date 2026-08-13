@@ -47,6 +47,11 @@ def test_dotnet_quality_contract_is_explicit_and_stable() -> None:
 
     workflow = (REPOSITORY_ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
     assert workflow.count("dotnet-version: 10.0.303") == 3
+    validator_installs = re.findall(
+        r"python -m pip install --require-hashes --only-binary=:all:\s+-r requirements-ci\.lock",
+        workflow,
+    )
+    assert len(validator_installs) == 2
     for script_name in ("write_dependency_inventory.ps1", "inspect_native_artifact.ps1"):
         script = (REPOSITORY_ROOT / "scripts" / script_name).read_text(encoding="utf-8")
         assert "dotnet --version" in script
