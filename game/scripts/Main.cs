@@ -11746,9 +11746,9 @@ public partial class Main : Node2D
             ExecuteInputCadenceSmokeTest();
             ExecuteMouseInputSmokeTest();
             ExecuteCandidateAccessibilityAuditSmokeTest();
-            var frameSummary = await ExecutePresentationFrameSamplerSmokeTestAsync();
             ExecutePerformanceRetryPolicySmokeTest();
             await ExecutePerformanceQualificationSmokeTestAsync();
+            var frameSummary = await ExecutePresentationFrameSamplerSmokeTestAsync();
             ExecuteBareArcadeLoopSmokeTest(frameSummary);
             ExecuteMenuRunDeathRestartSmokeTest();
             var first = SnakeRun.Create(SmokeSeed);

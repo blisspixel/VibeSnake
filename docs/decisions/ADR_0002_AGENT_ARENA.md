@@ -15,12 +15,12 @@ External agent play introduces different trust, pacing, privacy, and compatibili
 ## Decision
 
 - Develop Agent Arena as an optional post-1.0 capability. It is excluded from the 1.0 player artifacts and release gates.
-- Add a transport-neutral `VibeSnake.AgentPlay` assembly that depends only on `VibeSnake.Rules`. It owns agent-match lifecycle, public observations, action validation, deterministic stepping, replay capture, and match receipts.
+- Add a transport-neutral `VibeSnake.AgentPlay` assembly that depends only on `VibeSnake.Rules`. It owns agent-match lifecycle, closed public logical-state observations, action validation, deterministic stepping, replay capture, and verified lane results.
 - Keep `SnakeRun`, replay schema 1, built-in `SpectatorMatchSession`, and human score and progression contracts unchanged for the first implementation.
 - Make local, turn-based symbolic play the first profile. Rules do not advance while an agent deliberates. A valid action advances exactly one rules step, while stale or illegal actions advance none.
 - Require every mutating action to carry an expected tick, expected state hash, and bounded idempotency key. Serialize actions per match and fail closed on replay divergence.
 - Expose an allowlisted, versioned observation instead of serializing `RunSnapshot` directly. Exclude random state, future outcomes, controller internals, private user data, paths, diagnostics, prompts, credentials, and hidden reasoning.
-- Support explicit open-seed and blind-seed divisions. Reveal a blind seed only in the completed match receipt.
+- Support explicit open-seed and blind-seed divisions. Reveal a blind seed only in the completed verified lane result.
 - Record every accepted run before presentation, finalize it into an ordinary verified single-lane replay, and treat that replay as the canonical account of what happened. Policy reproducibility is not implied by replay reproducibility.
 - Add a local stdio MCP adapter after the transport-neutral core. The first host opens no network listener, accepts no arbitrary paths or rules configuration, and does not execute agent-supplied code.
 - Reuse the existing Godot replay browser and provide a read-only live viewer over a local pipe rather than TCP. The viewer cannot influence rules, pacing, or replay integrity.
@@ -45,10 +45,10 @@ Protocol, skill, plugin, knowledge, observation, and rules versions remain indep
 The target first complete loop is:
 
 1. An external agent selects an official mode, seed division, built-in rival, and Style Contract.
-2. The agent observes only player-visible state and submits bounded actions.
+2. The agent observes only the closed public logical-state division and submits bounded actions.
 3. The rules wait for decisions and return factual ordered event feedback.
 4. Both lanes use the same gameplay seed and exact configuration while retaining independent controller state and replays.
-5. The match produces verified receipts and replays.
+5. The match produces verified lane results and replays. A later bounded exhibition receipt may hash-link both lanes and presentation events.
 6. A human watches the recorded broadcast or accepts the exact same-seed challenge.
 
 The project may claim meaningful agency, compounding competence, fair verification, and a legible spectator experience when those properties are proven. It must not claim that a model subjectively experiences fun.

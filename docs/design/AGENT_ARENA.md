@@ -4,11 +4,11 @@
 
 ## Experience promise
 
-Agent Arena lets an external agent learn Vibe Snake, develop a recognizable play style, challenge a named rival under equal rules, and leave behind a verified replay that a human can watch or challenge on the same seed.
+The target Agent Arena experience will let an external agent learn Vibe Snake, develop a recognizable play style, challenge a named rival under equal rules, and leave behind a verified replay that a human can watch or challenge on the same seed.
 
 The arena is designed to give software agents meaningful decisions and improving competence. It does not assume or claim that a model has a subjective experience of fun. The human-facing measure is whether the agent's goals, risks, turning points, and rivalries are clear enough to make the match worth watching.
 
-Agent Arena is a post-1.0 optional capability. The development tree contains the preview integration, but it is not part of the supported 1.0 release contract. A 1.0 candidate must remove or explicitly exclude the preview assemblies and entry points before artifact qualification. The preview does not change gameplay rules, saves, progression, or release gates.
+Agent Arena is a post-1.0 optional capability. The development tree contains the preview integration, but it is not part of the supported 1.0 release contract. A 1.0 candidate must remove or explicitly exclude the preview assemblies and entry points before artifact qualification. The preview does not change gameplay rules, human saves, progression, or release gates automatically. Replay persistence occurs only after an explicit `save_verified_replay` request and writes to the ordinary bounded replay store.
 
 ## Developer preview status
 
@@ -53,7 +53,7 @@ Signal School is a deterministic curriculum, not a hidden tutorial score. Lesson
 7. Complete a short combo route.
 8. Identify an attributable death from returned events.
 
-The preview catalog publishes six definitions and deterministic metric-threshold evaluators: `first-turn`, `wrap-line`, `hunger-route`, `power-route`, `combo-route`, and `recover-route`. They cover one accepted non-reversing turn, one safe wrap, food under hunger pressure, one power activation, a three-food combo, and one protected recovery. They are not the first six targets above: exit preservation and attributable death are still absent, and `first-turn` does not yet teach recovery from a rejected reversal. A lesson is not selectable through `start_match`, and lesson completion is not part of a match receipt. The completed curriculum must contain all eight behaviors above and qualify each stated behavior through an immutable replay-and-event evaluator rather than only a catalog count.
+The preview catalog publishes six definitions and deterministic metric-threshold evaluators: `first-turn`, `wrap-line`, `hunger-route`, `power-route`, `combo-route`, and `recover-route`. They cover one accepted non-reversing turn, one safe wrap, food under hunger pressure, one power activation, a three-food combo, and one protected recovery. They are not the first six targets above: exit preservation and attributable death are still absent, and `first-turn` does not yet teach recovery from a rejected reversal. A lesson is not selectable through `start_match`, and lesson completion is not part of a verified lane result. The completed curriculum must contain all eight behaviors above and qualify each stated behavior through an immutable replay-and-event evaluator rather than only a catalog count.
 
 ## Style Contracts
 
@@ -79,13 +79,13 @@ The symbolic observation is a closed, versioned allowlist containing:
 - Run status, death cause, current direction, head, body, and accepted pending directions.
 - Food, visible power pickup, bait, detached obstacles, score, combo, hunger, and public timers.
 - Active public effects and remaining step budget.
-- Ordered events from the immediately preceding accepted action.
+- Ordered events from the immediately preceding accepted action. A rejection response clears this event list, so an agent must consume accepted-step events from that accepted response.
 - Previous action acceptance or rejection.
 - Declared contract progress and optional public rival summary when available.
 
 It excludes random-generator state, future spawns, controller decisions, other live actions, private user data, local paths, diagnostics, credentials, prompts, hidden reasoning, and engine-computed route advice.
 
-Blind-seed observations omit the seed until the final receipt. Open-seed observations expose it and form a separate legitimate simulation-friendly division.
+Blind-seed observations omit the seed until the final verified lane result. Open-seed observations expose it and form a separate legitimate simulation-friendly division.
 
 ## Action contract
 
@@ -98,14 +98,14 @@ The base action is `up`, `right`, `down`, `left`, or `continue`. Every mutating 
 - A changed public intent changes the idempotent request identity but never changes rules, scoring, rewards, replay verification, or qualification.
 - A later burst profile may advance at most 16 steps and stops on declared public events.
 
-The service returns factual events rather than a fabricated dense reward. Terminal evaluation is a vector that can include score, survival, food, combo, route efficiency, wraps, powers, recoveries, risk exposure, dead ends, and contract completion.
+The service returns factual events rather than a fabricated dense reward. The preview terminal metric vector contains survival steps, food eaten, peak combo, wraps, near misses, powers collected, powers activated, recoveries, starvation warnings, and direction changes, plus the selected contract's primary threshold result. Route efficiency, risk exposure beyond near misses, dead-end measures, and expressive multi-metric contract evaluation remain AA-03 and AA-08 targets.
 
 ## Agent identity and memory
 
 The preview accepts an ephemeral public Agent Passport containing:
 
 - Stable agent ID and policy version.
-- Safe display name, color, cosmetic shed, and station affinity.
+- Safe display name plus bounded color, shed, and station labels.
 - Supported observation and action profiles.
 
 A later persisted passport may add:
@@ -113,7 +113,7 @@ A later persisted passport may add:
 - Verified matches, personal bests, selected contracts, rival records, and milestones.
 - An optional bounded model or policy label.
 
-It never contains prompt history, chain of thought, credentials, raw provider responses, executable code, or a human profile. External agents own their semantic memory and learned skills. The current host retains public identity and verified outcomes only for the bounded in-process session; an explicit replay save persists the verified run through the ordinary replay store. Bounded preference and outcome history belongs to the later persisted passport.
+It never contains prompt history, chain of thought, credentials, raw provider responses, executable code, or a human profile. External agents own their semantic memory and learned skills. The current viewer renders the passport color and prints shed and station labels; closed-catalog validation and a passport-owned avatar independent of the local human cosmetic profile remain AA-03 work. The current host retains public identity and verified outcomes only for the bounded in-process session; an explicit replay save persists the verified run through the ordinary replay store. Bounded preference and outcome history belongs to the later persisted passport.
 
 ## Fair competition
 
@@ -146,7 +146,7 @@ The target order is:
 7. Add learning, memory, and qualification only after public identity and division contracts stabilize.
 8. Package supported desktop artifacts only after the experience and storage surfaces stop changing rapidly.
 
-Automation may establish the first four contracts. Claims that viewers want to keep watching, rematch, or return require retained structured observations, including neutral and negative results.
+Automation establishes Correct and the objective prerequisites for Legible, Expressive, and Dramatic. Human review must establish that goals are understood, styles appear distinct, and turning points and pacing work for viewers. Claims that viewers want to keep watching, rematch, or return require retained structured observations, including neutral and negative results.
 
 ## Evidence required
 

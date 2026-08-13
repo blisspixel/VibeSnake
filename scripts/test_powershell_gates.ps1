@@ -194,6 +194,41 @@ try {
         [StringComparison]::Ordinal)) {
         throw "Native presentation gate retained the obsolete 50 ms p95 ceiling."
     }
+    $performanceRetryPolicyCall =
+        $gameMainScript.IndexOf(
+            'ExecutePerformanceRetryPolicySmokeTest();',
+            [StringComparison]::Ordinal)
+    $performanceSmokeCall =
+        $gameMainScript.IndexOf(
+            'await ExecutePerformanceQualificationSmokeTestAsync();',
+            [StringComparison]::Ordinal)
+    $presentationSmokeCall =
+        $gameMainScript.IndexOf(
+            'var frameSummary = await ExecutePresentationFrameSamplerSmokeTestAsync();',
+            [StringComparison]::Ordinal)
+    $bareLoopSmokeCall =
+        $gameMainScript.IndexOf(
+            'ExecuteBareArcadeLoopSmokeTest(frameSummary);',
+            [StringComparison]::Ordinal)
+    if (($performanceRetryPolicyCall -lt 0) -or
+        ($performanceSmokeCall -le $performanceRetryPolicyCall) -or
+        ($presentationSmokeCall -le $performanceSmokeCall) -or
+        ($bareLoopSmokeCall -le $presentationSmokeCall)) {
+        throw "Godot smoke must qualify all performance profiles before retaining the focused bare-loop burst."
+    }
+    foreach ($requiredPackagedPerformanceFragment in @(
+        'Remove-Item -LiteralPath $packagedPerformancePath -Force',
+        '"The exported player did not retain presentation frame evidence."',
+        '($presentationFrameEvidence.averageMilliseconds -gt 25.0)',
+        '"The exported player did not retain bare arcade-loop evidence."',
+        '(-not $bareLoopEvidence.framePacingComplete)'
+    )) {
+        if (-not $nativeExportScript.Contains(
+            $requiredPackagedPerformanceFragment,
+            [StringComparison]::Ordinal)) {
+            throw "Packaged performance evidence gate is missing: $requiredPackagedPerformanceFragment"
+        }
+    }
     if (-not $nativeExportScript.Contains(
         '"effective_schema=7 code=Success"',
         [StringComparison]::Ordinal)) {

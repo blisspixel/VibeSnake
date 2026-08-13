@@ -412,6 +412,20 @@ try {
         throw "Read-only write probe failed unexpectedly: $($_.Exception.GetType().FullName)"
     }
 
+    [System.IO.Directory]::CreateDirectory($resolvedEvidenceDirectory) | Out-Null
+    foreach ($packagedPerformanceFileName in @(
+        "performance.json",
+        "presentation_frames.json",
+        "bare_arcade_loop.json"
+    )) {
+        $packagedPerformancePath = Join-Path `
+            $resolvedEvidenceDirectory `
+            $packagedPerformanceFileName
+        if (Test-Path -LiteralPath $packagedPerformancePath -PathType Leaf) {
+            Remove-Item -LiteralPath $packagedPerformancePath -Force
+        }
+    }
+
     $startInfo = [System.Diagnostics.ProcessStartInfo]::new()
     $startInfo.FileName = $playerExecutable
     $startInfo.WorkingDirectory = $installRoot
@@ -644,6 +658,52 @@ try {
                 $performanceBudget.sharedHostMaximumP95Milliseconds)) {
             throw "The exported player performance row drifted: $($measurement.id)"
         }
+    }
+
+    $presentationFrameEvidencePath = Join-Path `
+        $resolvedEvidenceDirectory `
+        "presentation_frames.json"
+    if (-not (Test-Path -LiteralPath $presentationFrameEvidencePath -PathType Leaf)) {
+        throw "The exported player did not retain presentation frame evidence."
+    }
+    $presentationFrameEvidence = Get-Content `
+        -LiteralPath $presentationFrameEvidencePath `
+        -Raw |
+        ConvertFrom-Json
+    if (($presentationFrameEvidence.schemaVersion -ne 1) -or
+        ($presentationFrameEvidence.kind -ne "presentation-frame-evidence-v1") -or
+        ($presentationFrameEvidence.sampleCount -lt 40) -or
+        ($presentationFrameEvidence.averageMilliseconds -gt 25.0) -or
+        ($presentationFrameEvidence.p50Milliseconds -gt
+            $presentationFrameEvidence.p95Milliseconds) -or
+        ($presentationFrameEvidence.p95Milliseconds -gt
+            $presentationFrameEvidence.p99Milliseconds) -or
+        ($presentationFrameEvidence.p99Milliseconds -gt
+            $presentationFrameEvidence.maxMilliseconds) -or
+        ($presentationFrameEvidence.p95Milliseconds -gt 60.0) -or
+        ($presentationFrameEvidence.maxMilliseconds -gt 100.0)) {
+        throw "The exported player presentation frame evidence failed its closed summary gate."
+    }
+
+    $bareLoopEvidencePath = Join-Path `
+        $resolvedEvidenceDirectory `
+        "bare_arcade_loop.json"
+    if (-not (Test-Path -LiteralPath $bareLoopEvidencePath -PathType Leaf)) {
+        throw "The exported player did not retain bare arcade-loop evidence."
+    }
+    $bareLoopEvidence = Get-Content -LiteralPath $bareLoopEvidencePath -Raw |
+        ConvertFrom-Json
+    if (($bareLoopEvidence.schemaVersion -ne 1) -or
+        ($bareLoopEvidence.kind -ne "bare-arcade-loop-qualification-v1") -or
+        (-not $bareLoopEvidence.passed) -or
+        (-not $bareLoopEvidence.minimumEffectsProfile) -or
+        (-not $bareLoopEvidence.framePacingComplete) -or
+        ($bareLoopEvidence.humanFeelReviewStatus -ne "pending") -or
+        ($bareLoopEvidence.budgets.observedSmokeP95Milliseconds -gt 60.0) -or
+        ($bareLoopEvidence.budgets.observedSmokeFrameMilliseconds -gt 100.0) -or
+        (@($bareLoopEvidence.frames).Count -ne 6) -or
+        (@($bareLoopEvidence.pendingHumanChecks).Count -ne 4)) {
+        throw "The exported player bare arcade-loop evidence failed its closed summary gate."
     }
 
     $replayDirectory = Join-Path $smokeUserDataRoot "replays"

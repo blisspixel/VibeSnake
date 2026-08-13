@@ -1,6 +1,6 @@
 ---
 name: play-vibesnake
-description: Play deterministic Vibe Snake matches through the local MCP host, develop a recognizable play style, challenge a seed, and save a verified replay for a human to watch. Use when asked to play, practice, evaluate, or spectate Vibe Snake through the start_match, observe_match, play_move, finish_match, get_match_result, or save_verified_replay tools.
+description: Play deterministic Vibe Snake matches through the local MCP host, pursue a declared Style Contract, challenge a seed, and save a verified replay for a human to watch. Use when asked to play, practice, evaluate, or spectate Vibe Snake through the start_match, observe_match, play_move, finish_match, get_match_result, or save_verified_replay tools.
 ---
 
 # Play Vibe Snake
@@ -56,7 +56,7 @@ Call `finish_match` only to stop early. Normal terminal and step-limit endings f
 1. Call `get_match_result` if the terminal response did not include a result.
 2. Report the style, score, final tick, end reason, run status, and replay verification code.
 3. Call `save_verified_replay` only when persistence or human viewing is desired. A rivalry saves both independently verified lane replays.
-4. Treat the replay payload hash and final state hash as the match receipt.
+4. Treat each replay payload hash and final state hash as lane verification identifiers. The preview does not yet produce the planned hash-linked public exhibition receipt.
 5. For a rematch, start a new open-seed match with the revealed seed. Never treat a previous handle as durable.
 
 Agent matches are exhibitions. Do not claim that they update human scores, progression, achievements, or the built-in spectator league.
@@ -68,4 +68,4 @@ Agent matches are exhibitions. Do not claim that they update human scores, progr
 - Illegal direction: choose a legal turn or `continue`; no step was lost.
 - Idempotency conflict: create a new key only for a genuinely new action.
 - Host capacity: finish an existing live match or restart the local host.
-- Replay save failure: preserve the verified result receipt and report the bounded store error. Never supply or invent a filesystem path.
+- Replay save failure: preserve the verified lane result and report the bounded store error. Never supply or invent a filesystem path.
