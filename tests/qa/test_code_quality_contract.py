@@ -132,6 +132,7 @@ def test_dependency_automation_is_bounded_and_covers_every_package_ecosystem() -
 
 def test_ci_runs_the_documented_quality_and_dependency_gates() -> None:
     workflow = (REPOSITORY_ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+    parsed = load_workflow(REPOSITORY_ROOT / ".github" / "workflows" / "ci.yml")
 
     for required in (
         "python -m ruff check src tests scripts",
@@ -148,6 +149,13 @@ def test_ci_runs_the_documented_quality_and_dependency_gates() -> None:
         "python scripts/check_agent_interop.py",
     ):
         assert required in workflow
+
+    complete = parsed["jobs"]["ci-complete"]
+    assert complete["name"] == "CI complete"
+    assert complete["if"] == "always()"
+    assert complete["needs"] == ["quality", "native-rules", "godot-smoke", "release-matrix"]
+    assert complete["timeout-minutes"] == "2"
+    assert '[[ "${result}" == "success" ]]' in workflow
 
 
 def test_agent_interoperability_drift_workflow_is_bounded_and_required() -> None:
@@ -172,6 +180,7 @@ def test_floating_source_release_uses_only_a_successful_ci_revision() -> None:
     triggers = workflow["on"]
     assert isinstance(triggers, dict)
     assert "push" not in triggers
+    assert "workflow_dispatch" not in triggers
     assert triggers["workflow_run"] == {
         "workflows": ["CI"],
         "types": ["completed"],
@@ -182,7 +191,7 @@ def test_floating_source_release_uses_only_a_successful_ci_revision() -> None:
     assert "github.event.workflow_run.conclusion == 'success'" in raw
     assert "github.event.workflow_run.event == 'push'" in raw
     assert "github.event.workflow_run.head_repository.full_name == github.repository" in raw
-    assert "ref: ${{ github.event.workflow_run.head_sha || github.sha }}" in raw
+    assert "ref: ${{ github.event.workflow_run.head_sha }}" in raw
     assert "python -m pip install --require-hashes --only-binary=:all: -r requirements-ci.lock" in raw
     assert "python -m build --no-isolation" in raw
     assert "**Native source player**" in raw

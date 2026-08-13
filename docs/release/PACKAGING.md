@@ -8,7 +8,7 @@ Release rows also require `candidate-install-lifecycle-preflight-v1`. The exact 
 
 ## Floating source and reference channel
 
-`player-latest` is deliberately separate from native artifact qualification. A same-repository push to `main` must complete the full CI workflow successfully before the source workflow checks out that exact qualified SHA. Manual dispatch may build the package for diagnosis but cannot publish or replace the floating release.
+`player-latest` is deliberately separate from native artifact qualification. A same-repository push to `main` must complete the full CI workflow successfully before the source workflow checks out that exact qualified SHA. The workflow exposes no manual-dispatch or pull-request checkout path; diagnostic packaging is performed locally with the documented build commands.
 
 The release contains exactly:
 

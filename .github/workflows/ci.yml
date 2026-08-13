@@ -583,3 +583,27 @@ jobs:
             --generate-notes \
             --notes-file "${NOTES}" \
             --title "Vibe Snake ${GITHUB_REF_NAME}"
+
+  ci-complete:
+    name: CI complete
+    if: always()
+    needs: [quality, native-rules, godot-smoke, release-matrix]
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Require every continuous qualification job
+        shell: bash
+        env:
+          QUALITY_RESULT: ${{ needs.quality.result }}
+          NATIVE_RULES_RESULT: ${{ needs.native-rules.result }}
+          GODOT_SMOKE_RESULT: ${{ needs.godot-smoke.result }}
+          RELEASE_MATRIX_RESULT: ${{ needs.release-matrix.result }}
+        run: |
+          set -euo pipefail
+          for result in \
+            "${QUALITY_RESULT}" \
+            "${NATIVE_RULES_RESULT}" \
+            "${GODOT_SMOKE_RESULT}" \
+            "${RELEASE_MATRIX_RESULT}"; do
+            [[ "${result}" == "success" ]]
+          done
