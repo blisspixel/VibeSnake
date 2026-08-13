@@ -637,11 +637,16 @@ public sealed class AgentHostTests
     public void Viewer_server_validates_capabilities_and_registry_disposal()
     {
         Assert.ThrowsAny<ArgumentException>(() => new AgentViewerServer("bad pipe", [1]));
+        Assert.Throws<ArgumentException>(() => new AgentViewerServer(
+            new string('a', AgentViewerTransport.MaximumPipeNameLength + 1),
+            [1]));
         Assert.Throws<ArgumentOutOfRangeException>(() => new AgentViewerServer("valid", []));
         Assert.Throws<ArgumentOutOfRangeException>(() =>
             new AgentViewerServer("valid", new byte[65]));
 
-        using var server = new AgentViewerServer("valid_" + Guid.NewGuid().ToString("N"), [1, 2, 3]);
+        using var server = new AgentViewerServer(
+            "t_" + Guid.NewGuid().ToString("N")[..16],
+            [1, 2, 3]);
         Assert.Throws<ArgumentNullException>(() => server.TryPublish(null!));
         Assert.True(server.TryPublish(new AgentViewerFrameV1(
             AgentViewerFrameV1.Contract,

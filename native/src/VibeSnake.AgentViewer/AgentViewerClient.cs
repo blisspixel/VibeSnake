@@ -19,6 +19,7 @@ public enum AgentViewerClientState : byte
 public sealed class AgentViewerClient : IDisposable
 {
     public const int MaximumFrameBytes = 262_144;
+    public static readonly TimeSpan ConnectionTimeout = TimeSpan.FromSeconds(10);
 
     private static readonly JsonSerializerOptions SerializerOptions = CreateSerializerOptions();
     private readonly object _sync = new();
@@ -33,8 +34,13 @@ public sealed class AgentViewerClient : IDisposable
 
     public AgentViewerClient(string pipeName, string accessToken)
     {
-        ValidateToken(pipeName, nameof(pipeName));
-        ValidateToken(accessToken, nameof(accessToken));
+        if (!AgentViewerTransport.IsValidPipeName(pipeName))
+        {
+            throw new ArgumentException(
+                $"The viewer pipe name must be an ASCII token no longer than {AgentViewerTransport.MaximumPipeNameLength} characters.",
+                nameof(pipeName));
+        }
+        ValidateAccessToken(accessToken);
         _pipeName = pipeName;
         _accessToken = accessToken;
         _readerTask = ReadFramesAsync(_shutdown.Token);
@@ -104,7 +110,20 @@ public sealed class AgentViewerClient : IDisposable
                 _pipeName,
                 PipeDirection.InOut,
                 PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly);
-            await pipe.ConnectAsync(cancellationToken).ConfigureAwait(false);
+            using var connectionTimeout = CancellationTokenSource.CreateLinkedTokenSource(
+                cancellationToken);
+            connectionTimeout.CancelAfter(ConnectionTimeout);
+            try
+            {
+                await pipe.ConnectAsync(connectionTimeout.Token).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+            {
+                SetTerminalState(
+                    AgentViewerClientState.Disconnected,
+                    "AGENT VIEWER COULD NOT CONNECT; VERIFIED REPLAY REMAINS AVAILABLE");
+                return;
+            }
             var token = Encoding.ASCII.GetBytes(_accessToken + "\n");
             await pipe.WriteAsync(token, cancellationToken).ConfigureAwait(false);
             await pipe.FlushAsync(cancellationToken).ConfigureAwait(false);
@@ -200,17 +219,17 @@ public sealed class AgentViewerClient : IDisposable
         }
     }
 
-    private static void ValidateToken(string value, string parameterName)
+    private static void ValidateAccessToken(string accessToken)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(value, parameterName);
-        if (value.Length > 128
-            || value.Any(character =>
+        ArgumentException.ThrowIfNullOrWhiteSpace(accessToken);
+        if (accessToken.Length > 128
+            || accessToken.Any(character =>
                 !(char.IsAsciiLetterOrDigit(character)
                     || character is '-' or '_')))
         {
             throw new ArgumentException(
                 "Agent viewer capabilities must be bounded ASCII tokens.",
-                parameterName);
+                nameof(accessToken));
         }
     }
 

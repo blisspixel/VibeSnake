@@ -176,19 +176,19 @@ public sealed class AgentViewerClientTests
     [Fact]
     public async Task Viewer_client_rejects_malformed_and_oversized_frames()
     {
-        var malformedPipe = "viewer_malformed_" + Guid.NewGuid().ToString("N");
+        var malformedPipe = CreateTestPipeName();
         var malformedServer = ServePayloadAsync(malformedPipe, "not-json\n");
         using var malformed = new AgentViewerClient(malformedPipe, "dG9rZW4");
-        await WaitForStateAsync(malformed, AgentViewerClientState.Disconnected);
         await malformedServer;
+        await WaitForStateAsync(malformed, AgentViewerClientState.Disconnected);
 
-        var oversizedPipe = "viewer_oversized_" + Guid.NewGuid().ToString("N");
+        var oversizedPipe = CreateTestPipeName();
         var oversizedServer = ServePayloadAsync(
             oversizedPipe,
             new string('x', AgentViewerClient.MaximumFrameBytes + 1));
         using var oversized = new AgentViewerClient(oversizedPipe, "dG9rZW4");
-        await WaitForStateAsync(oversized, AgentViewerClientState.Disconnected);
         await oversizedServer;
+        await WaitForStateAsync(oversized, AgentViewerClientState.Disconnected);
     }
 
     [Fact]
@@ -218,18 +218,18 @@ public sealed class AgentViewerClientTests
 
         foreach (var payload in invalidPayloads)
         {
-            var pipeName = "viewer_invalid_" + Guid.NewGuid().ToString("N");
+            var pipeName = CreateTestPipeName();
             var server = ServePayloadAsync(pipeName, payload);
             using var client = new AgentViewerClient(pipeName, "dG9rZW4");
-            await WaitForStateAsync(client, AgentViewerClientState.Rejected);
             await server;
+            await WaitForStateAsync(client, AgentViewerClientState.Rejected);
         }
 
-        var disconnectPipe = "viewer_disconnect_" + Guid.NewGuid().ToString("N");
+        var disconnectPipe = CreateTestPipeName();
         var disconnectServer = ServePayloadAsync(disconnectPipe, SerializeFrame(validFrame));
         using var disconnected = new AgentViewerClient(disconnectPipe, "dG9rZW4");
-        await WaitForStateAsync(disconnected, AgentViewerClientState.Disconnected);
         await disconnectServer;
+        await WaitForStateAsync(disconnected, AgentViewerClientState.Disconnected);
         Assert.Contains("REPLAY REMAINS AVAILABLE", disconnected.Status, StringComparison.Ordinal);
     }
 
@@ -238,6 +238,9 @@ public sealed class AgentViewerClientTests
     {
         Assert.ThrowsAny<ArgumentException>(() => new AgentViewerClient(" ", "token"));
         Assert.Throws<ArgumentException>(() => new AgentViewerClient("bad pipe", "token"));
+        Assert.Throws<ArgumentException>(() => new AgentViewerClient(
+            new string('a', AgentViewerTransport.MaximumPipeNameLength + 1),
+            "token"));
         Assert.Throws<ArgumentException>(() => new AgentViewerClient(
             "valid",
             new string('a', 129)));
@@ -283,6 +286,9 @@ public sealed class AgentViewerClientTests
 
     private static string SerializeFrame(AgentViewerFrameV1 frame) =>
         JsonSerializer.Serialize(frame, ViewerJsonOptions) + "\n";
+
+    private static string CreateTestPipeName() =>
+        "t_" + Guid.NewGuid().ToString("N")[..16];
 
     private static JsonSerializerOptions CreateViewerJsonOptions()
     {

@@ -39,14 +39,10 @@ internal sealed class AgentViewerServer : IAgentViewerSink, IDisposable
 
     public AgentViewerServer(string pipeName, byte[] accessTokenBytes)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(pipeName);
-        if (pipeName.Length > AgentMatchOptions.MaximumMatchIdLength
-            || pipeName.Any(character =>
-                !(char.IsAsciiLetterOrDigit(character)
-                    || character is '-' or '_')))
+        if (!AgentViewerTransport.IsValidPipeName(pipeName))
         {
             throw new ArgumentException(
-                "The viewer pipe name must be a bounded ASCII token.",
+                $"The viewer pipe name must be an ASCII token no longer than {AgentViewerTransport.MaximumPipeNameLength} characters.",
                 nameof(pipeName));
         }
         ArgumentNullException.ThrowIfNull(accessTokenBytes);
@@ -109,9 +105,9 @@ internal sealed class AgentViewerServer : IAgentViewerSink, IDisposable
 
     internal static AgentViewerServer Create()
     {
-        Span<byte> nameBytes = stackalloc byte[18];
+        Span<byte> nameBytes = stackalloc byte[10];
         RandomNumberGenerator.Fill(nameBytes);
-        var pipeName = "vibesnake_" + Convert.ToHexString(nameBytes).ToLowerInvariant();
+        var pipeName = "vs_" + Convert.ToHexString(nameBytes).ToLowerInvariant();
         var token = RandomNumberGenerator.GetBytes(32);
         return new AgentViewerServer(pipeName, token);
     }
