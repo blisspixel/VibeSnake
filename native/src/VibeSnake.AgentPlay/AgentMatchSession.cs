@@ -464,10 +464,15 @@ public sealed class AgentMatchSession
 
         try
         {
-            _ = _viewerSink.TryPublish(new AgentViewerFrameV1(
-                AgentViewerFrameV1.Contract,
+            _ = _viewerSink.TryPublish(new AgentViewerFrameV2(
+                AgentViewerFrameV2.Contract,
                 _viewerSequence++,
-                observation));
+                observation,
+                _matchResult?.EndReason
+                    ?? (Lifecycle == AgentMatchLifecycle.FailedClosed
+                        ? AgentMatchEndReason.ReplayFailure
+                        : AgentMatchEndReason.None),
+                _matchResult?.ReplayVerificationCode == ReplayVerificationCode.Verified));
         }
         catch (Exception)
         {

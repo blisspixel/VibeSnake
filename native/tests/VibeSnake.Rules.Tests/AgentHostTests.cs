@@ -651,25 +651,29 @@ public sealed class AgentHostTests
             "t_" + Guid.NewGuid().ToString("N")[..16],
             [1, 2, 3]);
         Assert.Throws<ArgumentNullException>(() => server.TryPublish(null!));
-        Assert.True(server.TryPublish(new AgentViewerFrameV1(
-            AgentViewerFrameV1.Contract,
+        Assert.True(server.TryPublish(new AgentViewerFrameV2(
+            AgentViewerFrameV2.Contract,
             0,
             new AgentMatchSession(new AgentMatchOptions(
                 "frame",
                 RunModeCatalog.ClassicId,
                 RunModeCatalog.CurrentModeVersion,
                 1UL,
-                AgentSeedVisibility.Open)).Observe())));
+                AgentSeedVisibility.Open)).Observe(),
+            AgentMatchEndReason.None,
+            VerifiedResultAvailable: false)));
         server.Dispose();
-        Assert.False(server.TryPublish(new AgentViewerFrameV1(
-            AgentViewerFrameV1.Contract,
+        Assert.False(server.TryPublish(new AgentViewerFrameV2(
+            AgentViewerFrameV2.Contract,
             1,
             new AgentMatchSession(new AgentMatchOptions(
                 "frame-two",
                 RunModeCatalog.ClassicId,
                 RunModeCatalog.CurrentModeVersion,
                 2UL,
-                AgentSeedVisibility.Open)).Observe())));
+                AgentSeedVisibility.Open)).Observe(),
+            AgentMatchEndReason.None,
+            VerifiedResultAvailable: false)));
 
         using var temporary = new AgentHostTemporaryDirectory();
         var registry = CreateRegistry(temporary.Path);

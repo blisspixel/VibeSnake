@@ -258,6 +258,7 @@ def _write_platform(root: Path, platform: str, build_mode: str = "Release") -> N
                 "maximumParticles": 160,
                 "maximumAudioChannels": 12,
                 "boardCellCapacity": 2112,
+                "requiredWarmupFramesPerProfile": 30,
                 "requiredSamplesPerProfile": 40,
             },
             "profiles": [
@@ -633,6 +634,7 @@ def test_release_matrix_rejects_performance_drift_or_shared_host_regression(
     _write_matrix(tmp_path)
     path = tmp_path / "vibesnake-windows-x64-qualification-evidence" / "performance.json"
     document = json.loads(path.read_text(encoding="utf-8"))
+    document["budget"]["requiredWarmupFramesPerProfile"] = 29
     document["profiles"][2]["particleCount"] = 161
     document["measurements"][2]["averageFrameMilliseconds"] = 25.1
     document["measurements"][2]["p99FrameMilliseconds"] = 101.0
@@ -643,6 +645,7 @@ def test_release_matrix_rejects_performance_drift_or_shared_host_regression(
     errors, evidence = validate_release_matrix(tmp_path, REVISION, "Release")
 
     assert evidence["passed"] is False
+    assert any("requiredWarmupFramesPerProfile must be 30" in error for error in errors)
     assert any("stress shape drifted" in error for error in errors)
     assert any("exceeded the shared-host ceiling" in error for error in errors)
     assert any("one rules state hash" in error for error in errors)

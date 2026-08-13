@@ -60,7 +60,7 @@ Every intended `play_move` supplies the exact current tick, state hash, and a ne
 - Public intent is self-declared presentation data. It appears in the next observation and live viewer but never changes rules, score, rewards, replay verification, or qualification.
 - Response time never affects score.
 - A rival uses the same gameplay seed and exact configuration but independent controller and replay state.
-- Terminal, capped, and explicitly finished runs produce ordinary verified replay receipts.
+- Successfully finalized terminal, capped, and explicitly finished runs produce ordinary verified replays. Failed-closed finalization produces no verified result.
 - A replay proves the recorded action trace and final state. It does not prove that an external policy is deterministic.
 
 Observations are a closed player-visible projection. They exclude random state, future spawns, controller internals, human profile data, progression, paths, prompts, credentials, diagnostics, and hidden reasoning. Blind seeds remain hidden until the result. The host retains at most eight sessions and uses cryptographically random handles when not supplied by a test owner. When capacity is needed, it evicts the oldest completed, aborted, or failed-closed session before rejecting a ninth live match. Every handle becomes invalid when its host process exits.
@@ -75,16 +75,16 @@ Observations are a closed player-visible projection. They exclude random state, 
    ./play.ps1 --agent-watch-pipe=<pipe_name> --agent-watch-token=<access_token>
    ```
 
-4. The agent continues to call `play_move`. Godot renders the latest full public frame and never controls the lane.
+4. The agent continues to call `play_move`. Godot renders the latest full public frame and never controls the lane. It labels action acceptance or rejection, exact end reason, failed-closed state, and verified-result availability.
 5. Save the verified replay explicitly if the human should be able to watch it again through the ordinary replay browser.
 
 The pipe and token are ephemeral capabilities. Do not place them in logs, screenshots, reports, or shared command history. The server accepts one same-user client, consumes the token once, keeps only the latest pending frame, and never listens on TCP. Process arguments may still be visible to other software running as the same user, so this preview is a local trust boundary rather than a security boundary against a compromised account.
 
-The live screen reuses the normal run renderer and displays only public identity, style progress, latest closed public intent, rival outcome, and match state. It does not show chain of thought or private provider output. The verified replay remains the canonical complete record if frames are dropped.
+The live screen consumes `vibesnake-agent-viewer-frame-v2`, reuses the normal run renderer, and displays only public identity, passport color, shed, station affinity, style progress, latest closed public intent, action acceptance or rejection reason, rival outcome, exact match end reason, and verified-result availability. It does not show chain of thought or private provider output. The verified replay remains the canonical complete record if frames are dropped and finalization succeeds. A disconnect says only that match control remains with the host; it does not claim that a replay already exists.
 
 ## Agent experience surfaces
 
-Signal School currently publishes six deterministic lesson definitions with fixed seeds, step caps, target metrics, and threshold evaluators. The host does not yet accept a lesson selection in `start_match` or return lesson completion in a match result. AA-04 owns lesson-selectable sessions and the planned eight-lesson curriculum. Five closed Style Contracts let an agent pursue survival, combos, wrapping risk, power use, or route efficiency without reducing the game to one scalar reward. The preview evaluator reports each contract's primary metric; expressive secondary objectives remain design targets. Episode summaries retain typed public metrics.
+Signal School currently publishes the exact lesson IDs `first-turn`, `wrap-line`, `hunger-route`, `power-route`, `combo-route`, and `recover-route`, each with a fixed seed, step cap, target metric, and threshold evaluator. The host does not yet accept a lesson selection in `start_match` or return lesson completion in a match result. AA-05 owns lesson-selectable sessions and the planned eight-behavior curriculum. Five closed Style Contracts report survival steps, peak combo, controlled near misses, powers activated, or food collected without reducing the game to one scalar reward. Expressive multi-metric objectives remain design targets. Episode summaries retain typed public metrics.
 
 An Agent Passport contains only a stable bounded ID, policy version, display name, color, shed, station affinity, and fixed symbolic-step capability profiles. It is public presentation data for the current exhibition, not semantic memory. Vibe Snake never stores prompts, reasoning, credentials, provider responses, or agent-authored executable code.
 

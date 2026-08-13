@@ -212,6 +212,7 @@ internal static class ShellLocalization
             "THE MATCH OWNS THE CLOCK. WAITING NEVER CHANGES SCORE."),
         Entry("agent-arena.run.live", "AGENT LIVE"),
         Entry("agent-arena.run.complete", "AGENT COMPLETE"),
+        Entry("agent-arena.run.failed", "AGENT FAILED CLOSED"),
         Entry("agent-arena.style.open", "OPEN EXHIBITION"),
         Entry("agent-arena.rival.solo", "SOLO"),
         Entry(
@@ -222,16 +223,37 @@ internal static class ShellLocalization
             "VS {rival} {agent_score}-{rival_score}"),
         Entry(
             "agent-arena.identity",
-            "{agent}  {style}  {rival}"),
+            "{agent}  SHED {shed}  STATION {station}"),
+        Entry(
+            "agent-arena.matchup",
+            "{style}  {rival}"),
         Entry(
             "agent-arena.status",
-            "{status}  {intent}  STEP {step}/{maximum}  FRAME {frame}"),
+            "{status}  {outcome}  STEP {step}/{maximum}  FRAME {frame}"),
+        Entry(
+            "agent-arena.intent-status",
+            "{intent}  {action}"),
         Entry("agent-arena.intent.undeclared", "PLAN UNDECLARED"),
         Entry("agent-arena.intent.seek-food", "PLAN SEEK FOOD"),
         Entry("agent-arena.intent.seek-power", "PLAN SEEK POWER"),
         Entry("agent-arena.intent.preserve-space", "PLAN PRESERVE SPACE"),
         Entry("agent-arena.intent.take-risk", "PLAN TAKE RISK"),
         Entry("agent-arena.intent.recover", "PLAN RECOVER"),
+        Entry("agent-arena.action.none", "NO ACTION YET"),
+        Entry("agent-arena.action.accepted", "ACTION ACCEPTED"),
+        Entry("agent-arena.action.rejected-invalid-request", "REJECTED INVALID REQUEST"),
+        Entry("agent-arena.action.rejected-invalid-action", "REJECTED INVALID ACTION"),
+        Entry("agent-arena.action.rejected-stale-tick", "REJECTED STALE TICK"),
+        Entry("agent-arena.action.rejected-stale-state", "REJECTED STALE STATE"),
+        Entry("agent-arena.action.rejected-illegal-direction", "REJECTED ILLEGAL DIRECTION"),
+        Entry("agent-arena.action.rejected-conflict", "REJECTED REQUEST CONFLICT"),
+        Entry("agent-arena.action.rejected-terminal", "REJECTED MATCH ALREADY ENDED"),
+        Entry("agent-arena.action.rejected-replay", "REJECTED REPLAY FAILURE"),
+        Entry("agent-arena.outcome.live", "OUTCOME LIVE"),
+        Entry("agent-arena.outcome.rules-terminal", "OUTCOME RULES TERMINAL"),
+        Entry("agent-arena.outcome.step-limit", "OUTCOME STEP LIMIT"),
+        Entry("agent-arena.outcome.agent-finished", "OUTCOME AGENT FINISHED"),
+        Entry("agent-arena.outcome.replay-failure", "OUTCOME REPLAY FAILURE"),
         Entry("status.agent-viewer.connecting", "CONNECTING TO AGENT MATCH"),
         Entry("status.agent-viewer.watching", "WATCHING AGENT LIVE"),
         Entry(
@@ -243,6 +265,9 @@ internal static class ShellLocalization
         Entry(
             "status.agent-viewer.rejected",
             "AGENT VIEWER CAPABILITY OR FRAME REJECTED"),
+        Entry(
+            "status.agent-viewer.failed-closed",
+            "AGENT MATCH FAILED CLOSED; NO VERIFIED REPLAY"),
         Entry("action.return-menu", "return to menu"),
         Entry("screen.spectator.title", "AI BROADCAST CIRCUIT"),
         Entry("spectator.selection.channel", "CHANNEL  {channel}"),

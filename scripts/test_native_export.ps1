@@ -612,6 +612,7 @@ try {
     $performanceEvidence = Get-Content -LiteralPath $performanceEvidencePath -Raw |
         ConvertFrom-Json
     $performanceIds = @("minimum", "default", "maximum-safe")
+    $performanceBudget = $performanceEvidence.budget
     if (($performanceEvidence.schemaVersion -ne 1) -or
         ($performanceEvidence.kind -ne "performance-qualification-v1") -or
         (-not $performanceEvidence.passed) -or
@@ -621,19 +622,26 @@ try {
         ($performanceEvidence.minimumHardwareAcceptanceStatus -ne "pending-named-hardware") -or
         ($performanceEvidence.rulesStepsPerProfile -ne 256) -or
         ([string]$performanceEvidence.finalRulesStateHash -notmatch '^[0-9a-f]{16}$') -or
+        ($performanceBudget.requiredWarmupFramesPerProfile -ne 30) -or
+        ($performanceBudget.requiredSamplesPerProfile -ne 40) -or
+        ($performanceBudget.sharedHostMaximumAverageMilliseconds -ne 25.0) -or
+        ($performanceBudget.sharedHostMaximumP95Milliseconds -ne 60.0) -or
         ((@($performanceEvidence.profiles.id) -join ',') -ne ($performanceIds -join ',')) -or
         ((@($performanceEvidence.measurements.id) -join ',') -ne ($performanceIds -join ',')) -or
         ((($performanceEvidence.measurements |
-            Measure-Object -Property sampleCount -Sum).Sum) -lt 120)) {
+            Measure-Object -Property sampleCount -Sum).Sum) -lt
+                (3 * $performanceBudget.requiredSamplesPerProfile))) {
         throw "The exported player candidate performance evidence failed its closed summary gate."
     }
     foreach ($measurement in @($performanceEvidence.measurements)) {
-        if (($measurement.sampleCount -lt 40) -or
+        if (($measurement.sampleCount -lt $performanceBudget.requiredSamplesPerProfile) -or
             ($measurement.p50FrameMilliseconds -gt $measurement.p95FrameMilliseconds) -or
             ($measurement.p95FrameMilliseconds -gt $measurement.p99FrameMilliseconds) -or
             ($measurement.p99FrameMilliseconds -gt $measurement.maximumFrameMilliseconds) -or
-            ($measurement.averageFrameMilliseconds -gt 25.0) -or
-            ($measurement.p95FrameMilliseconds -gt 60.0)) {
+            ($measurement.averageFrameMilliseconds -gt
+                $performanceBudget.sharedHostMaximumAverageMilliseconds) -or
+            ($measurement.p95FrameMilliseconds -gt
+                $performanceBudget.sharedHostMaximumP95Milliseconds)) {
             throw "The exported player performance row drifted: $($measurement.id)"
         }
     }

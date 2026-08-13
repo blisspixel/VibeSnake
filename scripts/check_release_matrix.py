@@ -576,6 +576,7 @@ def validate_release_matrix(
             "maximumParticles": 160,
             "maximumAudioChannels": 12,
             "boardCellCapacity": 2112,
+            "requiredWarmupFramesPerProfile": 30,
             "requiredSamplesPerProfile": 40,
         }
         if not isinstance(budget, dict):

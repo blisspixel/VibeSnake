@@ -643,8 +643,8 @@ try {
         ($localizationEvidence.catalogId -ne "shell-copy-v1") -or
         ($localizationEvidence.requiredLocale -ne "en") -or
         ($localizationEvidence.pseudoLocale -ne "qps-ploc") -or
-        ($localizationEvidence.stringCount -ne 540) -or
-        ($localizationEvidence.parameterizedStringCount -ne 77) -or
+        ($localizationEvidence.stringCount -ne 559) -or
+        ($localizationEvidence.parameterizedStringCount -ne 79) -or
         ($localizationEvidence.migratedRequiredFlowCount -ne 13) -or
         ($localizationEvidence.minimumPseudoExpansionRatio -lt 1.3) -or
         ($localizationEvidence.missingGlyphCount -ne 0) -or
@@ -1754,6 +1754,7 @@ try {
         ($performanceBudget.maximumParticles -ne 160) -or
         ($performanceBudget.maximumAudioChannels -ne 12) -or
         ($performanceBudget.boardCellCapacity -ne 2112) -or
+        ($performanceBudget.requiredWarmupFramesPerProfile -ne 30) -or
         ($performanceBudget.requiredSamplesPerProfile -ne 40)) {
         throw "Published performance budgets drifted from the reviewed contract."
     }

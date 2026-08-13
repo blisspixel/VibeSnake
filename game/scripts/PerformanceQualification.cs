@@ -40,6 +40,7 @@ internal sealed record PublishedPerformanceBudget(
     int MaximumParticles,
     int MaximumAudioChannels,
     int BoardCellCapacity,
+    int RequiredWarmupFramesPerProfile,
     int RequiredSamplesPerProfile);
 
 internal sealed record PerformanceQualificationEvidence(
@@ -87,6 +88,7 @@ internal static class PerformanceQualification
     public const int VisibleCollectiblesAtMaximum = 2;
     public const int MaximumLiveSnakeWithSignals =
         BoardCellCapacity - ObstacleSignalsAtMaximum - VisibleCollectiblesAtMaximum;
+    public const int RequiredWarmupFramesPerProfile = 30;
     public const int RequiredSamplesPerProfile = 40;
     public const int MaximumSharedHostMeasurementAttempts = 2;
 
@@ -225,6 +227,7 @@ internal static class PerformanceQualification
                 MaximumParticles: VisualHierarchyPolicy.Budget.MaximumSimultaneousParticles,
                 MaximumAudioChannels: maximumAudioChannels,
                 BoardCellCapacity: BoardCellCapacity,
+                RequiredWarmupFramesPerProfile: RequiredWarmupFramesPerProfile,
                 RequiredSamplesPerProfile: RequiredSamplesPerProfile),
             Profiles: Profiles,
             Measurements: measurements,

@@ -14,6 +14,7 @@ public enum AgentViewerClientState : byte
     Completed = 2,
     Disconnected = 3,
     Rejected = 4,
+    FailedClosed = 5,
 }
 
 public sealed class AgentViewerClient : IDisposable
@@ -27,7 +28,7 @@ public sealed class AgentViewerClient : IDisposable
     private readonly string _accessToken;
     private readonly CancellationTokenSource _shutdown = new();
     private readonly Task _readerTask;
-    private AgentViewerFrameV1? _latestFrame;
+    private AgentViewerFrameV2? _latestFrame;
     private AgentViewerClientState _state = AgentViewerClientState.Connecting;
     private string _status = "CONNECTING TO AGENT MATCH";
     private bool _disposed;
@@ -68,7 +69,7 @@ public sealed class AgentViewerClient : IDisposable
         }
     }
 
-    public bool TryTakeLatest(out AgentViewerFrameV1? frame)
+    public bool TryTakeLatest(out AgentViewerFrameV2? frame)
     {
         lock (_sync)
         {
@@ -121,7 +122,7 @@ public sealed class AgentViewerClient : IDisposable
             {
                 SetTerminalState(
                     AgentViewerClientState.Disconnected,
-                    "AGENT VIEWER COULD NOT CONNECT; VERIFIED REPLAY REMAINS AVAILABLE");
+                    "AGENT VIEWER COULD NOT CONNECT; MATCH CONTROL REMAINS WITH HOST");
                 return;
             }
             var token = Encoding.ASCII.GetBytes(_accessToken + "\n");
@@ -140,16 +141,17 @@ public sealed class AgentViewerClient : IDisposable
                             : AgentViewerClientState.Disconnected,
                         lastSequence < 0
                             ? "VIEW CAPABILITY REJECTED OR EXPIRED"
-                            : "AGENT VIEWER DISCONNECTED; VERIFIED REPLAY REMAINS AVAILABLE");
+                            : "AGENT VIEWER DISCONNECTED; MATCH CONTROL REMAINS WITH HOST");
                     return;
                 }
 
-                var frame = JsonSerializer.Deserialize<AgentViewerFrameV1>(line, SerializerOptions);
+                var frame = JsonSerializer.Deserialize<AgentViewerFrameV2>(line, SerializerOptions);
                 if (frame is null
-                    || frame.Schema != AgentViewerFrameV1.Contract
+                    || frame.Schema != AgentViewerFrameV2.Contract
                     || frame.Observation is null
                     || frame.Observation.Schema != AgentObservationV1.Contract
-                    || frame.Sequence <= lastSequence)
+                    || frame.Sequence <= lastSequence
+                    || !HasConsistentOutcome(frame))
                 {
                     SetTerminalState(
                         AgentViewerClientState.Rejected,
@@ -161,12 +163,7 @@ public sealed class AgentViewerClient : IDisposable
                 lock (_sync)
                 {
                     _latestFrame = frame;
-                    _state = frame.Observation.IsActionAwaited
-                        ? AgentViewerClientState.Watching
-                        : AgentViewerClientState.Completed;
-                    _status = frame.Observation.IsActionAwaited
-                        ? "WATCHING AGENT LIVE"
-                        : "AGENT MATCH COMPLETE; VERIFIED REPLAY READY";
+                    (_state, _status) = DescribeFrame(frame);
                 }
             }
         }
@@ -180,10 +177,55 @@ public sealed class AgentViewerClient : IDisposable
             {
                 SetTerminalState(
                     AgentViewerClientState.Disconnected,
-                    "AGENT VIEWER DISCONNECTED; VERIFIED REPLAY REMAINS AVAILABLE");
+                    "AGENT VIEWER DISCONNECTED; MATCH CONTROL REMAINS WITH HOST");
             }
         }
     }
+
+    private static bool HasConsistentOutcome(AgentViewerFrameV2 frame)
+    {
+        var observation = frame.Observation;
+        if (observation.IsActionAwaited)
+        {
+            return observation.Lifecycle == AgentMatchLifecycle.AwaitingAction
+                && frame.EndReason == AgentMatchEndReason.None
+                && !frame.VerifiedResultAvailable;
+        }
+
+        if (observation.Lifecycle == AgentMatchLifecycle.FailedClosed)
+        {
+            return frame.EndReason == AgentMatchEndReason.ReplayFailure
+                && !frame.VerifiedResultAvailable;
+        }
+
+        return frame.VerifiedResultAvailable
+            && (observation.Lifecycle == AgentMatchLifecycle.Completed
+                && frame.EndReason is AgentMatchEndReason.RulesTerminal
+                    or AgentMatchEndReason.StepLimit
+                || observation.Lifecycle == AgentMatchLifecycle.Aborted
+                && frame.EndReason == AgentMatchEndReason.AgentFinished);
+    }
+
+    private static (AgentViewerClientState State, string Status) DescribeFrame(
+        AgentViewerFrameV2 frame) => frame.EndReason switch
+        {
+            AgentMatchEndReason.None => (
+                AgentViewerClientState.Watching,
+                "WATCHING AGENT LIVE"),
+            AgentMatchEndReason.RulesTerminal => (
+                AgentViewerClientState.Completed,
+                "AGENT MATCH ENDED BY RULES; VERIFIED REPLAY READY"),
+            AgentMatchEndReason.StepLimit => (
+                AgentViewerClientState.Completed,
+                "AGENT MATCH REACHED STEP LIMIT; VERIFIED REPLAY READY"),
+            AgentMatchEndReason.AgentFinished => (
+                AgentViewerClientState.Completed,
+                "AGENT FINISHED MATCH; VERIFIED REPLAY READY"),
+            AgentMatchEndReason.ReplayFailure => (
+                AgentViewerClientState.FailedClosed,
+                "AGENT MATCH FAILED CLOSED; NO VERIFIED REPLAY"),
+            _ => throw new ArgumentOutOfRangeException(nameof(frame)),
+        };
 
     private static async Task<string?> ReadLineBoundedAsync(
         Stream stream,

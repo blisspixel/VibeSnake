@@ -25,7 +25,7 @@ internal sealed class AgentViewerServer : IAgentViewerSink, IDisposable
         "One local same-user viewer may attach with the one-time capability while this host retains the match. Frames are best-effort and the verified replay remains canonical.";
 
     private static readonly JsonSerializerOptions SerializerOptions = CreateSerializerOptions();
-    private readonly Channel<AgentViewerFrameV1> _frames = Channel.CreateBounded<AgentViewerFrameV1>(
+    private readonly Channel<AgentViewerFrameV2> _frames = Channel.CreateBounded<AgentViewerFrameV2>(
         new BoundedChannelOptions(1)
         {
             FullMode = BoundedChannelFullMode.DropOldest,
@@ -72,7 +72,7 @@ internal sealed class AgentViewerServer : IAgentViewerSink, IDisposable
 
     public AgentViewerConnectionV1 Connection { get; }
 
-    public bool TryPublish(AgentViewerFrameV1 frame)
+    public bool TryPublish(AgentViewerFrameV2 frame)
     {
         ArgumentNullException.ThrowIfNull(frame);
         return !_disposed && _frames.Writer.TryWrite(frame);

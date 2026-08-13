@@ -167,7 +167,7 @@ public partial class Main : Node2D
     private bool _spectatorKeyboardRouteQualified;
     private bool _spectatorControllerRouteQualified;
     private AgentViewerClient? _agentViewer;
-    private AgentViewerFrameV1? _agentViewerFrame;
+    private AgentViewerFrameV2? _agentViewerFrame;
     private RunSnapshot? _agentViewerSnapshot;
     private string _agentViewerStatusId = "status.agent-viewer.connecting";
     private bool _agentViewerSmokeEnabled;
@@ -9513,6 +9513,14 @@ public partial class Main : Node2D
             {
                 _agentViewerSmokeEnabled = false;
                 _agentViewerSmokeDeadlineMilliseconds = null;
+                if (!frame.VerifiedResultAvailable)
+                {
+                    GD.PushError(
+                        "VIBESNAKE_AGENT_VIEWER_SMOKE_FAILED terminal frame had no verified result");
+                    GetTree().Quit(1);
+                    return;
+                }
+
                 _ = CompleteAgentViewerSmokeAsync(projected.StateHash, frame.Sequence);
             }
         }
@@ -9532,6 +9540,7 @@ public partial class Main : Node2D
         AgentViewerClientState.Completed => "status.agent-viewer.completed",
         AgentViewerClientState.Disconnected => "status.agent-viewer.disconnected",
         AgentViewerClientState.Rejected => "status.agent-viewer.rejected",
+        AgentViewerClientState.FailedClosed => "status.agent-viewer.failed-closed",
         _ => throw new ArgumentOutOfRangeException(nameof(state)),
     };
 
@@ -9545,6 +9554,52 @@ public partial class Main : Node2D
         AgentPublicIntent.Recover => "agent-arena.intent.recover",
         _ => throw new ArgumentOutOfRangeException(nameof(intent)),
     };
+
+    private static string AgentActionFeedbackCopyId(AgentPreviousActionV1? action)
+    {
+        if (action is null)
+        {
+            return "agent-arena.action.none";
+        }
+
+        if (action.Accepted)
+        {
+            return "agent-arena.action.accepted";
+        }
+
+        return action.Rejection switch
+        {
+            AgentActionRejection.InvalidRequest => "agent-arena.action.rejected-invalid-request",
+            AgentActionRejection.InvalidAction => "agent-arena.action.rejected-invalid-action",
+            AgentActionRejection.StaleTick => "agent-arena.action.rejected-stale-tick",
+            AgentActionRejection.StaleStateHash => "agent-arena.action.rejected-stale-state",
+            AgentActionRejection.IllegalDirection => "agent-arena.action.rejected-illegal-direction",
+            AgentActionRejection.IdempotencyConflict => "agent-arena.action.rejected-conflict",
+            AgentActionRejection.MatchNotAwaitingAction =>
+                "agent-arena.action.rejected-terminal",
+            AgentActionRejection.ReplayFailure => "agent-arena.action.rejected-replay",
+            _ => throw new ArgumentOutOfRangeException(nameof(action)),
+        };
+    }
+
+    private static string AgentOutcomeCopyId(AgentMatchEndReason endReason) => endReason switch
+    {
+        AgentMatchEndReason.None => "agent-arena.outcome.live",
+        AgentMatchEndReason.RulesTerminal => "agent-arena.outcome.rules-terminal",
+        AgentMatchEndReason.StepLimit => "agent-arena.outcome.step-limit",
+        AgentMatchEndReason.AgentFinished => "agent-arena.outcome.agent-finished",
+        AgentMatchEndReason.ReplayFailure => "agent-arena.outcome.replay-failure",
+        _ => throw new ArgumentOutOfRangeException(nameof(endReason)),
+    };
+
+    private static string CompactAgentPassportToken(string value) => value.Length <= 18
+        ? value.ToUpperInvariant()
+        : value[..16].ToUpperInvariant() + "..";
+
+    private static Color AgentPassportColor(string value) => new(
+        Convert.ToByte(value.Substring(1, 2), 16) / 255.0f,
+        Convert.ToByte(value.Substring(3, 2), 16) / 255.0f,
+        Convert.ToByte(value.Substring(5, 2), 16) / 255.0f);
 
     private void CheckAgentViewerSmokeTimeout(ulong nowMilliseconds)
     {
@@ -9639,7 +9694,9 @@ public partial class Main : Node2D
             _agentViewerSnapshot,
             Localize(observation.IsActionAwaited
                 ? "agent-arena.run.live"
-                : "agent-arena.run.complete"),
+                : _agentViewerFrame.VerifiedResultAvailable
+                    ? "agent-arena.run.complete"
+                    : "agent-arena.run.failed"),
             mode);
         if (!_capturePresentation.ShowSpectatorOverlays)
         {
@@ -9648,7 +9705,7 @@ public partial class Main : Node2D
 
         var panel = ActiveShellPalette.CanvasBackground;
         panel.A = 0.90f;
-        DrawRect(new Rect2(20.0f, 648.0f, 1240.0f, 70.0f), panel);
+        DrawRect(new Rect2(20.0f, 610.0f, 1240.0f, 108.0f), panel);
         var style = observation.StyleContract is null
             ? Localize("agent-arena.style.open")
             : Localize(
@@ -9673,32 +9730,57 @@ public partial class Main : Node2D
                     observation.Rival.Score.ToString("D6", CultureInfo.InvariantCulture)));
         var publicIntent = Localize(AgentIntentCopyId(
             observation.PreviousAction?.DeclaredIntent ?? AgentPublicIntent.Undeclared));
+        var actionFeedback = Localize(AgentActionFeedbackCopyId(observation.PreviousAction));
+        var outcome = Localize(AgentOutcomeCopyId(_agentViewerFrame.EndReason));
+        DrawRect(
+            new Rect2(38.0f, 622.0f, 9.0f, 9.0f),
+            AgentPassportColor(observation.Passport.Color));
         DrawLabel(
             Localize(
                 "agent-arena.identity",
                 ShellTextArgument.From(
                     "agent",
                     observation.Passport.DisplayName.ToUpperInvariant()),
+                ShellTextArgument.From(
+                    "shed",
+                    CompactAgentPassportToken(observation.Passport.ShedId)),
+                ShellTextArgument.From(
+                    "station",
+                    CompactAgentPassportToken(observation.Passport.StationAffinity))),
+            new Vector2(52.0f, 633.0f),
+            ScaledFontSize(13),
+            ActiveShellPalette.GoldText);
+        DrawLabel(
+            Localize(
+                "agent-arena.matchup",
                 ShellTextArgument.From("style", style),
                 ShellTextArgument.From("rival", rival)),
-            new Vector2(38.0f, 670.0f),
-            ScaledFontSize(13),
+            new Vector2(38.0f, 655.0f),
+            ScaledFontSize(11),
             ActiveShellPalette.GoldText);
         DrawLabel(
             Localize(
                 "agent-arena.status",
                 ShellTextArgument.From("status", Localize(_agentViewerStatusId)),
-                ShellTextArgument.From("intent", publicIntent),
+                ShellTextArgument.From("outcome", outcome),
                 ShellTextArgument.From("step", observation.Tick),
                 ShellTextArgument.From("maximum", observation.MaximumSteps),
                 ShellTextArgument.From("frame", _agentViewerFrame.Sequence)),
-            new Vector2(38.0f, 697.0f),
+            new Vector2(38.0f, 680.0f),
+            ScaledFontSize(10),
+            ActiveShellPalette.BodyText);
+        DrawLabel(
+            Localize(
+                "agent-arena.intent-status",
+                ShellTextArgument.From("intent", publicIntent),
+                ShellTextArgument.From("action", actionFeedback)),
+            new Vector2(38.0f, 704.0f),
             ScaledFontSize(11),
             ActiveShellPalette.BodyText);
         DrawActionPromptSegment(
             "back",
             Localize("action.return-menu"),
-            new Vector2(1050.0f, 697.0f),
+            new Vector2(1050.0f, 704.0f),
             ScaledFontSize(10),
             SecondaryTextColor());
     }
@@ -13001,8 +13083,8 @@ public partial class Main : Node2D
 
         const int migratedRequiredFlowCount = 13;
         const double requiredExpansionRatio = 1.30;
-        var passed = ShellLocalization.All.Count == 540
-            && ShellLocalization.All.Count(entry => entry.Parameters.Count > 0) == 77
+        var passed = ShellLocalization.All.Count == 559
+            && ShellLocalization.All.Count(entry => entry.Parameters.Count > 0) == 79
             && migratedRequiredFlowCount == 13
             && minimumExpansionRatio >= requiredExpansionRatio
             && missingGlyphs.Count == 0
@@ -16306,7 +16388,9 @@ public partial class Main : Node2D
             foreach (var profile in profiles)
             {
                 _performanceStressProfile = profile;
-                for (var warmup = 0; warmup < 4; warmup++)
+                for (var warmup = 0;
+                    warmup < PerformanceQualification.RequiredWarmupFramesPerProfile;
+                    warmup++)
                 {
                     QueueRedraw();
                     await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);

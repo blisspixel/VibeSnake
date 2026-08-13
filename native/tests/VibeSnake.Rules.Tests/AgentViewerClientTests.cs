@@ -58,6 +58,8 @@ public sealed class AgentViewerClientTests
         await WaitForStateAsync(client, AgentViewerClientState.Completed);
 
         Assert.Equal(1, completedSnapshot.Tick);
+        Assert.Equal(AgentMatchEndReason.StepLimit, completed.EndReason);
+        Assert.True(completed.VerifiedResultAvailable);
         Assert.Equal(
             AgentPublicIntent.SeekPower,
             completed.Observation.PreviousAction!.DeclaredIntent);
@@ -201,10 +203,22 @@ public sealed class AgentViewerClientTests
             RunModeCatalog.CurrentModeVersion,
             3UL,
             AgentSeedVisibility.Open)).Observe();
-        var validFrame = new AgentViewerFrameV1(
-            AgentViewerFrameV1.Contract,
+        var validFrame = new AgentViewerFrameV2(
+            AgentViewerFrameV2.Contract,
             0,
-            observation);
+            observation,
+            AgentMatchEndReason.None,
+            VerifiedResultAvailable: false);
+        var completedObservation = observation with
+        {
+            Lifecycle = AgentMatchLifecycle.Completed,
+            IsActionAwaited = false,
+        };
+        var failedObservation = observation with
+        {
+            Lifecycle = AgentMatchLifecycle.FailedClosed,
+            IsActionAwaited = false,
+        };
         string[] invalidPayloads =
         [
             "null\n",
@@ -213,6 +227,40 @@ public sealed class AgentViewerClientTests
             SerializeFrame(validFrame with
             {
                 Observation = observation with { Schema = "wrong" },
+            }),
+            SerializeFrame(validFrame with
+            {
+                EndReason = AgentMatchEndReason.StepLimit,
+            }),
+            SerializeFrame(validFrame with
+            {
+                VerifiedResultAvailable = true,
+            }),
+            SerializeFrame(validFrame with
+            {
+                Observation = completedObservation,
+            }),
+            SerializeFrame(validFrame with
+            {
+                Observation = completedObservation,
+                EndReason = AgentMatchEndReason.ReplayFailure,
+            }),
+            SerializeFrame(validFrame with
+            {
+                Observation = completedObservation,
+                EndReason = AgentMatchEndReason.AgentFinished,
+                VerifiedResultAvailable = true,
+            }),
+            SerializeFrame(validFrame with
+            {
+                Observation = failedObservation,
+                EndReason = AgentMatchEndReason.StepLimit,
+            }),
+            SerializeFrame(validFrame with
+            {
+                Observation = failedObservation,
+                EndReason = AgentMatchEndReason.ReplayFailure,
+                VerifiedResultAvailable = true,
             }),
             SerializeFrame(validFrame) + SerializeFrame(validFrame),
         ];
@@ -231,7 +279,80 @@ public sealed class AgentViewerClientTests
         using var disconnected = new AgentViewerClient(disconnectPipe, "dG9rZW4");
         await disconnectServer;
         await WaitForStateAsync(disconnected, AgentViewerClientState.Disconnected);
-        Assert.Contains("REPLAY REMAINS AVAILABLE", disconnected.Status, StringComparison.Ordinal);
+        Assert.Contains("MATCH CONTROL REMAINS WITH HOST", disconnected.Status, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Viewer_client_reports_each_verified_and_failed_terminal_outcome()
+    {
+        var observation = new AgentMatchSession(new AgentMatchOptions(
+            "terminal-frames",
+            RunModeCatalog.ClassicId,
+            RunModeCatalog.CurrentModeVersion,
+            5UL,
+            AgentSeedVisibility.Open)).Observe();
+        var completed = observation with
+        {
+            Lifecycle = AgentMatchLifecycle.Completed,
+            IsActionAwaited = false,
+        };
+        var aborted = observation with
+        {
+            Lifecycle = AgentMatchLifecycle.Aborted,
+            IsActionAwaited = false,
+        };
+        var failed = observation with
+        {
+            Lifecycle = AgentMatchLifecycle.FailedClosed,
+            IsActionAwaited = false,
+        };
+        (AgentViewerFrameV2 Frame, AgentViewerClientState State, string Status)[] cases =
+        [
+            (new AgentViewerFrameV2(
+                AgentViewerFrameV2.Contract,
+                0,
+                completed,
+                AgentMatchEndReason.RulesTerminal,
+                VerifiedResultAvailable: true),
+                AgentViewerClientState.Completed,
+                "ENDED BY RULES"),
+            (new AgentViewerFrameV2(
+                AgentViewerFrameV2.Contract,
+                0,
+                aborted,
+                AgentMatchEndReason.AgentFinished,
+                VerifiedResultAvailable: true),
+                AgentViewerClientState.Completed,
+                "AGENT FINISHED MATCH"),
+            (new AgentViewerFrameV2(
+                AgentViewerFrameV2.Contract,
+                0,
+                failed,
+                AgentMatchEndReason.ReplayFailure,
+                VerifiedResultAvailable: false),
+                AgentViewerClientState.FailedClosed,
+                "NO VERIFIED REPLAY"),
+        ];
+
+        foreach (var item in cases)
+        {
+            var pipeName = CreateTestPipeName();
+            var release = new TaskCompletionSource<bool>(
+                TaskCreationOptions.RunContinuationsAsynchronously);
+            var server = ServePayloadAsync(pipeName, SerializeFrame(item.Frame), release.Task);
+            try
+            {
+                using var client = new AgentViewerClient(pipeName, "dG9rZW4");
+                _ = await TakeFrameAsync(client);
+                await WaitForStateAsync(client, item.State);
+                Assert.Contains(item.Status, client.Status, StringComparison.Ordinal);
+            }
+            finally
+            {
+                release.TrySetResult(true);
+                await server;
+            }
+        }
     }
 
     [Fact]
@@ -285,7 +406,7 @@ public sealed class AgentViewerClientTests
         Assert.Equal(new GridPoint(7, 8), projected.BaitPosition);
     }
 
-    private static string SerializeFrame(AgentViewerFrameV1 frame) =>
+    private static string SerializeFrame(AgentViewerFrameV2 frame) =>
         JsonSerializer.Serialize(frame, ViewerJsonOptions) + "\n";
 
     private static string CreateTestPipeName() =>
@@ -301,7 +422,7 @@ public sealed class AgentViewerClientTests
         return options;
     }
 
-    private static async Task<AgentViewerFrameV1> TakeFrameAsync(
+    private static async Task<AgentViewerFrameV2> TakeFrameAsync(
         AgentViewerClient client,
         long minimumSequence = 0)
     {
@@ -340,7 +461,10 @@ public sealed class AgentViewerClientTests
             $"Viewer state {client.State} did not reach {expected}: {client.Status}");
     }
 
-    private static async Task ServePayloadAsync(string pipeName, string payload)
+    private static async Task ServePayloadAsync(
+        string pipeName,
+        string payload,
+        Task? holdOpen = null)
     {
         await using var server = new NamedPipeServerStream(
             pipeName,
@@ -363,6 +487,10 @@ public sealed class AgentViewerClientTests
         {
             await server.WriteAsync(Encoding.UTF8.GetBytes(payload));
             await server.FlushAsync();
+            if (holdOpen is not null)
+            {
+                await holdOpen;
+            }
         }
         catch (IOException)
         {

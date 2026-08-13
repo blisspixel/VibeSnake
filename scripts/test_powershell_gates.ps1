@@ -163,16 +163,16 @@ try {
         }
     }
     foreach ($requiredLocalizationFragment in @(
-        "ShellLocalization.All.Count == 540",
-        "entry.Parameters.Count > 0) == 77"
+        "ShellLocalization.All.Count == 559",
+        "entry.Parameters.Count > 0) == 79"
     )) {
         if (-not $gameMainScript.Contains($requiredLocalizationFragment, [StringComparison]::Ordinal)) {
             throw "Godot localization evidence is missing catalog count: $requiredLocalizationFragment"
         }
     }
     foreach ($requiredLocalizationFragment in @(
-        '($localizationEvidence.stringCount -ne 540)',
-        '($localizationEvidence.parameterizedStringCount -ne 77)'
+        '($localizationEvidence.stringCount -ne 559)',
+        '($localizationEvidence.parameterizedStringCount -ne 79)'
     )) {
         if (-not $nativeTestScript.Contains($requiredLocalizationFragment, [StringComparison]::Ordinal)) {
             throw "Native localization gate is missing catalog count: $requiredLocalizationFragment"

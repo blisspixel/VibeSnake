@@ -368,15 +368,23 @@ public sealed class AgentMatchSessionTests
             "good",
             rejected.Observation,
             AgentAction.Up));
+        viewer.Throw = false;
+        var result = session.Finish();
 
         Assert.Equal(1, accepted.Observation.Tick);
-        Assert.Equal(3, viewer.Attempts);
-        Assert.Equal([0L, 1L], viewer.Frames.Select(frame => frame.Sequence).ToArray());
+        Assert.Equal(4, viewer.Attempts);
+        Assert.Equal([0L, 1L, 3L], viewer.Frames.Select(frame => frame.Sequence).ToArray());
         Assert.Equal(initial.StateHash, viewer.Frames[0].Observation.StateHash);
+        Assert.Equal(AgentMatchEndReason.None, viewer.Frames[0].EndReason);
+        Assert.False(viewer.Frames[0].VerifiedResultAvailable);
         Assert.Equal(
             AgentActionRejection.IllegalDirection,
             viewer.Frames[1].Observation.PreviousAction!.Rejection);
-        Assert.Single(session.Finish().VerifiedReplay.Steps);
+        Assert.Equal(AgentMatchEndReason.None, viewer.Frames[1].EndReason);
+        Assert.False(viewer.Frames[1].VerifiedResultAvailable);
+        Assert.Equal(AgentMatchEndReason.AgentFinished, viewer.Frames[2].EndReason);
+        Assert.True(viewer.Frames[2].VerifiedResultAvailable);
+        Assert.Single(result.VerifiedReplay.Steps);
     }
 
     private static AgentMatchSession CreateSession(
@@ -475,13 +483,13 @@ public sealed class AgentMatchSessionTests
 
     private sealed class RecordingViewerSink : IAgentViewerSink
     {
-        public List<AgentViewerFrameV1> Frames { get; } = [];
+        public List<AgentViewerFrameV2> Frames { get; } = [];
 
         public int Attempts { get; private set; }
 
         public bool Throw { get; set; }
 
-        public bool TryPublish(AgentViewerFrameV1 frame)
+        public bool TryPublish(AgentViewerFrameV2 frame)
         {
             Attempts++;
             if (Throw)
