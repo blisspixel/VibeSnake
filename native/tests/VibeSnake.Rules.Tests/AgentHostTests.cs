@@ -14,6 +14,7 @@ using VibeSnake.Rules;
 
 namespace VibeSnake.Rules.Tests;
 
+[Collection(AgentHostIntegrationGroup.Name)]
 public sealed class AgentHostTests
 {
     [Fact]
@@ -458,7 +459,7 @@ public sealed class AgentHostTests
     [Fact]
     public async Task Stdio_host_negotiates_current_MCP_and_completes_a_golden_transcript()
     {
-        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(90));
         var hostAssembly = typeof(Program).Assembly.Location;
         var transport = new StdioClientTransport(new StdioClientTransportOptions
         {
@@ -471,7 +472,9 @@ public sealed class AgentHostTests
             transport,
             new McpClientOptions
             {
-                ProtocolVersion = "2026-07-28",
+                ProtocolVersion = Program.McpProtocolVersion,
+                InitializationTimeout = TimeSpan.FromSeconds(45),
+                DiscoverProbeTimeout = TimeSpan.FromSeconds(30),
                 ClientInfo = new Implementation
                 {
                     Name = "vibesnake-agent-host-tests",
@@ -543,7 +546,7 @@ public sealed class AgentHostTests
             new Dictionary<string, object?> { ["matchHandle"] = handle },
             cancellationToken: timeout.Token);
 
-        Assert.Equal("2026-07-28", client.NegotiatedProtocolVersion);
+        Assert.Equal(Program.McpProtocolVersion, client.NegotiatedProtocolVersion);
         Assert.Null(client.SessionId);
         Assert.Equal(
             [

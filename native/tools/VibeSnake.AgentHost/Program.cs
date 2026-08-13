@@ -13,6 +13,7 @@ public static class Program
 {
     public const string HostName = "vibesnake-agent-host";
     public const string HostVersion = "0.1.0";
+    public const string McpProtocolVersion = "2026-07-28";
 
     public static async Task Main(string[] args)
     {
@@ -43,6 +44,8 @@ public static class Program
         builder.Services
             .AddMcpServer(options =>
             {
+                options.ProtocolVersion = McpProtocolVersion;
+                options.InitializationTimeout = TimeSpan.FromSeconds(45);
                 options.ServerInfo = new Implementation
                 {
                     Name = HostName,

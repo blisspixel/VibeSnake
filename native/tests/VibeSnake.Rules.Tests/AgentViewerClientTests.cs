@@ -11,6 +11,7 @@ using VibeSnake.Rules;
 
 namespace VibeSnake.Rules.Tests;
 
+[Collection(AgentHostIntegrationGroup.Name)]
 public sealed class AgentViewerClientTests
 {
     public const string GodotExecutableEnvironmentVariable =
