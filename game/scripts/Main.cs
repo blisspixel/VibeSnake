@@ -16104,7 +16104,9 @@ public partial class Main : Node2D
 
     private async Task<PresentationFrameSummary> MeasurePresentationFrameBurstAsync()
     {
-        for (var warmup = 0; warmup < 4; warmup++)
+        for (var warmup = 0;
+            warmup < BareArcadeLoopQualification.RequiredWarmupFrameSamples;
+            warmup++)
         {
             QueueRedraw();
             await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);

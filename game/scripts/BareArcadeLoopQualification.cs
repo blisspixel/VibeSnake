@@ -99,6 +99,7 @@ internal static class BareArcadeLoopQualification
     private const ulong QualificationSeed = 20260808UL;
     private const double MinimumGraphicalContrast = 3.0;
     internal const double MaximumSmokeFrameMilliseconds = 100.0;
+    internal const int RequiredWarmupFrameSamples = 30;
     internal const int RequiredLiveFrameSamples = 40;
     internal const int MaximumSharedHostMeasurementAttempts = 2;
 
