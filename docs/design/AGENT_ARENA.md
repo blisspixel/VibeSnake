@@ -12,14 +12,14 @@ Agent Arena is a post-1.0 optional capability. The development tree contains the
 
 ## Developer preview status
 
-The source preview implements symbolic-step play, open and blind seeds, verified replays, a read-only live viewer, five closed Style Contracts, six deterministic Signal School lesson definitions with metric evaluators, ephemeral public Agent Passports, five closed self-declared public intents, and equal-seed named rivals. The versioned `vibesnake-agent-viewer-frame-v2` contract distinguishes accepted and rejected action attempts, exact terminal reasons, failed-closed matches, and verified-result availability while the screen shows the passport color, shed, and station. The host does not yet accept a lesson selection or include lesson completion in a match result. The longer experience contract below remains intentionally broader. Symbolic burst and visual control, the complete eight-lesson Signal School, Rival Breaker, expressive Style Contract evaluation, free-form captions, persisted exhibition receipts and passport history, withheld qualification decks, rankings, turning-point summaries, and the same-seed human handoff are not implemented yet.
+The source preview implements symbolic-step play, a separate bounded symbolic-burst division, open and blind seeds, verified replays, a read-only live viewer, five closed Style Contracts, six deterministic Signal School lesson definitions with metric evaluators, ephemeral public Agent Passports, five closed self-declared public intents, and equal-seed named rivals. A burst applies one initial action, continues for at most 16 steps, and stops on a fixed public decision-event catalog, terminal state, match cap, replay failure, or its requested bound. Exact retries are cached across a shared step-and-burst mutation-key namespace. At host capacity, a live match idle for 30 minutes may be reclaimed without a result or replay, while viewer activity remains presentation only. The versioned `vibesnake-agent-viewer-frame-v2` contract distinguishes accepted and rejected action attempts, exact terminal reasons, failed-closed matches, and verified-result availability while the screen shows the passport color, shed, and station. The host does not yet accept a lesson selection or include lesson completion in a match result. The longer experience contract below remains intentionally broader. Visual control, the complete eight-lesson Signal School, Rival Breaker, expressive Style Contract evaluation, free-form captions, persisted exhibition receipts and passport history, withheld qualification decks, rankings, turning-point summaries, and the same-seed human handoff are not implemented yet.
 
 ## Target core loop
 
 ```text
 Choose identity, rival, mode, seed division, and Style Contract
   -> observe public state
-  -> commit one move
+  -> commit one bounded step or burst mutation
   -> receive factual event feedback
   -> complete, cap, or abort with a verified replay
   -> watch the broadcast or take the same-seed challenge
@@ -28,7 +28,7 @@ Choose identity, rival, mode, seed division, and Style Contract
 
 The current preview implements play, live read-only watching, result retrieval, and a separate explicit replay save. It does not yet implement the target recorded-first broadcast route, same-seed human handoff, or retained public result history. Agent response time never affects score. The current live viewer waits for agent actions without advancing rules; the finished verified replay remains canonical when finalization succeeds.
 
-The failure branch is part of the loop, not an implementation detail. If replay finalization fails, the match becomes failed closed, no verified result or saveable replay is available, and the viewer must say so explicitly. The current recovery is to start a new match or restart the local host. Supported session reclamation, compact failure review, and retry guidance remain roadmap work.
+The failure branch is part of the loop, not an implementation detail. If replay finalization fails, the match becomes failed closed, no verified result or saveable replay is available, and the viewer must say so explicitly. The current recovery is to start a new match or restart the local host. Destructive capacity-only reclamation for a live handle idle for 30 minutes is implemented and never creates a result or replay. Result-preserving recovery, compact failure review, and retry guidance remain roadmap work.
 
 ## Play divisions
 
@@ -98,9 +98,9 @@ The base action is `up`, `right`, `down`, `left`, or `continue`. Every mutating 
 - A stale request, illegal reversal, conflicting idempotency key, terminal request, or invalid payload advances no rules state.
 - Retrying the same key with the same request returns the original response.
 - A changed public intent changes the idempotent request identity but never changes rules, scoring, rewards, replay verification, or qualification.
-- A later burst profile may advance at most 16 steps and stops on declared public events.
+- The `four-direction-burst-v1` profile advances at most 16 steps, applies only one initial turn, and stops through fixed `decision-event-stop-v1` public events rather than caller-defined predicates.
 
-The service returns factual events rather than a fabricated dense reward. The preview terminal metric vector contains survival steps, food eaten, peak combo, wraps, near misses, powers collected, powers activated, recoveries, starvation warnings, and direction changes, plus the selected contract's primary threshold result. Route efficiency, risk exposure beyond near misses, dead-end measures, and expressive multi-metric contract evaluation remain AA-03 and AA-08 targets.
+The service returns factual events rather than a fabricated dense reward. A burst returns its actual step count, closed stop reason, optional first stop event, final-step ordered events, and refreshed observation. The preview terminal metric vector contains survival steps, food eaten, peak combo, wraps, near misses, powers collected, powers activated, recoveries, starvation warnings, and direction changes, plus the selected contract's primary threshold result. Route efficiency, risk exposure beyond near misses, dead-end measures, and expressive multi-metric contract evaluation remain AA-03 and AA-08 targets.
 
 ## Agent identity and memory
 
@@ -137,11 +137,11 @@ The current preview accepts only `seek_food`, `seek_power`, `preserve_space`, `t
 
 Human availability does not serialize the build plan. Deterministic work on clarity, pacing controls, event selection, replay handoff, accessibility, recovery, packaging, and agent curricula continues from explicit contracts. Human evidence is collected whenever available and decides whether a behavior is kept, revised, removed, or promoted as fun.
 
-The target order is:
+AA-03 legibility and AA-04 efficient control are parallelizable foundations; AA-05 waits for both to stabilize. The target dependency order is:
 
 1. Make every action correct, recoverable, and replay-verifiable.
 2. Make goal, style, public intent, risk, resources, and outcomes readable without diagnostics.
-3. Add a bounded event-stopping symbolic burst before asking language-model agents to complete long curricula or qualification decks.
+3. Add a bounded event-stopping symbolic burst before asking language-model agents to complete long curricula or qualification decks. This control foundation is implemented while legibility work continues.
 4. Make fixed-seed styles and rivalries visibly distinct without hidden rewards or altered physics.
 5. Complete the curriculum and public practice route once symbolic burst and visible style contracts stabilize.
 6. Persist one bounded public exhibition receipt that hash-links both lane replays before building history, recorded broadcast, or handoff around it.

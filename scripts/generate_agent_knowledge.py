@@ -5,11 +5,9 @@ from __future__ import annotations
 import argparse
 import json
 import re
+from datetime import date, datetime, timezone
 from pathlib import Path
 
-CONTENT_CHANGED_AT = "2026-08-13T00:00:00Z"
-SOURCES_VERIFIED_AT = "2026-08-13T00:00:00Z"
-STALE_AFTER = "2026-11-13T00:00:00Z"
 GENERATOR_ACTOR = "process:vibesnake-okf-generator"
 VERIFIER_ACTOR = "process:vibesnake-ci"
 
@@ -27,6 +25,9 @@ def _frontmatter(
     description: str,
     tags: list[str],
     sources: list[tuple[str, str, str]],
+    generated_at: str,
+    verified_at: str,
+    stale_after: str,
 ) -> str:
     lines = [
         "---",
@@ -34,9 +35,9 @@ def _frontmatter(
         f'title: "{title}"',
         f'description: "{description}"',
         "tags: [" + ", ".join(tags) + "]",
-        f"generated: {{ by: {GENERATOR_ACTOR}, at: {CONTENT_CHANGED_AT} }}",
-        f"verified: {{ by: {VERIFIER_ACTOR}, at: {SOURCES_VERIFIED_AT} }}",
-        f'stale_after: "{STALE_AFTER}"',
+        f"generated: {{ by: {GENERATOR_ACTOR}, at: {generated_at} }}",
+        f"verified: {{ by: {VERIFIER_ACTOR}, at: {verified_at} }}",
+        f'stale_after: "{stale_after}"',
         "status: draft",
         "sources:",
     ]
@@ -62,6 +63,7 @@ def render_bundle(repository_root: Path) -> dict[str, str]:
     program_path = repository_root / "native/tools/VibeSnake.AgentHost/Program.cs"
     host_project_path = repository_root / "native/tools/VibeSnake.AgentHost/VibeSnake.AgentHost.csproj"
     plugin_path = repository_root / "integrations/vibesnake-agent-plugin/plugin.json"
+    baseline_path = repository_root / "integrations/agent-interop-baseline.json"
 
     rules_identity = rules_identity_path.read_text(encoding="utf-8")
     contracts = contracts_path.read_text(encoding="utf-8")
@@ -71,6 +73,14 @@ def render_bundle(repository_root: Path) -> dict[str, str]:
     program = program_path.read_text(encoding="utf-8")
     host_project = host_project_path.read_text(encoding="utf-8")
     plugin = json.loads(plugin_path.read_text(encoding="utf-8"))
+    baseline = json.loads(baseline_path.read_text(encoding="utf-8"))
+    okf = baseline["okf"]
+    okf_version = okf["spec_version"]
+    lifecycle = (
+        okf["generated_at"],
+        okf["verified_at"],
+        okf["stale_after"],
+    )
 
     ruleset_id = _match(rules_identity, r'CurrentId = "([^"]+)"', "ruleset ID")
     rules_version = _match(rules_identity, r"CurrentVersion = ([0-9]+)", "rules version")
@@ -100,7 +110,7 @@ def render_bundle(repository_root: Path) -> dict[str, str]:
     index = "\n".join(
         (
             "---",
-            'okf_version: "0.2"',
+            f'okf_version: "{okf_version}"',
             "---",
             "",
             "# Vibe Snake Agent Knowledge",
@@ -123,6 +133,7 @@ def render_bundle(repository_root: Path) -> dict[str, str]:
             ("agent-contracts", "../../native/src/VibeSnake.AgentPlay/AgentContracts.cs", "Agent contracts"),
             ("mode-catalog", "../../native/src/VibeSnake.Rules/RunModeCatalog.cs", "Official mode catalog"),
         ],
+        *lifecycle,
     ) + "\n".join(
         (
             "# Authority",
@@ -132,8 +143,8 @@ def render_bundle(repository_root: Path) -> dict[str, str]:
             "",
             "# Actions",
             "",
-            "An agent may choose `continue`, `up`, `right`, `down`, or `left`. One accepted action advances exactly one clock-free rules step. A stale or illegal action advances none.",
-            "Each mutation is bound to the observed tick, state hash, and a bounded idempotency key.",
+            "An agent may choose `continue`, `up`, `right`, `down`, or `left`. In `four-direction-step-v1`, one accepted action advances exactly one clock-free rules step. In the separate `four-direction-burst-v1` division, one initial action is followed by at most 15 straight continuations and stops under fixed `decision-event-stop-v1` public events or a closed terminal, cap, replay-failure, or requested-bound reason.",
+            "Each mutation is bound to the observed tick, state hash, and one shared idempotency-key namespace capped at 4,096 unique records per match. Exact retries return cached typed responses; known keys are never evicted, and changed, cross-operation, or post-cap unseen keys advance no additional state.",
             "",
             "# Public observation",
             "",
@@ -158,13 +169,14 @@ def render_bundle(repository_root: Path) -> dict[str, str]:
             ("plugin-manifest", "../vibesnake-agent-plugin/plugin.json", "Agent Plugin manifest"),
             ("agent-plugins-spec", "https://agent-plugins.org/specification", "Agent Plugins 1.0.0 specification"),
         ],
+        *lifecycle,
     ) + "\n".join(
         (
             "# Versions",
             "",
             f"The host version is `{host_version}`. The Agent Plugin version is `{plugin_version}` and targets `{plugin_schema}`.",
             f"The MCP server targets stable protocol `2026-07-28` through the official C# SDK `{sdk_version}`.",
-            "Clients must initialize with exactly MCP `2026-07-28`; legacy initialize revisions are rejected and this preview provides no downlevel fallback.",
+            "Clients must speak the stateless MCP `2026-07-28` era: every request carries protocol metadata, optional discovery uses `server/discover`, and there is no protocol session. Legacy `initialize` handshakes are rejected and this preview provides no downlevel fallback.",
             "",
             "# Tools",
             "",
@@ -176,7 +188,7 @@ def render_bundle(repository_root: Path) -> dict[str, str]:
             "",
             "# Trust boundary",
             "",
-            "The first transport is local stdio. It opens no network listener, accepts no executable or arbitrary path, and keeps opaque handles in one bounded process. Agent Plugins packaging is preview-quality because its 1.0.0 specification remains a working draft.",
+            "The first transport is local stdio. It opens no network listener, accepts no executable, arbitrary path, action list, or custom stop predicate, and keeps opaque bearer handles in one bounded process without a separate client-authentication layer. Finalized matches are evicted first at capacity; otherwise only a live handle with no valid handle-bearing operation for 30 minutes may be reclaimed without a result or replay. Replacement construction precedes eviction, and viewer activity is never match control. Agent Plugins packaging is preview-quality because its 1.0.0 specification remains a working draft.",
             "",
         )
     )
@@ -190,6 +202,7 @@ def render_bundle(repository_root: Path) -> dict[str, str]:
             ("agent-experience", "../../native/src/VibeSnake.AgentPlay/AgentExperience.cs", "Agent experience catalog"),
             ("experience-design", "../../docs/design/AGENT_ARENA.md", "Agent Arena experience contract"),
         ],
+        *lifecycle,
     ) + "\n".join(
         (
             "# Style Contracts",
@@ -203,6 +216,7 @@ def render_bundle(repository_root: Path) -> dict[str, str]:
             *(f"* `{lesson_id}`" for lesson_id in lesson_ids),
             "",
             "Lessons declare an official mode, practice seed, step cap, metric, and target. Qualification should use separate withheld blind seeds and versioned divisions.",
+            "Bounded symbolic bursts reduce routine tool-call cost before lesson-selectable sessions are added, while preserving exact replay, metric, rival-step, and division identity.",
             "",
         )
     )
@@ -217,6 +231,7 @@ def render_bundle(repository_root: Path) -> dict[str, str]:
             ("replay-store", "../../native/src/VibeSnake.Persistence/ReplayStore.cs", "Bounded replay store"),
             ("replay-doc", "../../docs/engineering/REPLAYS.md", "Replay engineering contract"),
         ],
+        *lifecycle,
     ) + "\n".join(
         (
             "# Verified result",
@@ -264,6 +279,28 @@ def check_bundle(output_root: Path, rendered: dict[str, str]) -> tuple[str, ...]
     return tuple(problems)
 
 
+def check_freshness(as_of: date, stale_after_value: str) -> tuple[str, ...]:
+    """Return a deterministic diagnostic when the reviewed bundle is stale."""
+    stale_after = date.fromisoformat(stale_after_value)
+    if as_of >= stale_after:
+        return (
+            "agent knowledge is stale: "
+            f"as-of {as_of.isoformat()} reached stale_after {stale_after_value}; "
+            "review canonical sources and advance verification metadata",
+        )
+    return ()
+
+
+def _parse_as_of(value: str) -> date:
+    try:
+        parsed = date.fromisoformat(value)
+    except ValueError as exception:
+        raise argparse.ArgumentTypeError("--as-of must be an absolute YYYY-MM-DD date") from exception
+    if parsed.isoformat() != value:
+        raise argparse.ArgumentTypeError("--as-of must be an absolute YYYY-MM-DD date")
+    return parsed
+
+
 def main() -> int:
     """Write or verify the repository knowledge bundle."""
     parser = argparse.ArgumentParser(description=__doc__)
@@ -272,15 +309,26 @@ def main() -> int:
     mode.add_argument("--check", action="store_true")
     parser.add_argument("--repository-root", type=Path, default=Path(__file__).resolve().parents[1])
     parser.add_argument("--output", type=Path)
+    parser.add_argument(
+        "--as-of",
+        type=_parse_as_of,
+        default=None,
+        help="Date used for the OKF freshness gate; defaults to the current UTC date.",
+    )
     arguments = parser.parse_args()
     repository_root = arguments.repository_root.resolve()
     output = arguments.output or repository_root / "integrations/vibesnake-agent-knowledge"
+    baseline = json.loads((repository_root / "integrations/agent-interop-baseline.json").read_text(encoding="utf-8"))
     rendered = render_bundle(repository_root)
     if arguments.write:
         write_bundle(output, rendered)
         print(f"Generated OKF 0.2 bundle: {output.resolve()}")
         return 0
-    problems = check_bundle(output, rendered)
+    as_of = arguments.as_of or datetime.now(timezone.utc).date()
+    problems = check_bundle(output, rendered) + check_freshness(
+        as_of,
+        baseline["okf"]["stale_after"],
+    )
     if problems:
         print("Agent knowledge check failed:")
         for problem in problems:

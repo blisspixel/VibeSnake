@@ -55,6 +55,17 @@ public enum AgentActionRejection : byte
     IdempotencyConflict = 6,
     MatchNotAwaitingAction = 7,
     ReplayFailure = 8,
+    WrongActionProfile = 9,
+    MutationCapacityExceeded = 10,
+}
+
+public enum AgentBurstStopReason : byte
+{
+    RequestedLimit = 0,
+    DecisionEvent = 1,
+    MatchStepLimit = 2,
+    RulesTerminal = 3,
+    ReplayFailure = 4,
 }
 
 public sealed record AgentPassportV1
@@ -62,6 +73,7 @@ public sealed record AgentPassportV1
     public const string Contract = "vibesnake-agent-passport-v1";
     public const string SymbolicStepObservationProfile = "symbolic-step-v1";
     public const string FourDirectionActionProfile = "four-direction-step-v1";
+    public const string FourDirectionBurstActionProfile = "four-direction-burst-v1";
     public const int MaximumDisplayNameLength = 48;
 
     public AgentPassportV1(
@@ -100,10 +112,10 @@ public sealed record AgentPassportV1
                 nameof(observationProfile));
         }
 
-        if (actionProfile != FourDirectionActionProfile)
+        if (!IsSupportedActionProfile(actionProfile))
         {
             throw new ArgumentException(
-                "The host supports only four-direction-step-v1 actions.",
+                "The host supports only four-direction-step-v1 or four-direction-burst-v1 actions.",
                 nameof(actionProfile));
         }
 
@@ -145,6 +157,35 @@ public sealed record AgentPassportV1
         "agent-default",
         "open-frequency");
 
+    public static AgentPassportV1 CreateAnonymous(string actionProfile)
+    {
+        if (actionProfile == FourDirectionActionProfile)
+        {
+            return Anonymous;
+        }
+
+        if (!IsSupportedActionProfile(actionProfile))
+        {
+            throw new ArgumentException(
+                "The action profile is unsupported.",
+                nameof(actionProfile));
+        }
+
+        return new AgentPassportV1(
+            Contract,
+            "anonymous-agent",
+            "unversioned",
+            "External Agent",
+            "#64FFFF",
+            "agent-default",
+            "open-frequency",
+            SymbolicStepObservationProfile,
+            actionProfile);
+    }
+
+    public static bool IsSupportedActionProfile(string actionProfile) =>
+        actionProfile is FourDirectionActionProfile or FourDirectionBurstActionProfile;
+
     private static void ValidateDisplayName(string value)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(value);
@@ -174,7 +215,8 @@ public sealed record AgentMatchOptions
         int maximumSteps = DefaultMaximumSteps,
         string? styleContractId = null,
         string? rivalPersonalityId = null,
-        AgentPassportV1? passport = null)
+        AgentPassportV1? passport = null,
+        string actionProfile = AgentPassportV1.FourDirectionActionProfile)
     {
         ValidateToken(matchId, MaximumMatchIdLength, nameof(matchId));
         if (!RunModeCatalog.IsSupportedIdentity(modeId, modeVersion))
@@ -194,6 +236,21 @@ public sealed record AgentMatchOptions
             throw new ArgumentOutOfRangeException(
                 nameof(maximumSteps),
                 $"An agent match must contain between 1 and {MaximumAllowedSteps} steps.");
+        }
+
+        if (!AgentPassportV1.IsSupportedActionProfile(actionProfile))
+        {
+            throw new ArgumentException(
+                "The action profile is unsupported.",
+                nameof(actionProfile));
+        }
+
+        if (passport is not null
+            && !string.Equals(passport.ActionProfile, actionProfile, StringComparison.Ordinal))
+        {
+            throw new ArgumentException(
+                "The Agent Passport action profile must match the selected match action profile.",
+                nameof(passport));
         }
 
         if (styleContractId is not null)
@@ -220,7 +277,8 @@ public sealed record AgentMatchOptions
         MaximumSteps = maximumSteps;
         StyleContractId = styleContractId;
         RivalPersonalityId = rivalPersonalityId;
-        Passport = passport ?? AgentPassportV1.Anonymous;
+        ActionProfile = actionProfile;
+        Passport = passport ?? AgentPassportV1.CreateAnonymous(actionProfile);
     }
 
     public string MatchId { get; }
@@ -238,6 +296,8 @@ public sealed record AgentMatchOptions
     public string? StyleContractId { get; }
 
     public string? RivalPersonalityId { get; }
+
+    public string ActionProfile { get; }
 
     public AgentPassportV1 Passport { get; }
 
@@ -309,6 +369,64 @@ public sealed record AgentActionRequest
     public string ExpectedStateHash { get; }
 
     public AgentAction Action { get; }
+
+    public AgentPublicIntent DeclaredIntent { get; }
+}
+
+public sealed record AgentBurstRequest
+{
+    public const int MaximumBurstSteps = 16;
+
+    public AgentBurstRequest(
+        string idempotencyKey,
+        int expectedTick,
+        string expectedStateHash,
+        AgentAction initialAction,
+        int maximumSteps,
+        AgentPublicIntent declaredIntent = AgentPublicIntent.Undeclared)
+    {
+        AgentMatchOptions.ValidateToken(
+            idempotencyKey,
+            AgentActionRequest.MaximumIdempotencyKeyLength,
+            nameof(idempotencyKey));
+        ArgumentOutOfRangeException.ThrowIfNegative(expectedTick);
+        ArgumentException.ThrowIfNullOrWhiteSpace(expectedStateHash);
+        if (expectedStateHash.Length > 64)
+        {
+            throw new ArgumentException(
+                "expectedStateHash cannot exceed 64 characters.",
+                nameof(expectedStateHash));
+        }
+
+        if (maximumSteps is < 1 or > MaximumBurstSteps)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(maximumSteps),
+                $"A symbolic burst must contain between 1 and {MaximumBurstSteps} steps.");
+        }
+
+        if (!Enum.IsDefined(declaredIntent))
+        {
+            throw new ArgumentOutOfRangeException(nameof(declaredIntent));
+        }
+
+        IdempotencyKey = idempotencyKey;
+        ExpectedTick = expectedTick;
+        ExpectedStateHash = expectedStateHash;
+        InitialAction = initialAction;
+        MaximumSteps = maximumSteps;
+        DeclaredIntent = declaredIntent;
+    }
+
+    public string IdempotencyKey { get; }
+
+    public int ExpectedTick { get; }
+
+    public string ExpectedStateHash { get; }
+
+    public AgentAction InitialAction { get; }
+
+    public int MaximumSteps { get; }
 
     public AgentPublicIntent DeclaredIntent { get; }
 }
@@ -419,6 +537,16 @@ public sealed record AgentActionResponse(
     bool Accepted,
     bool RulesAdvanced,
     AgentActionRejection Rejection,
+    AgentObservationV1 Observation,
+    AgentMatchResult? MatchResult);
+
+public sealed record AgentBurstResponse(
+    bool Accepted,
+    bool RulesAdvanced,
+    AgentActionRejection Rejection,
+    int StepsAdvanced,
+    AgentBurstStopReason? StopReason,
+    RunEventKind? StopEvent,
     AgentObservationV1 Observation,
     AgentMatchResult? MatchResult);
 

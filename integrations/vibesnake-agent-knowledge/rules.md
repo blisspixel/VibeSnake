@@ -5,7 +5,7 @@ description: "The public, deterministic rules boundary available to an external 
 tags: [vibesnake, rules, observation, agents]
 generated: { by: process:vibesnake-okf-generator, at: 2026-08-13T00:00:00Z }
 verified: { by: process:vibesnake-ci, at: 2026-08-13T00:00:00Z }
-stale_after: "2026-11-13T00:00:00Z"
+stale_after: "2026-11-13"
 status: draft
 sources:
   - id: rules-identity
@@ -25,8 +25,8 @@ This knowledge bundle is descriptive. The rules assembly, tool schemas, and veri
 
 # Actions
 
-An agent may choose `continue`, `up`, `right`, `down`, or `left`. One accepted action advances exactly one clock-free rules step. A stale or illegal action advances none.
-Each mutation is bound to the observed tick, state hash, and a bounded idempotency key.
+An agent may choose `continue`, `up`, `right`, `down`, or `left`. In `four-direction-step-v1`, one accepted action advances exactly one clock-free rules step. In the separate `four-direction-burst-v1` division, one initial action is followed by at most 15 straight continuations and stops under fixed `decision-event-stop-v1` public events or a closed terminal, cap, replay-failure, or requested-bound reason.
+Each mutation is bound to the observed tick, state hash, and one shared idempotency-key namespace capped at 4,096 unique records per match. Exact retries return cached typed responses; known keys are never evicted, and changed, cross-operation, or post-cap unseen keys advance no additional state.
 
 # Public observation
 

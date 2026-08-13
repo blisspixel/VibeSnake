@@ -38,6 +38,17 @@ Optional agent public intent is a closed enum. It changes idempotent request
 identity but has no rules, scoring, reward, replay, qualification, filesystem,
 network, or execution authority.
 
+Step and burst mutations share one idempotency-key namespace capped at 4,096
+unique records per match. Known keys are never evicted; after the cap, every
+unseen key fails closed without advancing rules. The burst
+profile accepts one initial closed action and a maximum of 16 steps, then uses a
+fixed public-event stop policy. It accepts no caller-defined actions, predicates,
+callbacks, paths, rewards, or code. At capacity, the host may reclaim a live
+handle only after 30 minutes without a valid handle-bearing host operation. The
+opaque handle is the bearer capability; stdio has no separate client-authentication
+layer. Reclamation
+creates no result or replay, and viewer activity is never match control.
+
 The repository must never contain real credentials, signing material, private
 reports, or player data. See the
 [code quality standard](docs/engineering/CODE_QUALITY_STANDARDS.md) for enforced

@@ -24,6 +24,7 @@ public sealed class AgentMatchOptionsTests
         Assert.Equal(7, options.MaximumSteps);
         Assert.Null(options.StyleContractId);
         Assert.Null(options.RivalPersonalityId);
+        Assert.Equal(AgentPassportV1.FourDirectionActionProfile, options.ActionProfile);
         Assert.Same(AgentPassportV1.Anonymous, options.Passport);
         Assert.Equal(RunModeCatalog.ClassicId, options.CreateRunConfig().ModeId);
     }
@@ -95,6 +96,45 @@ public sealed class AgentMatchOptionsTests
             "shed",
             "station",
             actionProfile: "burst-v1"));
+
+        var burstPassport = new AgentPassportV1(
+            AgentPassportV1.Contract,
+            "burst-agent",
+            "policy-1",
+            "Burst Agent",
+            "#FFFFFF",
+            "shed",
+            "station",
+            actionProfile: AgentPassportV1.FourDirectionBurstActionProfile);
+        var burstOptions = new AgentMatchOptions(
+            "burst-passport",
+            RunModeCatalog.ClassicId,
+            RunModeCatalog.CurrentModeVersion,
+            1UL,
+            AgentSeedVisibility.Open,
+            passport: burstPassport,
+            actionProfile: AgentPassportV1.FourDirectionBurstActionProfile);
+        Assert.Same(burstPassport, burstOptions.Passport);
+        Assert.Equal(
+            AgentPassportV1.FourDirectionBurstActionProfile,
+            burstOptions.ActionProfile);
+        Assert.Throws<ArgumentException>(() => new AgentMatchOptions(
+            "mismatched-passport",
+            RunModeCatalog.ClassicId,
+            RunModeCatalog.CurrentModeVersion,
+            1UL,
+            AgentSeedVisibility.Open,
+            passport: passport,
+            actionProfile: AgentPassportV1.FourDirectionBurstActionProfile));
+        Assert.Throws<ArgumentException>(() => new AgentMatchOptions(
+            "unknown-profile",
+            RunModeCatalog.ClassicId,
+            RunModeCatalog.CurrentModeVersion,
+            1UL,
+            AgentSeedVisibility.Open,
+            actionProfile: "unknown"));
+        Assert.Throws<ArgumentException>(() =>
+            AgentPassportV1.CreateAnonymous("unknown"));
     }
 
     [Fact]
@@ -248,5 +288,54 @@ public sealed class AgentMatchOptionsTests
                 "hash",
                 AgentAction.Continue,
                 (AgentPublicIntent)255));
+    }
+
+    [Fact]
+    public void Burst_requests_validate_the_fixed_symbolic_budget()
+    {
+        var request = new AgentBurstRequest(
+            "burst-1",
+            0,
+            "0123456789abcdef",
+            AgentAction.Up,
+            AgentBurstRequest.MaximumBurstSteps,
+            AgentPublicIntent.PreserveSpace);
+
+        Assert.Equal("burst-1", request.IdempotencyKey);
+        Assert.Equal(0, request.ExpectedTick);
+        Assert.Equal(AgentAction.Up, request.InitialAction);
+        Assert.Equal(AgentBurstRequest.MaximumBurstSteps, request.MaximumSteps);
+        Assert.Equal(AgentPublicIntent.PreserveSpace, request.DeclaredIntent);
+        Assert.Throws<ArgumentOutOfRangeException>(() => new AgentBurstRequest(
+            "burst",
+            0,
+            "hash",
+            AgentAction.Continue,
+            0));
+        Assert.Throws<ArgumentOutOfRangeException>(() => new AgentBurstRequest(
+            "burst",
+            0,
+            "hash",
+            AgentAction.Continue,
+            AgentBurstRequest.MaximumBurstSteps + 1));
+        Assert.Throws<ArgumentException>(() => new AgentBurstRequest(
+            "bad key",
+            0,
+            "hash",
+            AgentAction.Continue,
+            1));
+        Assert.Throws<ArgumentException>(() => new AgentBurstRequest(
+            "burst",
+            0,
+            new string('a', 65),
+            AgentAction.Continue,
+            1));
+        Assert.Throws<ArgumentOutOfRangeException>(() => new AgentBurstRequest(
+            "burst",
+            0,
+            "hash",
+            AgentAction.Continue,
+            1,
+            (AgentPublicIntent)255));
     }
 }

@@ -1,0 +1,54 @@
+{
+  "schema": "vibesnake-agent-interop-baseline-v1",
+  "reviewed_on": "2026-08-13",
+  "next_review_on": "2026-11-13",
+  "mcp": {
+    "protocol_version": "2026-07-28",
+    "sdk_package": "ModelContextProtocol",
+    "sdk_version": "2.2.0",
+    "host_version": "0.2.0",
+    "transport": "stdio",
+    "session_model": "stateless"
+  },
+  "agent_plugins": {
+    "spec_version": "1.0.0",
+    "maturity": "working-draft",
+    "plugin_version": "0.2.0",
+    "plugin_schema_url": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+    "plugin_schema_sha256": "0a4aad95ce337878ad38802ebf0daa3fde76abe3f65400c86bcbb1ec0b3ab883",
+    "mcp_schema_url": "https://agent-plugins.org/schemas/1.0.0/mcp.schema.json",
+    "mcp_schema_sha256": "6539175bfcdf43085855183e86da40ea94b166547a72b47ae9a0a390516d3acb"
+  },
+  "agent_skill": {
+    "profile": "minimal-non-experimental",
+    "fields": [
+      "name",
+      "description",
+      "markdown-body"
+    ]
+  },
+  "okf": {
+    "spec_version": "0.2",
+    "generated_at": "2026-08-13T00:00:00Z",
+    "verified_at": "2026-08-13T00:00:00Z",
+    "stale_after": "2026-11-13"
+  },
+  "mcp_apps": {
+    "tracked_version": "2026-01-26",
+    "status": "tracked-only"
+  },
+  "public_contract_history": {
+    "host": [
+      {
+        "version": "0.2.0",
+        "sha256": "a72806ddaab5bcd266ba6e17edea14e25cce06c6b096555b0e8b0b3b1b3084bf"
+      }
+    ],
+    "plugin": [
+      {
+        "version": "0.2.0",
+        "sha256": "8b3ebde1f27efe102f6c7a86fb64245366457a951026205250528efdc52d35d5"
+      }
+    ]
+  }
+}

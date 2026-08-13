@@ -25,7 +25,7 @@ The rewrite risk is equally real. Changing engine, language, timing, random beha
 ## Current evidence
 
 - `global.json` selects stable .NET SDK 10.0.302 and rejects previews. `native/toolchain.json` pins Godot 4.7.1, its official commit, official editor archives for all three targets, and the exact export-template archive.
-- The native solution builds with warnings as errors and passes 964 tests. Under Coverlet 10, aggregate native coverage is 94.42 percent line and 87.77 percent branch, with current 90 percent line and 85 percent branch floors per measured module and a retained 90 percent branch target for 0.4 acceptance.
+- The native solution builds with warnings as errors and passes 985 tests. Under Coverlet 10, aggregate native coverage is 94.58 percent line and 87.76 percent branch, with current 90 percent line and 85 percent branch floors per measured module and a retained 90 percent branch target for 0.4 acceptance.
 - Shared Python-to-C# fixtures cover 100 movement traces with 25,600 steps, core rules, all nine powers, and the achievement-candidate product path. Reviewed parity decisions own intentional differences.
 - `VibeSnake.Rules` owns Classic and Vibe, all nine powers, adaptive hunger, canonical schema 3 state, stable hashes, replay recording and verification, AI rivals, challenges, ghosts, progression catalogs, and deterministic restore.
 - `VibeSnake.Persistence` owns bounded atomic settings, bindings, achievements, progression, scores, replays, comparisons, recovery, content packs, radio policy, and local privacy-safe evidence.

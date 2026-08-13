@@ -85,9 +85,9 @@ native/
 |-- toolchain.json            Exact SDK, engine, editor and template hashes, renderer, and cadence pins
 |-- src/VibeSnake.Rules/      Engine-independent rules, product modes, AI personalities, power decisions, progression/Tour catalogs, canonical state, and restore boundary
 |-- src/VibeSnake.Persistence/  Bounded replay/storage, progression, and local summaries plus pure audio, radio, and broadcast policies
-|-- src/VibeSnake.AgentPlay/  Transport-neutral external-agent sessions, public observations, experience contracts, and verified replay ownership
+|-- src/VibeSnake.AgentPlay/  Transport-neutral step and bounded-burst external-agent sessions, public observations, experience contracts, and verified replay ownership
 |-- src/VibeSnake.AgentViewer/  Read-only same-user pipe client and public snapshot projection
-|-- tools/VibeSnake.AgentHost/  Local stdio MCP adapter, bounded session registry, replay save, and read-only viewer server
+|-- tools/VibeSnake.AgentHost/  Local stateless-era stdio MCP adapter, capacity and idle-bounded session registry, replay save, and read-only viewer server
 |-- tools/ValidateCreatorContent/  Data-only personality and canonical pack-set validation command
 `-- tests/VibeSnake.Rules.Tests/  xUnit parity, restore, replay, storage, and generated state-machine contracts
 
@@ -129,7 +129,7 @@ play.ps1 / play.sh / play.bat     Verify, build, and launch the native Godot gam
 
 The Godot and C# paths are the default source-playable product. The Python package remains a frozen behavior oracle, fixture producer, and optional migration reference. New product behavior belongs in `game/` and `native/`.
 
-The optional post-1.0 interoperability source lives under `integrations/vibesnake-agent-plugin/` and `integrations/vibesnake-agent-knowledge/`. The checked-in plugin directory contains the source manifest and skill; `scripts/package_agent_plugin.ps1` publishes the host and generates the root `mcp.json` only in its isolated output. The source forms are present in `player-latest`, but neither the assembled plugin nor any Agent Arena entry point is part of the supported 1.0 player artifact. See [agent play integration](AGENT_PLAY.md).
+The optional post-1.0 interoperability source lives under `integrations/vibesnake-agent-plugin/` and `integrations/vibesnake-agent-knowledge/`. `integrations/agent-interop-baseline.json` is the machine-readable authority for reviewed MCP, Agent Plugins, Agent Skill, MCP Apps, and OKF pins, versions, schema digests, and review dates. The checked-in plugin directory contains the source manifest and skill; `scripts/package_agent_plugin.ps1` publishes the host and generates the root `mcp.json` only in its isolated output. The source forms are present in `player-latest`, but neither the assembled plugin nor any Agent Arena entry point is part of the supported 1.0 player artifact. See [agent play integration](AGENT_PLAY.md).
 
 Persistence and configuration boundaries:
 

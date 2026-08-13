@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import re
 from pathlib import Path
+from pathlib import PurePosixPath
 from typing import Any
 
 PLUGIN_SCHEMA = "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json"
@@ -28,12 +30,25 @@ SKILL_FIELDS = {
 }
 PLUGIN_NAME = re.compile(r"^(?!.*(?:--|\.\.))[a-z0-9](?:[a-z0-9.-]{0,62}[a-z0-9])?$")
 SKILL_NAME = re.compile(r"^(?!.*--)[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$")
+SHA256 = re.compile(r"^[0-9a-f]{64}$")
+
+
+def _reject_duplicate_keys(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    value: dict[str, Any] = {}
+    for key, item in pairs:
+        if key in value:
+            raise ValueError(f"duplicate JSON key: {key}")
+        value[key] = item
+    return value
 
 
 def _load_object(path: Path, problems: list[str]) -> dict[str, Any] | None:
     try:
-        value = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, UnicodeError, json.JSONDecodeError) as exception:
+        value = json.loads(
+            path.read_text(encoding="utf-8"),
+            object_pairs_hook=_reject_duplicate_keys,
+        )
+    except (OSError, UnicodeError, json.JSONDecodeError, ValueError) as exception:
         problems.append(f"{path.name}: unreadable JSON: {exception}")
         return None
     if not isinstance(value, dict):
@@ -182,13 +197,25 @@ def _validate_stdio(root: Path, label: str, value: dict[str, Any], problems: lis
         elif cwd.startswith("./"):
             if not _is_contained(root, root / cwd[2:]):
                 problems.append(f"{label}: cwd escapes the plugin root")
-        elif not (
-            cwd == "${PLUGIN_ROOT}"
-            or cwd.startswith("${PLUGIN_ROOT}/")
-            or cwd == "${PLUGIN_DATA}"
-            or cwd.startswith("${PLUGIN_DATA}/")
-        ):
+        elif not _is_safe_placeholder_path(cwd):
             problems.append(f"{label}: cwd has an unsupported form")
+
+
+def _is_safe_placeholder_path(value: str) -> bool:
+    for placeholder in ("${PLUGIN_ROOT}", "${PLUGIN_DATA}"):
+        if value == placeholder:
+            return True
+        prefix = placeholder + "/"
+        if value.startswith(prefix):
+            suffix = value[len(prefix) :]
+            path = PurePosixPath(suffix)
+            return (
+                bool(suffix)
+                and "\\" not in suffix
+                and not path.is_absolute()
+                and all(part not in {"", ".", ".."} for part in path.parts)
+            )
+    return False
 
 
 def _validate_mcp(root: Path, require_mcp: bool, problems: list[str]) -> None:
@@ -224,6 +251,50 @@ def _validate_mcp(root: Path, require_mcp: bool, problems: list[str]) -> None:
             problems.append(f"{label}: Vibe Snake's producer profile supports only stdio")
 
 
+def _validate_checksums(root: Path, problems: list[str]) -> None:
+    checksum_path = root / "SHA256SUMS"
+    if not checksum_path.exists():
+        return
+    if not checksum_path.is_file():
+        problems.append("SHA256SUMS: fixed component location must be a regular file")
+        return
+    try:
+        lines = checksum_path.read_text(encoding="utf-8").splitlines()
+    except (OSError, UnicodeError) as exception:
+        problems.append(f"SHA256SUMS: unreadable checksum list: {exception}")
+        return
+
+    expected: dict[str, str] = {}
+    for line_number, line in enumerate(lines, start=1):
+        digest, separator, relative = line.partition("  ")
+        candidate = root / relative
+        if (
+            not separator
+            or SHA256.fullmatch(digest) is None
+            or not relative
+            or "\\" in relative
+            or not _is_contained(root, candidate)
+            or not candidate.is_file()
+            or relative == "SHA256SUMS"
+        ):
+            problems.append(f"SHA256SUMS:{line_number}: invalid checksum entry")
+            continue
+        if relative in expected:
+            problems.append(f"SHA256SUMS:{line_number}: duplicate path {relative}")
+            continue
+        expected[relative] = digest
+
+    actual_paths = {
+        path.relative_to(root).as_posix() for path in root.rglob("*") if path.is_file() and path != checksum_path
+    }
+    if set(expected) != actual_paths:
+        problems.append("SHA256SUMS: entries must match every packaged regular file exactly once")
+    for relative, digest in expected.items():
+        candidate = root / relative
+        if candidate.is_file() and hashlib.sha256(candidate.read_bytes()).hexdigest() != digest:
+            problems.append(f"SHA256SUMS: digest mismatch for {relative}")
+
+
 def validate_plugin(root: Path, require_mcp: bool = False) -> tuple[str, ...]:
     """Return deterministic producer-conformance problems for one plugin root."""
     root = root.resolve()
@@ -236,6 +307,7 @@ def validate_plugin(root: Path, require_mcp: bool = False) -> tuple[str, ...]:
     _validate_manifest(root, problems)
     _validate_skills(root, problems)
     _validate_mcp(root, require_mcp, problems)
+    _validate_checksums(root, problems)
     return tuple(problems)
 
 

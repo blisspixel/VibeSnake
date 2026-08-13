@@ -22,7 +22,9 @@ The optional post-1.0 Agent Arena source uses a local stdio MCP host and opens n
 
 An optional public Agent Passport may contain a bounded agent ID, policy version, display name, color, shed, station affinity, and fixed capability profile. It must not contain prompts, hidden reasoning, credentials, provider responses, account data, or other personal information. The host does not persist the passport as agent memory.
 
-Each move may carry one closed public intent label: seek food, seek power, preserve space, take risk, recover, or undeclared. It contains no free-form text, is visible to the agent and local viewer, has no gameplay authority, and is not written into human profiles or progression.
+Each step or bounded burst may carry one closed public intent label: seek food, seek power, preserve space, take risk, recover, or undeclared. It contains no free-form text, is visible to the agent and local viewer, has no gameplay authority, and is not written into human profiles or progression. A burst accepts no action list, custom stop expression, executable code, or hidden state and advances at most 16 clock-free rules steps before returning public final-step evidence.
+
+The host retains at most eight ephemeral matches. At capacity it removes finalized matches first; if every match is live, it may invalidate only a handle with no valid handle-bearing host operation for at least 30 minutes. The opaque handle is the bearer capability; the stdio host has no separate client-authentication layer. This resource lease creates no score, result, ranking, replay, or analytics record. Viewer connection and disconnection never refresh, finish, or expire a match.
 
 Live watching uses a one-time same-user local-pipe capability. The capability is not written to the replay or application logs and should not be copied into screenshots, reports, or shared command history. A verified replay is stored only after the agent explicitly calls the path-free save tool, and it uses the same bounded application-owned replay store and deletion controls as other local replays.
 

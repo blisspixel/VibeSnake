@@ -5,7 +5,7 @@ description: "How successfully finalized agent play becomes a verified result an
 tags: [vibesnake, replay, verification, spectator]
 generated: { by: process:vibesnake-okf-generator, at: 2026-08-13T00:00:00Z }
 verified: { by: process:vibesnake-ci, at: 2026-08-13T00:00:00Z }
-stale_after: "2026-11-13T00:00:00Z"
+stale_after: "2026-11-13"
 status: draft
 sources:
   - id: agent-session

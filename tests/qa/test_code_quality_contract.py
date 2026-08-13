@@ -143,8 +143,27 @@ def test_ci_runs_the_documented_quality_and_dependency_gates() -> None:
         "dotnet build native/VibeSnake.slnx --configuration Release --no-restore",
         "dotnet format native/VibeSnake.slnx --verify-no-changes --no-restore",
         "./scripts/test_native_coverage.ps1",
+        "./scripts/package_agent_plugin.ps1 -OutputRoot TestResults/agent-plugin -Force",
+        "VIBESNAKE_AGENT_HOST_ASSEMBLY:",
+        "python scripts/check_agent_interop.py",
     ):
         assert required in workflow
+
+
+def test_agent_interoperability_drift_workflow_is_bounded_and_required() -> None:
+    path = REPOSITORY_ROOT / ".github" / "workflows" / "agent-interop-drift.yml"
+    workflow = load_workflow(path)
+
+    assert workflow["permissions"] == {"contents": "read"}
+    assert workflow["on"] == {
+        "schedule": [{"cron": "17 13 * * 1"}],
+        "workflow_dispatch": "",
+    }
+    job = workflow["jobs"]["upstream-drift"]
+    assert job["runs-on"] == "ubuntu-latest"
+    assert job["timeout-minutes"] == "5"
+    raw = path.read_text(encoding="utf-8")
+    assert "python scripts/check_agent_interop.py --check-upstream" in raw
 
 
 def test_floating_source_release_uses_only_a_successful_ci_revision() -> None:

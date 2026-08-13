@@ -10,26 +10,30 @@ public sealed class AgentSessionRegistry : IDisposable
 {
     public const int MaximumRetainedMatches = 8;
     public const int MaximumHandleGenerationAttempts = 16;
+    public const int LiveMatchIdleLeaseMinutes = 30;
     public const string RetentionPolicy =
-        "Up to eight matches are retained in this host process. Completed matches may be evicted first when capacity is needed, and all handles expire when the process exits.";
+        "Up to eight matches are retained in this host process. Completed matches are evicted first when capacity is needed. At capacity, a live match idle for at least 30 minutes may be reclaimed without a result or replay. Viewer activity never refreshes this lease, and all handles expire when the process exits.";
 
     private readonly object _sync = new();
     private readonly Dictionary<string, Entry> _entries = new(StringComparer.Ordinal);
     private readonly ReplayStore _replayStore;
     private readonly Func<string> _handleGenerator;
     private readonly Func<ulong> _seedGenerator;
+    private readonly TimeProvider _timeProvider;
     private long _nextOrder;
     private bool _disposed;
 
     public AgentSessionRegistry(
         ReplayStore replayStore,
         Func<string>? handleGenerator = null,
-        Func<ulong>? seedGenerator = null)
+        Func<ulong>? seedGenerator = null,
+        TimeProvider? timeProvider = null)
     {
         ArgumentNullException.ThrowIfNull(replayStore);
         _replayStore = replayStore;
         _handleGenerator = handleGenerator ?? GenerateHandle;
         _seedGenerator = seedGenerator ?? GenerateSeed;
+        _timeProvider = timeProvider ?? TimeProvider.System;
     }
 
     public StartAgentMatchV1 StartMatch(
@@ -40,7 +44,8 @@ public sealed class AgentSessionRegistry : IDisposable
         string? styleContractId = null,
         string? rivalPersonalityId = null,
         bool watchEnabled = false,
-        AgentPassportV1? passport = null)
+        AgentPassportV1? passport = null,
+        string actionProfile = AgentPassportV1.FourDirectionActionProfile)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(modeId);
         if (!RunModeCatalog.IsSupportedIdentity(
@@ -71,38 +76,44 @@ public sealed class AgentSessionRegistry : IDisposable
         lock (_sync)
         {
             ObjectDisposedException.ThrowIf(_disposed, this);
-            MakeCapacity();
+            EnsureCapacityAvailable();
             var handle = MintUniqueHandle();
-            AgentViewerServer? viewer = watchEnabled ? AgentViewerServer.Create() : null;
-            AgentMatchSession session;
+            var options = new AgentMatchOptions(
+                handle,
+                modeId,
+                RunModeCatalog.CurrentModeVersion,
+                seed,
+                seedVisibility,
+                stepLimit,
+                styleContractId,
+                rivalPersonalityId,
+                passport,
+                actionProfile);
+            AgentViewerServer? viewer = null;
             try
             {
-                session = new AgentMatchSession(
-                    new AgentMatchOptions(
-                        handle,
-                        modeId,
-                        RunModeCatalog.CurrentModeVersion,
-                        seed,
-                        seedVisibility,
-                        stepLimit,
-                        styleContractId,
-                        rivalPersonalityId,
-                        passport),
-                    viewer);
+                viewer = watchEnabled ? AgentViewerServer.Create() : null;
+                var session = new AgentMatchSession(options, viewer);
+                MakeCapacity();
+                _entries.Add(
+                    handle,
+                    new Entry(
+                        session,
+                        _nextOrder++,
+                        _timeProvider.GetTimestamp(),
+                        viewer));
+                return new StartAgentMatchV1(
+                    StartAgentMatchV1.Contract,
+                    handle,
+                    RetentionPolicy,
+                    session.Observe(),
+                    viewer?.Connection);
             }
             catch
             {
                 viewer?.Dispose();
                 throw;
             }
-
-            _entries.Add(handle, new Entry(session, _nextOrder++, viewer));
-            return new StartAgentMatchV1(
-                StartAgentMatchV1.Contract,
-                handle,
-                RetentionPolicy,
-                session.Observe(),
-                viewer?.Connection);
         }
     }
 
@@ -122,6 +133,23 @@ public sealed class AgentSessionRegistry : IDisposable
                 expectedTick,
                 expectedStateHash,
                 action,
+                declaredIntent)));
+
+    public AgentBurstResponseV1 PlayBurst(
+        string matchHandle,
+        string idempotencyKey,
+        int expectedTick,
+        string expectedStateHash,
+        AgentAction initialAction,
+        int maximumSteps,
+        AgentPublicIntent declaredIntent = AgentPublicIntent.Undeclared) =>
+        AgentBurstResponseV1.FromResponse(
+            GetSession(matchHandle).SubmitBurst(new AgentBurstRequest(
+                idempotencyKey,
+                expectedTick,
+                expectedStateHash,
+                initialAction,
+                maximumSteps,
                 declaredIntent)));
 
     public AgentMatchSummaryV1 Finish(string matchHandle) =>
@@ -192,9 +220,13 @@ public sealed class AgentSessionRegistry : IDisposable
         lock (_sync)
         {
             ObjectDisposedException.ThrowIf(_disposed, this);
-            return _entries.TryGetValue(matchHandle, out var entry)
-                ? entry.Session
-                : throw new KeyNotFoundException("The match handle is unknown or expired.");
+            if (!_entries.TryGetValue(matchHandle, out var entry))
+            {
+                throw new KeyNotFoundException("The match handle is unknown or expired.");
+            }
+
+            entry.LastActivityTimestamp = _timeProvider.GetTimestamp();
+            return entry.Session;
         }
     }
 
@@ -205,18 +237,49 @@ public sealed class AgentSessionRegistry : IDisposable
             return;
         }
 
-        var evictable = _entries
+        var evictableKey = FindEvictableKey();
+        if (evictableKey is null)
+        {
+            throw new InvalidOperationException(
+                "The host reached its live-match capacity. Finish a match or wait for an inactive live-match lease to expire before starting another.");
+        }
+
+        var evictable = _entries[evictableKey];
+        _entries.Remove(evictableKey);
+        evictable.Viewer?.Dispose();
+    }
+
+    private void EnsureCapacityAvailable()
+    {
+        if (_entries.Count >= MaximumRetainedMatches && FindEvictableKey() is null)
+        {
+            throw new InvalidOperationException(
+                "The host reached its live-match capacity. Finish a match or wait for an inactive live-match lease to expire before starting another.");
+        }
+    }
+
+    private string? FindEvictableKey()
+    {
+        var finalized = _entries
             .Where(pair => pair.Value.Session.Lifecycle != AgentMatchLifecycle.AwaitingAction)
             .OrderBy(pair => pair.Value.Order)
             .FirstOrDefault();
-        if (evictable.Key is null)
+        if (finalized.Key is not null)
         {
-            throw new InvalidOperationException(
-                "The host reached its live-match capacity. Finish an existing match before starting another.");
+            return finalized.Key;
         }
 
-        _entries.Remove(evictable.Key);
-        evictable.Value.Viewer?.Dispose();
+        var now = _timeProvider.GetTimestamp();
+        return _entries
+            .Where(pair =>
+                pair.Value.Session.Lifecycle == AgentMatchLifecycle.AwaitingAction
+                && _timeProvider.GetElapsedTime(
+                    pair.Value.LastActivityTimestamp,
+                    now) >= TimeSpan.FromMinutes(LiveMatchIdleLeaseMinutes))
+            .OrderBy(pair => pair.Value.LastActivityTimestamp)
+            .ThenBy(pair => pair.Value.Order)
+            .Select(pair => pair.Key)
+            .FirstOrDefault();
     }
 
     private string MintUniqueHandle()
@@ -282,8 +345,26 @@ public sealed class AgentSessionRegistry : IDisposable
         return BitConverter.ToUInt64(bytes);
     }
 
-    private sealed record Entry(
-        AgentMatchSession Session,
-        long Order,
-        AgentViewerServer? Viewer = null);
+    private sealed class Entry
+    {
+        public Entry(
+            AgentMatchSession session,
+            long order,
+            long lastActivityTimestamp,
+            AgentViewerServer? viewer)
+        {
+            Session = session;
+            Order = order;
+            LastActivityTimestamp = lastActivityTimestamp;
+            Viewer = viewer;
+        }
+
+        public AgentMatchSession Session { get; }
+
+        public long Order { get; }
+
+        public long LastActivityTimestamp { get; set; }
+
+        public AgentViewerServer? Viewer { get; }
+    }
 }

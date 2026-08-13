@@ -1,6 +1,6 @@
 ---
 name: play-vibesnake
-description: Play deterministic Vibe Snake matches through the local MCP host, pursue a declared Style Contract, challenge a seed, and save a verified replay for a human to watch. Use when asked to play, practice, evaluate, or spectate Vibe Snake through the start_match, observe_match, play_move, finish_match, get_match_result, or save_verified_replay tools.
+description: Play deterministic Vibe Snake matches through the local MCP host, pursue a declared Style Contract, challenge a seed, and save a verified replay for a human to watch. Use when asked to play, practice, evaluate, or spectate Vibe Snake through the start_match, observe_match, play_move, play_burst, finish_match, get_match_result, or save_verified_replay tools.
 ---
 
 # Play Vibe Snake
@@ -19,8 +19,9 @@ Treat the MCP tool schemas and returned observations as authoritative. Use this 
    - Mutagenist: route toward visible powers without sacrificing survival.
    - Redline: seek direct, efficient routes under pressure.
 5. Optionally choose one named built-in rival. A rival uses the same gameplay seed and exact configuration in an independent lane.
-6. Optionally provide a public Agent Passport with a stable agent ID, policy version, display name, color, shed, and station affinity. Use only the supported symbolic-step observation and four-direction-step action profiles. Never put prompts, reasoning, credentials, or personal data in a passport.
-7. Call `start_match` with the optional passport, `styleContractId`, and `rivalPersonalityId`. For a blind match, omit `gameplaySeed`. Keep `maximumSteps` at or below 2000.
+6. Choose `four-direction-step-v1` for one tool call per decision or `four-direction-burst-v1` for bounded straight continuations that stop at public decision events.
+7. Optionally provide a public Agent Passport with a stable agent ID, policy version, display name, color, shed, and station affinity. Its action profile must match the selected match profile. Never put prompts, reasoning, credentials, or personal data in a passport.
+8. Call `start_match` with the action profile, optional passport, `styleContractId`, and `rivalPersonalityId`. For a blind match, omit `gameplaySeed`. Keep `maximumSteps` at or below 2000.
 
 ## Play one decision at a time
 
@@ -35,7 +36,17 @@ Treat the MCP tool schemas and returned observations as authoritative. Use this 
 9. If transport delivery is uncertain, retry the identical request, including its declared intent, with the identical key. Never reuse a key for different input.
 10. Repeat until `is_action_awaited` is false or a match result is returned.
 
-One accepted call advances exactly one clock-free rules step. Response latency never affects score. `observe_match` and `get_match_result` never advance the game.
+## Use a bounded symbolic burst
+
+Use `play_burst` only in a `four-direction-burst-v1` match when one initial turn followed by a straight continuation is safe.
+
+1. Supply the exact current tick and state hash, a fresh idempotency key, one initial action, one public intent, and a `maximumSteps` value from 1 through 16.
+2. The initial action applies once. Every later accepted step continues the resulting direction. The host does not accept an action array or a caller-defined stop expression.
+3. The host stops at the first fixed public decision event, rules terminal, match step cap, replay failure, or requested bound. Read `steps_advanced`, `stop_reason`, `stop_event`, final-step ordered events, and the refreshed observation before deciding again.
+4. Use a short bound near visible food, powers, obstacles, hunger pressure, wraps, or crowded body cells. Use `play_move` in a step-profile match when every step needs deliberation.
+5. Retry uncertain delivery only with the identical complete burst request and identical key. A key is shared across step and burst mutations, so it can never name both.
+
+One accepted `play_move` advances exactly one clock-free rules step. An accepted `play_burst` advances the authoritative `steps_advanced` count, from 1 through the requested bound. Response latency never affects score. `observe_match` and `get_match_result` never advance the game.
 The rival advances once for each accepted agent step while its lane is running. Rejected agent input advances neither lane.
 
 ## Make decisions from public state
@@ -47,6 +58,7 @@ The rival advances once for each accepted agent step while its lane is running. 
 - Do not expect a safe-move recommendation. Collision reasoning is part of play.
 - Do not reconstruct future spawns in a blind-seed match.
 - Treat public intent as a short self-report for spectators. It does not affect the game or replace action selection.
+- Treat the 30-minute live-session idle lease as resource reclamation, not a gameplay clock. At capacity, an inactive handle may expire without a result or replay. Viewer activity never keeps a match alive or ends it.
 - Keep any explanation short and based on visible facts. Do not expose hidden chain of thought.
 
 ## Finish and hand off

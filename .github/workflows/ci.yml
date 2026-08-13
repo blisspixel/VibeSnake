@@ -86,6 +86,7 @@ jobs:
         shell: pwsh
         run: |
           python scripts/validate_agent_plugin.py integrations/vibesnake-agent-plugin
+          python scripts/check_agent_interop.py
           python scripts/generate_agent_knowledge.py --check
           ./scripts/package_agent_plugin.ps1 -OutputRoot TestResults/agent-plugin
           python scripts/validate_agent_plugin.py TestResults/agent-plugin/portable/vibesnake-agent --require-mcp
@@ -206,6 +207,11 @@ jobs:
             native/tests/VibeSnake.Rules.Tests/packages.lock.json
             native/tools/VibeSnake.AgentHost/packages.lock.json
 
+      - name: Set up Python for Agent Plugin validation
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.14"
+
       - name: Restore locked dependencies
         run: dotnet restore native/VibeSnake.slnx --locked-mode
 
@@ -215,8 +221,16 @@ jobs:
       - name: Check C# formatting and analyzers
         run: dotnet format native/VibeSnake.slnx --verify-no-changes --no-restore
 
+      - name: Assemble and validate packaged Agent Host
+        shell: pwsh
+        run: |
+          ./scripts/package_agent_plugin.ps1 -OutputRoot TestResults/agent-plugin -Force
+          python scripts/validate_agent_plugin.py TestResults/agent-plugin/portable/vibesnake-agent --require-mcp
+
       - name: Test native rules with coverage floor
         shell: pwsh
+        env:
+          VIBESNAKE_AGENT_HOST_ASSEMBLY: ${{ github.workspace }}/TestResults/agent-plugin/portable/vibesnake-agent/bin/VibeSnake.AgentHost.dll
         run: ./scripts/test_native_coverage.ps1
 
       - name: Upload native parity divergence evidence

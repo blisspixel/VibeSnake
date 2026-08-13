@@ -26,18 +26,36 @@ public sealed class AgentResources
     public static string GetRules() => JsonSerializer.Serialize(
         new
         {
-            contract = "vibesnake-agent-rules-resource-v1",
+            contract = "vibesnake-agent-rules-resource-v2",
             ruleset_id = RulesetIdentity.CurrentId,
             rules_version = RulesetIdentity.CurrentVersion,
             observation_schema = AgentObservationV1.Contract,
             actions = Enum.GetNames<AgentAction>().Select(value => value.ToLowerInvariant()),
+            action_profiles = new[]
+            {
+                AgentPassportV1.FourDirectionActionProfile,
+                AgentPassportV1.FourDirectionBurstActionProfile,
+            },
             public_intents = Enum.GetNames<AgentPublicIntent>()
                 .Select(value => JsonNamingPolicy.SnakeCaseLower.ConvertName(value)),
-            action_semantics = "An accepted action advances exactly one clock-free rules step. A rejected action advances none.",
+            action_semantics = "play_move advances exactly one clock-free rules step in four-direction-step-v1. play_burst advances at most 16 steps in four-direction-burst-v1, applying one initial action and then continuing until its bound or a fixed public decision event. Rejected mutations advance none.",
+            burst = new
+            {
+                contract = AgentBurstPolicy.Contract,
+                maximum_steps = AgentBurstRequest.MaximumBurstSteps,
+                stop_events = AgentBurstPolicy.Stops.Select(value =>
+                    JsonNamingPolicy.SnakeCaseLower.ConvertName(value.ToString())),
+                fixed_continuation = true,
+                viewer_frames_per_burst = 1,
+            },
             intent_semantics = "A public intent is an optional self-declared presentation label. It never changes rules, score, rewards, replay verification, or qualification.",
             stale_action_guard = StaleActionGuards,
             seed_divisions = SeedDivisions,
             maximum_steps = AgentMatchOptions.MaximumAllowedSteps,
+            maximum_unique_mutations_per_match = AgentMatchSession.MaximumUniqueMutations,
+            maximum_retained_matches = AgentSessionRegistry.MaximumRetainedMatches,
+            live_match_idle_lease_minutes = AgentSessionRegistry.LiveMatchIdleLeaseMinutes,
+            idle_reclamation = "At capacity, only an inactive live match whose 30-minute valid-handle operation lease expired may be reclaimed. Reclamation creates no result or replay, and viewer activity never refreshes or ends the lease.",
             replay = "A successfully finalized completed, capped, or explicitly finished match returns a deterministic verified lane result and replay. Failed-closed finalization returns neither; an exhibition receipt is not part of this contract.",
             rivalry = "An optional built-in rival advances once per accepted agent step on the same seed and exact configuration. Each lane has an independent verified replay.",
             privacy = "Observations exclude random state, future outcomes, controller internals, profiles, progression, paths, prompts, credentials, diagnostics, and hidden reasoning.",
@@ -122,13 +140,13 @@ public sealed class AgentResources
         # Vibe Snake Agent Playbook
 
         1. Read `vibesnake://agent/rules`, `vibesnake://agent/modes`, and optionally the style, rival, or Signal School resources.
-        2. Call `start_match` with `classic` or `vibe` and an open or blind seed division.
+        2. Call `start_match` with `classic` or `vibe`, an open or blind seed division, and either `four-direction-step-v1` or `four-direction-burst-v1`.
         3. Read the returned observation. Use only visible board state.
-        4. Call `play_move` with the exact tick and state hash plus a new idempotency key. Optionally declare one closed public intent so a viewer can follow the plan.
-        5. On rejection, inspect the rejection and refreshed observation. Rejected requests do not step the rules.
+        4. Use `play_move` for one exact decision. In a burst-profile match, use `play_burst` for a safe straight continuation of at most 16 steps; it stops on the first fixed public decision event. Supply the exact tick and state hash plus a new idempotency key. Optionally declare one closed public intent so a viewer can follow the plan.
+        5. On rejection or burst stop, inspect the reason, final-step public events, and refreshed observation. Rejected requests do not step the rules.
         6. Continue until the result appears, or call `finish_match` to request early finalization.
         7. Confirm that finalization returned a verified result. Call `save_verified_replay` only when persistence for later human viewing is desired.
 
-        Public intents are `seek_food`, `seek_power`, `preserve_space`, `take_risk`, and `recover`. They are self-reported presentation only. `continue` preserves the current direction for one step. Never submit the current direction or its opposite as a turn. Response latency has no scoring effect.
+        Public intents are `seek_food`, `seek_power`, `preserve_space`, `take_risk`, and `recover`. They are self-reported presentation only. `continue` preserves the current direction. Never submit the current direction or its opposite as a turn. Response latency has no scoring effect. At capacity, a live handle idle for 30 minutes may be reclaimed without producing a result or replay; viewer activity is never match control.
         """;
 }

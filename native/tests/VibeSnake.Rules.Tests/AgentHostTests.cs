@@ -166,6 +166,87 @@ public sealed class AgentHostTests
     }
 
     [Fact]
+    public void Registry_validates_replacement_before_capacity_eviction()
+    {
+        using var temporary = new AgentHostTemporaryDirectory();
+        var next = 0;
+        using var registry = new AgentSessionRegistry(
+            new ReplayStore(temporary.Path),
+            () => $"match_{next++}",
+            () => 1UL);
+        var handles = Enumerable.Range(0, AgentSessionRegistry.MaximumRetainedMatches)
+            .Select(_ => registry.StartMatch(
+                RunModeCatalog.ClassicId,
+                AgentSeedVisibility.Open,
+                null,
+                null).MatchHandle)
+            .ToArray();
+        _ = registry.Finish(handles[0]);
+
+        Assert.Throws<ArgumentException>(() => registry.StartMatch(
+            RunModeCatalog.ClassicId,
+            AgentSeedVisibility.Open,
+            null,
+            null,
+            actionProfile: "unsupported-profile"));
+
+        Assert.True(registry.GetResult(handles[0]).IsAvailable);
+        Assert.Equal(0, registry.Observe(handles[1]).Tick);
+        var replacement = registry.StartMatch(
+            RunModeCatalog.ClassicId,
+            AgentSeedVisibility.Open,
+            null,
+            null);
+        Assert.Throws<KeyNotFoundException>(() => registry.Observe(handles[0]));
+        Assert.Equal("match_9", replacement.MatchHandle);
+    }
+
+    [Fact]
+    public void Registry_reclaims_only_expired_live_matches_without_creating_results()
+    {
+        using var temporary = new AgentHostTemporaryDirectory();
+        var clock = new ManualTimeProvider();
+        var next = 0;
+        using var registry = new AgentSessionRegistry(
+            new ReplayStore(temporary.Path),
+            () => $"match_{next++}",
+            () => 1UL,
+            clock);
+        var handles = Enumerable.Range(0, AgentSessionRegistry.MaximumRetainedMatches)
+            .Select(_ => registry.StartMatch(
+                RunModeCatalog.ClassicId,
+                AgentSeedVisibility.Open,
+                null,
+                null).MatchHandle)
+            .ToArray();
+
+        clock.Advance(TimeSpan.FromMinutes(
+            AgentSessionRegistry.LiveMatchIdleLeaseMinutes - 1));
+        _ = registry.Observe(handles[0]);
+        Assert.Throws<InvalidOperationException>(() => registry.StartMatch(
+            RunModeCatalog.ClassicId,
+            AgentSeedVisibility.Open,
+            null,
+            null));
+
+        clock.Advance(TimeSpan.FromMinutes(1));
+        var replacement = registry.StartMatch(
+            RunModeCatalog.ClassicId,
+            AgentSeedVisibility.Open,
+            null,
+            null);
+
+        Assert.Equal("match_8", replacement.MatchHandle);
+        Assert.Equal(0, registry.Observe(handles[0]).Tick);
+        Assert.Throws<KeyNotFoundException>(() => registry.Observe(handles[1]));
+        Assert.False(Directory.Exists(Path.Combine(
+            temporary.Path,
+            ReplayStore.ReplayDirectoryName)));
+        Assert.Contains("without a result or replay", AgentSessionRegistry.RetentionPolicy, StringComparison.Ordinal);
+        Assert.Contains("Viewer activity never refreshes", AgentSessionRegistry.RetentionPolicy, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Registry_rejects_invalid_or_repeated_generated_handles()
     {
         using var temporary = new AgentHostTemporaryDirectory();
@@ -207,7 +288,7 @@ public sealed class AgentHostTests
     }
 
     [Fact]
-    public void Mcp_tools_expose_six_safe_operations_and_sanitized_failures()
+    public void Mcp_tools_expose_seven_safe_operations_and_sanitized_failures()
     {
         using var temporary = new AgentHostTemporaryDirectory();
         var registry = CreateRegistry(temporary.Path);
@@ -231,6 +312,22 @@ public sealed class AgentHostTests
         var pending = tools.GetMatchResult(started.MatchHandle);
         var finished = tools.FinishMatch(started.MatchHandle);
         var saved = tools.SaveVerifiedReplay(started.MatchHandle);
+        using var burstRegistry = CreateRegistry(temporary.Path, handle: "match_burst");
+        var burstTools = new McpAgentTools(burstRegistry);
+        var burstStarted = burstTools.StartMatch(
+            RunModeCatalog.ClassicId,
+            AgentSeedVisibility.Open,
+            "321",
+            4,
+            actionProfile: AgentPassportV1.FourDirectionBurstActionProfile);
+        var burst = burstTools.PlayBurst(
+            burstStarted.MatchHandle,
+            "tool-burst",
+            burstStarted.Observation.Tick,
+            burstStarted.Observation.StateHash,
+            AgentAction.Up,
+            2,
+            AgentPublicIntent.PreserveSpace);
 
         Assert.True(moved.Accepted);
         Assert.Equal(
@@ -244,6 +341,10 @@ public sealed class AgentHostTests
         Assert.NotNull(saved.RivalFileName);
         Assert.Equal(ReplaySaveCode.Saved, saved.RivalCode);
         Assert.Equal(ReplayVerificationCode.Verified, saved.RivalReplayVerificationCode);
+        Assert.Equal(AgentBurstResponseV1.Contract, burst.Schema);
+        Assert.True(burst.Accepted);
+        Assert.Equal(2, burst.StepsAdvanced);
+        Assert.Equal(AgentBurstStopReason.RequestedLimit, burst.StopReason);
         var failure = Assert.Throws<McpException>(() => tools.ObserveMatch("bad"));
         Assert.Equal("The match handle is invalid. (Parameter 'value')", failure.Message);
         Assert.Throws<ArgumentNullException>(() => new McpAgentTools(null!));
@@ -268,6 +369,7 @@ public sealed class AgentHostTests
                 "finish_match",
                 "get_match_result",
                 "observe_match",
+                "play_burst",
                 "play_move",
                 "save_verified_replay",
                 "start_match",
@@ -284,6 +386,7 @@ public sealed class AgentHostTests
         Assert.False(methods.Single(value => value.Tool!.Name == "save_verified_replay").Tool!.Destructive);
         Assert.False(methods.Single(value => value.Tool!.Name == "start_match").Tool!.Idempotent);
         Assert.True(methods.Single(value => value.Tool!.Name == "play_move").Tool!.Idempotent);
+        Assert.True(methods.Single(value => value.Tool!.Name == "play_burst").Tool!.Idempotent);
     }
 
     [Fact]
@@ -294,7 +397,7 @@ public sealed class AgentHostTests
         var playbook = AgentResources.GetPlaybook();
 
         Assert.Equal(
-            "vibesnake-agent-rules-resource-v1",
+            "vibesnake-agent-rules-resource-v2",
             rules.RootElement.GetProperty("contract").GetString());
         Assert.Equal(
             AgentMatchOptions.MaximumAllowedSteps,
@@ -305,6 +408,21 @@ public sealed class AgentHostTests
                 .EnumerateArray()
                 .Select(value => value.GetString()!)
                 .ToArray());
+        Assert.Equal(
+            [
+                AgentPassportV1.FourDirectionActionProfile,
+                AgentPassportV1.FourDirectionBurstActionProfile,
+            ],
+            rules.RootElement.GetProperty("action_profiles")
+                .EnumerateArray()
+                .Select(value => value.GetString()!)
+                .ToArray());
+        Assert.Equal(
+            AgentBurstRequest.MaximumBurstSteps,
+            rules.RootElement.GetProperty("burst").GetProperty("maximum_steps").GetInt32());
+        Assert.Equal(
+            AgentSessionRegistry.LiveMatchIdleLeaseMinutes,
+            rules.RootElement.GetProperty("live_match_idle_lease_minutes").GetInt32());
         Assert.Equal(
             ["undeclared", "seek_food", "seek_power", "preserve_space", "take_risk", "recover"],
             rules.RootElement.GetProperty("public_intents")
@@ -325,6 +443,7 @@ public sealed class AgentHostTests
             AiPersonalityCatalog.BuiltIn.Count,
             rivals.RootElement.GetProperty("rivals").GetArrayLength());
         Assert.Contains("start_match", playbook, StringComparison.Ordinal);
+        Assert.Contains("play_burst", playbook, StringComparison.Ordinal);
         Assert.Contains("save_verified_replay", playbook, StringComparison.Ordinal);
         var replayContract = rules.RootElement.GetProperty("replay").GetString();
         Assert.Contains("verified lane result", replayContract, StringComparison.Ordinal);
@@ -392,7 +511,7 @@ public sealed class AgentHostTests
         Assert.NotNull(host.Services);
         Assert.NotNull(defaultHost.Services);
         Assert.Equal("vibesnake-agent-host", Program.HostName);
-        Assert.Equal("0.1.0", Program.HostVersion);
+        Assert.Equal("0.2.0", Program.HostVersion);
         Assert.Throws<ArgumentNullException>(() =>
             Program.CreateHostApplicationBuilder(null!, temporary.Path));
     }
@@ -464,10 +583,15 @@ public sealed class AgentHostTests
     }
 
     [Fact]
-    public async Task Stdio_host_negotiates_current_MCP_and_completes_a_golden_transcript()
+    public async Task Stdio_host_uses_current_stateless_MCP_and_completes_a_burst_transcript()
     {
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(90));
-        var hostAssembly = typeof(Program).Assembly.Location;
+        var packagedHost = Environment.GetEnvironmentVariable(
+            "VIBESNAKE_AGENT_HOST_ASSEMBLY");
+        var hostAssembly = string.IsNullOrWhiteSpace(packagedHost)
+            ? typeof(Program).Assembly.Location
+            : Path.GetFullPath(packagedHost);
+        Assert.True(File.Exists(hostAssembly), $"Agent host assembly is missing: {hostAssembly}");
         var transport = new StdioClientTransport(new StdioClientTransportOptions
         {
             Name = "Vibe Snake Agent Host Test",
@@ -505,6 +629,7 @@ public sealed class AgentHostTests
                 ["maximumSteps"] = 2,
                 ["styleContractId"] = AgentStyleContractCatalog.StillwaterId,
                 ["rivalPersonalityId"] = "optimal",
+                ["actionProfile"] = AgentPassportV1.FourDirectionBurstActionProfile,
                 ["passport"] = new Dictionary<string, object?>
                 {
                     ["schema"] = AgentPassportV1.Contract,
@@ -515,7 +640,7 @@ public sealed class AgentHostTests
                     ["shed_id"] = "agent-default",
                     ["station_affinity"] = "open-frequency",
                     ["observation_profile"] = AgentPassportV1.SymbolicStepObservationProfile,
-                    ["action_profile"] = AgentPassportV1.FourDirectionActionProfile,
+                    ["action_profile"] = AgentPassportV1.FourDirectionBurstActionProfile,
                 },
             },
             cancellationToken: timeout.Token);
@@ -537,14 +662,15 @@ public sealed class AgentHostTests
             "optimal",
             observation.GetProperty("rival").GetProperty("personality_id").GetString());
         var moved = await client.CallToolAsync(
-            "play_move",
+            "play_burst",
             new Dictionary<string, object?>
             {
                 ["matchHandle"] = handle,
                 ["idempotencyKey"] = "golden-1",
                 ["expectedTick"] = observation.GetProperty("tick").GetInt32(),
                 ["expectedStateHash"] = observation.GetProperty("state_hash").GetString(),
-                ["action"] = "up",
+                ["initialAction"] = "up",
+                ["maximumSteps"] = 2,
                 ["declaredIntent"] = "preserve_space",
             },
             cancellationToken: timeout.Token);
@@ -560,6 +686,7 @@ public sealed class AgentHostTests
                 "finish_match",
                 "get_match_result",
                 "observe_match",
+                "play_burst",
                 "play_move",
                 "save_verified_replay",
                 "start_match",
@@ -580,11 +707,12 @@ public sealed class AgentHostTests
             resource => resource.Uri == "vibesnake://agent/rivals");
         var rulesText = Assert.IsType<TextResourceContents>(Assert.Single(rules.Contents));
         Assert.Contains(
-            "vibesnake-agent-rules-resource-v1",
+            "vibesnake-agent-rules-resource-v2",
             rulesText.Text,
             StringComparison.Ordinal);
         Assert.False(moved.IsError ?? false);
         Assert.True(moved.StructuredContent!.Value.GetProperty("accepted").GetBoolean());
+        Assert.Equal(2, moved.StructuredContent.Value.GetProperty("steps_advanced").GetInt32());
         Assert.Equal(
             "preserve_space",
             moved.StructuredContent.Value
@@ -594,8 +722,42 @@ public sealed class AgentHostTests
                 .GetString());
         Assert.False(finished.IsError ?? false);
         Assert.Equal(
-            "agent_finished",
+            "step_limit",
             finished.StructuredContent!.Value.GetProperty("end_reason").GetString());
+    }
+
+    [Fact]
+    public async Task Stdio_host_rejects_legacy_initialize_era_protocol_clients()
+    {
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(20));
+        var transport = new StdioClientTransport(new StdioClientTransportOptions
+        {
+            Name = "Vibe Snake Legacy Protocol Rejection Test",
+            Command = "dotnet",
+            Arguments = [typeof(Program).Assembly.Location],
+            ShutdownTimeout = TimeSpan.FromSeconds(2),
+        });
+
+        var exception = await Record.ExceptionAsync(() => McpClient.CreateAsync(
+            transport,
+            new McpClientOptions
+            {
+                ProtocolVersion = "2025-11-25",
+                InitializationTimeout = TimeSpan.FromSeconds(5),
+                DiscoverProbeTimeout = TimeSpan.FromSeconds(5),
+                ClientInfo = new Implementation
+                {
+                    Name = "vibesnake-legacy-client-test",
+                    Version = "1.0.0",
+                },
+            },
+            cancellationToken: timeout.Token));
+        Assert.NotNull(exception);
+        Assert.IsNotType<OperationCanceledException>(exception);
+        Assert.Equal(
+            "ModelContextProtocol.UnsupportedProtocolVersionException",
+            exception.GetType().FullName);
+        Assert.Contains("protocol", exception.ToString(), StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -736,5 +898,16 @@ public sealed class AgentHostTests
                 Directory.Delete(Path, recursive: true);
             }
         }
+    }
+
+    private sealed class ManualTimeProvider : TimeProvider
+    {
+        private long _timestamp;
+
+        public override long TimestampFrequency => TimeSpan.TicksPerSecond;
+
+        public override long GetTimestamp() => _timestamp;
+
+        public void Advance(TimeSpan duration) => _timestamp += duration.Ticks;
     }
 }

@@ -18,7 +18,9 @@ External agent play introduces different trust, pacing, privacy, and compatibili
 - Add a transport-neutral `VibeSnake.AgentPlay` assembly that depends only on `VibeSnake.Rules`. It owns agent-match lifecycle, closed public logical-state observations, action validation, deterministic stepping, replay capture, and verified lane results.
 - Keep `SnakeRun`, replay schema 1, built-in `SpectatorMatchSession`, and human score and progression contracts unchanged for the first implementation.
 - Make local, turn-based symbolic play the first profile. Rules do not advance while an agent deliberates. A valid action advances exactly one rules step, while stale or illegal actions advance none.
+- Add `four-direction-burst-v1` as a separate control division. One request may apply one initial action and continue for at most 16 steps under the fixed `decision-event-stop-v1` public-event policy. It cannot accept action arrays, custom predicates, code, callbacks, or rewards, and it cannot share qualification identity silently with `four-direction-step-v1`.
 - Require every mutating action to carry an expected tick, expected state hash, and bounded idempotency key. Serialize actions per match and fail closed on replay divergence.
+- Use one idempotency-key namespace across step and burst mutations. Exact retries return the cached typed response; changed payloads and cross-operation key reuse advance no additional rules state.
 - Expose an allowlisted, versioned observation instead of serializing `RunSnapshot` directly. Exclude random state, future outcomes, controller internals, private user data, paths, diagnostics, prompts, credentials, and hidden reasoning.
 - Support explicit open-seed and blind-seed divisions. Reveal a blind seed only in the completed verified lane result.
 - Record every accepted run before presentation, finalize it into an ordinary verified single-lane replay, and treat that replay as the canonical account of what happened. Policy reproducibility is not implied by replay reproducibility.
@@ -31,7 +33,7 @@ External agent play introduces different trust, pacing, privacy, and compatibili
 
 | Standard | Decision | Boundary |
 | --- | --- | --- |
-| MCP 2026-07-28 | Adopt for the local agent host | Official C# SDK 2.2.0, exact 2026-07-28 initialize required, no downlevel fallback, transport adapter only, local stdio first |
+| MCP 2026-07-28 | Adopt for the local agent host | Official C# SDK 2.2.0, stateless requests with per-request protocol metadata and optional `server/discover`, no initialize handshake, no downlevel fallback, transport adapter only, local stdio first |
 | Agent Skills | Adopt the minimal non-experimental `SKILL.md` subset | `name`, `description`, and Markdown body only; no bundled executable scripts or experimental `allowed-tools` |
 | Agent Plugins 1.0.0 | Package as a developer preview | Working Draft format, per-platform signed host bundles required before distribution, never the only connection route |
 | MCP Apps 2026-01-26 | Track for an optional client-side viewer | Secondary renderer after neutral replay and frame contracts stabilize |
@@ -55,7 +57,8 @@ The project may claim meaningful agency, compounding competence, fair verificati
 
 ## Security and privacy consequences
 
-- Match handles are opaque and bounded at the host layer. The host retains at most eight sessions, evicts the oldest non-live session when capacity is needed, rejects a ninth live session, and invalidates every handle when the process exits.
+- Match handles are opaque bearer capabilities bounded at the host layer; stdio adds no separate client authentication. The host retains at most eight sessions and evicts the oldest non-live session first when capacity is needed. If all eight are live, only a match with no valid handle-bearing host operation for at least 30 minutes may be reclaimed, without a score, result, ranking, or replay. Viewer activity never refreshes or controls this lease. A ninth match is rejected when no lease expired, and every handle is invalidated when the process exits. Replacement validation and construction complete before eviction.
+- Step and burst share one ledger capped at 4,096 unique mutation records per match. Known records are never evicted, preserving exact retries and preventing a formerly accepted key from advancing twice; unseen keys fail closed after exhaustion.
 - Tool inputs and outputs use closed enums, explicit schema versions, size bounds, and sanitized strings.
 - Replay persistence is explicit and writes only to an application-owned destination.
 - Remote HTTP, OAuth, accounts, matchmaking, uploads, and hosted tournaments are separate future decisions.

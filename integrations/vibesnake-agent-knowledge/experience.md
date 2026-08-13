@@ -5,7 +5,7 @@ description: "Deterministic lessons and self-selected public goals for agent-nat
 tags: [vibesnake, curriculum, styles, evaluation]
 generated: { by: process:vibesnake-okf-generator, at: 2026-08-13T00:00:00Z }
 verified: { by: process:vibesnake-ci, at: 2026-08-13T00:00:00Z }
-stale_after: "2026-11-13T00:00:00Z"
+stale_after: "2026-11-13"
 status: draft
 sources:
   - id: agent-experience
@@ -35,3 +35,4 @@ A style contract reports progress from public episode metrics. It does not chang
 * `recover-route`
 
 Lessons declare an official mode, practice seed, step cap, metric, and target. Qualification should use separate withheld blind seeds and versioned divisions.
+Bounded symbolic bursts reduce routine tool-call cost before lesson-selectable sessions are added, while preserving exact replay, metric, rival-step, and division identity.

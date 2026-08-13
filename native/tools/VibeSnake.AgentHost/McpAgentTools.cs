@@ -33,7 +33,8 @@ public sealed class McpAgentTools
         [Description("Optional style contract: stillwater, crownchaser, edge-prophet, mutagenist, or redline. Mode restrictions are enforced.")] string? styleContractId = null,
         [Description("Optional built-in rival personality ID. Both lanes use the same seed and exact rules configuration.")] string? rivalPersonalityId = null,
         [Description("Set true to mint a one-time same-user named-pipe capability for a read-only local viewer.")] bool watchEnabled = false,
-        [Description("Optional public Agent Passport. IDs are bounded tokens, the display name is presentation-only, and only the supported symbolic step profiles are accepted.")] AgentPassportV1? passport = null) =>
+        [Description("Optional public Agent Passport. IDs are bounded tokens, the display name is presentation-only, and its action profile must match actionProfile.")] AgentPassportV1? passport = null,
+        [Description("Control division: four-direction-step-v1 or four-direction-burst-v1. The default preserves one-step play.")] string actionProfile = AgentPassportV1.FourDirectionActionProfile) =>
         Execute(() => _registry.StartMatch(
             modeId,
             seedVisibility,
@@ -42,7 +43,8 @@ public sealed class McpAgentTools
             styleContractId,
             rivalPersonalityId,
             watchEnabled,
-            passport));
+            passport,
+            actionProfile));
 
     [McpServerTool(
         Name = "observe_match",
@@ -80,6 +82,32 @@ public sealed class McpAgentTools
                 expectedStateHash,
                 action,
                 declaredIntent));
+
+    [McpServerTool(
+        Name = "play_burst",
+        Title = "Play bounded Vibe Snake burst",
+        UseStructuredContent = true,
+        OutputSchemaType = typeof(AgentBurstResponseV1),
+        Destructive = false,
+        Idempotent = true,
+        OpenWorld = false)]
+    [Description("Advances a four-direction-burst-v1 match by at most 16 clock-free steps. The initial action applies once, later steps continue, and execution stops at the first fixed public decision event, terminal state, match cap, replay failure, or requested bound.")]
+    public AgentBurstResponseV1 PlayBurst(
+        [Description("Opaque handle returned by start_match.")] string matchHandle,
+        [Description("Unique ASCII token for this intended burst, at most 128 characters.")] string idempotencyKey,
+        [Description("Exact tick from the observation being acted upon.")] int expectedTick,
+        [Description("Exact state hash from the observation being acted upon.")] string expectedStateHash,
+        [Description("Initial action: continue, up, right, down, or left. Later steps continue the resulting direction.")] AgentAction initialAction,
+        [Description("Maximum accepted rules steps from 1 through 16.")] int maximumSteps,
+        [Description("Optional self-declared public intent for the complete burst. It is presentation-only.")] AgentPublicIntent declaredIntent = AgentPublicIntent.Undeclared) =>
+        Execute(() => _registry.PlayBurst(
+            matchHandle,
+            idempotencyKey,
+            expectedTick,
+            expectedStateHash,
+            initialAction,
+            maximumSteps,
+            declaredIntent));
 
     [McpServerTool(
         Name = "finish_match",

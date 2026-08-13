@@ -122,3 +122,62 @@ def test_missing_plugin_root_is_rejected(tmp_path: Path) -> None:
 
     assert result.returncode == 1
     assert "plugin root must be an existing directory" in result.stdout
+
+
+def test_duplicate_json_keys_are_rejected(tmp_path: Path) -> None:
+    plugin = tmp_path / "vibesnake-agent"
+    shutil.copytree(SOURCE_PLUGIN, plugin)
+    manifest = (plugin / "plugin.json").read_text(encoding="utf-8")
+    (plugin / "plugin.json").write_text(
+        manifest.replace('"name":', '"name": "duplicate",\n  "name":', 1),
+        encoding="utf-8",
+    )
+
+    result = run_validator(plugin)
+
+    assert result.returncode == 1
+    assert "duplicate JSON key: name" in result.stdout
+
+
+def test_placeholder_cwd_cannot_escape_after_expansion(tmp_path: Path) -> None:
+    plugin = tmp_path / "vibesnake-agent"
+    shutil.copytree(SOURCE_PLUGIN, plugin)
+    binary = plugin / "bin" / "VibeSnake.AgentHost"
+    binary.parent.mkdir()
+    binary.write_bytes(b"host")
+
+    for cwd in ("${PLUGIN_ROOT}/../../escape", "${PLUGIN_DATA}/../escape"):
+        (plugin / "mcp.json").write_text(
+            json.dumps(
+                {
+                    "$schema": "https://agent-plugins.org/schemas/1.0.0/mcp.schema.json",
+                    "mcpServers": {
+                        "vibesnake-agent": {
+                            "type": "stdio",
+                            "command": "./bin/VibeSnake.AgentHost",
+                            "cwd": cwd,
+                        }
+                    },
+                }
+            ),
+            encoding="utf-8",
+        )
+
+        result = run_validator(plugin, require_mcp=True)
+
+        assert result.returncode == 1
+        assert "cwd has an unsupported form" in result.stdout
+
+
+def test_packaged_checksum_manifest_rejects_tampering_and_missing_files(tmp_path: Path) -> None:
+    plugin = tmp_path / "vibesnake-agent"
+    shutil.copytree(SOURCE_PLUGIN, plugin)
+    files = sorted(path for path in plugin.rglob("*") if path.is_file())
+    lines = [f"{'0' * 64}  {path.relative_to(plugin).as_posix()}" for path in files[:-1]]
+    (plugin / "SHA256SUMS").write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+    result = run_validator(plugin)
+
+    assert result.returncode == 1
+    assert "entries must match every packaged regular file exactly once" in result.stdout
+    assert "digest mismatch" in result.stdout

@@ -99,6 +99,34 @@ public sealed record AgentActionResponseV1(
                 : AgentMatchSummaryV1.FromResult(response.MatchResult));
 }
 
+public sealed record AgentBurstResponseV1(
+    string Schema,
+    bool Accepted,
+    bool RulesAdvanced,
+    AgentActionRejection Rejection,
+    int StepsAdvanced,
+    AgentBurstStopReason? StopReason,
+    RunEventKind? StopEvent,
+    AgentObservationV1 Observation,
+    AgentMatchSummaryV1? MatchResult)
+{
+    public const string Contract = "vibesnake-agent-burst-response-v1";
+
+    internal static AgentBurstResponseV1 FromResponse(AgentBurstResponse response) =>
+        new(
+            Contract,
+            response.Accepted,
+            response.RulesAdvanced,
+            response.Rejection,
+            response.StepsAdvanced,
+            response.StopReason,
+            response.StopEvent,
+            response.Observation,
+            response.MatchResult is null
+                ? null
+                : AgentMatchSummaryV1.FromResult(response.MatchResult));
+}
+
 public sealed record AgentReplaySaveV1(
     string Schema,
     string MatchHandle,

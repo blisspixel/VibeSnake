@@ -4,6 +4,8 @@ namespace VibeSnake.AgentPlay;
 
 public sealed class AgentMatchSession
 {
+    public const int MaximumUniqueMutations = 4_096;
+
     private readonly object _sync = new();
     private readonly AgentMatchOptions _options;
     private readonly RunConfig _config;
@@ -15,7 +17,8 @@ public sealed class AgentMatchSession
     private readonly RunReplayRecorder? _rivalRecorder;
     private readonly AgentEpisodeMetricsTracker? _rivalMetrics;
     private readonly IAgentViewerSink? _viewerSink;
-    private readonly Dictionary<string, ProcessedAction> _processedActions =
+    private readonly IAgentReplayFinalizer _replayFinalizer;
+    private readonly Dictionary<string, ProcessedMutation> _processedMutations =
         new(StringComparer.Ordinal);
     private IReadOnlyList<RunEventDetail> _previousEvents =
         Array.Empty<RunEventDetail>();
@@ -26,10 +29,20 @@ public sealed class AgentMatchSession
     public AgentMatchSession(
         AgentMatchOptions options,
         IAgentViewerSink? viewerSink = null)
+        : this(options, viewerSink, AgentReplayFinalizer.Instance)
+    {
+    }
+
+    internal AgentMatchSession(
+        AgentMatchOptions options,
+        IAgentViewerSink? viewerSink,
+        IAgentReplayFinalizer replayFinalizer)
     {
         ArgumentNullException.ThrowIfNull(options);
+        ArgumentNullException.ThrowIfNull(replayFinalizer);
         _options = options;
         _viewerSink = viewerSink;
+        _replayFinalizer = replayFinalizer;
         _config = options.CreateRunConfig();
         _run = SnakeRun.Create(options.GameplaySeed, _config);
         _recorder = new RunReplayRecorder(_run);
@@ -61,19 +74,42 @@ public sealed class AgentMatchSession
         ArgumentNullException.ThrowIfNull(request);
         lock (_sync)
         {
-            if (_processedActions.TryGetValue(request.IdempotencyKey, out var processed))
+            if (_processedMutations.TryGetValue(request.IdempotencyKey, out var processed))
             {
-                return processed.Request == request
-                    ? processed.Response
+                return processed.Kind == AgentMutationKind.Step
+                    && processed.Request.Equals(request)
+                    ? (AgentActionResponse)processed.Response
                     : Reject(
                         request.Action,
                         AgentActionRejection.IdempotencyConflict,
                         request.DeclaredIntent);
             }
 
+            if (_processedMutations.Count >= MaximumUniqueMutations)
+            {
+                return Reject(
+                    request.Action,
+                    AgentActionRejection.MutationCapacityExceeded,
+                    request.DeclaredIntent);
+            }
+
+            if (_options.ActionProfile != AgentPassportV1.FourDirectionActionProfile)
+            {
+                return Remember(
+                    request.IdempotencyKey,
+                    AgentMutationKind.Step,
+                    request,
+                    Reject(
+                        request.Action,
+                        AgentActionRejection.WrongActionProfile,
+                        request.DeclaredIntent));
+            }
+
             if (Lifecycle != AgentMatchLifecycle.AwaitingAction)
             {
                 return Remember(
+                    request.IdempotencyKey,
+                    AgentMutationKind.Step,
                     request,
                     Reject(
                         request.Action,
@@ -85,6 +121,8 @@ public sealed class AgentMatchSession
             if (request.ExpectedTick != snapshot.Tick)
             {
                 return Remember(
+                    request.IdempotencyKey,
+                    AgentMutationKind.Step,
                     request,
                     Reject(
                         request.Action,
@@ -98,6 +136,8 @@ public sealed class AgentMatchSession
                 StringComparison.Ordinal))
             {
                 return Remember(
+                    request.IdempotencyKey,
+                    AgentMutationKind.Step,
                     request,
                     Reject(
                         request.Action,
@@ -105,92 +145,189 @@ public sealed class AgentMatchSession
                         request.DeclaredIntent));
             }
 
-            if (!Enum.IsDefined(request.Action))
+            var response = ExecuteSingleStep(
+                request.Action,
+                request.DeclaredIntent,
+                publishViewer: true);
+            return Remember(
+                request.IdempotencyKey,
+                AgentMutationKind.Step,
+                request,
+                response);
+        }
+    }
+
+    public AgentBurstResponse SubmitBurst(AgentBurstRequest request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        lock (_sync)
+        {
+            if (_processedMutations.TryGetValue(request.IdempotencyKey, out var processed))
+            {
+                return processed.Kind == AgentMutationKind.Burst
+                    && processed.Request.Equals(request)
+                    ? (AgentBurstResponse)processed.Response
+                    : RejectBurst(
+                        request.InitialAction,
+                        AgentActionRejection.IdempotencyConflict,
+                        request.DeclaredIntent);
+            }
+
+            if (_processedMutations.Count >= MaximumUniqueMutations)
+            {
+                return RejectBurst(
+                    request.InitialAction,
+                    AgentActionRejection.MutationCapacityExceeded,
+                    request.DeclaredIntent);
+            }
+
+            if (_options.ActionProfile != AgentPassportV1.FourDirectionBurstActionProfile)
             {
                 return Remember(
+                    request.IdempotencyKey,
+                    AgentMutationKind.Burst,
                     request,
-                    Reject(
-                        request.Action,
-                        AgentActionRejection.InvalidAction,
+                    RejectBurst(
+                        request.InitialAction,
+                        AgentActionRejection.WrongActionProfile,
                         request.DeclaredIntent));
             }
 
-            if (TryMapDirection(request.Action, out var direction))
-            {
-                var effectiveDirection = snapshot.PendingDirections.Count > 0
-                    ? snapshot.PendingDirections[^1]
-                    : snapshot.Direction;
-                if (snapshot.PendingDirections.Count >= _config.MaximumDirectionQueue
-                    || direction == effectiveDirection
-                    || direction == effectiveDirection.Opposite())
-                {
-                    return Remember(
-                        request,
-                        Reject(
-                            request.Action,
-                            AgentActionRejection.IllegalDirection,
-                            request.DeclaredIntent));
-                }
-
-                if (!_recorder.TryRecordCommand(direction) || !_run.QueueDirection(direction))
-                {
-                    return Remember(
-                        request,
-                        FailClosedAfterRecorderError(
-                            request.Action,
-                            request.DeclaredIntent,
-                            rulesAdvanced: false));
-                }
-            }
-
-            var result = _run.Step();
-            _previousEvents = Array.AsReadOnly(result.OrderedEvents.ToArray());
-            if (!_recorder.TryCompleteStep(result, _run))
+            if (Lifecycle != AgentMatchLifecycle.AwaitingAction)
             {
                 return Remember(
+                    request.IdempotencyKey,
+                    AgentMutationKind.Burst,
                     request,
-                    FailClosedAfterRecorderError(
-                        request.Action,
-                        request.DeclaredIntent,
-                        rulesAdvanced: true));
+                    RejectBurst(
+                        request.InitialAction,
+                        AgentActionRejection.MatchNotAwaitingAction,
+                        request.DeclaredIntent));
             }
 
-            var steppedSnapshot = _run.GetSnapshot();
-            _metrics.Record(result, steppedSnapshot);
-            if (!AdvanceRival())
+            var snapshot = _run.GetSnapshot();
+            if (request.ExpectedTick != snapshot.Tick)
             {
                 return Remember(
+                    request.IdempotencyKey,
+                    AgentMutationKind.Burst,
                     request,
-                    FailClosedAfterRecorderError(
-                        request.Action,
-                        request.DeclaredIntent,
-                        rulesAdvanced: true));
+                    RejectBurst(
+                        request.InitialAction,
+                        AgentActionRejection.StaleTick,
+                        request.DeclaredIntent));
             }
 
-            _previousAction = new AgentPreviousActionV1(
-                request.Action,
-                Accepted: true,
-                AgentActionRejection.None,
-                RulesAdvanced: true,
-                request.DeclaredIntent);
-
-            if (result.Status != RunStatus.Running)
+            if (!string.Equals(
+                request.ExpectedStateHash,
+                snapshot.StateHash,
+                StringComparison.Ordinal))
             {
-                Complete(AgentMatchEndReason.RulesTerminal, AgentMatchLifecycle.Completed);
-            }
-            else if (result.Tick >= _options.MaximumSteps)
-            {
-                Complete(AgentMatchEndReason.StepLimit, AgentMatchLifecycle.Completed);
+                return Remember(
+                    request.IdempotencyKey,
+                    AgentMutationKind.Burst,
+                    request,
+                    RejectBurst(
+                        request.InitialAction,
+                        AgentActionRejection.StaleStateHash,
+                        request.DeclaredIntent));
             }
 
-            var response = new AgentActionResponse(
-                Accepted: true,
-                RulesAdvanced: true,
-                AgentActionRejection.None,
-                CreateObservation(),
+            var stepsAdvanced = 0;
+            AgentBurstStopReason stopReason = AgentBurstStopReason.RequestedLimit;
+            RunEventKind? stopEvent = null;
+            AgentActionResponse lastStep = null!;
+            for (var index = 0; index < request.MaximumSteps; index++)
+            {
+                lastStep = ExecuteSingleStep(
+                    index == 0 ? request.InitialAction : AgentAction.Continue,
+                    request.DeclaredIntent,
+                    publishViewer: false);
+                if (lastStep.RulesAdvanced)
+                {
+                    stepsAdvanced++;
+                }
+
+                if (!lastStep.Accepted)
+                {
+                    if (stepsAdvanced == 0)
+                    {
+                        var rejected = new AgentBurstResponse(
+                            Accepted: false,
+                            lastStep.RulesAdvanced,
+                            lastStep.Rejection,
+                            stepsAdvanced,
+                            lastStep.Rejection == AgentActionRejection.ReplayFailure
+                                ? AgentBurstStopReason.ReplayFailure
+                                : null,
+                            StopEvent: null,
+                            lastStep.Observation,
+                            MatchResult: null);
+                        PublishViewerFrame(rejected.Observation);
+                        return Remember(
+                            request.IdempotencyKey,
+                            AgentMutationKind.Burst,
+                            request,
+                            rejected);
+                    }
+
+                    stopReason = AgentBurstStopReason.ReplayFailure;
+                    break;
+                }
+
+                var hasDecisionEvent = AgentBurstPolicy.TryGetStopEvent(
+                    _previousEvents,
+                    out var decisionEvent);
+                if (hasDecisionEvent)
+                {
+                    stopEvent = decisionEvent;
+                }
+
+                if (_matchResult?.EndReason == AgentMatchEndReason.RulesTerminal)
+                {
+                    stopReason = AgentBurstStopReason.RulesTerminal;
+                    break;
+                }
+
+                if (_matchResult?.EndReason == AgentMatchEndReason.StepLimit)
+                {
+                    stopReason = AgentBurstStopReason.MatchStepLimit;
+                    break;
+                }
+
+                if (hasDecisionEvent)
+                {
+                    stopReason = AgentBurstStopReason.DecisionEvent;
+                    break;
+                }
+            }
+
+            if (stepsAdvanced > 0 && Lifecycle != AgentMatchLifecycle.FailedClosed)
+            {
+                _previousAction = new AgentPreviousActionV1(
+                    request.InitialAction,
+                    Accepted: true,
+                    AgentActionRejection.None,
+                    RulesAdvanced: true,
+                    request.DeclaredIntent);
+            }
+
+            var observation = CreateObservation();
+            var response = new AgentBurstResponse(
+                Accepted: lastStep.Accepted,
+                RulesAdvanced: stepsAdvanced > 0,
+                lastStep.Rejection,
+                stepsAdvanced,
+                stopReason,
+                stopEvent,
+                observation,
                 _matchResult);
-            PublishViewerFrame(response.Observation);
-            return Remember(request, response);
+            PublishViewerFrame(observation);
+            return Remember(
+                request.IdempotencyKey,
+                AgentMutationKind.Burst,
+                request,
+                response);
         }
     }
 
@@ -209,11 +346,17 @@ public sealed class AgentMatchSession
                     "A failed-closed agent match has no verified replay result.");
             }
 
-            var result = Complete(
+            if (!TryComplete(
                 AgentMatchEndReason.AgentFinished,
-                AgentMatchLifecycle.Aborted);
+                AgentMatchLifecycle.Aborted,
+                out var result))
+            {
+                PublishViewerFrame(CreateObservation());
+                throw new InvalidOperationException(
+                    "Agent match replay finalization failed closed.");
+            }
             PublishViewerFrame(CreateObservation());
-            return result;
+            return result!;
         }
     }
 
@@ -231,6 +374,10 @@ public sealed class AgentMatchSession
         bool rulesAdvanced)
     {
         Lifecycle = AgentMatchLifecycle.FailedClosed;
+        if (!rulesAdvanced)
+        {
+            _previousEvents = Array.Empty<RunEventDetail>();
+        }
         _previousAction = new AgentPreviousActionV1(
             action,
             Accepted: false,
@@ -243,51 +390,173 @@ public sealed class AgentMatchSession
             AgentActionRejection.ReplayFailure,
             CreateObservation(),
             MatchResult: null);
-        PublishViewerFrame(response.Observation);
         return response;
     }
 
-    private AgentMatchResult Complete(
-        AgentMatchEndReason endReason,
-        AgentMatchLifecycle lifecycle)
+    private AgentActionResponse ExecuteSingleStep(
+        AgentAction action,
+        AgentPublicIntent declaredIntent,
+        bool publishViewer)
     {
-        var recording = _recorder.Finish(_run);
-        if (!recording.IsSuccessful || recording.Replay is null)
+        var snapshot = _run.GetSnapshot();
+        if (!Enum.IsDefined(action))
         {
-            Lifecycle = AgentMatchLifecycle.FailedClosed;
-            throw new InvalidOperationException(
-                "Agent match replay finalization failed closed.");
+            return Reject(action, AgentActionRejection.InvalidAction, declaredIntent, publishViewer);
         }
 
-        var verification = recording.Replay.Verify();
-        if (!verification.IsValid)
+        if (TryMapDirection(action, out var direction))
+        {
+            var effectiveDirection = snapshot.PendingDirections.Count > 0
+                ? snapshot.PendingDirections[^1]
+                : snapshot.Direction;
+            if (snapshot.PendingDirections.Count >= _config.MaximumDirectionQueue
+                || direction == effectiveDirection
+                || direction == effectiveDirection.Opposite())
+            {
+                return Reject(
+                    action,
+                    AgentActionRejection.IllegalDirection,
+                    declaredIntent,
+                    publishViewer);
+            }
+
+            if (!_recorder.TryRecordCommand(direction) || !_run.QueueDirection(direction))
+            {
+                var failed = FailClosedAfterRecorderError(
+                    action,
+                    declaredIntent,
+                    rulesAdvanced: false);
+                if (publishViewer)
+                {
+                    PublishViewerFrame(failed.Observation);
+                }
+                return failed;
+            }
+        }
+
+        var result = _run.Step();
+        _previousEvents = Array.AsReadOnly(result.OrderedEvents.ToArray());
+        if (!_recorder.TryCompleteStep(result, _run))
+        {
+            var failed = FailClosedAfterRecorderError(
+                action,
+                declaredIntent,
+                rulesAdvanced: true);
+            if (publishViewer)
+            {
+                PublishViewerFrame(failed.Observation);
+            }
+            return failed;
+        }
+
+        var steppedSnapshot = _run.GetSnapshot();
+        _metrics.Record(result, steppedSnapshot);
+        if (!AdvanceRival())
+        {
+            var failed = FailClosedAfterRecorderError(
+                action,
+                declaredIntent,
+                rulesAdvanced: true);
+            if (publishViewer)
+            {
+                PublishViewerFrame(failed.Observation);
+            }
+            return failed;
+        }
+
+        _previousAction = new AgentPreviousActionV1(
+            action,
+            Accepted: true,
+            AgentActionRejection.None,
+            RulesAdvanced: true,
+            declaredIntent);
+
+        if (result.Status != RunStatus.Running)
+        {
+            if (!TryComplete(
+                AgentMatchEndReason.RulesTerminal,
+                AgentMatchLifecycle.Completed,
+                out _))
+            {
+                var failed = FailClosedAfterRecorderError(
+                    action,
+                    declaredIntent,
+                    rulesAdvanced: true);
+                if (publishViewer)
+                {
+                    PublishViewerFrame(failed.Observation);
+                }
+                return failed;
+            }
+        }
+        else if (result.Tick >= _options.MaximumSteps)
+        {
+            if (!TryComplete(
+                AgentMatchEndReason.StepLimit,
+                AgentMatchLifecycle.Completed,
+                out _))
+            {
+                var failed = FailClosedAfterRecorderError(
+                    action,
+                    declaredIntent,
+                    rulesAdvanced: true);
+                if (publishViewer)
+                {
+                    PublishViewerFrame(failed.Observation);
+                }
+                return failed;
+            }
+        }
+
+        var response = new AgentActionResponse(
+            Accepted: true,
+            RulesAdvanced: true,
+            AgentActionRejection.None,
+            CreateObservation(),
+            _matchResult);
+        if (publishViewer)
+        {
+            PublishViewerFrame(response.Observation);
+        }
+        return response;
+    }
+
+    private bool TryComplete(
+        AgentMatchEndReason endReason,
+        AgentMatchLifecycle lifecycle,
+        out AgentMatchResult? result)
+    {
+        result = null;
+        var agent = _replayFinalizer.Finalize(
+            AgentReplayLane.Agent,
+            _recorder,
+            _run);
+        if (agent.Failure != AgentReplayFinalizationFailure.None
+            || agent.Replay is null
+            || agent.Verification is null)
         {
             Lifecycle = AgentMatchLifecycle.FailedClosed;
-            throw new InvalidOperationException(
-                "Agent match replay verification failed closed.");
+            return false;
         }
 
         RunReplay? rivalReplay = null;
         ReplayVerificationResult? rivalVerification = null;
         if (_rivalRecorder is not null && _rivalRun is not null)
         {
-            var rivalRecording = _rivalRecorder.Finish(_rivalRun);
-            if (!rivalRecording.IsSuccessful || rivalRecording.Replay is null)
+            var rival = _replayFinalizer.Finalize(
+                AgentReplayLane.Rival,
+                _rivalRecorder,
+                _rivalRun);
+            if (rival.Failure != AgentReplayFinalizationFailure.None
+                || rival.Replay is null
+                || rival.Verification is null)
             {
                 Lifecycle = AgentMatchLifecycle.FailedClosed;
-                throw new InvalidOperationException(
-                    "Agent rival replay finalization failed closed.");
+                return false;
             }
 
-            rivalVerification = rivalRecording.Replay.Verify();
-            if (!rivalVerification.IsValid)
-            {
-                Lifecycle = AgentMatchLifecycle.FailedClosed;
-                throw new InvalidOperationException(
-                    "Agent rival replay verification failed closed.");
-            }
-
-            rivalReplay = rivalRecording.Replay;
+            rivalReplay = rival.Replay;
+            rivalVerification = rival.Verification;
         }
 
         Lifecycle = lifecycle;
@@ -313,8 +582,8 @@ public sealed class AgentMatchSession
             snapshot.DeathCause,
             snapshot.Score,
             snapshot.StateHash,
-            recording.Replay.PayloadHash,
-            verification.Code,
+            agent.Replay.PayloadHash,
+            agent.Verification.Code,
             episodeMetrics,
             _options.StyleContractId is null
                 ? null
@@ -323,15 +592,17 @@ public sealed class AgentMatchSession
                     _options.ModeId,
                     episodeMetrics),
             rivalResult,
-            recording.Replay,
+            agent.Replay,
             rivalReplay);
-        return _matchResult;
+        result = _matchResult;
+        return true;
     }
 
     private AgentActionResponse Reject(
         AgentAction action,
         AgentActionRejection rejection,
-        AgentPublicIntent declaredIntent = AgentPublicIntent.Undeclared)
+        AgentPublicIntent declaredIntent = AgentPublicIntent.Undeclared,
+        bool publishViewer = true)
     {
         _previousEvents = Array.Empty<RunEventDetail>();
         _previousAction = new AgentPreviousActionV1(
@@ -346,17 +617,40 @@ public sealed class AgentMatchSession
             rejection,
             CreateObservation(),
             _matchResult);
-        PublishViewerFrame(response.Observation);
+        if (publishViewer)
+        {
+            PublishViewerFrame(response.Observation);
+        }
         return response;
     }
 
-    private AgentActionResponse Remember(
-        AgentActionRequest request,
-        AgentActionResponse response)
+    private AgentBurstResponse RejectBurst(
+        AgentAction action,
+        AgentActionRejection rejection,
+        AgentPublicIntent declaredIntent)
     {
-        _processedActions.Add(
-            request.IdempotencyKey,
-            new ProcessedAction(request, response));
+        var rejected = Reject(action, rejection, declaredIntent);
+        return new AgentBurstResponse(
+            Accepted: false,
+            rejected.RulesAdvanced,
+            rejected.Rejection,
+            StepsAdvanced: 0,
+            StopReason: null,
+            StopEvent: null,
+            rejected.Observation,
+            MatchResult: null);
+    }
+
+    private TResponse Remember<TResponse>(
+        string idempotencyKey,
+        AgentMutationKind kind,
+        object request,
+        TResponse response)
+        where TResponse : class
+    {
+        _processedMutations.Add(
+            idempotencyKey,
+            new ProcessedMutation(kind, request, response));
         return response;
     }
 
@@ -503,7 +797,14 @@ public sealed class AgentMatchSession
         }
     }
 
-    private sealed record ProcessedAction(
-        AgentActionRequest Request,
-        AgentActionResponse Response);
+    private enum AgentMutationKind : byte
+    {
+        Step = 0,
+        Burst = 1,
+    }
+
+    private sealed record ProcessedMutation(
+        AgentMutationKind Kind,
+        object Request,
+        object Response);
 }

@@ -6,6 +6,30 @@ namespace VibeSnake.Rules.Tests;
 public sealed class AgentExperienceTests
 {
     [Fact]
+    public void Burst_stop_policy_is_closed_and_ignores_routine_events()
+    {
+        Assert.Equal("decision-event-stop-v1", AgentBurstPolicy.Contract);
+        Assert.Equal(15, AgentBurstPolicy.Stops.Count);
+        Assert.DoesNotContain(RunEventKind.DirectionChanged, AgentBurstPolicy.Stops);
+        Assert.DoesNotContain(RunEventKind.Moved, AgentBurstPolicy.Stops);
+        Assert.DoesNotContain(RunEventKind.ScoreChanged, AgentBurstPolicy.Stops);
+        Assert.DoesNotContain(RunEventKind.HungerReset, AgentBurstPolicy.Stops);
+        Assert.True(AgentBurstPolicy.TryGetStopEvent(
+            [
+                new RunEventDetail(RunEventKind.Moved),
+                new RunEventDetail(RunEventKind.AteFood),
+                new RunEventDetail(RunEventKind.NearMiss),
+            ],
+            out var stopEvent));
+        Assert.Equal(RunEventKind.AteFood, stopEvent);
+        Assert.False(AgentBurstPolicy.TryGetStopEvent(
+            [new RunEventDetail(RunEventKind.Moved)],
+            out _));
+        Assert.Throws<ArgumentNullException>(() =>
+            AgentBurstPolicy.TryGetStopEvent(null!, out _));
+    }
+
+    [Fact]
     public void Style_catalog_is_closed_unique_and_mode_aware()
     {
         Assert.Equal(5, AgentStyleContractCatalog.All.Count);

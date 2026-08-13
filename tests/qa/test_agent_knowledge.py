@@ -1,9 +1,12 @@
 import shutil
 import subprocess
 import sys
+from datetime import date
 from pathlib import Path
 
 import yaml
+
+from scripts.generate_agent_knowledge import check_freshness
 
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
@@ -50,7 +53,10 @@ def test_checked_in_agent_knowledge_is_current_and_okf_02_conformant() -> None:
         assert metadata["status"] == "draft"
         assert metadata["generated"]["by"] == "process:vibesnake-okf-generator"
         assert metadata["verified"]["by"] == "process:vibesnake-ci"
-        assert metadata["stale_after"] == "2026-11-13T00:00:00Z"
+        stale_after = metadata["stale_after"]
+        assert stale_after == "2026-11-13"
+        assert len(stale_after) == 10
+        assert date.fromisoformat(stale_after).isoformat() == stale_after
         sources = metadata["sources"]
         assert isinstance(sources, list) and sources
         for source in sources:
@@ -79,3 +85,11 @@ def test_agent_knowledge_check_reports_missing_files(tmp_path: Path) -> None:
 
     assert result.returncode == 1
     assert "missing generated file: index.md" in result.stdout
+
+
+def test_agent_knowledge_freshness_fails_closed_on_the_absolute_okf_date() -> None:
+    assert check_freshness(date(2026, 11, 12), "2026-11-13") == ()
+    assert check_freshness(date(2026, 11, 13), "2026-11-13") == (
+        "agent knowledge is stale: as-of 2026-11-13 reached stale_after 2026-11-13; "
+        "review canonical sources and advance verification metadata",
+    )

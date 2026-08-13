@@ -166,6 +166,387 @@ public sealed class AgentMatchSessionTests
     }
 
     [Fact]
+    public void Mutation_ledger_is_bounded_without_evicting_authoritative_keys()
+    {
+        var session = CreateSession();
+        var initial = session.Observe();
+        AgentActionResponse? first = null;
+        for (var index = 0; index < AgentMatchSession.MaximumUniqueMutations; index++)
+        {
+            var request = new AgentActionRequest(
+                $"bounded-{index}",
+                initial.Tick + 1,
+                initial.StateHash,
+                AgentAction.Continue);
+            var response = session.SubmitAction(request);
+            first ??= response;
+            Assert.Equal(AgentActionRejection.StaleTick, response.Rejection);
+        }
+
+        var knownRetry = session.SubmitAction(new AgentActionRequest(
+            "bounded-0",
+            initial.Tick + 1,
+            initial.StateHash,
+            AgentAction.Continue));
+        var knownCrossOperation = session.SubmitBurst(new AgentBurstRequest(
+            "bounded-0",
+            initial.Tick,
+            initial.StateHash,
+            AgentAction.Continue,
+            1));
+        var unseenStep = session.SubmitAction(Request(
+            "unseen-step",
+            initial,
+            AgentAction.Up));
+        var unseenBurst = session.SubmitBurst(new AgentBurstRequest(
+            "unseen-burst",
+            initial.Tick,
+            initial.StateHash,
+            AgentAction.Up,
+            1));
+
+        Assert.Same(first, knownRetry);
+        Assert.Equal(AgentActionRejection.IdempotencyConflict, knownCrossOperation.Rejection);
+        Assert.Equal(AgentActionRejection.MutationCapacityExceeded, unseenStep.Rejection);
+        Assert.Equal(AgentActionRejection.MutationCapacityExceeded, unseenBurst.Rejection);
+        Assert.False(unseenStep.RulesAdvanced);
+        Assert.False(unseenBurst.RulesAdvanced);
+        Assert.Equal(initial.Tick, session.Observe().Tick);
+        Assert.Equal(initial.StateHash, session.Observe().StateHash);
+    }
+
+    [Fact]
+    public void Burst_matches_equivalent_step_state_replay_metrics_and_rival()
+    {
+        var burst = CreateBurstSession(maximumSteps: 3, rivalPersonalityId: "optimal");
+        var step = new AgentMatchSession(new AgentMatchOptions(
+            "step-equivalent",
+            RunModeCatalog.ClassicId,
+            RunModeCatalog.CurrentModeVersion,
+            123UL,
+            AgentSeedVisibility.Open,
+            maximumSteps: 3,
+            rivalPersonalityId: "optimal"));
+        var initial = burst.Observe();
+
+        var burstResponse = burst.SubmitBurst(new AgentBurstRequest(
+            "burst-equivalent",
+            initial.Tick,
+            initial.StateHash,
+            AgentAction.Up,
+            maximumSteps: 3,
+            AgentPublicIntent.PreserveSpace));
+        _ = Act(step, "step-0", AgentAction.Up);
+        _ = Act(step, "step-1", AgentAction.Continue);
+        var stepResponse = Act(step, "step-2", AgentAction.Continue);
+
+        Assert.True(burstResponse.Accepted);
+        Assert.True(burstResponse.RulesAdvanced);
+        Assert.Equal(3, burstResponse.StepsAdvanced);
+        Assert.Equal(AgentBurstStopReason.MatchStepLimit, burstResponse.StopReason);
+        Assert.Equal(stepResponse.Observation.StateHash, burstResponse.Observation.StateHash);
+        Assert.Equal(stepResponse.Observation.EpisodeMetrics, burstResponse.Observation.EpisodeMetrics);
+        Assert.Equal(stepResponse.Observation.Rival, burstResponse.Observation.Rival);
+        Assert.Equal(
+            stepResponse.MatchResult!.ReplayPayloadHash,
+            burstResponse.MatchResult!.ReplayPayloadHash);
+        Assert.Equal(
+            stepResponse.MatchResult.Rival!.ReplayPayloadHash,
+            burstResponse.MatchResult.Rival!.ReplayPayloadHash);
+        Assert.Equal(
+            AgentPublicIntent.PreserveSpace,
+            burstResponse.Observation.PreviousAction!.DeclaredIntent);
+    }
+
+    [Fact]
+    public void Burst_stops_at_first_public_decision_event_and_remains_bounded()
+    {
+        var session = CreateBurstSession(maximumSteps: 100);
+        AgentBurstResponse? stopped = null;
+        for (var index = 0; index < 8 && stopped is null; index++)
+        {
+            var observation = session.Observe();
+            var response = session.SubmitBurst(new AgentBurstRequest(
+                $"burst-{index}",
+                observation.Tick,
+                observation.StateHash,
+                index == 0 ? AgentAction.Up : AgentAction.Continue,
+                AgentBurstRequest.MaximumBurstSteps));
+            Assert.InRange(response.StepsAdvanced, 1, AgentBurstRequest.MaximumBurstSteps);
+            if (response.StopReason == AgentBurstStopReason.DecisionEvent)
+            {
+                stopped = response;
+            }
+        }
+
+        var decision = Assert.IsType<AgentBurstResponse>(stopped);
+        Assert.NotNull(decision.StopEvent);
+        Assert.Contains(decision.StopEvent!.Value, AgentBurstPolicy.Stops);
+        Assert.Contains(
+            decision.Observation.PreviousEvents,
+            item => item.Kind == decision.StopEvent);
+    }
+
+    [Fact]
+    public void Burst_retry_is_exact_and_cross_operation_keys_never_advance_twice()
+    {
+        var session = CreateBurstSession(maximumSteps: 20);
+        var initial = session.Observe();
+        var request = new AgentBurstRequest(
+            "shared-key",
+            initial.Tick,
+            initial.StateHash,
+            AgentAction.Up,
+            maximumSteps: 2);
+
+        var accepted = session.SubmitBurst(request);
+        var retry = session.SubmitBurst(request);
+        var changedBurst = session.SubmitBurst(new AgentBurstRequest(
+            request.IdempotencyKey,
+            initial.Tick,
+            initial.StateHash,
+            AgentAction.Up,
+            maximumSteps: 3));
+        var conflict = session.SubmitAction(new AgentActionRequest(
+            request.IdempotencyKey,
+            initial.Tick,
+            initial.StateHash,
+            AgentAction.Up));
+
+        Assert.Same(accepted, retry);
+        Assert.Equal(AgentActionRejection.IdempotencyConflict, changedBurst.Rejection);
+        Assert.False(changedBurst.RulesAdvanced);
+        Assert.Equal(2, accepted.StepsAdvanced);
+        Assert.Equal(AgentActionRejection.IdempotencyConflict, conflict.Rejection);
+        Assert.False(conflict.RulesAdvanced);
+        Assert.Equal(2, session.Observe().Tick);
+        Assert.Equal(2, session.Finish().VerifiedReplay.Steps.Count);
+    }
+
+    [Fact]
+    public void Burst_rejects_null_invalid_stale_and_post_terminal_requests_without_stepping()
+    {
+        var session = CreateBurstSession(maximumSteps: 1);
+        var initial = session.Observe();
+
+        Assert.Throws<ArgumentNullException>(() => session.SubmitBurst(null!));
+        var staleTick = session.SubmitBurst(new AgentBurstRequest(
+            "stale-tick-burst",
+            initial.Tick + 1,
+            initial.StateHash,
+            AgentAction.Continue,
+            1));
+        var staleHash = session.SubmitBurst(new AgentBurstRequest(
+            "stale-hash-burst",
+            initial.Tick,
+            "not-the-state-hash",
+            AgentAction.Continue,
+            1));
+        var invalid = session.SubmitBurst(new AgentBurstRequest(
+            "invalid-burst",
+            initial.Tick,
+            initial.StateHash,
+            (AgentAction)255,
+            1));
+
+        Assert.Equal(AgentActionRejection.StaleTick, staleTick.Rejection);
+        Assert.Equal(AgentActionRejection.StaleStateHash, staleHash.Rejection);
+        Assert.Equal(AgentActionRejection.InvalidAction, invalid.Rejection);
+        Assert.All(
+            new[] { staleTick, staleHash, invalid },
+            response =>
+            {
+                Assert.False(response.Accepted);
+                Assert.False(response.RulesAdvanced);
+                Assert.Equal(0, response.StepsAdvanced);
+                Assert.Null(response.StopReason);
+            });
+        Assert.Equal(0, session.Observe().Tick);
+
+        var completed = session.SubmitBurst(new AgentBurstRequest(
+            "complete-burst",
+            initial.Tick,
+            initial.StateHash,
+            AgentAction.Up,
+            1));
+        var after = session.SubmitBurst(new AgentBurstRequest(
+            "after-burst",
+            completed.Observation.Tick,
+            completed.Observation.StateHash,
+            AgentAction.Continue,
+            1));
+
+        Assert.Equal(AgentBurstStopReason.MatchStepLimit, completed.StopReason);
+        Assert.Equal(AgentActionRejection.MatchNotAwaitingAction, after.Rejection);
+        Assert.False(after.RulesAdvanced);
+    }
+
+    [Fact]
+    public void Burst_rules_terminal_takes_precedence_and_returns_verified_result()
+    {
+        var session = CreateBurstSession(
+            maximumSteps: 1_000,
+            modeId: RunModeCatalog.VibeId);
+        AgentBurstResponse? terminal = null;
+        for (var index = 0; index < 1_000 && terminal?.MatchResult is null; index++)
+        {
+            var observation = session.Observe();
+            terminal = session.SubmitBurst(new AgentBurstRequest(
+                $"terminal-burst-{index}",
+                observation.Tick,
+                observation.StateHash,
+                ChooseStarvationAction(observation),
+                AgentBurstRequest.MaximumBurstSteps));
+        }
+
+        var result = Assert.IsType<AgentMatchResult>(terminal!.MatchResult);
+        Assert.Equal(AgentBurstStopReason.RulesTerminal, terminal.StopReason);
+        Assert.Equal(AgentMatchEndReason.RulesTerminal, result.EndReason);
+        Assert.True(result.VerifiedReplay.Verify().IsValid);
+        Assert.InRange(terminal.StepsAdvanced, 1, AgentBurstRequest.MaximumBurstSteps);
+    }
+
+    [Theory]
+    [InlineData(false, 0, 1)]
+    [InlineData(false, 0, 2)]
+    [InlineData(false, 1, 1)]
+    [InlineData(false, 1, 2)]
+    [InlineData(true, 0, 1)]
+    [InlineData(true, 0, 2)]
+    [InlineData(true, 1, 1)]
+    [InlineData(true, 1, 2)]
+    public void Terminal_replay_failure_is_typed_cached_and_visible(
+        bool burst,
+        int failedLaneValue,
+        int failureValue)
+    {
+        var failedLane = (AgentReplayLane)failedLaneValue;
+        var failure = (AgentReplayFinalizationFailure)failureValue;
+        var viewer = new RecordingViewerSink();
+        var options = new AgentMatchOptions(
+            "failed-finalization",
+            RunModeCatalog.ClassicId,
+            RunModeCatalog.CurrentModeVersion,
+            123UL,
+            AgentSeedVisibility.Open,
+            maximumSteps: 1,
+            rivalPersonalityId: failedLane == AgentReplayLane.Rival ? "optimal" : null,
+            actionProfile: burst
+                ? AgentPassportV1.FourDirectionBurstActionProfile
+                : AgentPassportV1.FourDirectionActionProfile);
+        var session = new AgentMatchSession(
+            options,
+            viewer,
+            new FaultingReplayFinalizer(failedLane, failure));
+        var initial = session.Observe();
+
+        object response;
+        object retry;
+        if (burst)
+        {
+            var request = new AgentBurstRequest(
+                "failed-terminal",
+                initial.Tick,
+                initial.StateHash,
+                AgentAction.Up,
+                1);
+            response = session.SubmitBurst(request);
+            retry = session.SubmitBurst(request);
+            var typed = Assert.IsType<AgentBurstResponse>(response);
+            Assert.False(typed.Accepted);
+            Assert.True(typed.RulesAdvanced);
+            Assert.Equal(1, typed.StepsAdvanced);
+            Assert.Equal(AgentActionRejection.ReplayFailure, typed.Rejection);
+            Assert.Equal(AgentBurstStopReason.ReplayFailure, typed.StopReason);
+            Assert.Null(typed.MatchResult);
+        }
+        else
+        {
+            var request = Request("failed-terminal", initial, AgentAction.Up);
+            response = session.SubmitAction(request);
+            retry = session.SubmitAction(request);
+            var typed = Assert.IsType<AgentActionResponse>(response);
+            Assert.False(typed.Accepted);
+            Assert.True(typed.RulesAdvanced);
+            Assert.Equal(AgentActionRejection.ReplayFailure, typed.Rejection);
+            Assert.Null(typed.MatchResult);
+        }
+
+        Assert.Same(response, retry);
+        Assert.Equal(AgentMatchLifecycle.FailedClosed, session.Lifecycle);
+        Assert.Null(session.GetResult());
+        Assert.Equal(2, viewer.Frames.Count);
+        Assert.Equal(AgentMatchEndReason.ReplayFailure, viewer.Frames[^1].EndReason);
+        Assert.False(viewer.Frames[^1].VerifiedResultAvailable);
+        Assert.Equal(
+            AgentActionRejection.ReplayFailure,
+            viewer.Frames[^1].Observation.PreviousAction!.Rejection);
+        Assert.Throws<InvalidOperationException>(() => session.Finish());
+    }
+
+    [Fact]
+    public async Task Concurrent_burst_retry_advances_once_and_publishes_one_final_frame()
+    {
+        var viewer = new RecordingViewerSink();
+        var session = CreateBurstSession(maximumSteps: 20, viewerSink: viewer);
+        var initial = session.Observe();
+        var request = new AgentBurstRequest(
+            "concurrent-burst",
+            initial.Tick,
+            initial.StateHash,
+            AgentAction.Up,
+            maximumSteps: 3);
+        using var ready = new CountdownEvent(8);
+        using var start = new ManualResetEventSlim();
+        var tasks = Enumerable.Range(0, 8).Select(_ => Task.Run(() =>
+        {
+            ready.Signal();
+            start.Wait();
+            return session.SubmitBurst(request);
+        })).ToArray();
+        ready.Wait();
+        start.Set();
+
+        var responses = await Task.WhenAll(tasks);
+
+        Assert.All(responses, response => Assert.Same(responses[0], response));
+        Assert.Equal(3, session.Observe().Tick);
+        Assert.Equal(2, viewer.Frames.Count);
+        Assert.Equal(0, viewer.Frames[0].Observation.Tick);
+        Assert.Equal(3, viewer.Frames[1].Observation.Tick);
+    }
+
+    [Fact]
+    public void Step_and_burst_are_separate_control_divisions()
+    {
+        var step = CreateSession();
+        var stepObservation = step.Observe();
+        var rejectedBurst = step.SubmitBurst(new AgentBurstRequest(
+            "wrong-burst",
+            stepObservation.Tick,
+            stepObservation.StateHash,
+            AgentAction.Up,
+            1));
+        var burst = CreateBurstSession();
+        var burstObservation = burst.Observe();
+        var rejectedStep = burst.SubmitAction(Request(
+            "wrong-step",
+            burstObservation,
+            AgentAction.Up));
+
+        Assert.Equal(AgentActionRejection.WrongActionProfile, rejectedBurst.Rejection);
+        Assert.Equal(AgentActionRejection.WrongActionProfile, rejectedStep.Rejection);
+        Assert.False(rejectedBurst.RulesAdvanced);
+        Assert.False(rejectedStep.RulesAdvanced);
+        Assert.Equal(
+            AgentPassportV1.FourDirectionActionProfile,
+            stepObservation.Passport.ActionProfile);
+        Assert.Equal(
+            AgentPassportV1.FourDirectionBurstActionProfile,
+            burstObservation.Passport.ActionProfile);
+    }
+
+    [Fact]
     public void Public_state_route_reaches_rules_terminal_and_closes_match()
     {
         var session = CreateSession(maximumSteps: 1_000);
@@ -399,6 +780,23 @@ public sealed class AgentMatchSessionTests
             visibility,
             maximumSteps));
 
+    private static AgentMatchSession CreateBurstSession(
+        int maximumSteps = AgentMatchOptions.DefaultMaximumSteps,
+        string? rivalPersonalityId = null,
+        IAgentViewerSink? viewerSink = null,
+        string modeId = RunModeCatalog.ClassicId) =>
+        new(
+            new AgentMatchOptions(
+                "burst-match",
+                modeId,
+                RunModeCatalog.CurrentModeVersion,
+                123UL,
+                AgentSeedVisibility.Open,
+                maximumSteps,
+                rivalPersonalityId: rivalPersonalityId,
+                actionProfile: AgentPassportV1.FourDirectionBurstActionProfile),
+            viewerSink);
+
     private static AgentActionResponse Act(
         AgentMatchSession session,
         string key,
@@ -500,5 +898,18 @@ public sealed class AgentMatchSessionTests
             Frames.Add(frame);
             return true;
         }
+    }
+
+    private sealed class FaultingReplayFinalizer(
+        AgentReplayLane failedLane,
+        AgentReplayFinalizationFailure failure) : IAgentReplayFinalizer
+    {
+        public AgentReplayFinalization Finalize(
+            AgentReplayLane lane,
+            RunReplayRecorder recorder,
+            SnakeRun run) =>
+            lane == failedLane
+                ? AgentReplayFinalization.Failed(failure)
+                : AgentReplayFinalizer.Instance.Finalize(lane, recorder, run);
     }
 }
