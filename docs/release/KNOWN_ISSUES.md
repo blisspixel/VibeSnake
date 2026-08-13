@@ -13,7 +13,7 @@ Status: pre-candidate alpha issues as of 2026-08-11. Replace this page from the 
 - Accessibility settings and structural layout gates are implemented, but visible focus, readability, photosensitivity, physical input, and accessibility-user review remain open.
 - Performance evidence from shared headless runners is diagnostic only. Minimum and recommended hardware, target operating-system versions, both target resolutions, and long-session thermal and memory evidence are not yet published.
 - Procedural fallback cues are complete and rights-clear. Authored production music, SFX, loudness, mix, listening, speaker, headphone, and physical audio-device review remain open.
-- Public support, issue, conduct, and vulnerability intake routes are not yet open and tested. Do not publish private or security-sensitive information in a public channel.
+- Public support, issue, and conduct intake routes are not yet open and tested. Private vulnerability reporting is enabled, but its end-to-end acknowledgement and response flow still needs a controlled test. Do not publish private or security-sensitive information in a public channel.
 
 ## Data safety
 

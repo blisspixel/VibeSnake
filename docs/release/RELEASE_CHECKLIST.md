@@ -147,6 +147,13 @@ python -m ruff format --check src tests scripts
 python -m ruff check src tests scripts
 python scripts/check_source_policy.py
 python scripts/check_docs.py
+python scripts/check_product_version.py
+python scripts/check_candidate_freeze.py
+python scripts/validate_agent_plugin.py integrations/vibesnake-agent-plugin
+python scripts/check_agent_interop.py
+python scripts/generate_agent_knowledge.py --check
+./scripts/package_agent_plugin.ps1 -OutputRoot TestResults/agent-plugin -Force
+python scripts/validate_agent_plugin.py TestResults/agent-plugin/portable/vibesnake-agent --require-mcp
 python scripts/capture_readme_screenshots.py --check
 python scripts/visual_generate_badges.py --check
 python scripts/visual_generate_logo.py --check
@@ -157,6 +164,7 @@ python -m vibesnake.qa.shared_power_traces --check
 python -m vibesnake.qa.shared_phase_shift_traces --check
 python -m vibesnake.qa.shared_last_stand_traces --check
 python -m vibesnake.qa.shared_remaining_power_traces --check
+python -m vibesnake.qa.shared_achievement_candidate_traces --check
 python -m vibesnake.qa --seeds 0 1 2 3 4 --steps 500 --output qa_reports/core.json
 python -m pytest --cov=vibesnake --cov-report=term-missing --cov-report=xml
 python -m build

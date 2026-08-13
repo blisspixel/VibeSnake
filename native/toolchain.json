@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "dotnetSdk": {
-    "version": "10.0.302",
+    "version": "10.0.303",
     "channel": "10.0",
     "support": "LTS"
   },

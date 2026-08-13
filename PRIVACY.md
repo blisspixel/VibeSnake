@@ -18,7 +18,7 @@ Core play remains offline. Optional content is installed from explicit local pac
 
 ## Agent Arena developer preview
 
-The optional post-1.0 Agent Arena source uses a local stdio MCP host and opens no network listener. Agent matches are ephemeral by default and receive only player-visible game state. They cannot read or update human profiles, settings, achievements, progression, scores, household comparisons, or the built-in spectator league.
+The optional post-1.0 Agent Arena source uses a local stdio MCP host and opens no network listener. Agent matches are ephemeral by default and receive only a closed public logical-state projection. That projection includes exact pending directions and public rules timers needed for deterministic symbolic control, so it is not identical to the human presentation. It excludes random state, future outcomes, controller internals, private paths, and human data. Agents cannot read or update human profiles, settings, achievements, progression, scores, household comparisons, or the built-in spectator league.
 
 An optional public Agent Passport may contain a bounded agent ID, policy version, display name, color, shed, station affinity, and fixed capability profile. It must not contain prompts, hidden reasoning, credentials, provider responses, account data, or other personal information. The host does not persist the passport as agent memory.
 

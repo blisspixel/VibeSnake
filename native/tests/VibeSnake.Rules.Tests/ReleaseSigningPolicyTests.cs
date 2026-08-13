@@ -362,7 +362,7 @@ public sealed class ReleaseSigningPolicyTests
             GodotCommit: "a13da4feb",
             GodotArchiveSha512: new string('a', 128),
             GodotExecutableSha256: new string('b', 64),
-            DotnetSdk: "10.0.302",
+            DotnetSdk: "10.0.303",
             SmokeStateHash: "0123456789abcdef",
             FileCount: files.Count,
             TotalBytes: files.Sum(file => file.Bytes),

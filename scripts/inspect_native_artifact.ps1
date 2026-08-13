@@ -56,6 +56,10 @@ if (Test-Path -LiteralPath $manifestPath) {
 }
 
 $toolchain = Get-Content -LiteralPath (Join-Path $repositoryRoot "native/toolchain.json") -Raw | ConvertFrom-Json
+$selectedDotnetSdk = (& dotnet --version).Trim()
+if ($LASTEXITCODE -ne 0 -or $selectedDotnetSdk -ne [string]$toolchain.dotnetSdk.version) {
+    throw "Selected .NET SDK $selectedDotnetSdk does not match pinned SDK $($toolchain.dotnetSdk.version)."
+}
 . (Join-Path $PSScriptRoot "native_artifact_policy.ps1")
 
 function Get-StreamSha256 {
@@ -214,7 +218,7 @@ $manifest = [ordered]@{
     godotCommit = [string]$toolchain.godot.commit
     godotArchiveSha512 = $verifiedArchiveHash
     godotExecutableSha256 = $verifiedExecutableHash
-    dotnetSdk = [string]$toolchain.dotnetSdk.version
+    dotnetSdk = $selectedDotnetSdk
     smokeStateHash = $SmokeStateHash
     fileCount = $fileEntries.Count
     totalBytes = ($files | Measure-Object Length -Sum).Sum

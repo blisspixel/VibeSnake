@@ -86,7 +86,7 @@ Files, saves, replays, imported personalities, manifests, and content packs are 
 - Dispose owned resources deterministically. Do not rely on finalizers for routine cleanup.
 - Keep package restore locked and dependency versions explicit.
 
-The repository pins its SDK and analyzer behavior. Analyzer suppressions require a narrow scope, a written reason, and a test or invariant that protects the suppressed behavior. A future SDK or analyzer wave is reviewed against current Microsoft and Godot guidance, applied in one isolated change, and qualified across the complete matrix before it becomes the new baseline.
+The August 2026 servicing baseline requires the exact .NET 10.0.303 SDK and the locked Microsoft.Extensions 10.0.11 hosting graph. Release provenance records the SDK that actually executes and fails if it differs from the toolchain manifest. Analyzer suppressions require a narrow scope, a written reason, and a test or invariant that protects the suppressed behavior. A future SDK or analyzer wave is reviewed against current Microsoft and Godot guidance, applied in one isolated change, and qualified across the complete matrix before it becomes the new baseline.
 
 ### Python
 

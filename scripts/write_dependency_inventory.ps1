@@ -16,10 +16,14 @@ $resolvedOutputPath = if ([System.IO.Path]::IsPathFullyQualified($OutputPath)) {
 
 $nugetLockPaths = @(
     "game/packages.lock.json",
+    "native/src/VibeSnake.AgentPlay/packages.lock.json",
+    "native/src/VibeSnake.AgentViewer/packages.lock.json",
     "native/src/VibeSnake.Persistence/packages.lock.json",
     "native/src/VibeSnake.Rules/packages.lock.json",
     "native/tests/VibeSnake.Rules.Tests/packages.lock.json",
-    "native/tools/ValidateArtifactManifest/packages.lock.json"
+    "native/tools/ValidateArtifactManifest/packages.lock.json",
+    "native/tools/ValidateCreatorContent/packages.lock.json",
+    "native/tools/VibeSnake.AgentHost/packages.lock.json"
 )
 $pythonLockPaths = @(
     "requirements-runtime.lock",
@@ -148,6 +152,10 @@ if (-not $packages) {
 
 $toolchain = Get-Content -LiteralPath (Join-Path $repositoryRoot "native/toolchain.json") -Raw |
     ConvertFrom-Json
+$selectedDotnetSdk = (& dotnet --version).Trim()
+if ($LASTEXITCODE -ne 0 -or $selectedDotnetSdk -ne [string]$toolchain.dotnetSdk.version) {
+    throw "Selected .NET SDK $selectedDotnetSdk does not match pinned SDK $($toolchain.dotnetSdk.version)."
+}
 $sourceRevision = (& git -C $repositoryRoot rev-parse HEAD).Trim()
 if ($LASTEXITCODE -ne 0 -or $sourceRevision -notmatch '^[0-9a-f]{40}$') {
     throw "Dependency inventory could not resolve a full Git source revision."
@@ -166,7 +174,7 @@ $inventory = [ordered]@{
     runtimeIdentifier = [Runtime.InteropServices.RuntimeInformation]::RuntimeIdentifier
     lockSetSha256 = $lockSetSha256
     tools = @(
-        [ordered]@{ name = "dotnet-sdk"; version = [string]$toolchain.dotnetSdk.version },
+        [ordered]@{ name = "dotnet-sdk"; version = $selectedDotnetSdk },
         [ordered]@{ name = "godot-dotnet"; version = [string]$toolchain.godot.version; commit = [string]$toolchain.godot.commit },
         [ordered]@{ name = "powershell"; version = [string]$PSVersionTable.PSVersion }
     )

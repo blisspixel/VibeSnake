@@ -147,7 +147,7 @@ Press F8 or controller Select/Back to prepare deletion of the selected copied sl
 
 ### The native toolchain does not install
 
-Use PowerShell 7 and the .NET 10.0.302 SDK. `./play.ps1` and `./play.sh` call the checksum-verified Godot installer. If setup fails, run `./scripts/install_godot.ps1` directly to see the exact archive, checksum, and executable validation result.
+Use PowerShell 7 and the .NET 10.0.303 SDK. `./play.ps1` and `./play.sh` call the checksum-verified Godot installer. If setup fails, run `./scripts/install_godot.ps1` directly to see the exact archive, checksum, and executable validation result.
 
 ### The game launches without music
 

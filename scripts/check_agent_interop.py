@@ -40,7 +40,11 @@ MCP_KEYS = {
 }
 PLUGIN_KEYS = {
     "spec_version",
-    "maturity",
+    "normative_status",
+    "website_status",
+    "spec_source_commit",
+    "spec_source_url",
+    "spec_source_sha256",
     "plugin_version",
     "plugin_schema_url",
     "plugin_schema_sha256",
@@ -246,7 +250,8 @@ def check_baseline(repository_root: Path, as_of: date) -> tuple[str, ...]:
         ("mcp.transport", mcp.get("transport"), "stdio"),
         ("mcp.session_model", mcp.get("session_model"), "stateless"),
         ("agent_plugins.spec_version", plugins.get("spec_version"), "1.0.0"),
-        ("agent_plugins.maturity", plugins.get("maturity"), "working-draft"),
+        ("agent_plugins.normative_status", plugins.get("normative_status"), "published"),
+        ("agent_plugins.website_status", plugins.get("website_status"), "working-draft"),
         ("agent_skill.profile", skill.get("profile"), "minimal-non-experimental"),
         ("okf.spec_version", okf.get("spec_version"), "0.2"),
         ("mcp_apps.status", apps.get("status"), "tracked-only"),
@@ -270,7 +275,16 @@ def check_baseline(repository_root: Path, as_of: date) -> tuple[str, ...]:
     _utc_timestamp(okf.get("generated_at"), "okf.generated_at", errors)
     _utc_timestamp(okf.get("verified_at"), "okf.verified_at", errors)
 
-    for field in ("plugin_schema_sha256", "mcp_schema_sha256"):
+    source_commit = plugins.get("spec_source_commit")
+    if not isinstance(source_commit, str) or re.fullmatch(r"[0-9a-f]{40}", source_commit) is None:
+        errors.append("agent_plugins.spec_source_commit must be a full lowercase Git commit SHA")
+    expected_spec_url = (
+        "https://raw.githubusercontent.com/agentplugins/agent-plugins-spec/"
+        f"{source_commit}/spec/{plugins.get('spec_version')}.md"
+    )
+    if plugins.get("spec_source_url") != expected_spec_url:
+        errors.append("agent_plugins.spec_source_url must bind the reviewed version to its immutable commit")
+    for field in ("spec_source_sha256", "plugin_schema_sha256", "mcp_schema_sha256"):
         value = plugins.get(field)
         if not isinstance(value, str) or SHA256.fullmatch(value) is None:
             errors.append(f"agent_plugins.{field} must be a lowercase SHA-256 digest")
@@ -334,7 +348,10 @@ def check_baseline(repository_root: Path, as_of: date) -> tuple[str, ...]:
         plugins.get("mcp_schema_sha256"),
         okf.get("spec_version"),
         baseline.get("reviewed_on"),
-        plugins.get("maturity"),
+        plugins.get("normative_status"),
+        plugins.get("website_status"),
+        plugins.get("spec_source_commit"),
+        plugins.get("spec_source_sha256"),
         skill.get("profile"),
         apps.get("tracked_version"),
     )
@@ -366,19 +383,22 @@ def check_upstream(
 
     fetch_bytes = fetch or default_fetch
     errors: list[str] = []
-    for prefix in ("plugin", "mcp"):
-        url = plugins.get(f"{prefix}_schema_url")
-        expected = plugins.get(f"{prefix}_schema_sha256")
+    upstreams = (
+        ("specification", plugins.get("spec_source_url"), plugins.get("spec_source_sha256")),
+        ("plugin schema", plugins.get("plugin_schema_url"), plugins.get("plugin_schema_sha256")),
+        ("mcp schema", plugins.get("mcp_schema_url"), plugins.get("mcp_schema_sha256")),
+    )
+    for label, url, expected in upstreams:
         if not isinstance(url, str) or not isinstance(expected, str):
-            errors.append(f"agent_plugins {prefix} schema pin is incomplete")
+            errors.append(f"agent_plugins {label} pin is incomplete")
             continue
         try:
             actual = hashlib.sha256(fetch_bytes(url)).hexdigest()
         except (OSError, TimeoutError, urllib.error.URLError) as exception:
-            errors.append(f"could not fetch {prefix} schema {url}: {exception}")
+            errors.append(f"could not fetch {label} {url}: {exception}")
             continue
         if actual != expected:
-            errors.append(f"upstream {prefix} schema digest changed: expected {expected}, got {actual}")
+            errors.append(f"upstream {label} digest changed: expected {expected}, got {actual}")
     return tuple(errors)
 
 
@@ -413,7 +433,7 @@ def main() -> int:
         for error in errors:
             print(f"  {error}")
         return 1
-    suffix = " with upstream schema drift" if arguments.check_upstream else ""
+    suffix = " with upstream specification and schema drift" if arguments.check_upstream else ""
     print(f"Agent interoperability baseline passed{suffix}: {repository_root}")
     return 0
 

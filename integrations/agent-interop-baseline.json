@@ -12,8 +12,12 @@
   },
   "agent_plugins": {
     "spec_version": "1.0.0",
-    "maturity": "working-draft",
-    "plugin_version": "0.2.0",
+    "normative_status": "published",
+    "website_status": "working-draft",
+    "spec_source_commit": "1fc1b6270e3cc492ec2d24ad7a34277c6d53b9c1",
+    "spec_source_url": "https://raw.githubusercontent.com/agentplugins/agent-plugins-spec/1fc1b6270e3cc492ec2d24ad7a34277c6d53b9c1/spec/1.0.0.md",
+    "spec_source_sha256": "97a658b7dca3ce1b4c2266b95da300fa51d9dc4ade59d73168e5f9104272da18",
+    "plugin_version": "0.2.1",
     "plugin_schema_url": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
     "plugin_schema_sha256": "0a4aad95ce337878ad38802ebf0daa3fde76abe3f65400c86bcbb1ec0b3ab883",
     "mcp_schema_url": "https://agent-plugins.org/schemas/1.0.0/mcp.schema.json",
@@ -29,8 +33,8 @@
   },
   "okf": {
     "spec_version": "0.2",
-    "generated_at": "2026-08-13T00:00:00Z",
-    "verified_at": "2026-08-13T00:00:00Z",
+    "generated_at": "2026-08-13T21:30:45Z",
+    "verified_at": "2026-08-13T21:30:56Z",
     "stale_after": "2026-11-13"
   },
   "mcp_apps": {
@@ -48,6 +52,10 @@
       {
         "version": "0.2.0",
         "sha256": "8b3ebde1f27efe102f6c7a86fb64245366457a951026205250528efdc52d35d5"
+      },
+      {
+        "version": "0.2.1",
+        "sha256": "17cd799df4eac07d47acef7125d32bc2d1670bb9ede49c44ffc42dd9fb215847"
       }
     ]
   }

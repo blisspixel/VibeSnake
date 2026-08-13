@@ -123,7 +123,7 @@ jobs:
 
           **Native source player**
 
-          Download \`VibeSnake-player-source.zip\`, verify it against \`SHA256SUMS.txt\`, and unzip it. PowerShell 7 and the .NET 10.0.302 SDK are required. The launcher downloads and verifies the pinned Godot 4.7.1 .NET editor on first use.
+          Download \`VibeSnake-player-source.zip\`, verify it against \`SHA256SUMS.txt\`, and unzip it. PowerShell 7 and the .NET 10.0.303 SDK are required. The launcher downloads and verifies the pinned Godot 4.7.1 .NET editor on first use.
 
           \`\`\`powershell
           cd VibeSnake

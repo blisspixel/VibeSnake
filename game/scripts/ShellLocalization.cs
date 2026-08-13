@@ -249,6 +249,10 @@ internal static class ShellLocalization
         Entry("agent-arena.action.rejected-conflict", "REJECTED REQUEST CONFLICT"),
         Entry("agent-arena.action.rejected-terminal", "REJECTED MATCH ALREADY ENDED"),
         Entry("agent-arena.action.rejected-replay", "REJECTED REPLAY FAILURE"),
+        Entry("agent-arena.action.rejected-wrong-profile", "REJECTED WRONG CONTROL PROFILE"),
+        Entry(
+            "agent-arena.action.rejected-mutation-capacity",
+            "REJECTED MUTATION BUDGET EXHAUSTED"),
         Entry("agent-arena.outcome.live", "OUTCOME LIVE"),
         Entry("agent-arena.outcome.rules-terminal", "OUTCOME RULES TERMINAL"),
         Entry("agent-arena.outcome.step-limit", "OUTCOME STEP LIMIT"),
@@ -261,7 +265,7 @@ internal static class ShellLocalization
             "AGENT MATCH COMPLETE; VERIFIED REPLAY READY"),
         Entry(
             "status.agent-viewer.disconnected",
-            "AGENT VIEWER DISCONNECTED; VERIFIED REPLAY REMAINS AVAILABLE"),
+            "AGENT VIEWER DISCONNECTED; MATCH CONTROL REMAINS WITH HOST"),
         Entry(
             "status.agent-viewer.rejected",
             "AGENT VIEWER CAPABILITY OR FRAME REJECTED"),

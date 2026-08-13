@@ -10,6 +10,8 @@ from pathlib import Path
 from pathlib import PurePosixPath
 from typing import Any
 
+import yaml
+
 PLUGIN_SCHEMA = "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json"
 MCP_SCHEMA = "https://agent-plugins.org/schemas/1.0.0/mcp.schema.json"
 PLUGIN_FIELDS = {
@@ -31,6 +33,32 @@ SKILL_FIELDS = {
 PLUGIN_NAME = re.compile(r"^(?!.*(?:--|\.\.))[a-z0-9](?:[a-z0-9.-]{0,62}[a-z0-9])?$")
 SKILL_NAME = re.compile(r"^(?!.*--)[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$")
 SHA256 = re.compile(r"^[0-9a-f]{64}$")
+
+
+class _UniqueKeyLoader(yaml.SafeLoader):
+    """Safe YAML loader that rejects duplicate mapping keys."""
+
+
+def _construct_unique_mapping(
+    loader: _UniqueKeyLoader,
+    node: yaml.MappingNode,
+    deep: bool = False,
+) -> dict[Any, Any]:
+    mapping: dict[Any, Any] = {}
+    for key_node, value_node in node.value:
+        key = loader.construct_object(key_node, deep=deep)
+        if not isinstance(key, str):
+            raise ValueError("frontmatter keys must be strings")
+        if key in mapping:
+            raise ValueError(f"duplicate frontmatter field {key}")
+        mapping[key] = loader.construct_object(value_node, deep=deep)
+    return mapping
+
+
+_UniqueKeyLoader.add_constructor(
+    yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG,
+    _construct_unique_mapping,
+)
 
 
 def _reject_duplicate_keys(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
@@ -111,23 +139,24 @@ def _parse_skill_frontmatter(path: Path, problems: list[str]) -> dict[str, str] 
     except ValueError:
         problems.append(f"{path}: YAML frontmatter is not closed")
         return None
+    frontmatter = "\n".join(lines[1:end])
+    try:
+        loaded = yaml.load(frontmatter, Loader=_UniqueKeyLoader)
+    except (yaml.YAMLError, ValueError) as exception:
+        problems.append(f"{path}: invalid YAML frontmatter: {exception}")
+        return None
+    if not isinstance(loaded, dict):
+        problems.append(f"{path}: YAML frontmatter must be a mapping")
+        return None
     fields: dict[str, str] = {}
-    for line in lines[1:end]:
-        if not line or line.startswith((" ", "\t")):
-            problems.append(f"{path}: use scalar top-level frontmatter fields")
-            continue
-        key, separator, raw = line.partition(":")
-        if not separator:
-            problems.append(f"{path}: invalid frontmatter line")
-            continue
-        key = key.strip()
+    for key, value in loaded.items():
         if key not in SKILL_FIELDS:
             problems.append(f"{path}: unknown frontmatter field {key}")
             continue
-        if key in fields:
-            problems.append(f"{path}: duplicate frontmatter field {key}")
+        if not isinstance(value, str):
+            problems.append(f"{path}: frontmatter field {key} must be a string")
             continue
-        fields[key] = raw.strip().strip("'\"")
+        fields[key] = value
     if not any(line.strip() for line in lines[end + 1 :]):
         problems.append(f"{path}: Markdown instructions are required")
     return fields

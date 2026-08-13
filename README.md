@@ -57,7 +57,7 @@ The complete player-facing behavior is in the [player guide](docs/guides/PLAYER_
 
 ## Play from source
 
-Prerequisites are Git, PowerShell 7, and the .NET 10.0.302 SDK. The launcher installs and verifies the pinned Godot 4.7.1 .NET editor on first use, builds the native game, and starts it.
+Prerequisites are Git, PowerShell 7, and the .NET 10.0.303 SDK. The launcher installs and verifies the pinned Godot 4.7.1 .NET editor on first use, builds the native game, and starts it.
 
 Windows:
 
@@ -75,7 +75,7 @@ cd VibeSnake
 ./play.sh
 ```
 
-The current floating source build and checksums are published under [player-latest](https://github.com/blisspixel/VibeSnake/releases/tag/player-latest) from every green `main` revision. It contains the source archive, Python reference wheel and sdist, and `SHA256SUMS.txt`. The source archive includes development previews such as the Agent Plugin manifest and skill, the MCP host source and assembly script, and the generated Open Knowledge Format bundle. It is not a signed native player or a preassembled supported Agent Plugin. Versioned native alpha releases have a separate fail-closed pipeline, and the first tag remains blocked on approved packaged content and an exact artifact review. See [native release outputs](docs/release/PACKAGING.md) and [agent play integration](docs/engineering/AGENT_PLAY.md).
+The current floating source build and checksums are published under [player-latest](https://github.com/blisspixel/VibeSnake/releases/tag/player-latest) from the newest successfully qualified `main` push. A newer qualified revision may cancel a superseded publisher before it finishes. The release contains the source archive, Python reference wheel and sdist, and `SHA256SUMS.txt`. The source archive includes development previews such as the Agent Plugin manifest and skill, the MCP host source and packaging script, and the generated Open Knowledge Format bundle. It is not a signed native player or a preassembled supported Agent Plugin. Versioned native alpha releases have a separate fail-closed pipeline, and the first tag remains blocked on approved packaged content and an exact artifact review. See [native release outputs](docs/release/PACKAGING.md) and [agent play integration](docs/engineering/AGENT_PLAY.md).
 
 ## Controls
 

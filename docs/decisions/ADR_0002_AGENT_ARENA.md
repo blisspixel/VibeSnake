@@ -35,7 +35,7 @@ External agent play introduces different trust, pacing, privacy, and compatibili
 | --- | --- | --- |
 | MCP 2026-07-28 | Adopt for the local agent host | Official C# SDK 2.2.0, stateless requests with per-request protocol metadata and optional `server/discover`, no initialize handshake, no downlevel fallback, transport adapter only, local stdio first |
 | Agent Skills | Adopt the minimal non-experimental `SKILL.md` subset | `name`, `description`, and Markdown body only; no bundled executable scripts or experimental `allowed-tools` |
-| Agent Plugins 1.0.0 | Package as a developer preview | Working Draft format, per-platform signed host bundles required before distribution, never the only connection route |
+| Agent Plugins 1.0.0 | Package as a developer preview | The normative versioned repository labels it Published while the public website still says Working Draft; per-platform signed host bundles are required before distribution, and the plugin is never the only connection route |
 | MCP Apps 2026-01-26 | Track for an optional client-side viewer | Secondary renderer after neutral replay and frame contracts stabilize |
 | Open Knowledge Format 0.2 | Generate a deterministic optional bundle from canonical sources | Discovery and provenance only, never runtime or gameplay authority |
 | Gymnasium and PettingZoo | Preserve adapter compatibility | Separate research package, no Python dependency in player artifacts |

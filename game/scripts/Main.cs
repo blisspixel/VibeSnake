@@ -9578,6 +9578,10 @@ public partial class Main : Node2D
             AgentActionRejection.MatchNotAwaitingAction =>
                 "agent-arena.action.rejected-terminal",
             AgentActionRejection.ReplayFailure => "agent-arena.action.rejected-replay",
+            AgentActionRejection.WrongActionProfile =>
+                "agent-arena.action.rejected-wrong-profile",
+            AgentActionRejection.MutationCapacityExceeded =>
+                "agent-arena.action.rejected-mutation-capacity",
             _ => throw new ArgumentOutOfRangeException(nameof(action)),
         };
     }
@@ -13083,7 +13087,7 @@ public partial class Main : Node2D
 
         const int migratedRequiredFlowCount = 13;
         const double requiredExpansionRatio = 1.30;
-        var passed = ShellLocalization.All.Count == 559
+        var passed = ShellLocalization.All.Count == 561
             && ShellLocalization.All.Count(entry => entry.Parameters.Count > 0) == 79
             && migratedRequiredFlowCount == 13
             && minimumExpansionRatio >= requiredExpansionRatio

@@ -9,7 +9,7 @@ from datetime import date, datetime, timezone
 from pathlib import Path
 
 GENERATOR_ACTOR = "process:vibesnake-okf-generator"
-VERIFIER_ACTOR = "process:vibesnake-ci"
+VERIFIER_ACTOR = "process:vibesnake-quality-gate"
 
 
 def _match(text: str, pattern: str, label: str) -> str:
@@ -188,7 +188,7 @@ def render_bundle(repository_root: Path) -> dict[str, str]:
             "",
             "# Trust boundary",
             "",
-            "The first transport is local stdio. It opens no network listener, accepts no executable, arbitrary path, action list, or custom stop predicate, and keeps opaque bearer handles in one bounded process without a separate client-authentication layer. Finalized matches are evicted first at capacity; otherwise only a live handle with no valid handle-bearing operation for 30 minutes may be reclaimed without a result or replay. Replacement construction precedes eviction, and viewer activity is never match control. Agent Plugins packaging is preview-quality because its 1.0.0 specification remains a working draft.",
+            "The first transport is local stdio. It opens no network listener, accepts no executable, arbitrary path, action list, or custom stop predicate, and keeps opaque bearer handles in one bounded process without a separate client-authentication layer. Finalized matches are evicted first at capacity; otherwise only a live handle with no valid handle-bearing operation for 30 minutes may be reclaimed without a result or replay. Replacement construction precedes eviction, and viewer activity is never match control. The normative Agent Plugins repository labels 1.0.0 Published while the public specification website still labels it Working Draft, so Vibe Snake retains preview-quality packaging and drift review.",
             "",
         )
     )

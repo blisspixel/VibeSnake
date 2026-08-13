@@ -43,7 +43,7 @@ jobs:
         if: matrix.python-version == '3.14'
         uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
-          dotnet-version: 10.0.302
+          dotnet-version: 10.0.303
           cache: true
           cache-dependency-path: |
             native/src/VibeSnake.AgentPlay/packages.lock.json
@@ -196,7 +196,7 @@ jobs:
       - name: Set up .NET
         uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
-          dotnet-version: 10.0.302
+          dotnet-version: 10.0.303
           cache: true
           cache-dependency-path: |
             game/packages.lock.json
@@ -205,6 +205,8 @@ jobs:
             native/src/VibeSnake.Persistence/packages.lock.json
             native/src/VibeSnake.Rules/packages.lock.json
             native/tests/VibeSnake.Rules.Tests/packages.lock.json
+            native/tools/ValidateArtifactManifest/packages.lock.json
+            native/tools/ValidateCreatorContent/packages.lock.json
             native/tools/VibeSnake.AgentHost/packages.lock.json
 
       - name: Set up Python for Agent Plugin validation
@@ -278,7 +280,7 @@ jobs:
       - name: Set up .NET
         uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
-          dotnet-version: 10.0.302
+          dotnet-version: 10.0.303
 
       - name: Install verified Godot build
         id: godot

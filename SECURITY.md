@@ -30,9 +30,12 @@ services outside project control.
 The official preview opens no network listener, accepts no arbitrary filesystem
 path, rules configuration, executable, prompt, credential, or agent-authored code,
 and never loads third-party executable plugins into Godot. MCP clients and external
-agent processes remain outside the game trust boundary. A one-time viewer token is
-a local capability and is not a defense against software already running as the
-same compromised user.
+agent processes are untrusted callers outside the trusted game process. Their own
+services and behavior are outside project scope, but host flaws are in scope when
+malicious inputs can expose human or private state, escape bounded storage, execute
+supplied code, bypass bearer or viewer capabilities, or mutate rules or human
+progression. A one-time viewer token is a local capability and is not a defense
+against software already running as the same compromised user.
 
 Optional agent public intent is a closed enum. It changes idempotent request
 identity but has no rules, scoring, reward, replay, qualification, filesystem,

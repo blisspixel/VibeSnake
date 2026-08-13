@@ -56,18 +56,19 @@ def test_interoperability_baseline_rejects_staleness_and_source_drift(tmp_path: 
     assert any("mcp.host_version='0.1.0'" in error for error in errors)
 
 
-def test_upstream_schema_check_is_digest_bound_without_network() -> None:
+def test_upstream_specification_and_schema_check_is_digest_bound_without_network() -> None:
     baseline = load_baseline(REPOSITORY_ROOT / BASELINE_RELATIVE_PATH)
     payload = b'{"$schema":"https://json-schema.org/draft/2020-12/schema"}'
     digest = hashlib.sha256(payload).hexdigest()
+    baseline["agent_plugins"]["spec_source_sha256"] = digest
     baseline["agent_plugins"]["plugin_schema_sha256"] = digest
     baseline["agent_plugins"]["mcp_schema_sha256"] = digest
 
     assert check_upstream(baseline, fetch=lambda _url: payload) == ()
-    baseline["agent_plugins"]["mcp_schema_sha256"] = "0" * 64
+    baseline["agent_plugins"]["spec_source_sha256"] = "0" * 64
     errors = check_upstream(baseline, fetch=lambda _url: payload)
     assert len(errors) == 1
-    assert "upstream mcp schema digest changed" in errors[0]
+    assert "upstream specification digest changed" in errors[0]
 
 
 def test_baseline_rejects_unreviewed_surface_values_and_non_datetime_metadata(tmp_path: Path) -> None:
@@ -76,7 +77,9 @@ def test_baseline_rejects_unreviewed_surface_values_and_non_datetime_metadata(tm
     baseline = load_baseline(baseline_path)
     baseline["mcp"]["transport"] = "http"
     baseline["mcp"]["session_model"] = "sessionful"
-    baseline["agent_plugins"]["maturity"] = "stable"
+    baseline["agent_plugins"]["normative_status"] = "draft"
+    baseline["agent_plugins"]["website_status"] = "published"
+    baseline["agent_plugins"]["spec_source_commit"] = "main"
     baseline["agent_skill"]["fields"] = ["name"]
     baseline["mcp_apps"]["status"] = "supported"
     baseline["okf"]["generated_at"] = "2026-08-13Z"
@@ -86,7 +89,10 @@ def test_baseline_rejects_unreviewed_surface_values_and_non_datetime_metadata(tm
 
     assert "mcp.transport must be 'stdio'" in errors
     assert "mcp.session_model must be 'stateless'" in errors
-    assert "agent_plugins.maturity must be 'working-draft'" in errors
+    assert "agent_plugins.normative_status must be 'published'" in errors
+    assert "agent_plugins.website_status must be 'working-draft'" in errors
+    assert "agent_plugins.spec_source_commit must be a full lowercase Git commit SHA" in errors
+    assert "agent_plugins.spec_source_url must bind the reviewed version to its immutable commit" in errors
     assert "agent_skill.fields must be the reviewed minimal ordered field set" in errors
     assert "mcp_apps.status must be 'tracked-only'" in errors
     assert "okf.generated_at must be a canonical RFC 3339 UTC datetime" in errors

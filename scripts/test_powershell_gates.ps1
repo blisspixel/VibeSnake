@@ -163,15 +163,19 @@ try {
         }
     }
     foreach ($requiredLocalizationFragment in @(
-        "ShellLocalization.All.Count == 559",
-        "entry.Parameters.Count > 0) == 79"
+        "ShellLocalization.All.Count == 561",
+        "entry.Parameters.Count > 0) == 79",
+        'AgentActionRejection.WrongActionProfile =>',
+        '"agent-arena.action.rejected-wrong-profile"',
+        'AgentActionRejection.MutationCapacityExceeded =>',
+        '"agent-arena.action.rejected-mutation-capacity"'
     )) {
         if (-not $gameMainScript.Contains($requiredLocalizationFragment, [StringComparison]::Ordinal)) {
             throw "Godot localization evidence is missing catalog count: $requiredLocalizationFragment"
         }
     }
     foreach ($requiredLocalizationFragment in @(
-        '($localizationEvidence.stringCount -ne 559)',
+        '($localizationEvidence.stringCount -ne 561)',
         '($localizationEvidence.parameterizedStringCount -ne 79)'
     )) {
         if (-not $nativeTestScript.Contains($requiredLocalizationFragment, [StringComparison]::Ordinal)) {

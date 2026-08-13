@@ -14,7 +14,7 @@ if ($PSVersionTable.PSVersion.Major -lt 7) {
     throw "Vibe Snake requires PowerShell 7 or newer. Run this script with pwsh."
 }
 if (-not (Get-Command dotnet -ErrorAction SilentlyContinue)) {
-    throw "The .NET 10.0.302 SDK is required. Install it, then run ./play.ps1 again."
+    throw "The .NET 10.0.303 SDK is required. Install it, then run ./play.ps1 again."
 }
 
 $installerOutput = & (Join-Path $repositoryRoot "scripts/install_godot.ps1")

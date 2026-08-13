@@ -6,7 +6,7 @@
 - A desktop environment for visible playtesting.
 - Git if the project is placed under version control.
 - Optional external-service credentials only when running content-generation tools.
-- For native qualification work, the stable .NET SDK 10.0.302 and Godot 4.7.1 .NET editor. Exact values live in [native/toolchain.json](../../native/toolchain.json).
+- For native qualification work, the stable .NET SDK 10.0.303 and Godot 4.7.1 .NET editor. Exact values live in [native/toolchain.json](../../native/toolchain.json).
 
 Python 3.10 reaches end of life in October 2026, so the alpha no longer carries it toward 1.0. Python 3.15 remains a prerelease line and is outside the supported range until its final release and dependency matrix pass. The source reference uses Pygame Community Edition 2.5.8 within major version 2 because it publishes CPython 3.11 through 3.14 wheels for the three development platforms. See the [official Python version status](https://devguide.python.org/versions/) and [pygame-ce package record](https://pypi.org/project/pygame-ce/).
 
@@ -50,7 +50,7 @@ The editable Python install still registers `vibesnake`, `vibesnake status`, `vi
 
 ## Set up the native toolchain
 
-The repository resolver in [global.json](../../global.json) accepts the stable 10.0.302 SDK patch line, rejects previews, and prefers a repository-local `.dotnet/` installation. Install .NET 10.0.302 through Microsoft's official package instructions or a reviewed, integrity-verified installer. A system installation is valid; a repository-local installation under `.dotnet/` is also discovered automatically. Confirm the selected SDK with `dotnet --version` before qualification. Do not execute a mutable downloaded installer without an independent integrity check.
+The repository resolver in [global.json](../../global.json) requires the exact stable 10.0.303 SDK, rejects previews and other patches, and prefers a repository-local `.dotnet/` installation. Install .NET 10.0.303 through Microsoft's official package instructions or a reviewed, integrity-verified installer. A system installation is valid; a repository-local installation under `.dotnet/` is also discovered automatically. Confirm that `dotnet --version` prints `10.0.303` before qualification. Do not execute a mutable downloaded installer without an independent integrity check.
 
 Install the checksum-verified Godot build on Windows, macOS, or Linux with PowerShell 7:
 
@@ -116,6 +116,12 @@ python -m ruff check src tests scripts
 python scripts/check_source_policy.py
 python scripts/check_docs.py
 python scripts/check_product_version.py
+python scripts/check_candidate_freeze.py
+python scripts/validate_agent_plugin.py integrations/vibesnake-agent-plugin
+python scripts/check_agent_interop.py
+python scripts/generate_agent_knowledge.py --check
+./scripts/package_agent_plugin.ps1 -OutputRoot TestResults/agent-plugin -Force
+python scripts/validate_agent_plugin.py TestResults/agent-plugin/portable/vibesnake-agent --require-mcp
 python scripts/capture_readme_screenshots.py --check
 python scripts/visual_generate_badges.py --check
 python scripts/visual_generate_logo.py --check
@@ -126,6 +132,7 @@ python -m vibesnake.qa.shared_power_traces --check
 python -m vibesnake.qa.shared_phase_shift_traces --check
 python -m vibesnake.qa.shared_last_stand_traces --check
 python -m vibesnake.qa.shared_remaining_power_traces --check
+python -m vibesnake.qa.shared_achievement_candidate_traces --check
 python -m vibesnake.qa --seeds 0 1 2 3 4 --steps 500 --output qa_reports/core.json
 python -m pytest --cov=vibesnake --cov-report=term-missing --cov-report=xml
 ```

@@ -28,7 +28,7 @@ Choose identity, rival, mode, seed division, and Style Contract
 
 The current preview implements play, live read-only watching, result retrieval, and a separate explicit replay save. It does not yet implement the target recorded-first broadcast route, same-seed human handoff, or retained public result history. Agent response time never affects score. The current live viewer waits for agent actions without advancing rules; the finished verified replay remains canonical when finalization succeeds.
 
-The failure branch is part of the loop, not an implementation detail. If replay finalization fails, the match becomes failed closed, no verified result or saveable replay is available, and the viewer must say so explicitly. The current recovery is to start a new match or restart the local host. Destructive capacity-only reclamation for a live handle idle for 30 minutes is implemented and never creates a result or replay. Result-preserving recovery, compact failure review, and retry guidance remain roadmap work.
+The failure branch is part of the loop, not an implementation detail. If replay finalization fails, the match becomes failed closed, no verified result or saveable replay is available, and the viewer says so explicitly. The current recovery is to start a new match or restart the local host. Destructive capacity-only reclamation for a live handle idle for 30 minutes is implemented and never creates a result or replay. Compact failed-closed review and restart guidance remain AA-05 work; failed-closed runs intentionally never gain a result or saveable replay.
 
 ## Play divisions
 
@@ -93,7 +93,7 @@ Blind-seed observations omit the seed until the final verified lane result. Open
 
 The base action is `up`, `right`, `down`, `left`, or `continue`. Every mutating request supplies the expected tick, expected state hash, and an idempotency key. It may also declare `seek_food`, `seek_power`, `preserve_space`, `take_risk`, or `recover` as a public presentation-only intent.
 
-- A valid request advances exactly one rules step.
+- A valid `play_move` request advances exactly one rules step. A valid `play_burst` request advances the returned `steps_advanced` count from 1 through its requested bound.
 - `continue` advances without queuing a direction.
 - A stale request, illegal reversal, conflicting idempotency key, terminal request, or invalid payload advances no rules state.
 - Retrying the same key with the same request returns the original response.
@@ -129,7 +129,7 @@ It never contains prompt history, chain of thought, credentials, raw provider re
 
 ## Broadcast language
 
-The viewer presents a competitor, not a request log. It shows the matchup, contract, agent display name, color, shed, station, rival score, match status, latest closed self-declared public intent, action acceptance or rejection reason, exact end reason, and whether a verified result exists. A rejected attempt may change the displayed attempted intent, but the adjacent rejection label makes clear that no rules step was accepted. It should next add engine-observed risks and resources, record changes, typed highlights, and a post-run turning-point summary.
+The viewer presents a competitor, not a request log. It shows the matchup, contract, agent display name, color, shed, station, rival score, match status, latest closed self-declared public intent, every current closed action acceptance or rejection reason, exact end reason, and whether a verified result exists. A rejected attempt may change the displayed attempted intent, but the adjacent rejection label makes clear that no rules step was accepted. A disconnect says only that match control remains with the host and never claims that a replay exists. It should next add burst identity and stop facts, engine-observed risks and resources, record changes, typed highlights, and a post-run turning-point summary.
 
 The current preview accepts only `seek_food`, `seek_power`, `preserve_space`, `take_risk`, or `recover`, plus `undeclared`. These values are clearly self-reported, appear only in public action feedback and the viewer, and cannot affect rules or verification. Free-form captions and confidence are deferred until they have a concrete moderation and accessibility benefit. Private reasoning is never requested or displayed.
 

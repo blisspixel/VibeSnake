@@ -1,4 +1,5 @@
 from pathlib import Path
+import json
 import re
 import xml.etree.ElementTree as ET
 
@@ -36,6 +37,40 @@ def test_dotnet_quality_contract_is_explicit_and_stable() -> None:
     assert properties["NuGetAudit"] == "true"
     assert properties["NuGetAuditMode"] == "all"
     assert properties["NuGetAuditLevel"] == "low"
+
+    global_config = json.loads((REPOSITORY_ROOT / "global.json").read_text(encoding="utf-8"))
+    toolchain = json.loads((REPOSITORY_ROOT / "native" / "toolchain.json").read_text(encoding="utf-8"))
+    assert global_config["sdk"]["version"] == "10.0.303"
+    assert global_config["sdk"]["rollForward"] == "disable"
+    assert global_config["sdk"]["allowPrerelease"] is False
+    assert toolchain["dotnetSdk"]["version"] == global_config["sdk"]["version"]
+
+    workflow = (REPOSITORY_ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+    assert workflow.count("dotnet-version: 10.0.303") == 3
+    for script_name in ("write_dependency_inventory.ps1", "inspect_native_artifact.ps1"):
+        script = (REPOSITORY_ROOT / "scripts" / script_name).read_text(encoding="utf-8")
+        assert "dotnet --version" in script
+        assert "does not match pinned SDK" in script
+
+    inventory_script = (REPOSITORY_ROOT / "scripts" / "write_dependency_inventory.ps1").read_text(encoding="utf-8")
+    committed_lock_paths = {
+        path.relative_to(REPOSITORY_ROOT).as_posix()
+        for path in REPOSITORY_ROOT.rglob("packages.lock.json")
+        if not {".tools", "TestResults"}.intersection(path.relative_to(REPOSITORY_ROOT).parts)
+    }
+    assert len(committed_lock_paths) == 9
+    for lock_path in committed_lock_paths:
+        assert f'"{lock_path}"' in inventory_script
+
+    host_project = ET.parse(
+        REPOSITORY_ROOT / "native" / "tools" / "VibeSnake.AgentHost" / "VibeSnake.AgentHost.csproj"
+    ).getroot()
+    packages = {
+        reference.attrib["Include"]: reference.attrib["Version"]
+        for reference in host_project.findall(".//PackageReference")
+    }
+    assert packages["Microsoft.Extensions.Hosting"] == "10.0.11"
+    assert packages["Microsoft.Extensions.Caching.Abstractions"] == "10.0.11"
 
 
 def test_root_editorconfig_enforces_portable_text_and_csharp_formatting() -> None:
@@ -82,8 +117,14 @@ def test_every_external_github_action_uses_a_full_commit_sha() -> None:
         for path, line_number, action, reference, tag in references
         if tag is None or RELEASE_TAG.fullmatch(tag) is None
     ]
+    unapproved_actions = [
+        f"{path.relative_to(REPOSITORY_ROOT)}:{line_number} {action}"
+        for path, line_number, action, _reference, _tag in references
+        if not action.startswith("actions/")
+    ]
     assert invalid_references == []
     assert invalid_tag_comments == []
+    assert unapproved_actions == []
 
 
 def test_workflows_default_to_read_only_and_elevate_permissions_per_job() -> None:

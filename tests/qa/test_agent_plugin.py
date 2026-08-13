@@ -117,6 +117,33 @@ def test_narrow_producer_profile_rejects_http_and_experimental_skill_metadata(tm
     assert "Vibe Snake's producer profile supports only stdio" in result.stdout
 
 
+def test_skill_frontmatter_rejects_non_string_values_and_duplicate_keys(tmp_path: Path) -> None:
+    plugin = tmp_path / "vibesnake-agent"
+    shutil.copytree(SOURCE_PLUGIN, plugin)
+    skill = plugin / "skills" / "play-vibesnake" / "SKILL.md"
+    original = skill.read_text(encoding="utf-8")
+
+    skill.write_text(
+        original.replace(
+            "description: Play deterministic Vibe Snake matches",
+            "description: [not, a, scalar] # Play deterministic Vibe Snake matches",
+            1,
+        ),
+        encoding="utf-8",
+    )
+    non_string = run_validator(plugin)
+    assert non_string.returncode == 1
+    assert "frontmatter field description must be a string" in non_string.stdout
+
+    skill.write_text(
+        original.replace("description:", "name: duplicate\ndescription:", 1),
+        encoding="utf-8",
+    )
+    duplicate = run_validator(plugin)
+    assert duplicate.returncode == 1
+    assert "duplicate frontmatter field name" in duplicate.stdout
+
+
 def test_missing_plugin_root_is_rejected(tmp_path: Path) -> None:
     result = run_validator(tmp_path / "missing")
 

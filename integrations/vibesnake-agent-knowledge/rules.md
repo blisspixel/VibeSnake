@@ -3,8 +3,8 @@ type: "Game Rules"
 title: "Vibe Snake agent rules and observations"
 description: "The public, deterministic rules boundary available to an external agent."
 tags: [vibesnake, rules, observation, agents]
-generated: { by: process:vibesnake-okf-generator, at: 2026-08-13T00:00:00Z }
-verified: { by: process:vibesnake-ci, at: 2026-08-13T00:00:00Z }
+generated: { by: process:vibesnake-okf-generator, at: 2026-08-13T21:30:45Z }
+verified: { by: process:vibesnake-quality-gate, at: 2026-08-13T21:30:56Z }
 stale_after: "2026-11-13"
 status: draft
 sources:

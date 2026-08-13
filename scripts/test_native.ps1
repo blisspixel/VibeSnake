@@ -488,7 +488,7 @@ try {
         $dependencyInventory.lockSetSha256 -notmatch "^[0-9a-f]{64}$") {
         throw "Dependency inventory provenance fields are invalid."
     }
-    if (@($dependencyInventory.sources).Count -ne 7 -or
+    if (@($dependencyInventory.sources).Count -ne 11 -or
         @($dependencyInventory.packages).Count -lt 60) {
         throw "Dependency inventory is missing lock sources or expected packages."
     }
@@ -514,7 +514,7 @@ try {
     }
     $dotnetTool = $dependencyInventory.tools | Where-Object { $_.name -eq "dotnet-sdk" }
     $godotTool = $dependencyInventory.tools | Where-Object { $_.name -eq "godot-dotnet" }
-    if ($dotnetTool.version -ne "10.0.302" -or
+    if ($dotnetTool.version -ne "10.0.303" -or
         $godotTool.version -ne "4.7.1" -or
         $godotTool.commit -ne "a13da4feb") {
         throw "Dependency inventory toolchain does not match the pinned native toolchain."
@@ -643,7 +643,7 @@ try {
         ($localizationEvidence.catalogId -ne "shell-copy-v1") -or
         ($localizationEvidence.requiredLocale -ne "en") -or
         ($localizationEvidence.pseudoLocale -ne "qps-ploc") -or
-        ($localizationEvidence.stringCount -ne 559) -or
+        ($localizationEvidence.stringCount -ne 561) -or
         ($localizationEvidence.parameterizedStringCount -ne 79) -or
         ($localizationEvidence.migratedRequiredFlowCount -ne 13) -or
         ($localizationEvidence.minimumPseudoExpansionRatio -lt 1.3) -or
