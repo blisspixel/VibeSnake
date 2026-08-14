@@ -29,6 +29,32 @@ public sealed class RunEndPresentationTests
     }
 
     [Fact]
+    public void Classic_self_collision_recovery_does_not_mention_vibe_powers()
+    {
+        var run = SnakeRun.CreateForTesting(
+            RunModeCatalog.CreateConfig(RunModeCatalog.Classic) with
+            {
+                Width = 8,
+                Height = 6,
+            },
+            [
+                new GridPoint(1, 1),
+                new GridPoint(1, 2),
+                new GridPoint(2, 2),
+                new GridPoint(2, 1),
+            ],
+            Direction.Down,
+            new GridPoint(6, 4),
+            hungerTicksRemaining: 600);
+        run.Step();
+        var summary = RunEndSummary.Create(run, run.Score, false);
+
+        Assert.Equal("SELF COLLISION", summary.Cause);
+        Assert.DoesNotContain("Shield", summary.RecoveryHint, StringComparison.Ordinal);
+        Assert.Contains("wrap", summary.RecoveryHint, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public void Starvation_and_victory_have_specific_attribution()
     {
         var starvation = SnakeRun.CreateForTesting(

@@ -210,9 +210,9 @@ public sealed record ScoreHistoryDocument(
             throw new InvalidDataException("Python top-ten import metadata is invalid.");
         }
 
-        var retained = Entries.Where(entry =>
-            entry.SourceId != PersonalBestMigrationSourceId
-            || entry.RunKindId != ScoreRunContextCatalog.LegacyRunKind).ToList();
+        var retained = Entries
+            .Where(entry => entry.CategoryKey != PythonImportCategoryKey)
+            .ToList();
         var sequence = NextSequence;
         foreach (var score in scores
                      .OrderByDescending(item => item.Score)
@@ -460,6 +460,10 @@ public sealed record ScoreHistoryDocument(
             LocalPlayerLabel,
             UnknownTimestamp,
             PersonalBestMigrationSourceId);
+
+    private static string PythonImportCategoryKey => FromPythonScore(
+        new PythonScoreEntry(0, LocalPlayerLabel, 1, UnknownTimestamp),
+        sequence: 0).CategoryKey;
 
     private static ScoreHistoryEntry FromPythonScore(PythonScoreEntry score, long sequence) => new(
         sequence,

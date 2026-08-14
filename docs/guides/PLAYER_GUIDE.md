@@ -69,7 +69,7 @@ The snake cannot reverse directly into itself. Rapid valid turns are buffered.
 | R | Open replays or restart a supported activity |
 | H | Open or close help |
 | L | Browse or leave AI spectator channels |
-| J | Cycle radio station |
+| J | Cycle radio station, or retry playback when radio is unavailable |
 | Ctrl+Q or Cmd+Q | Quit from supported screens |
 
 ### Display and pointer behavior
@@ -82,7 +82,7 @@ Select Customize or press C to browse the eight authored native cosmetic sets. U
 
 ### Radio controls
 
-Press J or controller R3 to cycle the current radio station. Independent Master, Music, SFX, and UI volumes and mutes are under Settings, Audio. The HUD always reports the current station or an actionable missing-pack status.
+Press J or controller R3 to cycle the current radio station. If playback has failed or the station is unavailable, the same action retries isolated tracks instead of skipping them. Independent Master, Music, SFX, and UI volumes and mutes are under Settings, Audio. The HUD always reports the current station or an actionable missing-pack status.
 
 ## Scoring
 

@@ -77,6 +77,8 @@ public sealed class OnboardingSession
 
     private SnakeRun _scenario;
     private int _starvationMoves;
+    private bool _foodScenarioReady;
+    private bool _powerScenarioReady;
 
     public OnboardingSession()
     {
@@ -154,6 +156,8 @@ public sealed class OnboardingSession
     {
         Lesson = OnboardingLesson.Turning;
         _starvationMoves = 0;
+        _foodScenarioReady = false;
+        _powerScenarioReady = false;
         _scenario = CreateTurningScenario();
     }
 
@@ -218,7 +222,7 @@ public sealed class OnboardingSession
             _scenario.Head.X == ScenarioWidth - 1,
             "Tutorial wrap position diverged.");
 
-        _scenario = CreateFoodScenario();
+        _foodScenarioReady = false;
         return AdvanceTo(
             OnboardingLesson.FoodAndScore,
             OnboardingCopyIds.WrapComplete,
@@ -230,6 +234,12 @@ public sealed class OnboardingSession
         if (direction != Direction.Right)
         {
             return Rejected(OnboardingCopyIds.FoodRight);
+        }
+
+        if (!_foodScenarioReady)
+        {
+            _scenario = CreateFoodScenario();
+            _foodScenarioReady = true;
         }
 
         var lengthBefore = _scenario.Body.Count;
@@ -280,7 +290,7 @@ public sealed class OnboardingSession
             _scenario.DeathCause == DeathCause.Starvation,
             "Tutorial starvation cause diverged.");
 
-        _scenario = CreatePowerScenario();
+        _powerScenarioReady = false;
         return AdvanceTo(
             OnboardingLesson.PowerUp,
             OnboardingCopyIds.Starved,
@@ -292,6 +302,12 @@ public sealed class OnboardingSession
         if (direction != Direction.Right)
         {
             return Rejected(OnboardingCopyIds.ShieldRight);
+        }
+
+        if (!_powerScenarioReady)
+        {
+            _scenario = CreatePowerScenario();
+            _powerScenarioReady = true;
         }
 
         var result = _scenario.Step();

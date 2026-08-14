@@ -26,6 +26,7 @@ public sealed class OnboardingSessionTests
         var wrap = session.SubmitDirection(Direction.Left);
         AssertAdvance(wrap, OnboardingLesson.Wrapping, OnboardingLesson.FoodAndScore);
         Assert.True(wrap.Events.HasFlag(RunEvent.Wrapped));
+        Assert.Equal(OnboardingSession.ScenarioWidth - 1, session.Snapshot.Head.X);
 
         var food = session.SubmitDirection(Direction.Right);
         AssertAdvance(food, OnboardingLesson.FoodAndScore, OnboardingLesson.Starvation);
@@ -40,6 +41,8 @@ public sealed class OnboardingSessionTests
         var starvation = session.SubmitDirection(Direction.Right);
         AssertAdvance(starvation, OnboardingLesson.Starvation, OnboardingLesson.PowerUp);
         Assert.True(starvation.Events.HasFlag(RunEvent.Died));
+        Assert.Equal(RunStatus.Dead, session.Snapshot.Status);
+        Assert.Equal(DeathCause.Starvation, session.Snapshot.DeathCause);
 
         var power = session.SubmitDirection(Direction.Right);
         AssertAdvance(power, OnboardingLesson.PowerUp, OnboardingLesson.Pause);

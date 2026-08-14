@@ -101,6 +101,12 @@ public sealed class ProgressionDocumentTests
                 "\"schemaVersion\": 1",
                 "\"schemaVersion\": 2",
                 StringComparison.Ordinal)).Code);
+        Assert.Equal(
+            ProgressionLoadCode.InvalidField,
+            ProgressionDocument.Read(valid.Replace(
+                "\"schemaVersion\": 1,",
+                string.Empty,
+                StringComparison.Ordinal)).Code);
         Assert.Equal(ProgressionLoadCode.InvalidJson, ProgressionDocument.Read(" ").Code);
         Assert.Equal(
             ProgressionLoadCode.TooLarge,

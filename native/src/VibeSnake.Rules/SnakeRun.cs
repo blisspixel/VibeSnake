@@ -552,6 +552,7 @@ public sealed partial class SnakeRun
             if (wrapped)
             {
                 events |= RunEvent.Wrapped;
+                _sessionWraps = checked(_sessionWraps + 1);
                 orderedEvents.Add(new RunEventDetail(RunEventKind.Wrapped, Position: nextHead));
             }
 
@@ -669,8 +670,9 @@ public sealed partial class SnakeRun
             }
 
             // Victory ignores optional pickups: a lone free pickup cell is discarded
-            // for food respawn, not treated as a full board.
-            if (_occupied.Count + _detachedOccupied.Count >= _config.Width * _config.Height)
+            // for food respawn, not treated as a full board. Phase Shift may occupy a
+            // detached-obstacle cell; count unique blocked cells only.
+            if (UniqueBlockedCellCount() >= _config.Width * _config.Height)
             {
                 Food = null;
                 Status = RunStatus.Won;
@@ -1274,10 +1276,23 @@ public sealed partial class SnakeRun
         || _detachedOccupied.Contains(candidate)
         || PowerPickup?.Position == candidate;
 
+    private int UniqueBlockedCellCount()
+    {
+        var blocked = _occupied.Count;
+        foreach (var obstacle in _detachedObstacles)
+        {
+            if (!_occupied.Contains(obstacle))
+            {
+                blocked++;
+            }
+        }
+
+        return blocked;
+    }
+
     private int FreeCellCount() =>
         (_config.Width * _config.Height)
-        - _occupied.Count
-        - _detachedOccupied.Count
+        - UniqueBlockedCellCount()
         - (PowerPickup is null ? 0 : 1);
 
     private void TryEmitStarvationWarning(
@@ -2090,7 +2105,7 @@ public sealed partial class SnakeRun
         }
 
         var gridIsFull =
-            _occupied.Count + _detachedOccupied.Count == _config.Width * _config.Height;
+            UniqueBlockedCellCount() == _config.Width * _config.Height;
         switch (Status)
         {
             case RunStatus.Running when DeathCause != DeathCause.None:

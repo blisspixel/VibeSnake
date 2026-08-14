@@ -160,4 +160,39 @@ public sealed class RemainingPowerTests
         Assert.Equal(run.DetachedObstacles, restored.DetachedObstacles);
         Assert.Equal(run.DetachedObstacleTicksRemaining, restored.DetachedObstacleTicksRemaining);
     }
+
+    [Fact]
+    public void Phase_overlap_with_detached_obstacle_does_not_false_win_on_eat()
+    {
+        var run = SnakeRun.CreateForTesting(
+            new RunConfig(
+                Width: 3,
+                Height: 2,
+                StarvationTicks: 100,
+                PowerSpawnIntervalTicks: 0,
+                PowerVisibleTicks: 4,
+                SegmentDetachObstacleTicks: 8,
+                EnableNearMiss: false,
+                EnableComboExpiredEvent: false),
+            [
+                new GridPoint(0, 0),
+                new GridPoint(1, 0),
+                new GridPoint(2, 0),
+                new GridPoint(2, 1),
+            ],
+            Direction.Left,
+            new GridPoint(1, 1),
+            hungerTicksRemaining: 100,
+            phaseShiftTicksRemaining: 3,
+            detachedObstacles: [new GridPoint(2, 1)],
+            detachedObstacleTicksRemaining: 6);
+
+        var result = run.Step();
+
+        Assert.Equal(RunStatus.Running, run.Status);
+        Assert.DoesNotContain(result.OrderedEvents, value => value.Kind == RunEventKind.Won);
+        Assert.Equal(5, run.Body.Count);
+        Assert.NotNull(run.Food);
+        Assert.Equal(new GridPoint(0, 1), run.Food);
+    }
 }

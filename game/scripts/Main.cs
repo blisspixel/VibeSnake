@@ -463,6 +463,9 @@ public partial class Main : Node2D
                         ? "readme_capture_start"
                         : "session_start");
         _window = GetWindow();
+        _window.MinSize = new Vector2I(
+            (int)VirtualViewport.MinimumWindowWidth,
+            (int)VirtualViewport.MinimumWindowHeight);
         _window.FilesDropped += OnFilesDropped;
         _window.SizeChanged += OnWindowSizeChanged;
         RefreshVirtualViewport();
@@ -1022,7 +1025,12 @@ public partial class Main : Node2D
 
     private void CycleRadioStation()
     {
-        var snapshot = _radioPolicy.TuneNextStation();
+        var current = _radioPolicy.Snapshot;
+        var snapshot = current.Mode is RadioPlaybackMode.StationUnavailable
+            or RadioPlaybackMode.NoStations
+            or RadioPlaybackMode.Stopped
+            ? _radioPolicy.RetryIsolatedTracks()
+            : _radioPolicy.TuneNextStation();
         _radioPlayer?.Synchronize();
         ScheduleRadioPlaybackVerification();
         PlayCue(AudioCue.Navigate);
@@ -1858,10 +1866,9 @@ public partial class Main : Node2D
                 : advance.RivalStep;
             if (viewedStep is { } result)
             {
-                _snakeMotionPresentation.Begin(
+                BeginSnakeMotion(
                     before.Body,
                     after.Body,
-                    Time.GetTicksMsec(),
                     Math.Max(
                         1,
                         (int)Math.Round(
@@ -1979,10 +1986,9 @@ public partial class Main : Node2D
         if (_replayPlayback.TryAdvance(out var frame) && frame is not null)
         {
             var after = _replayPlayback.CurrentSnapshot;
-            _snakeMotionPresentation.Begin(
+            BeginSnakeMotion(
                 before.Body,
                 after.Body,
-                Time.GetTicksMsec(),
                 Math.Max(
                     1,
                     (int)Math.Round(
@@ -2031,11 +2037,7 @@ public partial class Main : Node2D
             result = _run.Step();
         }
         var after = _run.GetSnapshot();
-        _snakeMotionPresentation.Begin(
-            before.Body,
-            after.Body,
-            Time.GetTicksMsec(),
-            after.EffectiveRulesStepMilliseconds);
+        BeginSnakeMotion(before.Body, after.Body, after.EffectiveRulesStepMilliseconds);
         _powerDecisionTrace.Observe(before, after, result.OrderedEvents);
         if (
             _replayRecorder is { } recorder
@@ -2054,6 +2056,24 @@ public partial class Main : Node2D
             CompleteRunEnd(result.OrderedEvents);
             FinalizeAndStoreReplay();
         }
+    }
+
+    private void BeginSnakeMotion(
+        IReadOnlyList<GridPoint> previousBody,
+        IReadOnlyList<GridPoint> currentBody,
+        int durationMilliseconds)
+    {
+        if (_shellSettings.ReducedMotion || durationMilliseconds <= 0)
+        {
+            _snakeMotionPresentation.Reset(currentBody);
+            return;
+        }
+
+        _snakeMotionPresentation.Begin(
+            previousBody,
+            currentBody,
+            Time.GetTicksMsec(),
+            durationMilliseconds);
     }
 
     private void CompleteRunEnd(IReadOnlyList<RunEventDetail> orderedEvents)
@@ -2619,7 +2639,7 @@ public partial class Main : Node2D
             if (inputEvent.IsActionPressed(GameActions.Back)
                 || inputEvent.IsActionPressed(GameActions.BrowseAchievements))
             {
-                ReturnToMenu();
+                LeaveOverlayScreen();
             }
             else if (inputEvent.IsActionPressed(GameActions.Replay))
             {
@@ -2721,7 +2741,7 @@ public partial class Main : Node2D
                 || inputEvent.IsActionPressed(GameActions.BrowseContentPacks)
                 || inputEvent.IsActionPressed(GameActions.Confirm))
             {
-                ReturnToMenu();
+                LeaveOverlayScreen();
             }
 
             return;
@@ -2853,7 +2873,7 @@ public partial class Main : Node2D
 
         if (mouseButton.ButtonIndex == MouseButton.Right)
         {
-            return GameActions.Back;
+            return _screenState == ScreenState.Menu ? null : GameActions.Back;
         }
 
         if (mouseButton.ButtonIndex == MouseButton.Middle)
@@ -2861,24 +2881,23 @@ public partial class Main : Node2D
             return _screenState == ScreenState.Running ? GameActions.Pause : null;
         }
 
-        if (mouseButton.ButtonIndex == MouseButton.WheelUp)
+        if (mouseButton.ButtonIndex is MouseButton.WheelUp
+            or MouseButton.WheelDown
+            or MouseButton.WheelLeft
+            or MouseButton.WheelRight)
         {
-            return GameActions.MoveUp;
-        }
+            if (!ScreenAllowsWheelNavigation(_screenState))
+            {
+                return null;
+            }
 
-        if (mouseButton.ButtonIndex == MouseButton.WheelDown)
-        {
-            return GameActions.MoveDown;
-        }
-
-        if (mouseButton.ButtonIndex == MouseButton.WheelLeft)
-        {
-            return GameActions.MoveLeft;
-        }
-
-        if (mouseButton.ButtonIndex == MouseButton.WheelRight)
-        {
-            return GameActions.MoveRight;
+            return mouseButton.ButtonIndex switch
+            {
+                MouseButton.WheelUp => GameActions.MoveUp,
+                MouseButton.WheelDown => GameActions.MoveDown,
+                MouseButton.WheelLeft => GameActions.MoveLeft,
+                _ => GameActions.MoveRight,
+            };
         }
 
         if (mouseButton.ButtonIndex != MouseButton.Left)
@@ -2939,8 +2958,22 @@ public partial class Main : Node2D
                     HudHeight);
         }
 
-        return GameActions.Confirm;
+        return null;
     }
+
+    private static bool ScreenAllowsWheelNavigation(ScreenState state) =>
+        state is ScreenState.Menu
+            or ScreenState.Settings
+            or ScreenState.Achievements
+            or ScreenState.Scores
+            or ScreenState.Replays
+            or ScreenState.Tour
+            or ScreenState.Cosmetics
+            or ScreenState.Lore
+            or ScreenState.Comparisons
+            or ScreenState.Spectator
+            or ScreenState.ContentPacks
+            or ScreenState.Bindings;
 
     private void ObservePromptInput(InputEvent inputEvent)
     {
@@ -3496,15 +3529,11 @@ public partial class Main : Node2D
     private void OpenSpectatorBrowse()
     {
         TransitionToScreen(ScreenState.Spectator);
-        _run = null;
         _replayRecorder = null;
         _spectatorMatch = null;
         _spectatorMatchPersisted = false;
         _spectatorSelectionCursor = 0;
         _spectatorStatusCaption = null;
-        _activeSpectatorChallenge = null;
-        _activeSpectatorChallengePersonalityId = null;
-        _activeSpectatorAiScore = 0;
         _loreDepthFilterIndex = 0;
         _loreBrowseCursor = 0;
         _loreUnlockContext = LoreUnlockContext.Empty;
@@ -3521,7 +3550,7 @@ public partial class Main : Node2D
         {
             if (inputEvent.IsActionPressed(GameActions.Back))
             {
-                ReturnToMenu();
+                LeaveOverlayScreen();
             }
             else if (inputEvent.IsActionPressed(GameActions.MoveUp))
             {
@@ -3715,10 +3744,9 @@ public partial class Main : Node2D
             : advance.RivalStep;
         if (viewedStep is { } result)
         {
-            _snakeMotionPresentation.Begin(
+            BeginSnakeMotion(
                 before.Body,
                 after.Body,
-                Time.GetTicksMsec(),
                 after.EffectiveRulesStepMilliseconds);
             AdvanceFeedback(result.OrderedEvents, after.ComboCount);
             _vibeLevelDirector.Update(after.ComboCount);
@@ -4143,6 +4171,19 @@ public partial class Main : Node2D
         DateTimeOffset.UtcNow.ToString(
             RunReplay.CaptureTimestampFormat,
             CultureInfo.InvariantCulture);
+
+    private void LeaveOverlayScreen()
+    {
+        if (_run is { Status: RunStatus.Dead or RunStatus.Won } && _runEndSummary is not null)
+        {
+            TransitionToScreen(ScreenState.Ended);
+            PlayCue(AudioCue.Back);
+            QueueRedraw();
+            return;
+        }
+
+        ReturnToMenu();
+    }
 
     private void ReturnToMenu()
     {
@@ -4781,7 +4822,7 @@ public partial class Main : Node2D
             || inputEvent.IsActionPressed(GameActions.BrowseScores)
             || inputEvent.IsActionPressed(GameActions.Confirm))
         {
-            ReturnToMenu();
+            LeaveOverlayScreen();
             return;
         }
 
@@ -5071,7 +5112,7 @@ public partial class Main : Node2D
         if (inputEvent.IsActionPressed(GameActions.Back)
             || inputEvent.IsActionPressed(GameActions.Replay))
         {
-            ReturnToMenu();
+            LeaveOverlayScreen();
             return;
         }
 
@@ -5286,7 +5327,7 @@ public partial class Main : Node2D
                 var listed = store.ListSlots();
                 return new ReplayOperationResult(
                     listed.Message.ToUpperInvariant(),
-                    GhostSlots: listed.Slots);
+                    GhostSlots: listed.IsSuccess ? listed.Slots : null);
             },
             "INSPECTING HOUSEHOLD RIVAL SLOTS",
             ReplayOperationKind.GhostList))
@@ -5376,7 +5417,7 @@ public partial class Main : Node2D
                 var listed = store.ListSlots();
                 return new ReplayOperationResult(
                     $"GHOST IMPORT [{imported.Code}]: {imported.Message}".ToUpperInvariant(),
-                    GhostSlots: listed.Slots);
+                    GhostSlots: listed.IsSuccess ? listed.Slots : null);
             },
             "VERIFYING EXPLICIT HOUSEHOLD RIVAL IMPORT",
             ReplayOperationKind.GhostImport))
@@ -5512,7 +5553,7 @@ public partial class Main : Node2D
                 var listed = store.ListSlots();
                 return new ReplayOperationResult(
                     $"GHOST DELETE [{deleted.Code}]: {deleted.Message}".ToUpperInvariant(),
-                    GhostSlots: listed.Slots);
+                    GhostSlots: listed.IsSuccess ? listed.Slots : null);
             },
             "DELETING ONE CONFIRMED HOUSEHOLD RIVAL",
             ReplayOperationKind.GhostDelete))
@@ -5673,7 +5714,7 @@ public partial class Main : Node2D
         if (inputEvent.IsActionPressed(GameActions.Back)
             || inputEvent.IsActionPressed(GameActions.BrowseBindings))
         {
-            ReturnToMenu();
+            LeaveOverlayScreen();
         }
     }
 
@@ -5886,7 +5927,7 @@ public partial class Main : Node2D
 
         if (inputEvent.IsActionPressed(GameActions.BrowseSettings))
         {
-            ReturnToMenu();
+            LeaveOverlayScreen();
             return;
         }
 
@@ -5894,7 +5935,7 @@ public partial class Main : Node2D
         {
             if (inputEvent.IsActionPressed(GameActions.Back))
             {
-                ReturnToMenu();
+                LeaveOverlayScreen();
                 return;
             }
 
@@ -6523,12 +6564,14 @@ public partial class Main : Node2D
         }
 
         LoadShellSettings();
+        ApplyWindowModeFromSettings();
         LoadOnboardingProgress();
         LoadAchievements();
         LoadProgression();
         LoadPersonalBests();
         LoadScoreHistory();
         LoadInputBindings();
+        InitializeRadio(allowCheckoutFallback: true);
         _replayBrowserEntries = [];
         _replayPlayback = null;
         _pendingReplayDeletion = null;
@@ -6582,6 +6625,7 @@ public partial class Main : Node2D
                     _replayStatusCaption = null;
                     break;
                 case PlayerDataCategory.OptionalContent:
+                    InitializeRadio(allowCheckoutFallback: true);
                     break;
                 default:
                     throw new InvalidOperationException("Unknown player data category.");
@@ -9390,6 +9434,7 @@ public partial class Main : Node2D
 
         SetRunPaused(true);
         _pausedByFocusLoss = true;
+        _rulesStepAccumulatorMilliseconds = 0.0;
         QueueRedraw();
     }
 
@@ -10914,8 +10959,12 @@ public partial class Main : Node2D
         var presentedBody = _snakeMotionPresentation.Resolve(
             snapshot.Body,
             Time.GetTicksMsec(),
-            (int)(VirtualViewport.LogicalWidth / CellSize),
-            (int)((VirtualViewport.LogicalHeight - HudHeight) / CellSize));
+            _run?.Configuration.Width
+                ?? _replayPlayback?.Configuration.Width
+                ?? (int)(VirtualViewport.LogicalWidth / CellSize),
+            _run?.Configuration.Height
+                ?? _replayPlayback?.Configuration.Height
+                ?? (int)((VirtualViewport.LogicalHeight - HudHeight) / CellSize));
         var usesVibePresentation = mode.Id == RunModeCatalog.VibeId;
         var accessibility = AccessibilityPresentationPolicy.FromSettings(_shellSettings);
         var hunger = HungerFeedback.Describe(
@@ -11205,8 +11254,11 @@ public partial class Main : Node2D
                     ScaledFontSize(16),
                     ActiveShellPalette.GoldText);
             }
+            var recap = _run?.Mode.Includes(RunModeFeatures.ComboScoring) == true
+                ? $"LENGTH {summary.Length}  STEPS {summary.SurvivalSteps}  FOOD {summary.FoodEaten}  PEAK COMBO {summary.PeakCombo}"
+                : $"LENGTH {summary.Length}  STEPS {summary.SurvivalSteps}  FOOD {summary.FoodEaten}";
             DrawLabel(
-                $"LENGTH {summary.Length}  STEPS {summary.SurvivalSteps}  FOOD {summary.FoodEaten}  PEAK COMBO {summary.PeakCombo}",
+                recap,
                 new Vector2(238.0f, 362.0f),
                 ScaledFontSize(14),
                 SecondaryTextColor());
@@ -16542,17 +16594,22 @@ public partial class Main : Node2D
             (ShellScreen.Ended, ShellScreen.Spectator),
             (ShellScreen.Ended, ShellScreen.Comparisons),
             (ShellScreen.Achievements, ShellScreen.Menu),
+            (ShellScreen.Achievements, ShellScreen.Ended),
             (ShellScreen.Achievements, ShellScreen.Achievements),
             (ShellScreen.Achievements, ShellScreen.Tour),
             (ShellScreen.Achievements, ShellScreen.Cosmetics),
             (ShellScreen.Bindings, ShellScreen.Menu),
+            (ShellScreen.Bindings, ShellScreen.Ended),
             (ShellScreen.Bindings, ShellScreen.Bindings),
             (ShellScreen.ContentPacks, ShellScreen.Menu),
+            (ShellScreen.ContentPacks, ShellScreen.Ended),
             (ShellScreen.ContentPacks, ShellScreen.ContentPacks),
             (ShellScreen.Replays, ShellScreen.Menu),
+            (ShellScreen.Replays, ShellScreen.Ended),
             (ShellScreen.Replays, ShellScreen.Replays),
             (ShellScreen.Replays, ShellScreen.Comparisons),
             (ShellScreen.Settings, ShellScreen.Menu),
+            (ShellScreen.Settings, ShellScreen.Ended),
             (ShellScreen.Settings, ShellScreen.Settings),
             (ShellScreen.Settings, ShellScreen.Bindings),
             (ShellScreen.Onboarding, ShellScreen.Onboarding),
@@ -16560,6 +16617,7 @@ public partial class Main : Node2D
             (ShellScreen.Onboarding, ShellScreen.Running),
             (ShellScreen.Onboarding, ShellScreen.Settings),
             (ShellScreen.Scores, ShellScreen.Menu),
+            (ShellScreen.Scores, ShellScreen.Ended),
             (ShellScreen.Scores, ShellScreen.Scores),
             (ShellScreen.Tour, ShellScreen.Menu),
             (ShellScreen.Tour, ShellScreen.Achievements),
@@ -16569,6 +16627,7 @@ public partial class Main : Node2D
             (ShellScreen.Cosmetics, ShellScreen.Achievements),
             (ShellScreen.Cosmetics, ShellScreen.Cosmetics),
             (ShellScreen.Spectator, ShellScreen.Menu),
+            (ShellScreen.Spectator, ShellScreen.Ended),
             (ShellScreen.Spectator, ShellScreen.Spectator),
             (ShellScreen.Spectator, ShellScreen.Running),
             (ShellScreen.Spectator, ShellScreen.Lore),
@@ -17377,6 +17436,7 @@ public partial class Main : Node2D
                 ShellScreen.Ended,
                 ShellScreen.Menu)
             && ShellTransitions.CanTransition(ShellScreen.Ended, ShellScreen.Settings)
+            && ShellTransitions.CanTransition(ShellScreen.Settings, ShellScreen.Ended)
             && ShellTransitions.CanTransition(ShellScreen.Ended, ShellScreen.Replays);
         var summaryOrderComplete = collisionSummary.Score == 120
             && collisionSummary.PersonalBest >= collisionSummary.Score

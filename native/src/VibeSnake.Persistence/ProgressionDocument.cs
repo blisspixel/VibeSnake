@@ -186,7 +186,15 @@ public sealed record ProgressionDocument(
         {
             using var parsed = JsonDocument.Parse(json);
             RejectDuplicateProperties(parsed.RootElement, "progression");
-            var schema = parsed.RootElement.GetProperty("schemaVersion").GetInt32();
+            if (!parsed.RootElement.TryGetProperty("schemaVersion", out var schemaElement)
+                || schemaElement.ValueKind != JsonValueKind.Number
+                || !schemaElement.TryGetInt32(out var schema))
+            {
+                return new ProgressionLoadResult(
+                    ProgressionLoadCode.InvalidField,
+                    "Progression document is missing a schema version.");
+            }
+
             if (schema != CurrentSchemaVersion)
             {
                 return new ProgressionLoadResult(

@@ -317,7 +317,7 @@ public sealed class OfflineChallengeStore
             return new GhostSlotListResult(
                 false,
                 "Household rival slots could not be inspected.",
-                Enumerable.Range(1, MaximumHouseholdRivalSlots).Select(EmptySlot).ToArray());
+                Array.Empty<GhostSlotEntry>());
         }
     }
 

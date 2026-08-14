@@ -182,6 +182,27 @@ public sealed class RadioPlaybackPolicyTests
 
         var unknown = policy.NoteTrackUnavailable("asset:unknown");
         Assert.Contains("did not match", unknown.StatusMessage, StringComparison.Ordinal);
+
+        var repaired = policy.ReplaceCatalog(RadioCatalog.FromValidatedManifests(
+            [Manifest("flow", "one.mp3", "two.mp3")]));
+        Assert.Equal(RadioPlaybackMode.Playing, repaired.Mode);
+        Assert.NotNull(repaired.TrackId);
+        Assert.Equal(2, repaired.PlayableTrackCount);
+        Assert.NotEqual(RadioPlaybackMode.StationUnavailable, repaired.Mode);
+    }
+
+    [Fact]
+    public void Explicit_retry_clears_isolated_tracks_and_resumes_playback()
+    {
+        var policy = Policy(Manifest("flow", "one.mp3"));
+        policy.PlayOrResume();
+        var exhausted = policy.NoteTrackUnavailable(policy.Snapshot.TrackId!);
+        Assert.Equal(RadioPlaybackMode.StationUnavailable, exhausted.Mode);
+
+        var retried = policy.RetryIsolatedTracks();
+        Assert.Equal(RadioPlaybackMode.Playing, retried.Mode);
+        Assert.NotNull(retried.TrackId);
+        Assert.Equal(1, retried.PlayableTrackCount);
     }
 
     [Fact]

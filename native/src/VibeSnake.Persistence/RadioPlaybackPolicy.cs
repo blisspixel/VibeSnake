@@ -271,6 +271,12 @@ public sealed class RadioPlaybackPolicy
         return Snapshot;
     }
 
+    public RadioPlaybackSnapshot RetryIsolatedTracks()
+    {
+        _unavailableTrackIds.Clear();
+        return PlayOrResume();
+    }
+
     public RadioPlaybackSnapshot TuneNextStation()
     {
         if (_catalog.Stations.Count == 0)
@@ -401,11 +407,9 @@ public sealed class RadioPlaybackPolicy
         RememberCurrentTrack();
         _catalog = catalog;
         _shuffleBags.Clear();
-        var validTrackIds = catalog.Stations
-            .SelectMany(station => station.Tracks)
-            .Select(track => track.TrackId)
-            .ToHashSet(StringComparer.Ordinal);
-        _unavailableTrackIds.RemoveWhere(trackId => !validTrackIds.Contains(trackId));
+        // A catalog refresh is the repair/reinstall path. Clear isolation so a
+        // replaced file with the same track id can play again this session.
+        _unavailableTrackIds.Clear();
 
         if (catalog.Stations.Count == 0)
         {

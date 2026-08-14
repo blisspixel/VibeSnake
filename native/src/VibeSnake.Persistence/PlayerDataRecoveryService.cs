@@ -354,25 +354,47 @@ public sealed class PlayerDataRecoveryService
             }
 
             Directory.CreateDirectory(stagingPath);
-            CopySnapshot(
-                manifest.Files,
-                Path.Combine(backupPath, PayloadDirectoryName),
-                stagingPath);
-            foreach (var target in targets.OrderBy(path => path, StringComparer.Ordinal))
+            try
             {
-                var stagedTarget = ResolveRelativePath(stagingPath, target);
-                if (File.Exists(stagedTarget))
-                {
-                    Directory.CreateDirectory(Path.GetDirectoryName(ResolveUserPath(target))!);
-                    File.Move(stagedTarget, ResolveUserPath(target));
-                }
-                else if (Directory.Exists(stagedTarget))
-                {
-                    Directory.Move(stagedTarget, ResolveUserPath(target));
-                }
+                CopySnapshot(
+                    manifest.Files,
+                    Path.Combine(backupPath, PayloadDirectoryName),
+                    stagingPath);
+            }
+            catch
+            {
+                TryDeleteDirectory(stagingPath);
+                throw;
             }
 
-            Directory.Delete(stagingPath, recursive: true);
+            var applied = new List<(string Relative, bool IsDirectory)>();
+            try
+            {
+                foreach (var target in targets.OrderBy(path => path, StringComparer.Ordinal))
+                {
+                    var stagedTarget = ResolveRelativePath(stagingPath, target);
+                    if (File.Exists(stagedTarget))
+                    {
+                        Directory.CreateDirectory(Path.GetDirectoryName(ResolveUserPath(target))!);
+                        File.Move(stagedTarget, ResolveUserPath(target));
+                        applied.Add((target, false));
+                    }
+                    else if (Directory.Exists(stagedTarget))
+                    {
+                        Directory.Move(stagedTarget, ResolveUserPath(target));
+                        applied.Add((target, true));
+                    }
+                }
+            }
+            catch
+            {
+                RollbackAppliedRestoreTargets(stagingPath, applied);
+                TryDeleteDirectory(stagingPath);
+                throw;
+            }
+
+            TryDeleteDirectory(stagingPath);
+
             return new PlayerDataRestoreResult(
                 PlayerDataRestoreCode.Success,
                 "Verified player data was restored. Restart the game to reload every subsystem.",
@@ -511,6 +533,52 @@ public sealed class PlayerDataRecoveryService
             {
                 throw new InvalidDataException("A copied backup payload failed integrity verification.");
             }
+        }
+    }
+
+    private void RollbackAppliedRestoreTargets(
+        string stagingPath,
+        List<(string Relative, bool IsDirectory)> applied)
+    {
+        Directory.CreateDirectory(stagingPath);
+        for (var index = applied.Count - 1; index >= 0; index--)
+        {
+            var (relative, isDirectory) = applied[index];
+            try
+            {
+                var destination = ResolveUserPath(relative);
+                var staged = ResolveRelativePath(stagingPath, relative);
+                Directory.CreateDirectory(Path.GetDirectoryName(staged)!);
+                if (isDirectory && Directory.Exists(destination))
+                {
+                    Directory.Move(destination, staged);
+                }
+                else if (File.Exists(destination))
+                {
+                    File.Move(destination, staged);
+                }
+            }
+            catch (Exception exception) when (
+                exception is IOException or UnauthorizedAccessException)
+            {
+                // Continue rolling back remaining targets so a later retry can
+                // start from empty destinations plus the original backup.
+            }
+        }
+    }
+
+    private static void TryDeleteDirectory(string path)
+    {
+        try
+        {
+            if (Directory.Exists(path))
+            {
+                Directory.Delete(path, recursive: true);
+            }
+        }
+        catch (Exception exception) when (
+            exception is IOException or UnauthorizedAccessException)
+        {
         }
     }
 

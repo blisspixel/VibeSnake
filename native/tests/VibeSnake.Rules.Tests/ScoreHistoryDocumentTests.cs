@@ -126,6 +126,24 @@ public sealed class ScoreHistoryDocumentTests
         Assert.Equal(first.Document.SerializeCanonical(), second.Document.SerializeCanonical());
         Assert.Throws<ArgumentNullException>(
             () => first.Document.MergePersonalBests(null!));
+
+        var afterImport = first.Document.ImportPythonTopTen(
+            [new PythonScoreEntry(0, "Alpha", 50, "2026-01-01T00:00:00Z")],
+            new string('a', 64));
+        Assert.Equal(3, afterImport.Entries.Count);
+        Assert.Equal(2, afterImport.Entries.Count(entry =>
+            entry.SourceId == ScoreHistoryDocument.PersonalBestMigrationSourceId));
+        Assert.Contains(
+            afterImport.Entries,
+            entry => entry.SourceId == ScoreHistoryDocument.PythonTopTenSourceId && entry.Score == 50);
+        Assert.Contains(
+            afterImport.Entries,
+            entry => entry.SourceId == ScoreHistoryDocument.PersonalBestMigrationSourceId
+                && entry.Score == 250);
+        Assert.Contains(
+            afterImport.Entries,
+            entry => entry.SourceId == ScoreHistoryDocument.PersonalBestMigrationSourceId
+                && entry.Score == 125);
     }
 
     [Fact]

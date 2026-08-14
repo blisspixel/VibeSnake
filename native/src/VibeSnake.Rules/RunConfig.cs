@@ -93,6 +93,21 @@ public sealed record RunConfig(
                     "Classic requires adaptation to remain disabled with policy 'none'.",
                     nameof(EnableAdaptation));
             }
+
+            if (EnableStarvation
+                || EnableComboScoring
+                || EnableSpeedScoreBonus
+                || EnableLengthScoreBonus
+                || EnableNearMiss
+                || EnableComboExpiredEvent
+                || EnableAchievementCandidates
+                || EnablePowerDecisionOffers
+                || PowerSpawnIntervalTicks != 0)
+            {
+                throw new ArgumentException(
+                    "Classic cannot enable starvation, bonus scoring, near misses, or powers.",
+                    nameof(ModeId));
+            }
         }
         else if (EnableAdaptation)
         {

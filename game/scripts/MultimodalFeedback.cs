@@ -119,7 +119,9 @@ internal static class ComboFeedback
         }
 
         var emphasized = pulseTicksRemaining > 0;
-        var motionAllowed = emphasized && accessibility.NonessentialMotionAllowed;
+        var motionAllowed = emphasized
+            && accessibility.NonessentialMotionAllowed
+            && !accessibility.FlashFree;
         var offset = motionAllowed
             ? -MathF.Min(3.0f, pulseTicksRemaining * 0.5f)
             : 0.0f;

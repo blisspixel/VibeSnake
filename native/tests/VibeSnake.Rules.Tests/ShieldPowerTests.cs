@@ -116,6 +116,31 @@ public sealed class ShieldPowerTests
     }
 
     [Fact]
+    public void Wrap_into_shielded_collision_counts_as_a_session_wrap()
+    {
+        var run = CreateRun(
+            body:
+            [
+                new GridPoint(2, 1),
+                new GridPoint(3, 1),
+                new GridPoint(4, 1),
+                new GridPoint(4, 0),
+                new GridPoint(0, 0),
+                new GridPoint(0, 1),
+            ],
+            direction: Direction.Left,
+            food: new GridPoint(2, 2),
+            shieldTicksRemaining: 3);
+
+        var blocked = run.Step();
+
+        Assert.Equal(RunStatus.Running, run.Status);
+        Assert.Equal(1, run.SessionWraps);
+        Assert.Contains(blocked.OrderedEvents, value => value.Kind == RunEventKind.Wrapped);
+        Assert.Contains(blocked.OrderedEvents, value => value.Kind == RunEventKind.CollisionPrevented);
+    }
+
+    [Fact]
     public void Shield_collision_does_not_prevent_simultaneous_starvation()
     {
         var body = new[]

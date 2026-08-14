@@ -444,10 +444,10 @@ public sealed partial class SnakeRun
                 "A non-winning production state must contain food.");
         }
 
-        if (ComboCount > _body.Count - 1)
+        if (ComboCount > _sessionFoodEaten)
         {
             throw new InvalidDataException(
-                "The combo count cannot exceed collected growth.");
+                "The combo count cannot exceed food collected this run.");
         }
 
         if (TicksSinceLastFood > Tick)

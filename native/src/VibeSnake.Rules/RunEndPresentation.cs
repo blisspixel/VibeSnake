@@ -35,7 +35,10 @@ public sealed record RunEndSummary(
             .Distinct(StringComparer.Ordinal)
             .OrderBy(id => id, StringComparer.Ordinal)
             .ToArray();
-        var (outcome, cause, recovery) = Describe(run.Status, run.DeathCause);
+        var (outcome, cause, recovery) = Describe(
+            run.Status,
+            run.DeathCause,
+            run.Mode.Includes(RunModeFeatures.PowerUps));
         return new RunEndSummary(
             outcome,
             cause,
@@ -52,16 +55,21 @@ public sealed record RunEndSummary(
 
     private static (string Outcome, string Cause, string Recovery) Describe(
         RunStatus status,
-        DeathCause cause) => (status, cause) switch
+        DeathCause cause,
+        bool powersAvailable) => (status, cause) switch
         {
             (RunStatus.Won, DeathCause.None) => (
                 "GRID COMPLETE",
                 "EVERY FREE CELL WAS CLAIMED",
                 "Start again to improve the same fair-score category."),
-            (RunStatus.Dead, DeathCause.SelfCollision) => (
+            (RunStatus.Dead, DeathCause.SelfCollision) when powersAvailable => (
                 "RUN ENDED",
                 "SELF COLLISION",
                 "Shield, Phase Shift, or Last Stand can prevent a body collision."),
+            (RunStatus.Dead, DeathCause.SelfCollision) => (
+                "RUN ENDED",
+                "SELF COLLISION",
+                "Leave space, buffer a legal turn, and use the wrap edges to escape."),
             (RunStatus.Dead, DeathCause.Starvation) => (
                 "RUN ENDED",
                 "STARVATION",

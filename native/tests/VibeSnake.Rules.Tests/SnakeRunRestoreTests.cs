@@ -296,6 +296,57 @@ public sealed class SnakeRunRestoreTests
     }
 
     [Fact]
+    public void Combo_that_exceeds_length_but_not_food_eaten_round_trips()
+    {
+        var run = SnakeRun.CreateForTesting(
+            new RunConfig(
+                Width: 8,
+                Height: 4,
+                StarvationTicks: 100,
+                PowerSpawnIntervalTicks: 0,
+                GluttonyDurationTicks: 8),
+            [new GridPoint(1, 1), new GridPoint(2, 1)],
+            Direction.Right,
+            new GridPoint(6, 2),
+            hungerTicksRemaining: 100,
+            comboCount: 0,
+            gluttonyTicksRemaining: 6);
+        var canonical = ReplaceOnce(
+            ReplaceOnce(
+                run.SerializeCanonicalState(),
+                "\"comboCount\":0",
+                "\"comboCount\":3"),
+            "\"sessionFoodEaten\":0",
+            "\"sessionFoodEaten\":3");
+
+        var restored = SnakeRun.RestoreCanonicalState(canonical);
+
+        Assert.Equal(3, restored.ComboCount);
+        Assert.Equal(2, restored.Body.Count);
+        Assert.Equal(3, restored.SessionFoodEaten);
+        Assert.Equal(canonical, restored.SerializeCanonicalState());
+    }
+
+    [Fact]
+    public void Combo_above_food_eaten_is_rejected()
+    {
+        var run = SnakeRun.CreateForTesting(
+            new RunConfig(Width: 5, Height: 4, StarvationTicks: 100),
+            [new GridPoint(1, 1), new GridPoint(2, 1)],
+            Direction.Right,
+            new GridPoint(4, 3),
+            hungerTicksRemaining: 100);
+        AssertInvalid(
+            ReplaceOnce(
+                ReplaceOnce(
+                    run.SerializeCanonicalState(),
+                    "\"comboCount\":0",
+                    "\"comboCount\":3"),
+                "\"sessionFoodEaten\":0",
+                "\"sessionFoodEaten\":2"));
+    }
+
+    [Fact]
     public void Allocation_and_counter_amplifying_values_are_rejected_before_use()
     {
         var canonical = SnakeRun.Create(804UL).SerializeCanonicalState();

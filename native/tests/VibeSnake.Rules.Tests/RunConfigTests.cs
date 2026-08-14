@@ -191,6 +191,24 @@ public sealed class RunConfigTests
     }
 
     [Fact]
+    public void Classic_rejects_vibe_scoring_and_power_flags()
+    {
+        var classic = RunModeCatalog.CreateConfig(RunModeCatalog.Classic);
+        classic.Validate();
+
+        Assert.Throws<ArgumentException>(
+            () => (classic with { EnableStarvation = true }).Validate());
+        Assert.Throws<ArgumentException>(
+            () => (classic with { EnableComboScoring = true }).Validate());
+        Assert.Throws<ArgumentException>(
+            () => (classic with { EnableNearMiss = true }).Validate());
+        Assert.Throws<ArgumentException>(
+            () => (classic with { PowerSpawnIntervalTicks = 300 }).Validate());
+        Assert.Throws<ArgumentException>(
+            () => new RunConfig(ModeId: RunModeCatalog.ClassicId).Validate());
+    }
+
+    [Fact]
     public void Config_hash_rejects_invalid_configuration_before_hashing()
     {
         var invalid = new RunConfig(Width: 1);
