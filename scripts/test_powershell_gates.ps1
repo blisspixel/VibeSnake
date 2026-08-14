@@ -225,20 +225,24 @@ try {
         }
     }
     foreach ($requiredLocalizationFragment in @(
-        "ShellLocalization.All.Count == 574",
-        "entry.Parameters.Count > 0) == 83",
+        "ShellLocalization.All.Count == 604",
+        "entry.Parameters.Count > 0) == 87",
         'AgentActionRejection.WrongActionProfile =>',
         '"agent-arena.action.rejected-wrong-profile"',
         'AgentActionRejection.MutationCapacityExceeded =>',
-        '"agent-arena.action.rejected-mutation-capacity"'
+        '"agent-arena.action.rejected-mutation-capacity"',
+        'private void DrawFittedAgentLabel(',
+        'FitAgentOverlayText(',
+        '_shellSettings.ReducedMotion && coalescedFrames > 0',
+        'AgentViewerOverlayLayoutPassed: agentViewerOverlayLayoutPassed'
     )) {
         if (-not $gameMainScript.Contains($requiredLocalizationFragment, [StringComparison]::Ordinal)) {
             throw "Godot localization evidence is missing catalog count: $requiredLocalizationFragment"
         }
     }
     foreach ($requiredLocalizationFragment in @(
-        '($localizationEvidence.stringCount -ne 574)',
-        '($localizationEvidence.parameterizedStringCount -ne 83)'
+        '($localizationEvidence.stringCount -ne 604)',
+        '($localizationEvidence.parameterizedStringCount -ne 87)'
     )) {
         if (-not $nativeTestScript.Contains($requiredLocalizationFragment, [StringComparison]::Ordinal)) {
             throw "Native localization gate is missing catalog count: $requiredLocalizationFragment"

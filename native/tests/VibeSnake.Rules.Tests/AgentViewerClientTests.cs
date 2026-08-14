@@ -41,7 +41,7 @@ public sealed class AgentViewerClientTests
         var initial = await TakeFrameAsync(client);
         var initialSnapshot = AgentViewerPresentation.ProjectSnapshot(initial.Observation);
         Assert.Equal(AgentViewerClientState.Watching, client.State);
-        Assert.Equal("WATCHING AGENT LIVE", client.Status);
+        Assert.Equal("AWAITING AGENT ACTION; RULES PAUSED", client.Status);
         Assert.Equal(started.Observation.StateHash, initialSnapshot.StateHash);
         Assert.Equal(started.Observation.Head.X, initialSnapshot.Head.X);
         Assert.NotNull(initial.Observation.Rival);
@@ -84,8 +84,11 @@ public sealed class AgentViewerClientTests
             new ReplayStore(temporary.Path),
             () => "match_godot_viewer",
             () => 321UL);
-        var started = registry.StartLesson(
-            "first-turn",
+        var started = registry.StartMatch(
+            RunModeCatalog.ClassicId,
+            AgentSeedVisibility.Open,
+            "321",
+            maximumSteps: 3,
             watchEnabled: true,
             passport: new AgentPassportV1(
                 AgentPassportV1.Contract,
@@ -94,7 +97,9 @@ public sealed class AgentViewerClientTests
                 "Godot Smoke Agent",
                 "#64FFFF",
                 "agent-default",
-                "open-frequency"));
+                "open-frequency",
+                actionProfile: AgentPassportV1.FourDirectionBurstActionProfile),
+            actionProfile: AgentPassportV1.FourDirectionBurstActionProfile);
         var connection = Assert.IsType<AgentViewerConnectionV1>(started.Viewer);
         var userDataRoot = System.IO.Path.Combine(temporary.Path, "godot-user-data");
         Directory.CreateDirectory(userDataRoot);
@@ -119,14 +124,16 @@ public sealed class AgentViewerClientTests
             ?? throw new InvalidOperationException("Godot viewer smoke did not start.");
         var standardOutput = process.StandardOutput.ReadToEndAsync();
         var standardError = process.StandardError.ReadToEndAsync();
-        _ = registry.PlayMove(
+        var burst = registry.PlayBurst(
             started.MatchHandle,
-            "godot-terminal-move",
+            "godot-terminal-burst",
             started.Observation.Tick,
             started.Observation.StateHash,
             AgentAction.Up,
-            AgentPublicIntent.TakeRisk);
-        _ = registry.Finish(started.MatchHandle);
+            maximumSteps: 3,
+            declaredIntent: AgentPublicIntent.TakeRisk);
+        Assert.Equal(3, burst.StepsAdvanced);
+        Assert.Equal(AgentBurstStopReason.MatchStepLimit, burst.StopReason);
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(45));
         try
         {
@@ -142,6 +149,16 @@ public sealed class AgentViewerClientTests
         Assert.True(process.ExitCode == 0, output);
         Assert.True(
             output.Contains("VIBESNAKE_AGENT_VIEWER_SMOKE_OK", StringComparison.Ordinal),
+            output);
+        Assert.True(
+            output.Contains("operation=Burst steps=3", StringComparison.Ordinal),
+            output);
+        Assert.True(output.Contains("coalesced=", StringComparison.Ordinal), output);
+        Assert.True(output.Contains("motion=snap", StringComparison.Ordinal), output);
+        Assert.True(
+            output.Contains(
+                "accessibility=muted,high-contrast,reduced-motion,text-150",
+                StringComparison.Ordinal),
             output);
         Assert.True(!output.Contains("ERROR:", StringComparison.Ordinal), output);
         Assert.True(!output.Contains("WARNING:", StringComparison.Ordinal), output);
@@ -166,8 +183,9 @@ public sealed class AgentViewerClientTests
 
         await WaitForStateAsync(client, AgentViewerClientState.Rejected);
 
-        Assert.False(client.TryTakeLatest(out var frame));
+        Assert.False(client.TryTakeLatest(out var frame, out var coalescedFrames));
         Assert.Null(frame);
+        Assert.Equal(0, coalescedFrames);
         Assert.Equal(0, registry.Observe(started.MatchHandle).Tick);
         Assert.Contains("REJECTED", client.Status, StringComparison.Ordinal);
     }
@@ -179,7 +197,7 @@ public sealed class AgentViewerClientTests
         var malformedServer = ServePayloadAsync(malformedPipe, "not-json\n");
         using var malformed = new AgentViewerClient(malformedPipe, "dG9rZW4");
         await malformedServer;
-        await WaitForStateAsync(malformed, AgentViewerClientState.Disconnected);
+        await WaitForStateAsync(malformed, AgentViewerClientState.Rejected);
 
         var oversizedPipe = CreateTestPipeName();
         var oversizedServer = ServePayloadAsync(
@@ -187,21 +205,51 @@ public sealed class AgentViewerClientTests
             new string('x', AgentViewerClient.MaximumFrameBytes + 1));
         using var oversized = new AgentViewerClient(oversizedPipe, "dG9rZW4");
         await oversizedServer;
-        await WaitForStateAsync(oversized, AgentViewerClientState.Disconnected);
+        await WaitForStateAsync(oversized, AgentViewerClientState.Rejected);
     }
 
     [Fact]
     public async Task Viewer_client_rejects_invalid_contracts_and_reports_clean_disconnect()
     {
-        var observation = new AgentMatchSession(new AgentMatchOptions(
+        var session = new AgentMatchSession(new AgentMatchOptions(
             "invalid-frame",
             RunModeCatalog.ClassicId,
             RunModeCatalog.CurrentModeVersion,
             3UL,
-            AgentSeedVisibility.Open)).Observe();
-        var validFrame = new AgentViewerFrameV3(
-            AgentViewerFrameV3.Contract,
+            AgentSeedVisibility.Open));
+        var observation = session.Observe();
+        var rejectedObservation = session.SubmitAction(new AgentActionRequest(
+            "rejected",
+            observation.Tick,
+            observation.StateHash,
+            AgentAction.Left)).Observation;
+        var advancedObservation = session.SubmitAction(new AgentActionRequest(
+            "advanced",
+            observation.Tick,
+            observation.StateHash,
+            AgentAction.Up)).Observation;
+        var wrappedObservation = advancedObservation with
+        {
+            PreviousEvents =
+            [
+                new AgentPublicEventV1(
+                    RunEventKind.Wrapped,
+                    Position: null,
+                    NewDirection: null,
+                    Value: null,
+                    Cause: null,
+                    Power: null),
+            ],
+        };
+        var validFrame = new AgentViewerFrameV4(
+            AgentViewerFrameV4.Contract,
             0,
+            AgentViewerOperationKind.Initial,
+            StartTick: observation.Tick,
+            StartStateHash: observation.StateHash,
+            StepsAdvanced: 0,
+            BurstStopReason: null,
+            BurstStopEvent: null,
             observation,
             AgentMatchEndReason.None,
             VerifiedResultAvailable: false);
@@ -215,10 +263,271 @@ public sealed class AgentViewerClientTests
             Lifecycle = AgentMatchLifecycle.FailedClosed,
             IsActionAwaited = false,
         };
+        var rejectedStepFrame = validFrame with
+        {
+            Sequence = 1,
+            Operation = AgentViewerOperationKind.Step,
+            Observation = rejectedObservation,
+        };
+        var advancedStepFrame = validFrame with
+        {
+            Sequence = 1,
+            Operation = AgentViewerOperationKind.Step,
+            StepsAdvanced = 1,
+            Observation = advancedObservation,
+        };
+        var acceptedAction = Assert.IsType<AgentPreviousActionV1>(
+            advancedObservation.PreviousAction);
+        var rejectedAction = Assert.IsType<AgentPreviousActionV1>(
+            rejectedObservation.PreviousAction);
         string[] invalidPayloads =
         [
             "null\n",
             SerializeFrame(validFrame with { Schema = "wrong" }),
+            SerializeFrame(validFrame with { Sequence = -1 }),
+            SerializeFrame(validFrame with { StartTick = -1 }),
+            SerializeFrame(validFrame with { StartStateHash = "" }),
+            SerializeFrame(validFrame with { StartStateHash = "0000000000000000" }),
+            SerializeFrame(validFrame with
+            {
+                Operation = (AgentViewerOperationKind)byte.MaxValue,
+            }),
+            SerializeFrame(validFrame with { StepsAdvanced = 1 }),
+            SerializeFrame(validFrame with { StepsAdvanced = -1 }),
+            SerializeFrame(validFrame with
+            {
+                BurstStopReason = AgentBurstStopReason.RequestedLimit,
+            }),
+            SerializeFrame(validFrame with
+            {
+                BurstStopReason = (AgentBurstStopReason)byte.MaxValue,
+            }),
+            SerializeFrame(validFrame with
+            {
+                BurstStopEvent = RunEventKind.Wrapped,
+            }),
+            SerializeFrame(validFrame with
+            {
+                BurstStopEvent = RunEventKind.Moved,
+            }),
+            SerializeFrame(validFrame with
+            {
+                Sequence = 1,
+                Observation = advancedObservation,
+            }),
+            SerializeFrame(validFrame with
+            {
+                Sequence = 1,
+                Operation = AgentViewerOperationKind.Step,
+            }),
+            SerializeFrame(validFrame with
+            {
+                Sequence = 1,
+                Operation = AgentViewerOperationKind.Step,
+                StepsAdvanced = 2,
+                Observation = advancedObservation,
+            }),
+            SerializeFrame(validFrame with
+            {
+                Sequence = 1,
+                Operation = AgentViewerOperationKind.Step,
+                StepsAdvanced = 1,
+                BurstStopReason = AgentBurstStopReason.RequestedLimit,
+                Observation = advancedObservation,
+            }),
+            SerializeFrame(validFrame with
+            {
+                Sequence = 1,
+                Operation = AgentViewerOperationKind.Step,
+                StepsAdvanced = 1,
+                BurstStopEvent = RunEventKind.Wrapped,
+                Observation = advancedObservation,
+            }),
+            SerializeFrame(validFrame with
+            {
+                Sequence = 1,
+                Operation = AgentViewerOperationKind.Step,
+                Observation = advancedObservation,
+            }),
+            SerializeFrame(rejectedStepFrame with
+            {
+                Observation = rejectedObservation with
+                {
+                    PreviousAction = rejectedAction with
+                    {
+                        Action = (AgentAction)byte.MaxValue,
+                    },
+                },
+            }),
+            SerializeFrame(rejectedStepFrame with
+            {
+                Observation = rejectedObservation with
+                {
+                    PreviousAction = rejectedAction with
+                    {
+                        Rejection = (AgentActionRejection)byte.MaxValue,
+                    },
+                },
+            }),
+            SerializeFrame(rejectedStepFrame with
+            {
+                Observation = rejectedObservation with
+                {
+                    PreviousAction = rejectedAction with
+                    {
+                        DeclaredIntent = (AgentPublicIntent)byte.MaxValue,
+                    },
+                },
+            }),
+            SerializeFrame(advancedStepFrame with
+            {
+                Observation = advancedObservation with
+                {
+                    PreviousAction = acceptedAction with
+                    {
+                        Rejection = AgentActionRejection.StaleTick,
+                    },
+                },
+            }),
+            SerializeFrame(advancedStepFrame with
+            {
+                Observation = advancedObservation with
+                {
+                    PreviousAction = acceptedAction with { RulesAdvanced = false },
+                },
+            }),
+            SerializeFrame(rejectedStepFrame with
+            {
+                Observation = rejectedObservation with
+                {
+                    PreviousAction = rejectedAction with
+                    {
+                        Rejection = AgentActionRejection.None,
+                    },
+                },
+            }),
+            SerializeFrame(advancedStepFrame with
+            {
+                Observation = advancedObservation with
+                {
+                    PreviousAction = rejectedAction with
+                    {
+                        RulesAdvanced = true,
+                    },
+                },
+            }),
+            SerializeFrame(validFrame with
+            {
+                Sequence = 1,
+                Operation = AgentViewerOperationKind.Burst,
+                StepsAdvanced = AgentBurstRequest.MaximumBurstSteps + 1,
+                BurstStopReason = AgentBurstStopReason.RequestedLimit,
+                Observation = advancedObservation,
+            }),
+            SerializeFrame(validFrame with
+            {
+                Sequence = 1,
+                Operation = AgentViewerOperationKind.Burst,
+                StepsAdvanced = AgentBurstRequest.MaximumBurstSteps,
+                BurstStopReason = AgentBurstStopReason.RequestedLimit,
+                Observation = advancedObservation,
+            }),
+            SerializeFrame(validFrame with
+            {
+                Sequence = 1,
+                Operation = AgentViewerOperationKind.Burst,
+                StepsAdvanced = 1,
+                Observation = advancedObservation,
+            }),
+            SerializeFrame(validFrame with
+            {
+                Sequence = 1,
+                Operation = AgentViewerOperationKind.Burst,
+                BurstStopEvent = RunEventKind.Wrapped,
+                Observation = rejectedObservation,
+            }),
+            SerializeFrame(validFrame with
+            {
+                Sequence = 1,
+                Operation = AgentViewerOperationKind.Burst,
+                StepsAdvanced = 1,
+                BurstStopReason = AgentBurstStopReason.RequestedLimit,
+            }),
+            SerializeFrame(validFrame with
+            {
+                Sequence = 1,
+                Operation = AgentViewerOperationKind.Burst,
+                StepsAdvanced = 1,
+                BurstStopReason = AgentBurstStopReason.RequestedLimit,
+                Observation = rejectedObservation,
+            }),
+            SerializeFrame(validFrame with
+            {
+                Sequence = 1,
+                Operation = AgentViewerOperationKind.Burst,
+                StepsAdvanced = 1,
+                BurstStopReason = AgentBurstStopReason.RequestedLimit,
+                BurstStopEvent = RunEventKind.Wrapped,
+                Observation = wrappedObservation,
+            }),
+            SerializeFrame(validFrame with
+            {
+                Sequence = 1,
+                Operation = AgentViewerOperationKind.Burst,
+                StepsAdvanced = 1,
+                BurstStopReason = AgentBurstStopReason.ReplayFailure,
+                BurstStopEvent = RunEventKind.Wrapped,
+                Observation = wrappedObservation,
+            }),
+            SerializeFrame(validFrame with
+            {
+                Sequence = 1,
+                Operation = AgentViewerOperationKind.Burst,
+                StepsAdvanced = 1,
+                BurstStopReason = AgentBurstStopReason.DecisionEvent,
+                Observation = wrappedObservation,
+            }),
+            SerializeFrame(validFrame with
+            {
+                Sequence = 1,
+                Operation = AgentViewerOperationKind.Burst,
+                StepsAdvanced = 1,
+                BurstStopReason = AgentBurstStopReason.DecisionEvent,
+                BurstStopEvent = RunEventKind.AteFood,
+                Observation = wrappedObservation,
+            }),
+            SerializeFrame(validFrame with
+            {
+                Sequence = 1,
+                Operation = AgentViewerOperationKind.Finish,
+            }),
+            SerializeFrame(validFrame with
+            {
+                Sequence = 1,
+                Operation = AgentViewerOperationKind.Finish,
+                StepsAdvanced = 1,
+                EndReason = AgentMatchEndReason.AgentFinished,
+            }),
+            SerializeFrame(validFrame with
+            {
+                Sequence = 1,
+                Operation = AgentViewerOperationKind.Finish,
+                BurstStopReason = AgentBurstStopReason.RequestedLimit,
+                EndReason = AgentMatchEndReason.AgentFinished,
+            }),
+            SerializeFrame(validFrame with
+            {
+                Sequence = 1,
+                Operation = AgentViewerOperationKind.Finish,
+                BurstStopEvent = RunEventKind.Wrapped,
+                EndReason = AgentMatchEndReason.AgentFinished,
+            }),
+            SerializeFrame(validFrame with
+            {
+                Sequence = 1,
+                Operation = AgentViewerOperationKind.Finish,
+                EndReason = AgentMatchEndReason.StepLimit,
+            }),
             SerializeFrame(validFrame with { Observation = null! }),
             SerializeFrame(validFrame with
             {
@@ -231,6 +540,10 @@ public sealed class AgentViewerClientTests
             SerializeFrame(validFrame with
             {
                 VerifiedResultAvailable = true,
+            }),
+            SerializeFrame(rejectedStepFrame with
+            {
+                Observation = rejectedObservation with { Status = RunStatus.Dead },
             }),
             SerializeFrame(validFrame with
             {
@@ -259,6 +572,19 @@ public sealed class AgentViewerClientTests
                 VerifiedResultAvailable = true,
             }),
             SerializeFrame(validFrame) + SerializeFrame(validFrame),
+            SerializeFrame(validFrame) + SerializeFrame(advancedStepFrame with
+            {
+                StartStateHash = "0000000000000000",
+            }),
+            SerializeFrame(validFrame) + SerializeFrame(rejectedStepFrame with
+            {
+                StartTick = 1,
+                Observation = rejectedObservation with
+                {
+                    Tick = 1,
+                    StepsRemaining = rejectedObservation.StepsRemaining - 1,
+                },
+            }),
         ];
 
         foreach (var payload in invalidPayloads)
@@ -279,50 +605,345 @@ public sealed class AgentViewerClientTests
     }
 
     [Fact]
-    public async Task Viewer_client_reports_each_verified_and_failed_terminal_outcome()
+    public async Task Viewer_client_rejects_malformed_observation_fields()
     {
         var observation = new AgentMatchSession(new AgentMatchOptions(
+            "invalid-observation",
+            RunModeCatalog.ClassicId,
+            RunModeCatalog.CurrentModeVersion,
+            9UL,
+            AgentSeedVisibility.Open)).Observe();
+        var validFrame = new AgentViewerFrameV4(
+            AgentViewerFrameV4.Contract,
+            0,
+            AgentViewerOperationKind.Initial,
+            observation.Tick,
+            observation.StateHash,
+            StepsAdvanced: 0,
+            BurstStopReason: null,
+            BurstStopEvent: null,
+            observation,
+            AgentMatchEndReason.None,
+            VerifiedResultAvailable: false);
+        var validEvent = new AgentPublicEventV1(
+            RunEventKind.Wrapped,
+            Position: null,
+            NewDirection: Direction.Up,
+            Value: null,
+            Cause: DeathCause.None,
+            Power: PowerKind.Shield);
+        AgentObservationV2[] invalidObservations =
+        [
+            observation with { MatchId = "" },
+            observation with { RulesetId = "other-rules" },
+            observation with { RulesVersion = observation.RulesVersion + 1 },
+            observation with { ModeId = "other-mode" },
+            observation with { ModeVersion = observation.ModeVersion + 1 },
+            observation with { ConfigHashAlgorithm = "other-algorithm" },
+            observation with { ConfigHash = "x" },
+            observation with { Passport = null! },
+            observation with { SeedVisibility = (AgentSeedVisibility)byte.MaxValue },
+            observation with { GameplaySeed = null },
+            observation with { SeedVisibility = AgentSeedVisibility.Blind },
+            observation with { Tick = -1 },
+            observation with { MaximumSteps = 0, StepsRemaining = 0 },
+            observation with
+            {
+                Tick = observation.MaximumSteps + 1,
+                StepsRemaining = 0,
+            },
+            observation with { StepsRemaining = -1 },
+            observation with { StepsRemaining = observation.StepsRemaining - 1 },
+            observation with { StateHash = "x" },
+            observation with { BoardWidth = 0 },
+            observation with { BoardHeight = 0 },
+            observation with { Body = null! },
+            observation with { Body = [] },
+            observation with { PendingDirections = null! },
+            observation with { PendingDirections = [(Direction)byte.MaxValue] },
+            observation with { PreviousEvents = null! },
+            observation with { PreviousEvents = [null!] },
+            observation with
+            {
+                PreviousEvents = [validEvent with { Kind = (RunEventKind)byte.MaxValue }],
+            },
+            observation with
+            {
+                PreviousEvents = [validEvent with { NewDirection = (Direction)byte.MaxValue }],
+            },
+            observation with
+            {
+                PreviousEvents = [validEvent with { Cause = (DeathCause)byte.MaxValue }],
+            },
+            observation with
+            {
+                PreviousEvents = [validEvent with { Power = (PowerKind)byte.MaxValue }],
+            },
+            observation with { DetachedObstacles = null! },
+            observation with { Status = (RunStatus)byte.MaxValue },
+            observation with { DeathCause = (DeathCause)byte.MaxValue },
+            observation with { Direction = (Direction)byte.MaxValue },
+            observation with
+            {
+                AdaptiveDifficultyState = (AdaptiveDifficultyState)byte.MaxValue,
+            },
+            observation with { AdaptivePolicyId = "" },
+            observation with { Lifecycle = (AgentMatchLifecycle)byte.MaxValue },
+        ];
+
+        foreach (var invalidObservation in invalidObservations)
+        {
+            var pipeName = CreateTestPipeName();
+            var server = ServePayloadAsync(
+                pipeName,
+                SerializeFrame(validFrame with { Observation = invalidObservation }));
+            using var client = new AgentViewerClient(pipeName, "dG9rZW4");
+
+            await server;
+            await WaitForStateAsync(client, AgentViewerClientState.Rejected);
+        }
+    }
+
+    [Fact]
+    public async Task Viewer_client_accepts_zero_step_burst_truth_before_and_after_terminal()
+    {
+        using var temporary = new TemporaryDirectory();
+        using var registry = new AgentSessionRegistry(
+            new ReplayStore(temporary.Path),
+            () => "match_burst_rejection_viewer",
+            () => 10UL);
+        var started = registry.StartMatch(
+            RunModeCatalog.ClassicId,
+            AgentSeedVisibility.Open,
+            "10",
+            maximumSteps: 1,
+            watchEnabled: true,
+            actionProfile: AgentPassportV1.FourDirectionBurstActionProfile);
+        var connection = Assert.IsType<AgentViewerConnectionV1>(started.Viewer);
+        using var client = new AgentViewerClient(connection.PipeName, connection.AccessToken);
+        _ = await TakeFrameAsync(client);
+
+        var stale = registry.PlayBurst(
+            started.MatchHandle,
+            "stale-viewer-burst",
+            started.Observation.Tick + 1,
+            started.Observation.StateHash,
+            AgentAction.Up,
+            maximumSteps: 1);
+        var staleFrame = await TakeFrameAsync(client, minimumSequence: 1);
+        Assert.Equal(AgentActionRejection.StaleTick, stale.Rejection);
+        Assert.Equal(AgentViewerOperationKind.Burst, staleFrame.Operation);
+        Assert.Equal(0, staleFrame.StepsAdvanced);
+        Assert.Equal(staleFrame.StartTick, staleFrame.Observation.Tick);
+        Assert.Equal(staleFrame.StartStateHash, staleFrame.Observation.StateHash);
+
+        var terminal = registry.PlayBurst(
+            started.MatchHandle,
+            "terminal-viewer-burst",
+            started.Observation.Tick,
+            started.Observation.StateHash,
+            AgentAction.Up,
+            maximumSteps: 1);
+        _ = await TakeFrameAsync(client, minimumSequence: 2);
+        var after = registry.PlayBurst(
+            started.MatchHandle,
+            "after-terminal-viewer-burst",
+            terminal.Observation.Tick,
+            terminal.Observation.StateHash,
+            AgentAction.Continue,
+            maximumSteps: 1);
+        var afterFrame = await TakeFrameAsync(client, minimumSequence: 3);
+
+        Assert.Equal(AgentActionRejection.MatchNotAwaitingAction, after.Rejection);
+        Assert.Equal(AgentViewerOperationKind.Burst, afterFrame.Operation);
+        Assert.Equal(0, afterFrame.StepsAdvanced);
+        Assert.Equal(AgentMatchEndReason.StepLimit, afterFrame.EndReason);
+        Assert.True(afterFrame.VerifiedResultAvailable);
+    }
+
+    [Fact]
+    public async Task Viewer_client_rejects_immutable_identity_changes()
+    {
+        var session = new AgentMatchSession(new AgentMatchOptions(
+            "identity-frame",
+            RunModeCatalog.ClassicId,
+            RunModeCatalog.CurrentModeVersion,
+            3UL,
+            AgentSeedVisibility.Open));
+        var initial = session.Observe();
+        var rejected = session.SubmitAction(new AgentActionRequest(
+            "rejected-identity-frame",
+            initial.Tick,
+            initial.StateHash,
+            AgentAction.Left)).Observation;
+        var first = new AgentViewerFrameV4(
+            AgentViewerFrameV4.Contract,
+            0,
+            AgentViewerOperationKind.Initial,
+            initial.Tick,
+            initial.StateHash,
+            StepsAdvanced: 0,
+            BurstStopReason: null,
+            BurstStopEvent: null,
+            initial,
+            AgentMatchEndReason.None,
+            VerifiedResultAvailable: false);
+        var second = first with
+        {
+            Sequence = 1,
+            Operation = AgentViewerOperationKind.Step,
+            Observation = rejected,
+        };
+        var alternatePassport = new AgentPassportV1(
+            AgentPassportV1.Contract,
+            "other-agent",
+            initial.Passport.PolicyVersion,
+            initial.Passport.DisplayName,
+            initial.Passport.Color,
+            initial.Passport.ShedId,
+            initial.Passport.StationAffinity,
+            initial.Passport.ObservationProfile,
+            initial.Passport.ActionProfile);
+        AgentObservationV2[] changedIdentities =
+        [
+            rejected with { MatchId = "other-match" },
+            rejected with { RulesetId = "other-rules" },
+            rejected with { RulesVersion = rejected.RulesVersion + 1 },
+            rejected with { ModeId = RunModeCatalog.VibeId },
+            rejected with { ModeVersion = rejected.ModeVersion + 1 },
+            rejected with { ConfigHashAlgorithm = "other-config-hash" },
+            rejected with { ConfigHash = "other-config" },
+            rejected with { SeedVisibility = AgentSeedVisibility.Blind },
+            rejected with { GameplaySeed = rejected.GameplaySeed + 1 },
+            rejected with { Passport = alternatePassport },
+            rejected with { MaximumSteps = rejected.MaximumSteps + 1 },
+            rejected with { BoardWidth = rejected.BoardWidth + 1 },
+            rejected with { BoardHeight = rejected.BoardHeight + 1 },
+            rejected with { WrapsAtEdges = !rejected.WrapsAtEdges },
+        ];
+
+        foreach (var changed in changedIdentities)
+        {
+            var pipeName = CreateTestPipeName();
+            var server = ServePayloadAsync(
+                pipeName,
+                SerializeFrame(first) + SerializeFrame(second with { Observation = changed }));
+            using var client = new AgentViewerClient(pipeName, "dG9rZW4");
+
+            await server;
+            await WaitForStateAsync(client, AgentViewerClientState.Rejected);
+
+            Assert.False(client.TryTakeLatest(out _, out _));
+        }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Viewer_client_clears_pending_frame_after_invalid_followup(bool oversized)
+    {
+        var observation = new AgentMatchSession(new AgentMatchOptions(
+            "invalid-followup",
+            RunModeCatalog.ClassicId,
+            RunModeCatalog.CurrentModeVersion,
+            4UL,
+            AgentSeedVisibility.Open)).Observe();
+        var frame = new AgentViewerFrameV4(
+            AgentViewerFrameV4.Contract,
+            0,
+            AgentViewerOperationKind.Initial,
+            observation.Tick,
+            observation.StateHash,
+            StepsAdvanced: 0,
+            BurstStopReason: null,
+            BurstStopEvent: null,
+            observation,
+            AgentMatchEndReason.None,
+            VerifiedResultAvailable: false);
+        var invalid = oversized
+            ? new string('x', AgentViewerClient.MaximumFrameBytes + 1)
+            : "not-json\n";
+        var pipeName = CreateTestPipeName();
+        var server = ServePayloadAsync(pipeName, SerializeFrame(frame) + invalid);
+        using var client = new AgentViewerClient(pipeName, "dG9rZW4");
+
+        await server;
+        await WaitForStateAsync(client, AgentViewerClientState.Rejected);
+
+        Assert.False(client.TryTakeLatest(out var pending, out var coalescedFrames));
+        Assert.Null(pending);
+        Assert.Equal(0, coalescedFrames);
+    }
+
+    [Fact]
+    public async Task Viewer_client_reports_each_verified_and_failed_terminal_outcome()
+    {
+        var completedSession = new AgentMatchSession(new AgentMatchOptions(
             "terminal-frames",
             RunModeCatalog.ClassicId,
             RunModeCatalog.CurrentModeVersion,
             5UL,
-            AgentSeedVisibility.Open)).Observe();
-        var completed = observation with
-        {
-            Lifecycle = AgentMatchLifecycle.Completed,
-            IsActionAwaited = false,
-        };
-        var aborted = observation with
-        {
-            Lifecycle = AgentMatchLifecycle.Aborted,
-            IsActionAwaited = false,
-        };
-        var failed = observation with
+            AgentSeedVisibility.Open,
+            maximumSteps: 1));
+        var completedStart = completedSession.Observe();
+        var completed = completedSession.SubmitAction(new AgentActionRequest(
+            "complete",
+            completedStart.Tick,
+            completedStart.StateHash,
+            AgentAction.Continue)).Observation;
+        var abortedSession = new AgentMatchSession(new AgentMatchOptions(
+            "aborted-frame",
+            RunModeCatalog.ClassicId,
+            RunModeCatalog.CurrentModeVersion,
+            6UL,
+            AgentSeedVisibility.Open));
+        var abortedStart = abortedSession.Observe();
+        _ = abortedSession.Finish();
+        var aborted = abortedSession.Observe();
+        var failed = abortedStart with
         {
             Lifecycle = AgentMatchLifecycle.FailedClosed,
             IsActionAwaited = false,
         };
-        (AgentViewerFrameV3 Frame, AgentViewerClientState State, string Status)[] cases =
+        (AgentViewerFrameV4 Frame, AgentViewerClientState State, string Status)[] cases =
         [
-            (new AgentViewerFrameV3(
-                AgentViewerFrameV3.Contract,
-                0,
+            (new AgentViewerFrameV4(
+                AgentViewerFrameV4.Contract,
+                1,
+                AgentViewerOperationKind.Step,
+                StartTick: completedStart.Tick,
+                StartStateHash: completedStart.StateHash,
+                StepsAdvanced: 1,
+                BurstStopReason: null,
+                BurstStopEvent: null,
                 completed,
-                AgentMatchEndReason.RulesTerminal,
+                AgentMatchEndReason.StepLimit,
                 VerifiedResultAvailable: true),
                 AgentViewerClientState.Completed,
-                "ENDED BY RULES"),
-            (new AgentViewerFrameV3(
-                AgentViewerFrameV3.Contract,
-                0,
+                "STEP LIMIT"),
+            (new AgentViewerFrameV4(
+                AgentViewerFrameV4.Contract,
+                1,
+                AgentViewerOperationKind.Finish,
+                StartTick: abortedStart.Tick,
+                StartStateHash: abortedStart.StateHash,
+                StepsAdvanced: 0,
+                BurstStopReason: null,
+                BurstStopEvent: null,
                 aborted,
                 AgentMatchEndReason.AgentFinished,
                 VerifiedResultAvailable: true),
                 AgentViewerClientState.Completed,
                 "AGENT FINISHED MATCH"),
-            (new AgentViewerFrameV3(
-                AgentViewerFrameV3.Contract,
-                0,
+            (new AgentViewerFrameV4(
+                AgentViewerFrameV4.Contract,
+                1,
+                AgentViewerOperationKind.Finish,
+                StartTick: failed.Tick,
+                StartStateHash: failed.StateHash,
+                StepsAdvanced: 0,
+                BurstStopReason: null,
+                BurstStopEvent: null,
                 failed,
                 AgentMatchEndReason.ReplayFailure,
                 VerifiedResultAvailable: false),
@@ -352,6 +973,186 @@ public sealed class AgentViewerClientTests
     }
 
     [Fact]
+    public async Task Viewer_client_reports_latest_frame_coalescing_from_source_sequences()
+    {
+        var session = new AgentMatchSession(new AgentMatchOptions(
+            "coalesced-frames",
+            RunModeCatalog.ClassicId,
+            RunModeCatalog.CurrentModeVersion,
+            5UL,
+            AgentSeedVisibility.Open,
+            maximumSteps: 10));
+        var initial = session.Observe();
+        var first = session.SubmitAction(new AgentActionRequest(
+            "first",
+            initial.Tick,
+            initial.StateHash,
+            AgentAction.Up));
+        var second = session.SubmitAction(new AgentActionRequest(
+            "second",
+            first.Observation.Tick,
+            first.Observation.StateHash,
+            AgentAction.Right));
+        AgentViewerFrameV4[] frames =
+        [
+            new(
+                AgentViewerFrameV4.Contract,
+                0,
+                AgentViewerOperationKind.Initial,
+                StartTick: initial.Tick,
+                StartStateHash: initial.StateHash,
+                StepsAdvanced: 0,
+                BurstStopReason: null,
+                BurstStopEvent: null,
+                initial,
+                AgentMatchEndReason.None,
+                VerifiedResultAvailable: false),
+            new(
+                AgentViewerFrameV4.Contract,
+                1,
+                AgentViewerOperationKind.Step,
+                StartTick: initial.Tick,
+                StartStateHash: initial.StateHash,
+                StepsAdvanced: 1,
+                BurstStopReason: null,
+                BurstStopEvent: null,
+                first.Observation,
+                AgentMatchEndReason.None,
+                VerifiedResultAvailable: false),
+            new(
+                AgentViewerFrameV4.Contract,
+                2,
+                AgentViewerOperationKind.Step,
+                StartTick: first.Observation.Tick,
+                StartStateHash: first.Observation.StateHash,
+                StepsAdvanced: 1,
+                BurstStopReason: null,
+                BurstStopEvent: null,
+                second.Observation,
+                AgentMatchEndReason.None,
+                VerifiedResultAvailable: false),
+        ];
+        var pipeName = CreateTestPipeName();
+        var payload = string.Concat(frames.Select(SerializeFrame));
+        var server = ServePayloadAsync(pipeName, payload);
+        using var client = new AgentViewerClient(pipeName, "dG9rZW4");
+
+        await server;
+        await WaitForStateAsync(client, AgentViewerClientState.Disconnected);
+
+        Assert.True(client.TryTakeLatest(out var latest, out var coalescedFrames));
+        Assert.Equal(frames[^1].Observation.StateHash, latest!.Observation.StateHash);
+        Assert.Equal(frames[^1].Observation.Tick, latest.Observation.Tick);
+        Assert.Equal(2, latest.Sequence);
+        Assert.Equal(2, coalescedFrames);
+        Assert.False(client.TryTakeLatest(out _, out var emptyCoalescedFrames));
+        Assert.Equal(0, emptyCoalescedFrames);
+
+        var sourceGapPipe = CreateTestPipeName();
+        var sourceGapServer = ServePayloadAsync(
+            sourceGapPipe,
+            SerializeFrame(frames[0]) + SerializeFrame(frames[2]));
+        using var sourceGapClient = new AgentViewerClient(sourceGapPipe, "dG9rZW4");
+
+        await sourceGapServer;
+        await WaitForStateAsync(sourceGapClient, AgentViewerClientState.Disconnected);
+
+        Assert.True(sourceGapClient.TryTakeLatest(
+            out var sourceGapLatest,
+            out var sourceGapCount));
+        Assert.Equal(2, sourceGapLatest!.Sequence);
+        Assert.Equal(2, sourceGapCount);
+    }
+
+    [Fact]
+    public async Task Viewer_client_accepts_closed_burst_metadata()
+    {
+        var session = new AgentMatchSession(new AgentMatchOptions(
+            "burst-frame",
+            RunModeCatalog.ClassicId,
+            RunModeCatalog.CurrentModeVersion,
+            123UL,
+            AgentSeedVisibility.Open,
+            maximumSteps: 10,
+            actionProfile: AgentPassportV1.FourDirectionBurstActionProfile));
+        var initial = session.Observe();
+        var burst = session.SubmitBurst(new AgentBurstRequest(
+            "burst",
+            initial.Tick,
+            initial.StateHash,
+            AgentAction.Up,
+            maximumSteps: 2));
+        Assert.Equal(2, burst.StepsAdvanced);
+        var frame = new AgentViewerFrameV4(
+            AgentViewerFrameV4.Contract,
+            1,
+            AgentViewerOperationKind.Burst,
+            initial.Tick,
+            initial.StateHash,
+            burst.StepsAdvanced,
+            burst.StopReason,
+            burst.StopEvent,
+            burst.Observation,
+            AgentMatchEndReason.None,
+            VerifiedResultAvailable: false);
+        var pipeName = CreateTestPipeName();
+        var release = new TaskCompletionSource<bool>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        var server = ServePayloadAsync(pipeName, SerializeFrame(frame), release.Task);
+        try
+        {
+            using var client = new AgentViewerClient(pipeName, "dG9rZW4");
+
+            var received = await TakeFrameAsync(client, minimumSequence: 1);
+
+            Assert.Equal(AgentViewerOperationKind.Burst, received.Operation);
+            Assert.Equal(2, received.StepsAdvanced);
+            Assert.Equal(AgentBurstStopReason.RequestedLimit, received.BurstStopReason);
+            Assert.Null(received.BurstStopEvent);
+        }
+        finally
+        {
+            release.TrySetResult(true);
+            await server;
+        }
+
+        var decisionEvent = new AgentPublicEventV1(
+            RunEventKind.Wrapped,
+            Position: null,
+            NewDirection: null,
+            Value: null,
+            Cause: null,
+            Power: null);
+        var decisionFrame = frame with
+        {
+            BurstStopReason = AgentBurstStopReason.DecisionEvent,
+            BurstStopEvent = RunEventKind.Wrapped,
+            Observation = burst.Observation with { PreviousEvents = [decisionEvent] },
+        };
+        var decisionPipe = CreateTestPipeName();
+        var decisionRelease = new TaskCompletionSource<bool>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        var decisionServer = ServePayloadAsync(
+            decisionPipe,
+            SerializeFrame(decisionFrame),
+            decisionRelease.Task);
+        try
+        {
+            using var client = new AgentViewerClient(decisionPipe, "dG9rZW4");
+
+            var received = await TakeFrameAsync(client, minimumSequence: 1);
+
+            Assert.Equal(AgentBurstStopReason.DecisionEvent, received.BurstStopReason);
+            Assert.Equal(RunEventKind.Wrapped, received.BurstStopEvent);
+        }
+        finally
+        {
+            decisionRelease.TrySetResult(true);
+            await decisionServer;
+        }
+    }
+
+    [Fact]
     public void Viewer_validates_tokens_and_observation_shape()
     {
         Assert.ThrowsAny<ArgumentException>(() => new AgentViewerClient(" ", "token"));
@@ -362,7 +1163,8 @@ public sealed class AgentViewerClientTests
         Assert.Throws<ArgumentException>(() => new AgentViewerClient(
             "valid",
             new string('a', 129)));
-        using var validTokenCharacters = new AgentViewerClient("valid-pipe_2", "token_2");
+        Assert.Throws<ArgumentException>(() => new AgentViewerClient("valid", "bad!"));
+        using var validTokenCharacters = new AgentViewerClient("valid-pipe_2", "token_2-");
         Assert.Throws<ArgumentNullException>(() => AgentViewerPresentation.ProjectSnapshot(null!));
 
         var observation = new AgentMatchSession(new AgentMatchOptions(
@@ -402,7 +1204,7 @@ public sealed class AgentViewerClientTests
         Assert.Equal(new GridPoint(7, 8), projected.BaitPosition);
     }
 
-    private static string SerializeFrame(AgentViewerFrameV3 frame) =>
+    private static string SerializeFrame(AgentViewerFrameV4 frame) =>
         JsonSerializer.Serialize(frame, ViewerJsonOptions) + "\n";
 
     private static string CreateTestPipeName() =>
@@ -418,14 +1220,14 @@ public sealed class AgentViewerClientTests
         return options;
     }
 
-    private static async Task<AgentViewerFrameV3> TakeFrameAsync(
+    private static async Task<AgentViewerFrameV4> TakeFrameAsync(
         AgentViewerClient client,
         long minimumSequence = 0)
     {
         var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(10);
         while (DateTime.UtcNow < deadline)
         {
-            if (client.TryTakeLatest(out var frame)
+            if (client.TryTakeLatest(out var frame, out _)
                 && frame is not null
                 && frame.Sequence >= minimumSequence)
             {

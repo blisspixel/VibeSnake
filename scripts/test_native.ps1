@@ -643,14 +643,15 @@ try {
         ($localizationEvidence.catalogId -ne "shell-copy-v1") -or
         ($localizationEvidence.requiredLocale -ne "en") -or
         ($localizationEvidence.pseudoLocale -ne "qps-ploc") -or
-        ($localizationEvidence.stringCount -ne 574) -or
-        ($localizationEvidence.parameterizedStringCount -ne 83) -or
+        ($localizationEvidence.stringCount -ne 604) -or
+        ($localizationEvidence.parameterizedStringCount -ne 87) -or
         ($localizationEvidence.migratedRequiredFlowCount -ne 13) -or
         ($localizationEvidence.minimumPseudoExpansionRatio -lt 1.3) -or
         ($localizationEvidence.missingGlyphCount -ne 0) -or
         (-not $localizationEvidence.exactParameterValidation) -or
         (-not $localizationEvidence.inputGlyphParameterPreserved) -or
         (-not $localizationEvidence.maximumTextScaleLayoutPassed) -or
+        (-not $localizationEvidence.agentViewerOverlayLayoutPassed) -or
         ($localizationEvidence.rulesCopyIdCount -ne 18) -or
         (-not $localizationEvidence.rulesCopyIdsResolved) -or
         ($localizationEvidence.feedbackCopyIdCount -ne 24) -or

@@ -1,3 +1,5 @@
+using VibeSnake.Rules;
+
 namespace VibeSnake.AgentPlay;
 
 public static class AgentViewerTransport
@@ -14,17 +16,31 @@ public static class AgentViewerTransport
             || character is '-' or '_');
 }
 
-public sealed record AgentViewerFrameV3(
+public enum AgentViewerOperationKind : byte
+{
+    Initial = 0,
+    Step = 1,
+    Burst = 2,
+    Finish = 3,
+}
+
+public sealed record AgentViewerFrameV4(
     string Schema,
     long Sequence,
+    AgentViewerOperationKind Operation,
+    int StartTick,
+    string StartStateHash,
+    int StepsAdvanced,
+    AgentBurstStopReason? BurstStopReason,
+    RunEventKind? BurstStopEvent,
     AgentObservationV2 Observation,
     AgentMatchEndReason EndReason,
     bool VerifiedResultAvailable)
 {
-    public const string Contract = "vibesnake-agent-viewer-frame-v3";
+    public const string Contract = "vibesnake-agent-viewer-frame-v4";
 }
 
 public interface IAgentViewerSink
 {
-    bool TryPublish(AgentViewerFrameV3 frame);
+    bool TryPublish(AgentViewerFrameV4 frame);
 }

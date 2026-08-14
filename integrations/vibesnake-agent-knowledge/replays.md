@@ -3,8 +3,8 @@ type: "Replay Contract"
 title: "Verified agent replay handoff"
 description: "How successfully finalized agent play becomes a verified result and human-watchable replay."
 tags: [vibesnake, replay, verification, spectator]
-generated: { by: process:vibesnake-okf-generator, at: 2026-08-14T00:23:09Z }
-verified: { by: process:vibesnake-quality-gate, at: 2026-08-14T00:23:09Z }
+generated: { by: process:vibesnake-okf-generator, at: 2026-08-14T02:33:19Z }
+verified: { by: process:vibesnake-quality-gate, at: 2026-08-14T02:33:19Z }
 stale_after: "2026-11-13"
 status: draft
 sources:

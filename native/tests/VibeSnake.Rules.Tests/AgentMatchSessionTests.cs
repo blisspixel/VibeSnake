@@ -168,7 +168,8 @@ public sealed class AgentMatchSessionTests
     [Fact]
     public void Mutation_ledger_is_bounded_without_evicting_authoritative_keys()
     {
-        var session = CreateSession();
+        var viewer = new LatestViewerSink();
+        var session = CreateSession(viewerSink: viewer);
         var initial = session.Observe();
         AgentActionResponse? first = null;
         for (var index = 0; index < AgentMatchSession.MaximumUniqueMutations; index++)
@@ -194,16 +195,22 @@ public sealed class AgentMatchSessionTests
             initial.StateHash,
             AgentAction.Continue,
             1));
+        Assert.Equal(AgentViewerOperationKind.Burst, viewer.Latest!.Operation);
+        Assert.Equal(0, viewer.Latest.StepsAdvanced);
         var unseenStep = session.SubmitAction(Request(
             "unseen-step",
             initial,
             AgentAction.Up));
+        Assert.Equal(AgentViewerOperationKind.Step, viewer.Latest!.Operation);
+        Assert.Equal(0, viewer.Latest.StepsAdvanced);
         var unseenBurst = session.SubmitBurst(new AgentBurstRequest(
             "unseen-burst",
             initial.Tick,
             initial.StateHash,
             AgentAction.Up,
             1));
+        Assert.Equal(AgentViewerOperationKind.Burst, viewer.Latest!.Operation);
+        Assert.Equal(0, viewer.Latest.StepsAdvanced);
 
         Assert.Same(first, knownRetry);
         Assert.Equal(AgentActionRejection.IdempotencyConflict, knownCrossOperation.Rejection);
@@ -389,7 +396,8 @@ public sealed class AgentMatchSessionTests
     [Fact]
     public void Burst_rejects_null_invalid_stale_and_post_terminal_requests_without_stepping()
     {
-        var session = CreateBurstSession(maximumSteps: 1);
+        var viewer = new RecordingViewerSink();
+        var session = CreateBurstSession(maximumSteps: 1, viewerSink: viewer);
         var initial = session.Observe();
 
         Assert.Throws<ArgumentNullException>(() => session.SubmitBurst(null!));
@@ -442,6 +450,21 @@ public sealed class AgentMatchSessionTests
         Assert.Equal(AgentBurstStopReason.MatchStepLimit, completed.StopReason);
         Assert.Equal(AgentActionRejection.MatchNotAwaitingAction, after.Rejection);
         Assert.False(after.RulesAdvanced);
+        Assert.Equal(6, viewer.Frames.Count);
+        Assert.Equal(AgentViewerOperationKind.Initial, viewer.Frames[0].Operation);
+        Assert.All(
+            viewer.Frames.Skip(1),
+            frame => Assert.Equal(AgentViewerOperationKind.Burst, frame.Operation));
+        Assert.Equal([0, 0, 0, 1, 0], viewer.Frames.Skip(1)
+            .Select(frame => frame.StepsAdvanced)
+            .ToArray());
+        Assert.All(
+            viewer.Frames.Where(frame => frame.StepsAdvanced == 0),
+            frame =>
+            {
+                Assert.Equal(frame.StartTick, frame.Observation.Tick);
+                Assert.Equal(frame.StartStateHash, frame.Observation.StateHash);
+            });
     }
 
     [Fact]
@@ -539,6 +562,10 @@ public sealed class AgentMatchSessionTests
         Assert.Equal(AgentMatchLifecycle.FailedClosed, session.Lifecycle);
         Assert.Null(session.GetResult());
         Assert.Equal(2, viewer.Frames.Count);
+        Assert.Equal(
+            burst ? AgentViewerOperationKind.Burst : AgentViewerOperationKind.Step,
+            viewer.Frames[^1].Operation);
+        Assert.Equal(1, viewer.Frames[^1].StepsAdvanced);
         Assert.Equal(AgentMatchEndReason.ReplayFailure, viewer.Frames[^1].EndReason);
         Assert.False(viewer.Frames[^1].VerifiedResultAvailable);
         Assert.Equal(
@@ -577,12 +604,17 @@ public sealed class AgentMatchSessionTests
         Assert.Equal(2, viewer.Frames.Count);
         Assert.Equal(0, viewer.Frames[0].Observation.Tick);
         Assert.Equal(3, viewer.Frames[1].Observation.Tick);
+        Assert.Equal(AgentViewerOperationKind.Initial, viewer.Frames[0].Operation);
+        Assert.Equal(AgentViewerOperationKind.Burst, viewer.Frames[1].Operation);
+        Assert.Equal(3, viewer.Frames[1].StepsAdvanced);
+        Assert.Equal(AgentBurstStopReason.RequestedLimit, viewer.Frames[1].BurstStopReason);
     }
 
     [Fact]
     public void Step_and_burst_are_separate_control_divisions()
     {
-        var step = CreateSession();
+        var stepViewer = new RecordingViewerSink();
+        var step = CreateSession(viewerSink: stepViewer);
         var stepObservation = step.Observe();
         var rejectedBurst = step.SubmitBurst(new AgentBurstRequest(
             "wrong-burst",
@@ -607,6 +639,8 @@ public sealed class AgentMatchSessionTests
         Assert.Equal(
             AgentPassportV1.FourDirectionBurstActionProfile,
             burstObservation.Passport.ActionProfile);
+        Assert.Equal(AgentViewerOperationKind.Burst, stepViewer.Frames[^1].Operation);
+        Assert.Equal(0, stepViewer.Frames[^1].StepsAdvanced);
     }
 
     [Fact]
@@ -818,6 +852,14 @@ public sealed class AgentMatchSessionTests
         Assert.Equal(1, accepted.Observation.Tick);
         Assert.Equal(4, viewer.Attempts);
         Assert.Equal([0L, 1L, 3L], viewer.Frames.Select(frame => frame.Sequence).ToArray());
+        Assert.Equal(
+            [
+                AgentViewerOperationKind.Initial,
+                AgentViewerOperationKind.Step,
+                AgentViewerOperationKind.Finish,
+            ],
+            viewer.Frames.Select(frame => frame.Operation).ToArray());
+        Assert.Equal([0, 0, 0], viewer.Frames.Select(frame => frame.StepsAdvanced).ToArray());
         Assert.Equal(initial.StateHash, viewer.Frames[0].Observation.StateHash);
         Assert.Equal(AgentMatchEndReason.None, viewer.Frames[0].EndReason);
         Assert.False(viewer.Frames[0].VerifiedResultAvailable);
@@ -834,14 +876,17 @@ public sealed class AgentMatchSessionTests
     private static AgentMatchSession CreateSession(
         AgentSeedVisibility visibility = AgentSeedVisibility.Open,
         int maximumSteps = AgentMatchOptions.DefaultMaximumSteps,
-        string matchId = "match") =>
-        new(new AgentMatchOptions(
-            matchId,
-            RunModeCatalog.VibeId,
-            RunModeCatalog.CurrentModeVersion,
-            123UL,
-            visibility,
-            maximumSteps));
+        string matchId = "match",
+        IAgentViewerSink? viewerSink = null) =>
+        new(
+            new AgentMatchOptions(
+                matchId,
+                RunModeCatalog.VibeId,
+                RunModeCatalog.CurrentModeVersion,
+                123UL,
+                visibility,
+                maximumSteps),
+            viewerSink);
 
     private static AgentMatchSession CreateBurstSession(
         int maximumSteps = AgentMatchOptions.DefaultMaximumSteps,
@@ -944,13 +989,13 @@ public sealed class AgentMatchSessionTests
 
     private sealed class RecordingViewerSink : IAgentViewerSink
     {
-        public List<AgentViewerFrameV3> Frames { get; } = [];
+        public List<AgentViewerFrameV4> Frames { get; } = [];
 
         public int Attempts { get; private set; }
 
         public bool Throw { get; set; }
 
-        public bool TryPublish(AgentViewerFrameV3 frame)
+        public bool TryPublish(AgentViewerFrameV4 frame)
         {
             Attempts++;
             if (Throw)
@@ -959,6 +1004,17 @@ public sealed class AgentMatchSessionTests
             }
 
             Frames.Add(frame);
+            return true;
+        }
+    }
+
+    private sealed class LatestViewerSink : IAgentViewerSink
+    {
+        public AgentViewerFrameV4? Latest { get; private set; }
+
+        public bool TryPublish(AgentViewerFrameV4 frame)
+        {
+            Latest = frame;
             return true;
         }
     }

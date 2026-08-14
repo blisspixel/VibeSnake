@@ -3,8 +3,8 @@ type: "Curriculum"
 title: "Vibe Snake Signal School and Style Contracts"
 description: "Deterministic lessons and self-selected public goals for agent-native play."
 tags: [vibesnake, curriculum, styles, evaluation]
-generated: { by: process:vibesnake-okf-generator, at: 2026-08-14T00:23:09Z }
-verified: { by: process:vibesnake-quality-gate, at: 2026-08-14T00:23:09Z }
+generated: { by: process:vibesnake-okf-generator, at: 2026-08-14T02:33:19Z }
+verified: { by: process:vibesnake-quality-gate, at: 2026-08-14T02:33:19Z }
 stale_after: "2026-11-13"
 status: draft
 sources:

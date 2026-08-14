@@ -56,7 +56,13 @@ public sealed class AgentMatchSession
             _rivalMetrics = new AgentEpisodeMetricsTracker();
         }
         Lifecycle = AgentMatchLifecycle.AwaitingAction;
-        PublishViewerFrame(CreateObservation());
+        var initialObservation = CreateObservation();
+        PublishViewerFrame(
+            initialObservation,
+            AgentViewerOperationKind.Initial,
+            initialObservation.Tick,
+            initialObservation.StateHash,
+            stepsAdvanced: 0);
     }
 
     public AgentMatchLifecycle Lifecycle { get; private set; }
@@ -274,7 +280,14 @@ public sealed class AgentMatchSession
                                 lastStep.Observation.LessonProgress),
                             lastStep.Observation,
                             MatchResult: null);
-                        PublishViewerFrame(rejected.Observation);
+                        PublishViewerFrame(
+                            rejected.Observation,
+                            AgentViewerOperationKind.Burst,
+                            snapshot.Tick,
+                            snapshot.StateHash,
+                            rejected.StepsAdvanced,
+                            rejected.StopReason,
+                            rejected.StopEvent);
                         return Remember(
                             request.IdempotencyKey,
                             AgentMutationKind.Burst,
@@ -342,7 +355,14 @@ public sealed class AgentMatchSession
                 CreateLessonDelta(lessonBefore, observation.LessonProgress),
                 observation,
                 _matchResult);
-            PublishViewerFrame(observation);
+            PublishViewerFrame(
+                observation,
+                AgentViewerOperationKind.Burst,
+                snapshot.Tick,
+                snapshot.StateHash,
+                response.StepsAdvanced,
+                response.StopReason,
+                response.StopEvent);
             return Remember(
                 request.IdempotencyKey,
                 AgentMutationKind.Burst,
@@ -366,16 +386,28 @@ public sealed class AgentMatchSession
                     "A failed-closed agent match has no verified replay result.");
             }
 
+            var start = _run.GetSnapshot();
+
             if (!TryComplete(
                 AgentMatchEndReason.AgentFinished,
                 AgentMatchLifecycle.Aborted,
                 out var result))
             {
-                PublishViewerFrame(CreateObservation());
+                PublishViewerFrame(
+                    CreateObservation(),
+                    AgentViewerOperationKind.Finish,
+                    start.Tick,
+                    start.StateHash,
+                    stepsAdvanced: 0);
                 throw new InvalidOperationException(
                     "Agent match replay finalization failed closed.");
             }
-            PublishViewerFrame(CreateObservation());
+            PublishViewerFrame(
+                CreateObservation(),
+                AgentViewerOperationKind.Finish,
+                start.Tick,
+                start.StateHash,
+                stepsAdvanced: 0);
             return result!;
         }
     }
@@ -449,7 +481,12 @@ public sealed class AgentMatchSession
                     rulesAdvanced: false);
                 if (publishViewer)
                 {
-                    PublishViewerFrame(failed.Observation);
+                    PublishViewerFrame(
+                        failed.Observation,
+                        AgentViewerOperationKind.Step,
+                        snapshot.Tick,
+                        snapshot.StateHash,
+                        failed.RulesAdvanced ? 1 : 0);
                 }
                 return failed;
             }
@@ -465,7 +502,12 @@ public sealed class AgentMatchSession
                 rulesAdvanced: true);
             if (publishViewer)
             {
-                PublishViewerFrame(failed.Observation);
+                PublishViewerFrame(
+                    failed.Observation,
+                    AgentViewerOperationKind.Step,
+                    snapshot.Tick,
+                    snapshot.StateHash,
+                    failed.RulesAdvanced ? 1 : 0);
             }
             return failed;
         }
@@ -480,7 +522,12 @@ public sealed class AgentMatchSession
                 rulesAdvanced: true);
             if (publishViewer)
             {
-                PublishViewerFrame(failed.Observation);
+                PublishViewerFrame(
+                    failed.Observation,
+                    AgentViewerOperationKind.Step,
+                    snapshot.Tick,
+                    snapshot.StateHash,
+                    failed.RulesAdvanced ? 1 : 0);
             }
             return failed;
         }
@@ -505,7 +552,12 @@ public sealed class AgentMatchSession
                     rulesAdvanced: true);
                 if (publishViewer)
                 {
-                    PublishViewerFrame(failed.Observation);
+                    PublishViewerFrame(
+                        failed.Observation,
+                        AgentViewerOperationKind.Step,
+                        snapshot.Tick,
+                        snapshot.StateHash,
+                        failed.RulesAdvanced ? 1 : 0);
                 }
                 return failed;
             }
@@ -523,7 +575,12 @@ public sealed class AgentMatchSession
                     rulesAdvanced: true);
                 if (publishViewer)
                 {
-                    PublishViewerFrame(failed.Observation);
+                    PublishViewerFrame(
+                        failed.Observation,
+                        AgentViewerOperationKind.Step,
+                        snapshot.Tick,
+                        snapshot.StateHash,
+                        failed.RulesAdvanced ? 1 : 0);
                 }
                 return failed;
             }
@@ -538,7 +595,12 @@ public sealed class AgentMatchSession
             _matchResult);
         if (publishViewer)
         {
-            PublishViewerFrame(response.Observation);
+            PublishViewerFrame(
+                response.Observation,
+                AgentViewerOperationKind.Step,
+                snapshot.Tick,
+                snapshot.StateHash,
+                stepsAdvanced: 1);
         }
         return response;
     }
@@ -664,7 +726,12 @@ public sealed class AgentMatchSession
             _matchResult);
         if (publishViewer)
         {
-            PublishViewerFrame(response.Observation);
+            PublishViewerFrame(
+                response.Observation,
+                AgentViewerOperationKind.Step,
+                response.Observation.Tick,
+                response.Observation.StateHash,
+                stepsAdvanced: 0);
         }
         return response;
     }
@@ -674,8 +741,8 @@ public sealed class AgentMatchSession
         AgentActionRejection rejection,
         AgentPublicIntent declaredIntent)
     {
-        var rejected = Reject(action, rejection, declaredIntent);
-        return new AgentBurstResponse(
+        var rejected = Reject(action, rejection, declaredIntent, publishViewer: false);
+        var response = new AgentBurstResponse(
             Accepted: false,
             rejected.RulesAdvanced,
             rejected.Rejection,
@@ -685,6 +752,13 @@ public sealed class AgentMatchSession
             rejected.LessonDelta,
             rejected.Observation,
             MatchResult: null);
+        PublishViewerFrame(
+            response.Observation,
+            AgentViewerOperationKind.Burst,
+            response.Observation.Tick,
+            response.Observation.StateHash,
+            stepsAdvanced: 0);
+        return response;
     }
 
     private TResponse Remember<TResponse>(
@@ -832,7 +906,14 @@ public sealed class AgentMatchSession
         return unchecked(gameplaySeed ^ (0x9E3779B97F4A7C15UL * (ulong)personalityIndex));
     }
 
-    private void PublishViewerFrame(AgentObservationV2 observation)
+    private void PublishViewerFrame(
+        AgentObservationV2 observation,
+        AgentViewerOperationKind operation,
+        int startTick,
+        string startStateHash,
+        int stepsAdvanced,
+        AgentBurstStopReason? burstStopReason = null,
+        RunEventKind? burstStopEvent = null)
     {
         if (_viewerSink is null)
         {
@@ -841,9 +922,15 @@ public sealed class AgentMatchSession
 
         try
         {
-            _ = _viewerSink.TryPublish(new AgentViewerFrameV3(
-                AgentViewerFrameV3.Contract,
+            _ = _viewerSink.TryPublish(new AgentViewerFrameV4(
+                AgentViewerFrameV4.Contract,
                 _viewerSequence++,
+                operation,
+                startTick,
+                startStateHash,
+                stepsAdvanced,
+                burstStopReason,
+                burstStopEvent,
                 observation,
                 _matchResult?.EndReason
                     ?? (Lifecycle == AgentMatchLifecycle.FailedClosed

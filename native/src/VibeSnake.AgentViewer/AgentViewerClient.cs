@@ -28,7 +28,8 @@ public sealed class AgentViewerClient : IDisposable
     private readonly string _accessToken;
     private readonly CancellationTokenSource _shutdown = new();
     private readonly Task _readerTask;
-    private AgentViewerFrameV3? _latestFrame;
+    private AgentViewerFrameV4? _latestFrame;
+    private long _lastPresentedSequence = -1;
     private AgentViewerClientState _state = AgentViewerClientState.Connecting;
     private string _status = "CONNECTING TO AGENT MATCH";
     private bool _disposed;
@@ -69,13 +70,25 @@ public sealed class AgentViewerClient : IDisposable
         }
     }
 
-    public bool TryTakeLatest(out AgentViewerFrameV3? frame)
+    public bool TryTakeLatest(
+        out AgentViewerFrameV4? frame,
+        out long coalescedFrames)
     {
         lock (_sync)
         {
             frame = _latestFrame;
             _latestFrame = null;
-            return frame is not null;
+            if (frame is null)
+            {
+                coalescedFrames = 0;
+                return false;
+            }
+
+            coalescedFrames = _lastPresentedSequence < 0
+                ? frame.Sequence
+                : frame.Sequence - _lastPresentedSequence - 1;
+            _lastPresentedSequence = frame.Sequence;
+            return true;
         }
     }
 
@@ -130,6 +143,7 @@ public sealed class AgentViewerClient : IDisposable
             await pipe.FlushAsync(cancellationToken).ConfigureAwait(false);
 
             long lastSequence = -1;
+            AgentViewerFrameV4? lastFrame = null;
             while (!cancellationToken.IsCancellationRequested)
             {
                 var line = await ReadLineBoundedAsync(pipe, cancellationToken).ConfigureAwait(false);
@@ -145,21 +159,27 @@ public sealed class AgentViewerClient : IDisposable
                     return;
                 }
 
-                var frame = JsonSerializer.Deserialize<AgentViewerFrameV3>(line, SerializerOptions);
+                var frame = JsonSerializer.Deserialize<AgentViewerFrameV4>(line, SerializerOptions);
                 if (frame is null
-                    || frame.Schema != AgentViewerFrameV3.Contract
+                    || frame.Schema != AgentViewerFrameV4.Contract
                     || frame.Observation is null
                     || frame.Observation.Schema != AgentObservationV2.Contract
+                    || !HasValidObservationShape(frame.Observation)
                     || frame.Sequence <= lastSequence
+                    || !HasConsistentOperation(frame, lastFrame)
+                    || lastFrame is not null
+                        && !HasConsistentIdentity(lastFrame.Observation, frame.Observation)
                     || !HasConsistentOutcome(frame))
                 {
                     SetTerminalState(
                         AgentViewerClientState.Rejected,
-                        "AGENT VIEWER REJECTED AN INVALID FRAME");
+                        "AGENT VIEWER REJECTED AN INVALID FRAME",
+                        clearPendingFrame: true);
                     return;
                 }
 
                 lastSequence = frame.Sequence;
+                lastFrame = frame;
                 lock (_sync)
                 {
                     _latestFrame = frame;
@@ -167,11 +187,20 @@ public sealed class AgentViewerClient : IDisposable
                 }
             }
         }
+        catch (JsonException)
+        {
+            if (!cancellationToken.IsCancellationRequested)
+            {
+                SetTerminalState(
+                    AgentViewerClientState.Rejected,
+                    "AGENT VIEWER REJECTED AN INVALID FRAME",
+                    clearPendingFrame: true);
+            }
+        }
         catch (Exception exception) when (
             exception is IOException
                 or OperationCanceledException
-                or ObjectDisposedException
-                or JsonException)
+                or ObjectDisposedException)
         {
             if (!cancellationToken.IsCancellationRequested)
             {
@@ -182,9 +211,192 @@ public sealed class AgentViewerClient : IDisposable
         }
     }
 
-    private static bool HasConsistentOutcome(AgentViewerFrameV3 frame)
+    private static bool HasConsistentOperation(
+        AgentViewerFrameV4 frame,
+        AgentViewerFrameV4? previousFrame)
+    {
+        if (frame.Sequence < 0
+            || frame.StartTick < 0
+            || !IsStateHash(frame.StartStateHash)
+            || !Enum.IsDefined(frame.Operation)
+            || frame.StepsAdvanced < 0
+            || frame.Observation.Tick - frame.StartTick != frame.StepsAdvanced
+            || frame.StepsAdvanced == 0
+                && !string.Equals(
+                    frame.StartStateHash,
+                    frame.Observation.StateHash,
+                    StringComparison.Ordinal)
+            || previousFrame is not null
+                && frame.Sequence == previousFrame.Sequence + 1
+                && (frame.StartTick != previousFrame.Observation.Tick
+                    || !string.Equals(
+                        frame.StartStateHash,
+                        previousFrame.Observation.StateHash,
+                        StringComparison.Ordinal))
+            || frame.BurstStopReason is { } stopReason && !Enum.IsDefined(stopReason)
+            || frame.BurstStopEvent is { } stopEvent
+                && !AgentBurstPolicy.Stops.Contains(stopEvent))
+        {
+            return false;
+        }
+
+        return frame.Operation switch
+        {
+            AgentViewerOperationKind.Initial =>
+                frame.Sequence == 0
+                && frame.StepsAdvanced == 0
+                && frame.BurstStopReason is null
+                && frame.BurstStopEvent is null
+                && frame.StartTick == frame.Observation.Tick
+                && string.Equals(
+                    frame.StartStateHash,
+                    frame.Observation.StateHash,
+                    StringComparison.Ordinal)
+                && frame.Observation.PreviousAction is null,
+            AgentViewerOperationKind.Step =>
+                frame.Sequence > 0
+                && frame.StepsAdvanced is 0 or 1
+                && frame.BurstStopReason is null
+                && frame.BurstStopEvent is null
+                && frame.Observation.PreviousAction is { } step
+                && HasConsistentPreviousAction(step)
+                && step.RulesAdvanced == (frame.StepsAdvanced == 1),
+            AgentViewerOperationKind.Burst =>
+                HasConsistentBurst(frame),
+            AgentViewerOperationKind.Finish =>
+                frame.Sequence > 0
+                && frame.StepsAdvanced == 0
+                && frame.BurstStopReason is null
+                && frame.BurstStopEvent is null
+                && frame.EndReason is AgentMatchEndReason.AgentFinished
+                    or AgentMatchEndReason.ReplayFailure,
+            _ => false,
+        };
+    }
+
+    private static bool HasConsistentBurst(AgentViewerFrameV4 frame)
+    {
+        if (frame.Sequence <= 0
+            || frame.StepsAdvanced > AgentBurstRequest.MaximumBurstSteps
+            || frame.StepsAdvanced > 0 && frame.BurstStopReason is null
+            || frame.BurstStopEvent is not null && frame.BurstStopReason is null
+            || frame.Observation.PreviousAction is not { } previousAction
+            || !HasConsistentPreviousAction(previousAction)
+            || previousAction.RulesAdvanced != (frame.StepsAdvanced > 0))
+        {
+            return false;
+        }
+
+        if (frame.BurstStopEvent is not { } stopEvent)
+        {
+            return frame.BurstStopReason != AgentBurstStopReason.DecisionEvent;
+        }
+
+        if (frame.BurstStopReason is AgentBurstStopReason.RequestedLimit
+            or AgentBurstStopReason.ReplayFailure)
+        {
+            return false;
+        }
+
+        var selectedEvent = frame.Observation.PreviousEvents
+            .FirstOrDefault(item => AgentBurstPolicy.Stops.Contains(item.Kind));
+        return selectedEvent?.Kind == stopEvent;
+    }
+
+    private static bool HasValidObservationShape(AgentObservationV2 observation) =>
+        !string.IsNullOrWhiteSpace(observation.MatchId)
+        && string.Equals(
+            observation.RulesetId,
+            RulesetIdentity.CurrentId,
+            StringComparison.Ordinal)
+        && observation.RulesVersion == RulesetIdentity.CurrentVersion
+        && RunModeCatalog.All.Any(mode =>
+            string.Equals(mode.Id, observation.ModeId, StringComparison.Ordinal)
+            && mode.Version == observation.ModeVersion
+            && mode.BoardWidth == observation.BoardWidth
+            && mode.BoardHeight == observation.BoardHeight)
+        && string.Equals(
+            observation.ConfigHashAlgorithm,
+            RunConfig.ConfigHashAlgorithmId,
+            StringComparison.Ordinal)
+        && IsLowerHex(observation.ConfigHash, 64)
+        && observation.Passport is not null
+        && Enum.IsDefined(observation.SeedVisibility)
+        && (observation.SeedVisibility == AgentSeedVisibility.Open
+            ? observation.GameplaySeed is not null
+            : observation.GameplaySeed is null)
+        && observation.Tick >= 0
+        && observation.MaximumSteps > 0
+        && observation.Tick <= observation.MaximumSteps
+        && observation.StepsRemaining >= 0
+        && observation.StepsRemaining == observation.MaximumSteps - observation.Tick
+        && IsStateHash(observation.StateHash)
+        && observation.BoardWidth > 0
+        && observation.BoardHeight > 0
+        && observation.Body is { Count: > 0 }
+        && observation.PendingDirections is not null
+        && observation.PendingDirections.All(Enum.IsDefined)
+        && observation.PreviousEvents is not null
+        && observation.PreviousEvents.All(item =>
+            item is not null
+            && Enum.IsDefined(item.Kind)
+            && (item.NewDirection is not { } direction || Enum.IsDefined(direction))
+            && (item.Cause is not { } cause || Enum.IsDefined(cause))
+            && (item.Power is not { } power || Enum.IsDefined(power)))
+        && observation.DetachedObstacles is not null
+        && Enum.IsDefined(observation.Status)
+        && Enum.IsDefined(observation.DeathCause)
+        && Enum.IsDefined(observation.Direction)
+        && Enum.IsDefined(observation.AdaptiveDifficultyState)
+        && !string.IsNullOrWhiteSpace(observation.AdaptivePolicyId)
+        && Enum.IsDefined(observation.Lifecycle);
+
+    private static bool IsStateHash(string? value) => IsLowerHex(value, 16);
+
+    private static bool IsLowerHex(string? value, int length) =>
+        value is not null
+        && value.Length == length
+        && value.All(character => character is >= '0' and <= '9' or >= 'a' and <= 'f');
+
+    private static bool HasConsistentPreviousAction(AgentPreviousActionV1 action) =>
+        Enum.IsDefined(action.Action)
+        && Enum.IsDefined(action.Rejection)
+        && Enum.IsDefined(action.DeclaredIntent)
+        && (action.Accepted
+            ? action.Rejection == AgentActionRejection.None && action.RulesAdvanced
+            : action.Rejection != AgentActionRejection.None
+                && (!action.RulesAdvanced
+                    || action.Rejection == AgentActionRejection.ReplayFailure));
+
+    private static bool HasConsistentIdentity(
+        AgentObservationV2 expected,
+        AgentObservationV2 actual) =>
+        string.Equals(expected.MatchId, actual.MatchId, StringComparison.Ordinal)
+        && string.Equals(expected.RulesetId, actual.RulesetId, StringComparison.Ordinal)
+        && expected.RulesVersion == actual.RulesVersion
+        && string.Equals(expected.ModeId, actual.ModeId, StringComparison.Ordinal)
+        && expected.ModeVersion == actual.ModeVersion
+        && string.Equals(
+            expected.ConfigHashAlgorithm,
+            actual.ConfigHashAlgorithm,
+            StringComparison.Ordinal)
+        && string.Equals(expected.ConfigHash, actual.ConfigHash, StringComparison.Ordinal)
+        && expected.SeedVisibility == actual.SeedVisibility
+        && expected.GameplaySeed == actual.GameplaySeed
+        && Equals(expected.Passport, actual.Passport)
+        && expected.MaximumSteps == actual.MaximumSteps
+        && expected.BoardWidth == actual.BoardWidth
+        && expected.BoardHeight == actual.BoardHeight
+        && expected.WrapsAtEdges == actual.WrapsAtEdges;
+
+    private static bool HasConsistentOutcome(AgentViewerFrameV4 frame)
     {
         var observation = frame.Observation;
+        if (!HasConsistentEndReason(frame)
+            || !HasConsistentRunEnd(frame))
+        {
+            return false;
+        }
         if (observation.IsActionAwaited)
         {
             return observation.Lifecycle == AgentMatchLifecycle.AwaitingAction
@@ -206,12 +418,79 @@ public sealed class AgentViewerClient : IDisposable
                 && frame.EndReason == AgentMatchEndReason.AgentFinished);
     }
 
+    private static bool HasConsistentRunEnd(AgentViewerFrameV4 frame) =>
+        frame.EndReason switch
+        {
+            AgentMatchEndReason.None => frame.Observation.Status == RunStatus.Running,
+            AgentMatchEndReason.RulesTerminal => frame.Observation.Status is
+                RunStatus.Dead or RunStatus.Won,
+            AgentMatchEndReason.StepLimit =>
+                frame.Observation.Status == RunStatus.Running
+                && frame.Observation.Tick == frame.Observation.MaximumSteps,
+            AgentMatchEndReason.AgentFinished => frame.Observation.Status == RunStatus.Running,
+            AgentMatchEndReason.ReplayFailure => true,
+            _ => false,
+        };
+
+    private static bool HasConsistentEndReason(AgentViewerFrameV4 frame)
+    {
+        if (frame.Operation == AgentViewerOperationKind.Finish)
+        {
+            return frame.EndReason is AgentMatchEndReason.AgentFinished
+                or AgentMatchEndReason.ReplayFailure;
+        }
+
+        if (frame.StepsAdvanced > 0)
+        {
+            return frame.Operation switch
+            {
+                AgentViewerOperationKind.Initial => false,
+                AgentViewerOperationKind.Step =>
+                    frame.EndReason is not AgentMatchEndReason.AgentFinished,
+                AgentViewerOperationKind.Burst => frame.EndReason switch
+                {
+                    AgentMatchEndReason.None => frame.BurstStopReason is
+                        AgentBurstStopReason.RequestedLimit
+                        or AgentBurstStopReason.DecisionEvent
+                        or AgentBurstStopReason.LessonTargetReached,
+                    AgentMatchEndReason.RulesTerminal =>
+                        frame.BurstStopReason == AgentBurstStopReason.RulesTerminal,
+                    AgentMatchEndReason.StepLimit =>
+                        frame.BurstStopReason == AgentBurstStopReason.MatchStepLimit,
+                    AgentMatchEndReason.ReplayFailure =>
+                        frame.BurstStopReason == AgentBurstStopReason.ReplayFailure,
+                    _ => false,
+                },
+                _ => false,
+            };
+        }
+
+        if (frame.Operation == AgentViewerOperationKind.Initial)
+        {
+            return frame.EndReason == AgentMatchEndReason.None;
+        }
+
+        var previousAction = frame.Observation.PreviousAction;
+        if (frame.Operation == AgentViewerOperationKind.Burst
+            && frame.BurstStopReason is not null
+            && !(frame.BurstStopReason == AgentBurstStopReason.ReplayFailure
+                && frame.EndReason == AgentMatchEndReason.ReplayFailure))
+        {
+            return false;
+        }
+
+        return frame.EndReason == AgentMatchEndReason.None
+            || previousAction is { Accepted: false } rejection
+            && rejection.Rejection is AgentActionRejection.MatchNotAwaitingAction
+                or AgentActionRejection.ReplayFailure;
+    }
+
     private static (AgentViewerClientState State, string Status) DescribeFrame(
-        AgentViewerFrameV3 frame) => frame.EndReason switch
+        AgentViewerFrameV4 frame) => frame.EndReason switch
         {
             AgentMatchEndReason.None => (
                 AgentViewerClientState.Watching,
-                "WATCHING AGENT LIVE"),
+                "AWAITING AGENT ACTION; RULES PAUSED"),
             AgentMatchEndReason.RulesTerminal => (
                 AgentViewerClientState.Completed,
                 "AGENT MATCH ENDED BY RULES; VERIFIED REPLAY READY"),
@@ -252,10 +531,17 @@ public sealed class AgentViewerClient : IDisposable
         throw new JsonException("Agent viewer frame exceeded its byte limit.");
     }
 
-    private void SetTerminalState(AgentViewerClientState state, string status)
+    private void SetTerminalState(
+        AgentViewerClientState state,
+        string status,
+        bool clearPendingFrame = false)
     {
         lock (_sync)
         {
+            if (clearPendingFrame)
+            {
+                _latestFrame = null;
+            }
             _state = state;
             _status = status;
         }

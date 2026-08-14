@@ -168,6 +168,8 @@ def render_bundle(repository_root: Path) -> dict[str, str]:
         [
             ("mcp-tools", "../../native/tools/VibeSnake.AgentHost/McpAgentTools.cs", "MCP tool adapter"),
             ("mcp-resources", "../../native/tools/VibeSnake.AgentHost/AgentResources.cs", "MCP resources"),
+            ("viewer-contract", "../../native/src/VibeSnake.AgentPlay/AgentViewer.cs", "Live viewer wire contract"),
+            ("viewer-client", "../../native/src/VibeSnake.AgentViewer/AgentViewerClient.cs", "Live viewer client"),
             ("plugin-manifest", "../vibesnake-agent-plugin/plugin.json", "Agent Plugin manifest"),
             (
                 "agent-plugins-normative-spec",
@@ -206,6 +208,10 @@ def render_bundle(repository_root: Path) -> dict[str, str]:
             "# Resources",
             "",
             *(f"* `{uri}`" for uri in resource_uris),
+            "",
+            "# Live viewer",
+            "",
+            "The optional same-user pipe uses `vibesnake-agent-viewer-frame-v4`. Every frame declares initial, step, burst, or finish origin and binds exact steps advanced to the pre-mutation tick and state hash. Burst frames carry closed stop reason and final-step event, while terminal truth, immutable match identity, action facts, and contiguous state anchors are cross-validated before presentation. Malformed, oversized, contradictory, or identity-drifting input clears pending content and rejects the stream. The host keeps only the latest unsent frame, the client reports sequence gaps as coalesced earlier updates, and the exact packaged-host transcript opens the viewer and receives a terminal burst. The verified replay remains the canonical complete history, and viewer timing never advances rules or score.",
             "",
             "# Trust boundary",
             "",

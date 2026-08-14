@@ -28,7 +28,7 @@ public sealed class AgentResources
     public static string GetRules() => JsonSerializer.Serialize(
         new
         {
-            contract = "vibesnake-agent-rules-resource-v3",
+            contract = "vibesnake-agent-rules-resource-v4",
             ruleset_id = RulesetIdentity.CurrentId,
             rules_version = RulesetIdentity.CurrentVersion,
             observation_schema = AgentObservationV2.Contract,
@@ -49,6 +49,18 @@ public sealed class AgentResources
                     JsonNamingPolicy.SnakeCaseLower.ConvertName(value.ToString())),
                 fixed_continuation = true,
                 viewer_frames_per_burst = 1,
+            },
+            viewer = new
+            {
+                frame_contract = AgentViewerFrameV4.Contract,
+                operations = Enum.GetNames<AgentViewerOperationKind>()
+                    .Select(JsonNamingPolicy.SnakeCaseLower.ConvertName),
+                pre_mutation_tick_and_state_hash = true,
+                exact_steps_advanced = true,
+                burst_stop_reason_and_event = true,
+                monotonic_sequence = true,
+                delivery = "The host retains only the newest unsent frame. Consumers report sequence gaps as coalesced earlier updates; the verified replay remains canonical.",
+                awaiting_agent = "Awaiting an agent action pauses rules and score while the viewer remains presentation-only.",
             },
             intent_semantics = "A public intent is an optional self-declared presentation label. It never changes rules, score, rewards, replay verification, or qualification.",
             stale_action_guard = StaleActionGuards,

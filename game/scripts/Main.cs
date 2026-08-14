@@ -170,7 +170,9 @@ public partial class Main : Node2D
     private bool _spectatorControllerRouteQualified;
 #if AGENT_ARENA_PREVIEW
     private AgentViewerClient? _agentViewer;
-    private AgentViewerFrameV3? _agentViewerFrame;
+    private AgentViewerFrameV4? _agentViewerFrame;
+    private long _agentViewerCoalescedFrames;
+    private bool _agentViewerSnappedLatestFrame;
     private RunSnapshot? _agentViewerSnapshot;
     private string _agentViewerStatusId = "status.agent-viewer.connecting";
     private bool _agentViewerSmokeEnabled;
@@ -424,6 +426,15 @@ public partial class Main : Node2D
         _inputBindingsStore = new InputBindingsStore(userDataRoot);
         _optionalPackStore = new OptionalPackStore(userDataRoot);
         LoadShellSettings();
+#if AGENT_ARENA_PREVIEW
+        if (agentWatchSmoke)
+        {
+            _shellSettings.MasterMuted = true;
+            _shellSettings.HighContrast = true;
+            _shellSettings.ReducedMotion = true;
+            _shellSettings.TextScale = ShellSettings.MaximumTextScale;
+        }
+#endif
         InitializeRadio(allowCheckoutFallback: !smokeTest && !launchProbe);
         LoadOnboardingProgress();
         LoadAchievements();
@@ -4147,6 +4158,8 @@ public partial class Main : Node2D
         _agentViewer = null;
         _agentViewerFrame = null;
         _agentViewerSnapshot = null;
+        _agentViewerCoalescedFrames = 0;
+        _agentViewerSnappedLatestFrame = false;
         _agentViewerStatusId = "status.agent-viewer.connecting";
         _agentViewerSmokeEnabled = false;
         _agentViewerSmokeDeadlineMilliseconds = null;
@@ -9519,7 +9532,8 @@ public partial class Main : Node2D
         }
 
         _agentViewerStatusId = AgentViewerStatusCopyId(_agentViewer.State);
-        if (!_agentViewer.TryTakeLatest(out var frame) || frame is null)
+        if (!_agentViewer.TryTakeLatest(out var frame, out var coalescedFrames)
+            || frame is null)
         {
             return;
         }
@@ -9528,16 +9542,27 @@ public partial class Main : Node2D
         {
             var previous = _agentViewerSnapshot;
             var projected = AgentViewerPresentation.ProjectSnapshot(frame.Observation);
+            _agentViewerSnappedLatestFrame =
+                _shellSettings.ReducedMotion && coalescedFrames > 0;
             if (previous is not null && previous.StateHash != projected.StateHash)
             {
-                _snakeMotionPresentation.Begin(
-                    previous.Body,
-                    projected.Body,
-                    nowMilliseconds,
-                    Math.Max(1, projected.EffectiveRulesStepMilliseconds));
+                if (_shellSettings.ReducedMotion)
+                {
+                    _snakeMotionPresentation.Reset(projected.Body);
+                    _agentViewerSnappedLatestFrame = true;
+                }
+                else
+                {
+                    _snakeMotionPresentation.Begin(
+                        previous.Body,
+                        projected.Body,
+                        nowMilliseconds,
+                        Math.Max(1, projected.EffectiveRulesStepMilliseconds));
+                }
             }
 
             _agentViewerFrame = frame;
+            _agentViewerCoalescedFrames = coalescedFrames;
             _agentViewerSnapshot = projected;
             _vibeLevelDirector.Update(projected.ComboCount);
             QueueRedraw();
@@ -9553,7 +9578,12 @@ public partial class Main : Node2D
                     return;
                 }
 
-                _ = CompleteAgentViewerSmokeAsync(projected.StateHash, frame.Sequence);
+                _ = CompleteAgentViewerSmokeAsync(
+                    projected.StateHash,
+                    frame.Sequence,
+                    frame.Operation,
+                    frame.StepsAdvanced,
+                    coalescedFrames);
             }
         }
         catch (ArgumentException)
@@ -9642,6 +9672,68 @@ public partial class Main : Node2D
         _ => throw new ArgumentOutOfRangeException(nameof(endReason)),
     };
 
+    private string AgentViewerOperationCopy(AgentViewerFrameV4 frame) => frame.Operation switch
+    {
+        AgentViewerOperationKind.Initial => Localize("agent-arena.operation.initial"),
+        AgentViewerOperationKind.Step => Localize(
+            "agent-arena.operation.step",
+            ShellTextArgument.From("steps", frame.StepsAdvanced)),
+        AgentViewerOperationKind.Burst => Localize(
+            "agent-arena.operation.burst",
+            ShellTextArgument.From("steps", frame.StepsAdvanced),
+            ShellTextArgument.From(
+                "reason",
+                Localize(AgentBurstStopReasonCopyId(frame.BurstStopReason))),
+            ShellTextArgument.From(
+                "event",
+                Localize(AgentBurstStopEventCopyId(frame.BurstStopEvent)))),
+        AgentViewerOperationKind.Finish => Localize("agent-arena.operation.finish"),
+        _ => throw new ArgumentOutOfRangeException(nameof(frame)),
+    };
+
+    private static string AgentBurstStopReasonCopyId(
+        AgentBurstStopReason? reason) => reason switch
+        {
+            null => "agent-arena.burst.stop.none",
+            AgentBurstStopReason.RequestedLimit =>
+                "agent-arena.burst.stop.requested-limit",
+            AgentBurstStopReason.DecisionEvent =>
+                "agent-arena.burst.stop.decision-event",
+            AgentBurstStopReason.MatchStepLimit =>
+                "agent-arena.burst.stop.match-step-limit",
+            AgentBurstStopReason.RulesTerminal =>
+                "agent-arena.burst.stop.rules-terminal",
+            AgentBurstStopReason.ReplayFailure =>
+                "agent-arena.burst.stop.replay-failure",
+            AgentBurstStopReason.LessonTargetReached =>
+                "agent-arena.burst.stop.lesson-target",
+            _ => throw new ArgumentOutOfRangeException(nameof(reason)),
+        };
+
+    private static string AgentBurstStopEventCopyId(RunEventKind? stopEvent) => stopEvent switch
+    {
+        null => "agent-arena.burst.event.none",
+        RunEventKind.Wrapped => "agent-arena.burst.event.wrapped",
+        RunEventKind.AteFood => "agent-arena.burst.event.ate-food",
+        RunEventKind.Died => "agent-arena.burst.event.died",
+        RunEventKind.Won => "agent-arena.burst.event.won",
+        RunEventKind.PowerSpawned => "agent-arena.burst.event.power-spawned",
+        RunEventKind.PowerCollected => "agent-arena.burst.event.power-collected",
+        RunEventKind.PowerActivated => "agent-arena.burst.event.power-activated",
+        RunEventKind.PowerExpired => "agent-arena.burst.event.power-expired",
+        RunEventKind.PowerConsumed => "agent-arena.burst.event.power-consumed",
+        RunEventKind.PowerDiscarded => "agent-arena.burst.event.power-discarded",
+        RunEventKind.CollisionPrevented =>
+            "agent-arena.burst.event.collision-prevented",
+        RunEventKind.NearMiss => "agent-arena.burst.event.near-miss",
+        RunEventKind.StarvationWarning =>
+            "agent-arena.burst.event.starvation-warning",
+        RunEventKind.ComboExpired => "agent-arena.burst.event.combo-expired",
+        RunEventKind.AchievementCandidate =>
+            "agent-arena.burst.event.achievement-candidate",
+        _ => throw new ArgumentOutOfRangeException(nameof(stopEvent)),
+    };
+
     private static string CompactAgentPassportToken(string value) => value.Length <= 18
         ? value.ToUpperInvariant()
         : value[..16].ToUpperInvariant() + "..";
@@ -9650,6 +9742,82 @@ public partial class Main : Node2D
         Convert.ToByte(value.Substring(1, 2), 16) / 255.0f,
         Convert.ToByte(value.Substring(3, 2), 16) / 255.0f,
         Convert.ToByte(value.Substring(5, 2), 16) / 255.0f);
+
+    private void DrawFittedAgentLabel(
+        string text,
+        Vector2 position,
+        int baseFontSize,
+        float maximumWidth,
+        Color color)
+    {
+        var fontSize = ScaledFontSize(baseFontSize);
+        DrawLabel(
+            FitAgentOverlayText(
+                ActiveShellTheme.InterfaceFont,
+                text,
+                fontSize,
+                maximumWidth),
+            position,
+            fontSize,
+            color);
+    }
+
+    private static string FitAgentOverlayText(
+        Font font,
+        string text,
+        int fontSize,
+        float maximumWidth)
+    {
+        ArgumentNullException.ThrowIfNull(font);
+        ArgumentNullException.ThrowIfNull(text);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(fontSize);
+        if (!float.IsFinite(maximumWidth) || maximumWidth <= 0.0f)
+        {
+            throw new ArgumentOutOfRangeException(nameof(maximumWidth));
+        }
+
+        float WidthOf(string candidate) => font.GetStringSize(
+            candidate,
+            HorizontalAlignment.Left,
+            -1.0f,
+            fontSize).X;
+        if (WidthOf(text) <= maximumWidth)
+        {
+            return text;
+        }
+
+        const string omission = "..";
+        var elements = new List<string>();
+        var enumerator = StringInfo.GetTextElementEnumerator(text);
+        while (enumerator.MoveNext())
+        {
+            elements.Add(enumerator.GetTextElement());
+        }
+
+        var low = 0;
+        var high = elements.Count;
+        var best = omission;
+        while (low <= high)
+        {
+            var kept = low + ((high - low) / 2);
+            var prefixCount = (kept + 1) / 2;
+            var suffixCount = kept / 2;
+            var candidate = string.Concat(elements.Take(prefixCount))
+                + omission
+                + string.Concat(elements.Skip(elements.Count - suffixCount));
+            if (WidthOf(candidate) <= maximumWidth)
+            {
+                best = candidate;
+                low = kept + 1;
+            }
+            else
+            {
+                high = kept - 1;
+            }
+        }
+
+        return best;
+    }
 
     private void CheckAgentViewerSmokeTimeout(ulong nowMilliseconds)
     {
@@ -9666,16 +9834,34 @@ public partial class Main : Node2D
         GetTree().Quit(1);
     }
 
-    private async Task CompleteAgentViewerSmokeAsync(string stateHash, long frameSequence)
+    private async Task CompleteAgentViewerSmokeAsync(
+        string stateHash,
+        long frameSequence,
+        AgentViewerOperationKind operation,
+        int stepsAdvanced,
+        long coalescedFrames)
     {
         try
         {
             await SettlePlayedAudio();
             await ReleaseAgentViewerSmokeRadio();
             await ReleaseSmokeAudio();
+            if (!_shellSettings.MasterMuted
+                || !_shellSettings.HighContrast
+                || !_shellSettings.ReducedMotion
+                || Math.Abs(_shellSettings.TextScale - ShellSettings.MaximumTextScale) > 0.0001f
+                || !_agentViewerSnappedLatestFrame)
+            {
+                throw new InvalidOperationException(
+                    "Agent viewer accessibility smoke profile was not retained.");
+            }
             GD.Print(
                 "VIBESNAKE_AGENT_VIEWER_SMOKE_OK "
-                + $"hash={stateHash} frame={frameSequence}");
+                + $"hash={stateHash} frame={frameSequence} "
+                + $"operation={operation} steps={stepsAdvanced} "
+                + $"coalesced={coalescedFrames} "
+                + "motion=snap "
+                + "accessibility=muted,high-contrast,reduced-motion,text-150");
             GetTree().Quit();
         }
         catch (Exception exception)
@@ -9755,7 +9941,7 @@ public partial class Main : Node2D
 
         var panel = ActiveShellPalette.CanvasBackground;
         panel.A = 0.90f;
-        DrawRect(new Rect2(20.0f, 610.0f, 1240.0f, 108.0f), panel);
+        DrawRect(new Rect2(20.0f, 580.0f, 1240.0f, 138.0f), panel);
         var style = observation.LessonProgress is not null
             ? Localize(
                 !observation.LessonProgress.TargetReached
@@ -9799,10 +9985,16 @@ public partial class Main : Node2D
             observation.PreviousAction?.DeclaredIntent ?? AgentPublicIntent.Undeclared));
         var actionFeedback = Localize(AgentActionFeedbackCopyId(observation.PreviousAction));
         var outcome = Localize(AgentOutcomeCopyId(_agentViewerFrame.EndReason));
+        var operation = AgentViewerOperationCopy(_agentViewerFrame);
+        var delivery = _agentViewerCoalescedFrames == 0
+            ? Localize("agent-arena.delivery.continuous")
+            : Localize(
+                "agent-arena.delivery.coalesced",
+                ShellTextArgument.From("count", _agentViewerCoalescedFrames));
         DrawRect(
-            new Rect2(38.0f, 622.0f, 9.0f, 9.0f),
+            new Rect2(38.0f, 588.0f, 9.0f, 9.0f),
             AgentPassportColor(observation.Passport.Color));
-        DrawLabel(
+        DrawFittedAgentLabel(
             Localize(
                 "agent-arena.identity",
                 ShellTextArgument.From(
@@ -9814,18 +10006,29 @@ public partial class Main : Node2D
                 ShellTextArgument.From(
                     "station",
                     CompactAgentPassportToken(observation.Passport.StationAffinity))),
-            new Vector2(52.0f, 633.0f),
-            ScaledFontSize(13),
+            new Vector2(52.0f, 602.0f),
+            13,
+            1208.0f,
             ActiveShellPalette.GoldText);
-        DrawLabel(
+        DrawFittedAgentLabel(
             Localize(
                 "agent-arena.matchup",
                 ShellTextArgument.From("style", style),
                 ShellTextArgument.From("rival", rival)),
-            new Vector2(38.0f, 655.0f),
-            ScaledFontSize(11),
+            new Vector2(38.0f, 628.0f),
+            11,
+            1222.0f,
             ActiveShellPalette.GoldText);
-        DrawLabel(
+        DrawFittedAgentLabel(
+            Localize(
+                "agent-arena.operation-status",
+                ShellTextArgument.From("operation", operation),
+                ShellTextArgument.From("delivery", delivery)),
+            new Vector2(38.0f, 653.0f),
+            10,
+            1222.0f,
+            ActiveShellPalette.AccentText);
+        DrawFittedAgentLabel(
             Localize(
                 "agent-arena.status",
                 ShellTextArgument.From("status", Localize(_agentViewerStatusId)),
@@ -9834,15 +10037,17 @@ public partial class Main : Node2D
                 ShellTextArgument.From("maximum", observation.MaximumSteps),
                 ShellTextArgument.From("frame", _agentViewerFrame.Sequence)),
             new Vector2(38.0f, 680.0f),
-            ScaledFontSize(10),
+            9,
+            1222.0f,
             ActiveShellPalette.BodyText);
-        DrawLabel(
+        DrawFittedAgentLabel(
             Localize(
                 "agent-arena.intent-status",
                 ShellTextArgument.From("intent", publicIntent),
                 ShellTextArgument.From("action", actionFeedback)),
             new Vector2(38.0f, 704.0f),
-            ScaledFontSize(11),
+            11,
+            992.0f,
             ActiveShellPalette.BodyText);
         DrawActionPromptSegment(
             "back",
@@ -13039,6 +13244,132 @@ public partial class Main : Node2D
             }
         }
 
+        string Pseudo(string id, params ShellTextArgument[] arguments) =>
+            ShellLocalization.Format(id, ShellLocale.Pseudo, arguments);
+        var longestOperation = Pseudo(
+            "agent-arena.operation.burst",
+            ShellTextArgument.From("steps", 16),
+            ShellTextArgument.From(
+                "reason",
+                Pseudo("agent-arena.burst.stop.replay-failure")),
+            ShellTextArgument.From(
+                "event",
+                Pseudo("agent-arena.burst.event.achievement-candidate")));
+        var longestDelivery = Pseudo(
+            "agent-arena.delivery.coalesced",
+            ShellTextArgument.From("count", long.MaxValue));
+        var maximumIdentityToken = new string('W', 48);
+        var overlayRows = new (
+            string Id,
+            string Text,
+            int BaseFontSize,
+            float Baseline,
+            float MaximumWidth)[]
+        {
+            ("identity",
+                Pseudo(
+                "agent-arena.identity",
+                ShellTextArgument.From("agent", maximumIdentityToken),
+                ShellTextArgument.From("shed", "MAXIMUM-SHED-ID.."),
+                ShellTextArgument.From("station", "MAXIMUM-STATION..")),
+                13,
+                602.0f,
+                1208.0f),
+            ("matchup",
+                Pseudo(
+                "agent-arena.matchup",
+                ShellTextArgument.From(
+                    "style",
+                    Pseudo(
+                        "agent-arena.lesson.unverified",
+                        ShellTextArgument.From("lesson", maximumIdentityToken),
+                        ShellTextArgument.From(
+                            "metric",
+                            Pseudo("agent-arena.lesson.metric.direction-changes")),
+                        ShellTextArgument.From("current", int.MaxValue),
+                        ShellTextArgument.From("target", int.MaxValue))),
+                ShellTextArgument.From(
+                    "rival",
+                    Pseudo(
+                        "agent-arena.rival.score",
+                        ShellTextArgument.From("rival", maximumIdentityToken),
+                        ShellTextArgument.From("agent_score", "999999"),
+                        ShellTextArgument.From("rival_score", "999999")))),
+                11,
+                628.0f,
+                1222.0f),
+            ("operation",
+                Pseudo(
+                "agent-arena.operation-status",
+                ShellTextArgument.From("operation", longestOperation),
+                ShellTextArgument.From("delivery", longestDelivery)),
+                10,
+                653.0f,
+                1222.0f),
+            ("status",
+                Pseudo(
+                "agent-arena.status",
+                ShellTextArgument.From(
+                    "status",
+                    Pseudo("status.agent-viewer.disconnected")),
+                ShellTextArgument.From(
+                    "outcome",
+                    Pseudo("agent-arena.outcome.agent-finished")),
+                ShellTextArgument.From("step", int.MaxValue),
+                ShellTextArgument.From("maximum", int.MaxValue),
+                ShellTextArgument.From("frame", long.MaxValue)),
+                9,
+                680.0f,
+                1222.0f),
+            ("intent",
+                Pseudo(
+                "agent-arena.intent-status",
+                ShellTextArgument.From(
+                    "intent",
+                    Pseudo("agent-arena.intent.preserve-space")),
+                ShellTextArgument.From(
+                    "action",
+                    Pseudo("agent-arena.action.rejected-mutation-capacity"))),
+                11,
+                704.0f,
+                992.0f),
+        };
+        var agentViewerOverlayLayoutPassed = true;
+        var agentViewerOverlayFailures = new List<string>();
+        var priorBottom = 580.0f;
+        foreach (var row in overlayRows)
+        {
+            var fontSize = Math.Max(
+                10,
+                (int)Math.Round(
+                    row.BaseFontSize * ShellSettings.MaximumTextScale,
+                    MidpointRounding.AwayFromZero));
+            var fittedText = FitAgentOverlayText(
+                font,
+                row.Text,
+                fontSize,
+                row.MaximumWidth);
+            var width = font.GetStringSize(
+                fittedText,
+                HorizontalAlignment.Left,
+                -1.0f,
+                fontSize).X;
+            var top = row.Baseline - font.GetAscent(fontSize);
+            var bottom = row.Baseline + font.GetDescent(fontSize);
+            var rowPassed = float.IsFinite(width)
+                && width <= row.MaximumWidth
+                && top >= priorBottom
+                && bottom <= 718.0f;
+            agentViewerOverlayLayoutPassed &= rowPassed;
+            if (!rowPassed)
+            {
+                agentViewerOverlayFailures.Add(
+                    $"{row.Id}:width={width:0.0}/{row.MaximumWidth:0.0},"
+                    + $"top={top:0.0}/{priorBottom:0.0},bottom={bottom:0.0}/718.0");
+            }
+            priorBottom = bottom;
+        }
+
         var glyphPrompt = ShellLocalization.Format(
             "prompt.action",
             ShellLocale.Pseudo,
@@ -13151,14 +13482,15 @@ public partial class Main : Node2D
 
         const int migratedRequiredFlowCount = 13;
         const double requiredExpansionRatio = 1.30;
-        var passed = ShellLocalization.All.Count == 574
-            && ShellLocalization.All.Count(entry => entry.Parameters.Count > 0) == 83
+        var passed = ShellLocalization.All.Count == 604
+            && ShellLocalization.All.Count(entry => entry.Parameters.Count > 0) == 87
             && migratedRequiredFlowCount == 13
             && minimumExpansionRatio >= requiredExpansionRatio
             && missingGlyphs.Count == 0
             && exactParameterValidation
             && inputGlyphParameterPreserved
             && maximumTextScaleLayoutPassed
+            && agentViewerOverlayLayoutPassed
             && pseudoLocaleDeterministic
             && OnboardingCopyIds.All.Count == 18
             && rulesCopyIdsResolved
@@ -13180,6 +13512,8 @@ public partial class Main : Node2D
                 + $"exactParameters={exactParameterValidation}, "
                 + $"inputGlyph={inputGlyphParameterPreserved}, "
                 + $"maximumLayout={maximumTextScaleLayoutPassed} [{string.Join(",", overflowingEntries)}], "
+                + $"agentViewerOverlayLayout={agentViewerOverlayLayoutPassed} "
+                + $"[{string.Join(";", agentViewerOverlayFailures)}], "
                 + $"deterministic={pseudoLocaleDeterministic}, "
                 + $"remainingDirectLabels={remainingDirectDrawLabelLiteralCount}, "
                 + $"remainingDirectPrompts={remainingDirectPromptLiteralCount}, "
@@ -13207,6 +13541,7 @@ public partial class Main : Node2D
             ExactParameterValidation: exactParameterValidation,
             InputGlyphParameterPreserved: inputGlyphParameterPreserved,
             MaximumTextScaleLayoutPassed: maximumTextScaleLayoutPassed,
+            AgentViewerOverlayLayoutPassed: agentViewerOverlayLayoutPassed,
             RulesCopyIdCount: OnboardingCopyIds.All.Count,
             RulesCopyIdsResolved: rulesCopyIdsResolved,
             FeedbackCopyIdCount: feedbackCopyIdCount,

@@ -22,10 +22,10 @@ internal sealed class AgentViewerServer : IAgentViewerSink, IDisposable
 {
     public const int MaximumTokenBytes = 128;
     public const string ViewerRetentionPolicy =
-        "One local same-user viewer may attach with the one-time capability while this host retains the match. Frames are best-effort and the verified replay produced by successful finalization remains canonical.";
+        "One local same-user viewer may attach with the one-time capability while this host retains the match. Only the newest unsent frame is retained; sequence gaps expose coalesced earlier updates, and the verified replay produced by successful finalization remains canonical.";
 
     private static readonly JsonSerializerOptions SerializerOptions = CreateSerializerOptions();
-    private readonly Channel<AgentViewerFrameV3> _frames = Channel.CreateBounded<AgentViewerFrameV3>(
+    private readonly Channel<AgentViewerFrameV4> _frames = Channel.CreateBounded<AgentViewerFrameV4>(
         new BoundedChannelOptions(1)
         {
             FullMode = BoundedChannelFullMode.DropOldest,
@@ -72,7 +72,7 @@ internal sealed class AgentViewerServer : IAgentViewerSink, IDisposable
 
     public AgentViewerConnectionV1 Connection { get; }
 
-    public bool TryPublish(AgentViewerFrameV3 frame)
+    public bool TryPublish(AgentViewerFrameV4 frame)
     {
         ArgumentNullException.ThrowIfNull(frame);
         return !_disposed && _frames.Writer.TryWrite(frame);
