@@ -4,7 +4,7 @@ namespace VibeSnake.AgentPlay;
 
 internal static class AgentObservationProjector
 {
-    public static AgentObservationV1 Project(
+    public static AgentObservationV2 Project(
         AgentMatchOptions options,
         RunConfig config,
         RunSnapshot snapshot,
@@ -32,8 +32,8 @@ internal static class AgentObservationProjector
                 pickup.VisibilityTicksRemaining)
             : null;
 
-        return new AgentObservationV1(
-            AgentObservationV1.Contract,
+        return new AgentObservationV2(
+            AgentObservationV2.Contract,
             options.MatchId,
             RulesetIdentity.CurrentId,
             RulesetIdentity.CurrentVersion,
@@ -96,6 +96,9 @@ internal static class AgentObservationProjector
                     options.StyleContractId,
                     options.ModeId,
                     metrics),
+            options.LessonId is null
+                ? null
+                : AgentSignalSchoolCatalog.Evaluate(options.LessonId, metrics),
             rival);
     }
 

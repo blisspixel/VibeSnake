@@ -14,17 +14,17 @@ public static class AgentViewerTransport
             || character is '-' or '_');
 }
 
-public sealed record AgentViewerFrameV2(
+public sealed record AgentViewerFrameV3(
     string Schema,
     long Sequence,
-    AgentObservationV1 Observation,
+    AgentObservationV2 Observation,
     AgentMatchEndReason EndReason,
     bool VerifiedResultAvailable)
 {
-    public const string Contract = "vibesnake-agent-viewer-frame-v2";
+    public const string Contract = "vibesnake-agent-viewer-frame-v3";
 }
 
 public interface IAgentViewerSink
 {
-    bool TryPublish(AgentViewerFrameV2 frame);
+    bool TryPublish(AgentViewerFrameV3 frame);
 }

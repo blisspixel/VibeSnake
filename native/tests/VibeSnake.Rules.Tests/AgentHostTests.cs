@@ -39,14 +39,14 @@ public sealed class AgentHostTests
         var saved = registry.SaveVerifiedReplay(started.MatchHandle);
         var savedAgain = registry.SaveVerifiedReplay(started.MatchHandle);
 
-        Assert.Equal(StartAgentMatchV1.Contract, started.Schema);
+        Assert.Equal(StartAgentMatchV2.Contract, started.Schema);
         Assert.Equal("match_test", started.MatchHandle);
         Assert.Equal(AgentSessionRegistry.RetentionPolicy, started.RetentionPolicy);
         Assert.False(before.IsAvailable);
         Assert.Null(before.Result);
         Assert.True(moved.Accepted);
         Assert.True(after.IsAvailable);
-        var result = Assert.IsType<AgentMatchSummaryV1>(after.Result);
+        var result = Assert.IsType<AgentMatchSummaryV2>(after.Result);
         AssertSummary(result, "match_test", ulong.MaxValue.ToString(CultureInfo.InvariantCulture));
         Assert.True(saved.IsSuccess);
         Assert.Equal(ReplaySaveCode.Saved, saved.Code);
@@ -90,6 +90,26 @@ public sealed class AgentHostTests
         Assert.Equal(AgentMatchLifecycle.Aborted, finished.Lifecycle);
         Assert.Equal(AgentMatchEndReason.AgentFinished, finished.EndReason);
         Assert.Equal(finished, registry.Finish(started.MatchHandle));
+    }
+
+    [Fact]
+    public void Registry_starts_only_canonical_signal_school_practice()
+    {
+        using var temporary = new AgentHostTemporaryDirectory();
+        using var registry = CreateRegistry(temporary.Path);
+        var lesson = AgentSignalSchoolCatalog.Get("first-turn");
+
+        var started = registry.StartLesson(
+            lesson.Id,
+            actionProfile: AgentPassportV1.FourDirectionBurstActionProfile);
+
+        Assert.Equal(lesson.ModeId, started.Observation.ModeId);
+        Assert.Equal(lesson.PracticeSeed, started.Observation.GameplaySeed);
+        Assert.Equal(lesson.MaximumSteps, started.Observation.MaximumSteps);
+        Assert.Equal(lesson.Id, started.Observation.LessonProgress!.LessonId);
+        Assert.Null(started.Observation.StyleContract);
+        Assert.Null(started.Observation.Rival);
+        Assert.Throws<ArgumentException>(() => registry.StartLesson("unknown"));
     }
 
     [Fact]
@@ -288,7 +308,7 @@ public sealed class AgentHostTests
     }
 
     [Fact]
-    public void Mcp_tools_expose_seven_safe_operations_and_sanitized_failures()
+    public void Mcp_tools_expose_eight_safe_operations_and_sanitized_failures()
     {
         using var temporary = new AgentHostTemporaryDirectory();
         var registry = CreateRegistry(temporary.Path);
@@ -333,7 +353,7 @@ public sealed class AgentHostTests
         Assert.Equal(
             AgentPublicIntent.SeekFood,
             moved.Observation.PreviousAction!.DeclaredIntent);
-        Assert.Equal(AgentActionResponseV1.Contract, moved.Schema);
+        Assert.Equal(AgentActionResponseV2.Contract, moved.Schema);
         Assert.Null(moved.MatchResult);
         Assert.False(pending.IsAvailable);
         Assert.Equal(AgentMatchEndReason.AgentFinished, finished.EndReason);
@@ -341,7 +361,7 @@ public sealed class AgentHostTests
         Assert.NotNull(saved.RivalFileName);
         Assert.Equal(ReplaySaveCode.Saved, saved.RivalCode);
         Assert.Equal(ReplayVerificationCode.Verified, saved.RivalReplayVerificationCode);
-        Assert.Equal(AgentBurstResponseV1.Contract, burst.Schema);
+        Assert.Equal(AgentBurstResponseV2.Contract, burst.Schema);
         Assert.True(burst.Accepted);
         Assert.Equal(2, burst.StepsAdvanced);
         Assert.Equal(AgentBurstStopReason.RequestedLimit, burst.StopReason);
@@ -372,6 +392,7 @@ public sealed class AgentHostTests
                 "play_burst",
                 "play_move",
                 "save_verified_replay",
+                "start_lesson",
                 "start_match",
             ],
             methods.Select(value => value.Tool!.Name!).Order().ToArray());
@@ -385,6 +406,7 @@ public sealed class AgentHostTests
         Assert.True(methods.Single(value => value.Tool!.Name == "get_match_result").Tool!.ReadOnly);
         Assert.False(methods.Single(value => value.Tool!.Name == "save_verified_replay").Tool!.Destructive);
         Assert.False(methods.Single(value => value.Tool!.Name == "start_match").Tool!.Idempotent);
+        Assert.False(methods.Single(value => value.Tool!.Name == "start_lesson").Tool!.Idempotent);
         Assert.True(methods.Single(value => value.Tool!.Name == "play_move").Tool!.Idempotent);
         Assert.True(methods.Single(value => value.Tool!.Name == "play_burst").Tool!.Idempotent);
     }
@@ -397,7 +419,7 @@ public sealed class AgentHostTests
         var playbook = AgentResources.GetPlaybook();
 
         Assert.Equal(
-            "vibesnake-agent-rules-resource-v2",
+            "vibesnake-agent-rules-resource-v3",
             rules.RootElement.GetProperty("contract").GetString());
         Assert.Equal(
             AgentMatchOptions.MaximumAllowedSteps,
@@ -440,9 +462,16 @@ public sealed class AgentHostTests
             AgentSignalSchoolCatalog.All.Count,
             school.RootElement.GetProperty("lessons").GetArrayLength());
         Assert.Equal(
+            "vibesnake-agent-signal-school-v2",
+            school.RootElement.GetProperty("contract").GetString());
+        var firstLesson = school.RootElement.GetProperty("lessons")[0];
+        Assert.Equal("direction_changes", firstLesson.GetProperty("metric").GetString());
+        Assert.False(string.IsNullOrWhiteSpace(firstLesson.GetProperty("instruction").GetString()));
+        Assert.Equal(
             AiPersonalityCatalog.BuiltIn.Count,
             rivals.RootElement.GetProperty("rivals").GetArrayLength());
         Assert.Contains("start_match", playbook, StringComparison.Ordinal);
+        Assert.Contains("start_lesson", playbook, StringComparison.Ordinal);
         Assert.Contains("play_burst", playbook, StringComparison.Ordinal);
         Assert.Contains("save_verified_replay", playbook, StringComparison.Ordinal);
         var replayContract = rules.RootElement.GetProperty("replay").GetString();
@@ -494,8 +523,8 @@ public sealed class AgentHostTests
         using var temporary = new AgentHostTemporaryDirectory();
         var options = Program.CreateSerializerOptions();
         var json = JsonSerializer.Serialize(
-            new AgentMatchResultStatusV1(
-                AgentMatchResultStatusV1.Contract,
+            new AgentMatchResultStatusV2(
+                AgentMatchResultStatusV2.Contract,
                 "match_test",
                 IsAvailable: false,
                 Result: null),
@@ -511,7 +540,7 @@ public sealed class AgentHostTests
         Assert.NotNull(host.Services);
         Assert.NotNull(defaultHost.Services);
         Assert.Equal("vibesnake-agent-host", Program.HostName);
-        Assert.Equal("0.2.0", Program.HostVersion);
+        Assert.Equal("0.3.0", Program.HostVersion);
         Assert.Throws<ArgumentNullException>(() =>
             Program.CreateHostApplicationBuilder(null!, temporary.Path));
     }
@@ -535,7 +564,7 @@ public sealed class AgentHostTests
         var result = registry.GetResult(started.MatchHandle).Result!;
         var saved = registry.SaveVerifiedReplay(started.MatchHandle);
 
-        Assert.Equal(AgentMatchSummaryV1.Contract, result.Schema);
+        Assert.Equal(AgentMatchSummaryV2.Contract, result.Schema);
         Assert.Equal(AgentMatchLifecycle.Completed, result.Lifecycle);
         Assert.Equal(AgentMatchEndReason.StepLimit, result.EndReason);
         Assert.Equal(RulesetIdentity.CurrentId, result.RulesetId);
@@ -586,19 +615,7 @@ public sealed class AgentHostTests
     public async Task Stdio_host_uses_current_stateless_MCP_and_completes_a_burst_transcript()
     {
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(90));
-        var packagedHost = Environment.GetEnvironmentVariable(
-            "VIBESNAKE_AGENT_HOST_ASSEMBLY");
-        var hostAssembly = string.IsNullOrWhiteSpace(packagedHost)
-            ? typeof(Program).Assembly.Location
-            : Path.GetFullPath(packagedHost);
-        Assert.True(File.Exists(hostAssembly), $"Agent host assembly is missing: {hostAssembly}");
-        var transport = new StdioClientTransport(new StdioClientTransportOptions
-        {
-            Name = "Vibe Snake Agent Host Test",
-            Command = "dotnet",
-            Arguments = [hostAssembly],
-            ShutdownTimeout = TimeSpan.FromSeconds(5),
-        });
+        var transport = new StdioClientTransport(CreateHostTransportOptions());
         await using var client = await McpClient.CreateAsync(
             transport,
             new McpClientOptions
@@ -678,6 +695,25 @@ public sealed class AgentHostTests
             "finish_match",
             new Dictionary<string, object?> { ["matchHandle"] = handle },
             cancellationToken: timeout.Token);
+        var lessonStarted = await client.CallToolAsync(
+            "start_lesson",
+            new Dictionary<string, object?>
+            {
+                ["lessonId"] = "first-turn",
+                ["actionProfile"] = AgentPassportV1.FourDirectionBurstActionProfile,
+            },
+            cancellationToken: timeout.Token);
+        var lessonDiagnostic = string.Join(
+            " | ",
+            lessonStarted.Content.OfType<TextContentBlock>().Select(content => content.Text));
+        Assert.False(lessonStarted.IsError ?? false, lessonDiagnostic);
+        var lessonJson = Assert.IsType<JsonElement>(lessonStarted.StructuredContent);
+        Assert.Equal(
+            "first-turn",
+            lessonJson.GetProperty("observation")
+                .GetProperty("lesson_progress")
+                .GetProperty("lesson_id")
+                .GetString());
 
         Assert.Equal(Program.McpProtocolVersion, client.NegotiatedProtocolVersion);
         Assert.Null(client.SessionId);
@@ -689,6 +725,7 @@ public sealed class AgentHostTests
                 "play_burst",
                 "play_move",
                 "save_verified_replay",
+                "start_lesson",
                 "start_match",
             ],
             tools.Select(tool => tool.Name).Order().ToArray());
@@ -707,7 +744,7 @@ public sealed class AgentHostTests
             resource => resource.Uri == "vibesnake://agent/rivals");
         var rulesText = Assert.IsType<TextResourceContents>(Assert.Single(rules.Contents));
         Assert.Contains(
-            "vibesnake-agent-rules-resource-v2",
+            "vibesnake-agent-rules-resource-v3",
             rulesText.Text,
             StringComparison.Ordinal);
         Assert.False(moved.IsError ?? false);
@@ -724,6 +761,84 @@ public sealed class AgentHostTests
         Assert.Equal(
             "step_limit",
             finished.StructuredContent!.Value.GetProperty("end_reason").GetString());
+    }
+
+    private static StdioClientTransportOptions CreateHostTransportOptions()
+    {
+        var packagedRoot = Environment.GetEnvironmentVariable(
+            "VIBESNAKE_AGENT_PLUGIN_ROOT");
+        if (string.IsNullOrWhiteSpace(packagedRoot))
+        {
+            var sourceHostAssembly = typeof(Program).Assembly.Location;
+            Assert.True(
+                File.Exists(sourceHostAssembly),
+                $"Agent host assembly is missing: {sourceHostAssembly}");
+            return new StdioClientTransportOptions
+            {
+                Name = "Vibe Snake Agent Host Test",
+                Command = "dotnet",
+                Arguments = [sourceHostAssembly],
+                ShutdownTimeout = TimeSpan.FromSeconds(5),
+            };
+        }
+
+        var pluginRoot = Path.GetFullPath(packagedRoot);
+        var configurationPath = Path.Combine(pluginRoot, "mcp.json");
+        Assert.True(
+            File.Exists(configurationPath),
+            $"Packaged MCP declaration is missing: {configurationPath}");
+        using var configuration = JsonDocument.Parse(File.ReadAllText(configurationPath));
+        var servers = configuration.RootElement.GetProperty("mcpServers");
+        var serverProperties = servers.EnumerateObject().ToArray();
+        var server = Assert.Single(serverProperties);
+        Assert.Equal("vibesnake-agent", server.Name);
+        Assert.Equal("stdio", server.Value.GetProperty("type").GetString());
+        var command = Assert.IsType<string>(
+            server.Value.GetProperty("command").GetString());
+        Assert.DoesNotContain(' ', command);
+        var arguments = server.Value.GetProperty("args")
+            .EnumerateArray()
+            .Select(argument => ExpandPluginRoot(
+                Assert.IsType<string>(argument.GetString()),
+                pluginRoot))
+            .ToArray();
+        var workingDirectory = ExpandPluginRoot(
+            Assert.IsType<string>(server.Value.GetProperty("cwd").GetString()),
+            pluginRoot);
+        Assert.Equal("dotnet", command);
+        var hostAssembly = Assert.Single(arguments);
+        Assert.True(
+            File.Exists(hostAssembly),
+            $"Declared Agent Host assembly is missing: {hostAssembly}");
+        Assert.Equal(pluginRoot, workingDirectory);
+        return new StdioClientTransportOptions
+        {
+            Name = "Vibe Snake Packaged Agent Host Test",
+            Command = command,
+            Arguments = arguments,
+            WorkingDirectory = workingDirectory,
+            ShutdownTimeout = TimeSpan.FromSeconds(5),
+        };
+    }
+
+    private static string ExpandPluginRoot(string value, string pluginRoot)
+    {
+        const string placeholder = "${PLUGIN_ROOT}";
+        Assert.StartsWith(placeholder, value, StringComparison.Ordinal);
+        var relative = value[placeholder.Length..].TrimStart('/', '\\');
+        if (relative.Length == 0)
+        {
+            return pluginRoot;
+        }
+
+        var expanded = Path.GetFullPath(Path.Combine(
+            pluginRoot,
+            relative.Replace('/', Path.DirectorySeparatorChar)));
+        Assert.StartsWith(
+            pluginRoot + Path.DirectorySeparatorChar,
+            expanded,
+            StringComparison.OrdinalIgnoreCase);
+        return expanded;
     }
 
     [Fact]
@@ -820,8 +935,8 @@ public sealed class AgentHostTests
             "t_" + Guid.NewGuid().ToString("N")[..16],
             [1, 2, 3]);
         Assert.Throws<ArgumentNullException>(() => server.TryPublish(null!));
-        Assert.True(server.TryPublish(new AgentViewerFrameV2(
-            AgentViewerFrameV2.Contract,
+        Assert.True(server.TryPublish(new AgentViewerFrameV3(
+            AgentViewerFrameV3.Contract,
             0,
             new AgentMatchSession(new AgentMatchOptions(
                 "frame",
@@ -832,8 +947,8 @@ public sealed class AgentHostTests
             AgentMatchEndReason.None,
             VerifiedResultAvailable: false)));
         server.Dispose();
-        Assert.False(server.TryPublish(new AgentViewerFrameV2(
-            AgentViewerFrameV2.Contract,
+        Assert.False(server.TryPublish(new AgentViewerFrameV3(
+            AgentViewerFrameV3.Contract,
             1,
             new AgentMatchSession(new AgentMatchOptions(
                 "frame-two",
@@ -866,11 +981,11 @@ public sealed class AgentHostTests
             () => seed);
 
     private static void AssertSummary(
-        AgentMatchSummaryV1 result,
+        AgentMatchSummaryV2 result,
         string expectedHandle,
         string expectedSeed)
     {
-        Assert.Equal(AgentMatchSummaryV1.Contract, result.Schema);
+        Assert.Equal(AgentMatchSummaryV2.Contract, result.Schema);
         Assert.Equal(expectedHandle, result.MatchHandle);
         Assert.Equal(expectedSeed, result.GameplaySeed);
         Assert.Equal(AgentMatchLifecycle.Completed, result.Lifecycle);

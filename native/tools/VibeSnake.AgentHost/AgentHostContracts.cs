@@ -4,17 +4,17 @@ using VibeSnake.Rules;
 
 namespace VibeSnake.AgentHost;
 
-public sealed record StartAgentMatchV1(
+public sealed record StartAgentMatchV2(
     string Schema,
     string MatchHandle,
     string RetentionPolicy,
-    AgentObservationV1 Observation,
+    AgentObservationV2 Observation,
     AgentViewerConnectionV1? Viewer)
 {
-    public const string Contract = "vibesnake-agent-match-start-v1";
+    public const string Contract = "vibesnake-agent-match-start-v2";
 }
 
-public sealed record AgentMatchSummaryV1(
+public sealed record AgentMatchSummaryV2(
     string Schema,
     string MatchHandle,
     AgentMatchLifecycle Lifecycle,
@@ -37,11 +37,12 @@ public sealed record AgentMatchSummaryV1(
     ReplayVerificationCode ReplayVerificationCode,
     AgentEpisodeMetricsV1 EpisodeMetrics,
     AgentStyleProgressV1? StyleContract,
+    AgentLessonOutcomeV1? LessonOutcome,
     AgentRivalResultV1? Rival)
 {
-    public const string Contract = "vibesnake-agent-match-summary-v1";
+    public const string Contract = "vibesnake-agent-match-summary-v2";
 
-    internal static AgentMatchSummaryV1 FromResult(AgentMatchResult result) =>
+    internal static AgentMatchSummaryV2 FromResult(AgentMatchResult result) =>
         new(
             Contract,
             result.MatchId,
@@ -65,41 +66,44 @@ public sealed record AgentMatchSummaryV1(
             result.ReplayVerificationCode,
             result.EpisodeMetrics,
             result.StyleContract,
+            result.LessonOutcome,
             result.Rival);
 }
 
-public sealed record AgentMatchResultStatusV1(
+public sealed record AgentMatchResultStatusV2(
     string Schema,
     string MatchHandle,
     bool IsAvailable,
-    AgentMatchSummaryV1? Result)
+    AgentMatchSummaryV2? Result)
 {
-    public const string Contract = "vibesnake-agent-match-result-status-v1";
+    public const string Contract = "vibesnake-agent-match-result-status-v2";
 }
 
-public sealed record AgentActionResponseV1(
+public sealed record AgentActionResponseV2(
     string Schema,
     bool Accepted,
     bool RulesAdvanced,
     AgentActionRejection Rejection,
-    AgentObservationV1 Observation,
-    AgentMatchSummaryV1? MatchResult)
+    AgentLessonProgressDeltaV1? LessonDelta,
+    AgentObservationV2 Observation,
+    AgentMatchSummaryV2? MatchResult)
 {
-    public const string Contract = "vibesnake-agent-action-response-v1";
+    public const string Contract = "vibesnake-agent-action-response-v2";
 
-    internal static AgentActionResponseV1 FromResponse(AgentActionResponse response) =>
+    internal static AgentActionResponseV2 FromResponse(AgentActionResponse response) =>
         new(
             Contract,
             response.Accepted,
             response.RulesAdvanced,
             response.Rejection,
+            response.LessonDelta,
             response.Observation,
             response.MatchResult is null
                 ? null
-                : AgentMatchSummaryV1.FromResult(response.MatchResult));
+                : AgentMatchSummaryV2.FromResult(response.MatchResult));
 }
 
-public sealed record AgentBurstResponseV1(
+public sealed record AgentBurstResponseV2(
     string Schema,
     bool Accepted,
     bool RulesAdvanced,
@@ -107,12 +111,13 @@ public sealed record AgentBurstResponseV1(
     int StepsAdvanced,
     AgentBurstStopReason? StopReason,
     RunEventKind? StopEvent,
-    AgentObservationV1 Observation,
-    AgentMatchSummaryV1? MatchResult)
+    AgentLessonProgressDeltaV1? LessonDelta,
+    AgentObservationV2 Observation,
+    AgentMatchSummaryV2? MatchResult)
 {
-    public const string Contract = "vibesnake-agent-burst-response-v1";
+    public const string Contract = "vibesnake-agent-burst-response-v2";
 
-    internal static AgentBurstResponseV1 FromResponse(AgentBurstResponse response) =>
+    internal static AgentBurstResponseV2 FromResponse(AgentBurstResponse response) =>
         new(
             Contract,
             response.Accepted,
@@ -121,10 +126,11 @@ public sealed record AgentBurstResponseV1(
             response.StepsAdvanced,
             response.StopReason,
             response.StopEvent,
+            response.LessonDelta,
             response.Observation,
             response.MatchResult is null
                 ? null
-                : AgentMatchSummaryV1.FromResult(response.MatchResult));
+                : AgentMatchSummaryV2.FromResult(response.MatchResult));
 }
 
 public sealed record AgentReplaySaveV1(

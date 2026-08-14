@@ -186,6 +186,55 @@ public sealed class AgentMatchOptionsTests
             styleContractId: "unknown"));
     }
 
+    [Fact]
+    public void Options_require_canonical_signal_school_configuration()
+    {
+        var lesson = AgentSignalSchoolCatalog.Get("wrap-line");
+        var options = new AgentMatchOptions(
+            "lesson",
+            lesson.ModeId,
+            RunModeCatalog.CurrentModeVersion,
+            lesson.PracticeSeed,
+            AgentSeedVisibility.Open,
+            lesson.MaximumSteps,
+            actionProfile: AgentPassportV1.FourDirectionBurstActionProfile,
+            lessonId: lesson.Id);
+
+        Assert.Equal(lesson.Id, options.LessonId);
+        Assert.Throws<ArgumentException>(() => new AgentMatchOptions(
+            "blind-lesson",
+            lesson.ModeId,
+            RunModeCatalog.CurrentModeVersion,
+            lesson.PracticeSeed,
+            AgentSeedVisibility.Blind,
+            lesson.MaximumSteps,
+            lessonId: lesson.Id));
+        Assert.Throws<ArgumentException>(() => new AgentMatchOptions(
+            "changed-seed",
+            lesson.ModeId,
+            RunModeCatalog.CurrentModeVersion,
+            lesson.PracticeSeed + 1,
+            AgentSeedVisibility.Open,
+            lesson.MaximumSteps,
+            lessonId: lesson.Id));
+        Assert.Throws<ArgumentException>(() => new AgentMatchOptions(
+            "styled-lesson",
+            lesson.ModeId,
+            RunModeCatalog.CurrentModeVersion,
+            lesson.PracticeSeed,
+            AgentSeedVisibility.Open,
+            lesson.MaximumSteps,
+            styleContractId: AgentStyleContractCatalog.StillwaterId,
+            lessonId: lesson.Id));
+        Assert.Throws<ArgumentException>(() => new AgentMatchOptions(
+            "unknown-lesson",
+            RunModeCatalog.ClassicId,
+            RunModeCatalog.CurrentModeVersion,
+            1UL,
+            AgentSeedVisibility.Open,
+            lessonId: "unknown"));
+    }
+
     [Theory]
     [InlineData(null)]
     [InlineData("")]

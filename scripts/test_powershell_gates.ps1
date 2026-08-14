@@ -163,8 +163,8 @@ try {
         }
     }
     foreach ($requiredLocalizationFragment in @(
-        "ShellLocalization.All.Count == 561",
-        "entry.Parameters.Count > 0) == 79",
+        "ShellLocalization.All.Count == 574",
+        "entry.Parameters.Count > 0) == 83",
         'AgentActionRejection.WrongActionProfile =>',
         '"agent-arena.action.rejected-wrong-profile"',
         'AgentActionRejection.MutationCapacityExceeded =>',
@@ -175,8 +175,8 @@ try {
         }
     }
     foreach ($requiredLocalizationFragment in @(
-        '($localizationEvidence.stringCount -ne 561)',
-        '($localizationEvidence.parameterizedStringCount -ne 79)'
+        '($localizationEvidence.stringCount -ne 574)',
+        '($localizationEvidence.parameterizedStringCount -ne 83)'
     )) {
         if (-not $nativeTestScript.Contains($requiredLocalizationFragment, [StringComparison]::Ordinal)) {
             throw "Native localization gate is missing catalog count: $requiredLocalizationFragment"

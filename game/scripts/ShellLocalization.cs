@@ -219,6 +219,27 @@ internal static class ShellLocalization
             "agent-arena.style.progress",
             "{style} {current}/{target}"),
         Entry(
+            "agent-arena.lesson.progress",
+            "SIGNAL SCHOOL {lesson} | {metric} {current}/{target}"),
+        Entry(
+            "agent-arena.lesson.hit",
+            "SIGNAL SCHOOL {lesson} | {metric} {current}/{target} | TARGET HIT | FINISH TO VERIFY"),
+        Entry(
+            "agent-arena.lesson.verified",
+            "SIGNAL SCHOOL {lesson} | {metric} {current}/{target} | TARGET VERIFIED"),
+        Entry(
+            "agent-arena.lesson.unverified",
+            "SIGNAL SCHOOL {lesson} | {metric} {current}/{target} | TARGET UNVERIFIED"),
+        Entry("agent-arena.lesson.metric.survival-steps", "SURVIVAL STEPS"),
+        Entry("agent-arena.lesson.metric.food-eaten", "FOOD"),
+        Entry("agent-arena.lesson.metric.peak-combo", "PEAK COMBO"),
+        Entry("agent-arena.lesson.metric.wraps", "WRAPS"),
+        Entry("agent-arena.lesson.metric.near-misses", "NEAR MISSES"),
+        Entry("agent-arena.lesson.metric.powers-collected", "POWERS COLLECTED"),
+        Entry("agent-arena.lesson.metric.powers-activated", "POWER ACTIVATIONS"),
+        Entry("agent-arena.lesson.metric.recoveries", "RECOVERIES"),
+        Entry("agent-arena.lesson.metric.direction-changes", "DIRECTION CHANGES"),
+        Entry(
             "agent-arena.rival.score",
             "VS {rival} {agent_score}-{rival_score}"),
         Entry(

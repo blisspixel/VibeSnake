@@ -24,6 +24,8 @@ An optional public Agent Passport may contain a bounded agent ID, policy version
 
 Each step or bounded burst may carry one closed public intent label: seek food, seek power, preserve space, take risk, recover, or undeclared. It contains no free-form text, is visible to the agent and local viewer, has no gameplay authority, and is not written into human profiles or progression. A burst accepts no action list, custom stop expression, executable code, or hidden state and advances at most 16 clock-free rules steps before returning public final-step evidence.
 
+Signal School uses only a published lesson ID and canonical public practice configuration. Its instruction, primary-metric progress, mutation delta, and replay-bound outcome contain no provider data or human profile data. Practice history is not persisted by this preview.
+
 The host retains at most eight ephemeral matches. At capacity it removes finalized matches first; if every match is live, it may invalidate only a handle with no valid handle-bearing host operation for at least 30 minutes. The opaque handle is the bearer capability; the stdio host has no separate client-authentication layer. This resource lease creates no score, result, ranking, replay, or analytics record. Viewer connection and disconnection never refresh, finish, or expire a match.
 
 Live watching uses a one-time same-user local-pipe capability. The capability is not written to the replay or application logs and should not be copied into screenshots, reports, or shared command history. A verified replay is stored only after the agent explicitly calls the path-free save tool, and it uses the same bounded application-owned replay store and deletion controls as other local replays.

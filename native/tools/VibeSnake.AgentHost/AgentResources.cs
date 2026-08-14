@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using ModelContextProtocol.Server;
 using VibeSnake.AgentPlay;
 using VibeSnake.Rules;
@@ -16,6 +17,7 @@ public sealed class AgentResources
     {
         PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
         WriteIndented = true,
+        Converters = { new JsonStringEnumConverter(JsonNamingPolicy.SnakeCaseLower) },
     };
 
     [McpServerResource(
@@ -26,10 +28,10 @@ public sealed class AgentResources
     public static string GetRules() => JsonSerializer.Serialize(
         new
         {
-            contract = "vibesnake-agent-rules-resource-v2",
+            contract = "vibesnake-agent-rules-resource-v3",
             ruleset_id = RulesetIdentity.CurrentId,
             rules_version = RulesetIdentity.CurrentVersion,
-            observation_schema = AgentObservationV1.Contract,
+            observation_schema = AgentObservationV2.Contract,
             actions = Enum.GetNames<AgentAction>().Select(value => value.ToLowerInvariant()),
             action_profiles = new[]
             {
@@ -106,7 +108,9 @@ public sealed class AgentResources
     public static string GetSignalSchool() => JsonSerializer.Serialize(
         new
         {
-            contract = "vibesnake-agent-signal-school-v1",
+            contract = "vibesnake-agent-signal-school-v2",
+            start_tool = "start_lesson",
+            practice_semantics = "Each lesson owns its canonical open seed, mode, step cap, and primary public metric target. Target reached is practice evidence, not mastery or qualification.",
             lessons = AgentSignalSchoolCatalog.All,
         },
         JsonOptions);
@@ -140,7 +144,7 @@ public sealed class AgentResources
         # Vibe Snake Agent Playbook
 
         1. Read `vibesnake://agent/rules`, `vibesnake://agent/modes`, and optionally the style, rival, or Signal School resources.
-        2. Call `start_match` with `classic` or `vibe`, an open or blind seed division, and either `four-direction-step-v1` or `four-direction-burst-v1`.
+        2. Call `start_match` for an exhibition, or `start_lesson` with a closed Signal School lesson ID for canonical open-seed practice. Select either `four-direction-step-v1` or `four-direction-burst-v1`.
         3. Read the returned observation. Use only visible board state.
         4. Use `play_move` for one exact decision. In a burst-profile match, use `play_burst` for a safe straight continuation of at most 16 steps; it stops on the first fixed public decision event. Supply the exact tick and state hash plus a new idempotency key. Optionally declare one closed public intent so a viewer can follow the plan.
         5. On rejection or burst stop, inspect the reason, final-step public events, and refreshed observation. Rejected requests do not step the rules.

@@ -50,7 +50,7 @@ These are direct 1280 by 720 captures from the current Godot renderer. Their has
 - Idle pointer hiding, focus-safe pausing, reduced motion, flash-free presentation, high contrast, mono audio, and scalable text.
 - Curated cosmetic sets, progression goals, Broadcast Tour, achievements, local scores, replays, and recovery tools.
 - Let's Play / AI channels with equal-rules matches, a thin live ticker, contextual playback controls, standings, lore, and seed challenges.
-- Post-1.0 Agent Arena source developer preview where an external agent uses exact one-step play or a separate maximum-16-step public-event-stopping burst through a separately launched local MCP host while a human joins through the command-line watch handoff and a read-only live Godot viewer, with named rivals, Style Contracts, closed public intent, verified replays, and bounded idle-session reclamation.
+- Post-1.0 Agent Arena source developer preview where an external agent uses exact one-step play or a separate maximum-16-step event-and-lesson-target-stopping burst through a separately launched local MCP host while a human joins through the command-line watch handoff and a read-only live Godot viewer, with six selectable Signal School practices, named rivals, Style Contracts, closed public intent, replay-bound lesson outcomes, verified replays, and bounded idle-session reclamation.
 - Offline-first saves and content with no account or network requirement.
 
 The complete player-facing behavior is in the [player guide](docs/guides/PLAYER_GUIDE.md).

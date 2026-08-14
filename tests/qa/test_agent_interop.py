@@ -23,6 +23,7 @@ REQUIRED_FILES = (
     Path("docs/engineering/AGENT_PLAY.md"),
     Path("native/src/VibeSnake.AgentPlay/AgentBurstPolicy.cs"),
     Path("native/src/VibeSnake.AgentPlay/AgentContracts.cs"),
+    Path("native/src/VibeSnake.AgentPlay/AgentExperience.cs"),
     Path("native/tools/VibeSnake.AgentHost/AgentHostContracts.cs"),
     Path("native/tools/VibeSnake.AgentHost/AgentResources.cs"),
     Path("native/tools/VibeSnake.AgentHost/McpAgentTools.cs"),

@@ -1,3 +1,4 @@
+import hashlib
 import json
 import shutil
 import subprocess
@@ -17,6 +18,38 @@ def run_validator(plugin_root: Path, *, require_mcp: bool = False) -> subprocess
     return subprocess.run(command, check=False, capture_output=True, text=True)
 
 
+def write_packaged_checksums(plugin: Path) -> None:
+    files = sorted(path for path in plugin.rglob("*") if path.is_file() and path.name != "SHA256SUMS")
+    lines = [
+        f"{hashlib.sha256(path.read_bytes()).hexdigest()}  {path.relative_to(plugin).as_posix()}" for path in files
+    ]
+    (plugin / "SHA256SUMS").write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
+def complete_packaged_fixture(plugin: Path) -> None:
+    (plugin / "bin").mkdir(exist_ok=True)
+    (plugin / "bin" / "VibeSnake.AgentHost.dll").write_bytes(b"host")
+    (plugin / "LICENSE").write_text("license\n", encoding="utf-8")
+    (plugin / "NOTICE").write_text("notice\n", encoding="utf-8")
+    (plugin / "mcp.json").write_text(
+        json.dumps(
+            {
+                "$schema": "https://agent-plugins.org/schemas/1.0.0/mcp.schema.json",
+                "mcpServers": {
+                    "vibesnake-agent": {
+                        "type": "stdio",
+                        "command": "dotnet",
+                        "args": ["${PLUGIN_ROOT}/bin/VibeSnake.AgentHost.dll"],
+                        "cwd": "${PLUGIN_ROOT}",
+                    }
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    write_packaged_checksums(plugin)
+
+
 def test_source_plugin_and_skill_are_valid() -> None:
     result = run_validator(SOURCE_PLUGIN)
 
@@ -27,28 +60,64 @@ def test_source_plugin_and_skill_are_valid() -> None:
 def test_packaged_stdio_plugin_requires_a_contained_command(tmp_path: Path) -> None:
     plugin = tmp_path / "vibesnake-agent"
     shutil.copytree(SOURCE_PLUGIN, plugin)
-    binary = plugin / "bin" / "VibeSnake.AgentHost"
-    binary.parent.mkdir()
-    binary.write_bytes(b"host")
-    (plugin / "mcp.json").write_text(
-        json.dumps(
-            {
-                "$schema": "https://agent-plugins.org/schemas/1.0.0/mcp.schema.json",
-                "mcpServers": {
-                    "vibesnake-agent": {
-                        "type": "stdio",
-                        "command": "./bin/VibeSnake.AgentHost",
-                        "cwd": "${PLUGIN_ROOT}",
-                    }
-                },
-            }
-        ),
-        encoding="utf-8",
-    )
+    complete_packaged_fixture(plugin)
 
     result = run_validator(plugin, require_mcp=True)
 
     assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_packaged_plugin_requires_complete_components_and_checksum(tmp_path: Path) -> None:
+    plugin = tmp_path / "vibesnake-agent"
+    shutil.copytree(SOURCE_PLUGIN, plugin)
+    complete_packaged_fixture(plugin)
+
+    for relative in (
+        "plugin.json",
+        "mcp.json",
+        "bin/VibeSnake.AgentHost.dll",
+        "skills/play-vibesnake/SKILL.md",
+        "LICENSE",
+        "NOTICE",
+        "SHA256SUMS",
+    ):
+        candidate = plugin / relative
+        original = candidate.read_bytes()
+        candidate.unlink()
+        result = run_validator(plugin, require_mcp=True)
+        assert result.returncode == 1
+        assert (
+            "required packaged regular file is missing" in result.stdout
+            or "requires a complete checksum" in result.stdout
+        )
+        candidate.parent.mkdir(parents=True, exist_ok=True)
+        candidate.write_bytes(original)
+        if relative != "SHA256SUMS":
+            write_packaged_checksums(plugin)
+
+
+def test_stdio_command_is_one_token_and_packaged_launch_is_exact(tmp_path: Path) -> None:
+    plugin = tmp_path / "vibesnake-agent"
+    shutil.copytree(SOURCE_PLUGIN, plugin)
+    complete_packaged_fixture(plugin)
+    configuration_path = plugin / "mcp.json"
+    configuration = json.loads(configuration_path.read_text(encoding="utf-8"))
+    server = configuration["mcpServers"]["vibesnake-agent"]
+
+    server["command"] = "dotnet --info"
+    configuration_path.write_text(json.dumps(configuration), encoding="utf-8")
+    write_packaged_checksums(plugin)
+    command_result = run_validator(plugin, require_mcp=True)
+    assert command_result.returncode == 1
+    assert "command must be one nonempty executable token" in command_result.stdout
+
+    server["command"] = "dotnet"
+    server["args"] = ["${PLUGIN_ROOT}/bin/missing.dll"]
+    configuration_path.write_text(json.dumps(configuration), encoding="utf-8")
+    write_packaged_checksums(plugin)
+    argument_result = run_validator(plugin, require_mcp=True)
+    assert argument_result.returncode == 1
+    assert "packaged args must contain only the declared Agent Host assembly" in argument_result.stdout
 
 
 def test_invalid_plugin_reports_closed_schema_and_runtime_boundaries(tmp_path: Path) -> None:

@@ -28,7 +28,7 @@ public sealed class AgentViewerClient : IDisposable
     private readonly string _accessToken;
     private readonly CancellationTokenSource _shutdown = new();
     private readonly Task _readerTask;
-    private AgentViewerFrameV2? _latestFrame;
+    private AgentViewerFrameV3? _latestFrame;
     private AgentViewerClientState _state = AgentViewerClientState.Connecting;
     private string _status = "CONNECTING TO AGENT MATCH";
     private bool _disposed;
@@ -69,7 +69,7 @@ public sealed class AgentViewerClient : IDisposable
         }
     }
 
-    public bool TryTakeLatest(out AgentViewerFrameV2? frame)
+    public bool TryTakeLatest(out AgentViewerFrameV3? frame)
     {
         lock (_sync)
         {
@@ -145,11 +145,11 @@ public sealed class AgentViewerClient : IDisposable
                     return;
                 }
 
-                var frame = JsonSerializer.Deserialize<AgentViewerFrameV2>(line, SerializerOptions);
+                var frame = JsonSerializer.Deserialize<AgentViewerFrameV3>(line, SerializerOptions);
                 if (frame is null
-                    || frame.Schema != AgentViewerFrameV2.Contract
+                    || frame.Schema != AgentViewerFrameV3.Contract
                     || frame.Observation is null
-                    || frame.Observation.Schema != AgentObservationV1.Contract
+                    || frame.Observation.Schema != AgentObservationV2.Contract
                     || frame.Sequence <= lastSequence
                     || !HasConsistentOutcome(frame))
                 {
@@ -182,7 +182,7 @@ public sealed class AgentViewerClient : IDisposable
         }
     }
 
-    private static bool HasConsistentOutcome(AgentViewerFrameV2 frame)
+    private static bool HasConsistentOutcome(AgentViewerFrameV3 frame)
     {
         var observation = frame.Observation;
         if (observation.IsActionAwaited)
@@ -207,7 +207,7 @@ public sealed class AgentViewerClient : IDisposable
     }
 
     private static (AgentViewerClientState State, string Status) DescribeFrame(
-        AgentViewerFrameV2 frame) => frame.EndReason switch
+        AgentViewerFrameV3 frame) => frame.EndReason switch
         {
             AgentMatchEndReason.None => (
                 AgentViewerClientState.Watching,
@@ -289,10 +289,10 @@ public sealed class AgentViewerClient : IDisposable
 
 public static class AgentViewerPresentation
 {
-    public static RunSnapshot ProjectSnapshot(AgentObservationV1 observation)
+    public static RunSnapshot ProjectSnapshot(AgentObservationV2 observation)
     {
         ArgumentNullException.ThrowIfNull(observation);
-        if (observation.Schema != AgentObservationV1.Contract
+        if (observation.Schema != AgentObservationV2.Contract
             || observation.Body is null
             || observation.Body.Count == 0
             || observation.PendingDirections is null

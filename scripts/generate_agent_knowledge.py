@@ -74,6 +74,8 @@ def render_bundle(repository_root: Path) -> dict[str, str]:
     host_project = host_project_path.read_text(encoding="utf-8")
     plugin = json.loads(plugin_path.read_text(encoding="utf-8"))
     baseline = json.loads(baseline_path.read_text(encoding="utf-8"))
+    agent_plugins = baseline["agent_plugins"]
+    mcp = baseline["mcp"]
     okf = baseline["okf"]
     okf_version = okf["spec_version"]
     lifecycle = (
@@ -86,7 +88,7 @@ def render_bundle(repository_root: Path) -> dict[str, str]:
     rules_version = _match(rules_identity, r"CurrentVersion = ([0-9]+)", "rules version")
     observation_schema = _match(
         contracts,
-        r"record AgentObservationV1\(.*?Contract = \"([^\"]+)\"",
+        r"record AgentObservationV2\(.*?Contract = \"([^\"]+)\"",
         "observation schema",
     )
     result_schema = _match(
@@ -143,12 +145,12 @@ def render_bundle(repository_root: Path) -> dict[str, str]:
             "",
             "# Actions",
             "",
-            "An agent may choose `continue`, `up`, `right`, `down`, or `left`. In `four-direction-step-v1`, one accepted action advances exactly one clock-free rules step. In the separate `four-direction-burst-v1` division, one initial action is followed by at most 15 straight continuations and stops under fixed `decision-event-stop-v1` public events or a closed terminal, cap, replay-failure, or requested-bound reason.",
+            "An agent may choose `continue`, `up`, `right`, `down`, or `left`. In `four-direction-step-v1`, one accepted action advances exactly one clock-free rules step. In the separate `four-direction-burst-v1` division, one initial action is followed by at most 15 straight continuations and stops under fixed `decision-event-stop-v1` public events, a selected lesson's first target transition, or a closed terminal, cap, replay-failure, or requested-bound reason.",
             "Each mutation is bound to the observed tick, state hash, and one shared idempotency-key namespace capped at 4,096 unique records per match. Exact retries return cached typed responses; known keys are never evicted, and changed, cross-operation, or post-cap unseen keys advance no additional state.",
             "",
             "# Public observation",
             "",
-            "The observation includes the board, ordered body, direction queue, food, visible powers and obstacles, score, combo, hunger, active effects, adaptive policy, previous public events, episode metrics, and optional style progress.",
+            "The observation includes the board, ordered body, direction queue, food, visible powers and obstacles, score, combo, hunger, active effects, adaptive policy, previous public events, episode metrics, optional style progress, and optional Signal School progress.",
             "It excludes random state, future outcomes, controller internals, profiles, progression, paths, prompts, credentials, diagnostics, and hidden reasoning.",
             "",
             "# Seed divisions",
@@ -167,7 +169,26 @@ def render_bundle(repository_root: Path) -> dict[str, str]:
             ("mcp-tools", "../../native/tools/VibeSnake.AgentHost/McpAgentTools.cs", "MCP tool adapter"),
             ("mcp-resources", "../../native/tools/VibeSnake.AgentHost/AgentResources.cs", "MCP resources"),
             ("plugin-manifest", "../vibesnake-agent-plugin/plugin.json", "Agent Plugin manifest"),
-            ("agent-plugins-spec", "https://agent-plugins.org/specification", "Agent Plugins 1.0.0 specification"),
+            (
+                "agent-plugins-normative-spec",
+                agent_plugins["spec_source_url"],
+                "Immutable Agent Plugins 1.0.0 normative specification",
+            ),
+            (
+                "agent-plugins-website",
+                "https://agent-plugins.org/specification",
+                "Agent Plugins public specification website",
+            ),
+            (
+                "mcp-specification",
+                f"https://modelcontextprotocol.io/specification/{mcp['protocol_version']}",
+                f"Model Context Protocol {mcp['protocol_version']} specification",
+            ),
+            (
+                "mcp-csharp-sdk",
+                f"https://github.com/modelcontextprotocol/csharp-sdk/releases/tag/v{mcp['sdk_version']}",
+                f"Official C# SDK {mcp['sdk_version']} release",
+            ),
         ],
         *lifecycle,
     ) + "\n".join(
@@ -215,8 +236,8 @@ def render_bundle(repository_root: Path) -> dict[str, str]:
             "",
             *(f"* `{lesson_id}`" for lesson_id in lesson_ids),
             "",
-            "Lessons declare an official mode, practice seed, step cap, metric, and target. Qualification should use separate withheld blind seeds and versioned divisions.",
-            "Bounded symbolic bursts reduce routine tool-call cost before lesson-selectable sessions are added, while preserving exact replay, metric, rival-step, and division identity.",
+            "Call `start_lesson` with one published lesson ID to create its canonical open-seed practice session. Every observation returns the instruction and primary-metric progress; accepted moves and bursts return exact progress deltas, and verified finalization returns a replay-hash-bound outcome. Reaching a practice target is not mastery or qualification.",
+            "Bounded symbolic bursts reduce routine tool-call cost and stop when the selected lesson target first transitions to reached, while preserving exact replay, metric, and control-division identity. The complete eight-behavior curriculum and withheld-seed qualification remain future work.",
             "",
         )
     )
@@ -236,7 +257,7 @@ def render_bundle(repository_root: Path) -> dict[str, str]:
         (
             "# Verified result",
             "",
-            f"A successfully finalized completed, capped, or explicitly finished match returns `{result_schema}` with final state hash, replay payload hash, rules and mode identity, outcome, metrics, and verification code. Failed-closed finalization returns neither a verified result nor a verified replay.",
+            f"A successfully finalized completed, capped, or explicitly finished match returns `{result_schema}` with final state hash, replay payload hash, rules and mode identity, outcome, metrics, and verification code. A Signal School result also carries a primary-metric outcome reconstructed from the verified replay and bound to that replay payload hash. Failed-closed finalization returns neither a verified result nor a verified replay.",
             "",
             "# Persistence",
             "",

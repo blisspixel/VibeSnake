@@ -33,6 +33,17 @@ SKILL_FIELDS = {
 PLUGIN_NAME = re.compile(r"^(?!.*(?:--|\.\.))[a-z0-9](?:[a-z0-9.-]{0,62}[a-z0-9])?$")
 SKILL_NAME = re.compile(r"^(?!.*--)[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$")
 SHA256 = re.compile(r"^[0-9a-f]{64}$")
+COMMAND_TOKEN = re.compile(r"^[^\s\x00-\x1f\x7f]+$")
+PACKAGED_SERVER_NAME = "vibesnake-agent"
+PACKAGED_HOST_ARGUMENT = "${PLUGIN_ROOT}/bin/VibeSnake.AgentHost.dll"
+PACKAGED_REQUIRED_FILES = (
+    "plugin.json",
+    "mcp.json",
+    "skills/play-vibesnake/SKILL.md",
+    "LICENSE",
+    "NOTICE",
+    "bin/VibeSnake.AgentHost.dll",
+)
 
 
 class _UniqueKeyLoader(yaml.SafeLoader):
@@ -198,8 +209,8 @@ def _validate_stdio(root: Path, label: str, value: dict[str, Any], problems: lis
     allowed = {"type", "command", "args", "env", "cwd"}
     _reject_unknown(value, allowed, label, problems)
     command = value.get("command")
-    if not isinstance(command, str) or not command:
-        problems.append(f"{label}: command must be a nonempty string")
+    if not isinstance(command, str) or COMMAND_TOKEN.fullmatch(command) is None:
+        problems.append(f"{label}: command must be one nonempty executable token")
     elif command.startswith("./"):
         executable = root / command[2:]
         if not _is_contained(root, executable):
@@ -268,6 +279,8 @@ def _validate_mcp(root: Path, require_mcp: bool, problems: list[str]) -> None:
         return
     if require_mcp and not servers:
         problems.append("mcp.json: packaged plugin must declare a server")
+    if require_mcp and set(servers) != {PACKAGED_SERVER_NAME}:
+        problems.append("mcp.json: packaged plugin must declare exactly the vibesnake-agent server")
     for name, server in servers.items():
         label = f"mcp.json server {name}"
         if not isinstance(server, dict):
@@ -276,13 +289,28 @@ def _validate_mcp(root: Path, require_mcp: bool, problems: list[str]) -> None:
         server_type = server.get("type")
         if server_type == "stdio":
             _validate_stdio(root, label, server, problems)
+            if require_mcp and name == PACKAGED_SERVER_NAME:
+                if server.get("command") != "dotnet":
+                    problems.append(f"{label}: packaged command must be dotnet")
+                if server.get("args") != [PACKAGED_HOST_ARGUMENT]:
+                    problems.append(f"{label}: packaged args must contain only the declared Agent Host assembly")
+                if server.get("cwd") != "${PLUGIN_ROOT}":
+                    problems.append(f"{label}: packaged cwd must be ${{PLUGIN_ROOT}}")
         else:
             problems.append(f"{label}: Vibe Snake's producer profile supports only stdio")
 
 
-def _validate_checksums(root: Path, problems: list[str]) -> None:
+def _validate_packaged_components(root: Path, problems: list[str]) -> None:
+    for relative in PACKAGED_REQUIRED_FILES:
+        if not (root / relative).is_file():
+            problems.append(f"{relative}: required packaged regular file is missing")
+
+
+def _validate_checksums(root: Path, required: bool, problems: list[str]) -> None:
     checksum_path = root / "SHA256SUMS"
     if not checksum_path.exists():
+        if required:
+            problems.append("SHA256SUMS: packaged plugin requires a complete checksum manifest")
         return
     if not checksum_path.is_file():
         problems.append("SHA256SUMS: fixed component location must be a regular file")
@@ -336,7 +364,9 @@ def validate_plugin(root: Path, require_mcp: bool = False) -> tuple[str, ...]:
     _validate_manifest(root, problems)
     _validate_skills(root, problems)
     _validate_mcp(root, require_mcp, problems)
-    _validate_checksums(root, problems)
+    if require_mcp:
+        _validate_packaged_components(root, problems)
+    _validate_checksums(root, require_mcp, problems)
     return tuple(problems)
 
 

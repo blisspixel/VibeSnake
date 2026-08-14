@@ -73,11 +73,6 @@ $mcpJson = $mcpConfiguration | ConvertTo-Json -Depth 8
     $mcpJson + [Environment]::NewLine,
     [System.Text.UTF8Encoding]::new($false))
 
-python $validator $target --require-mcp
-if ($LASTEXITCODE -ne 0) {
-    throw "The assembled Agent Plugin failed producer validation."
-}
-
 $checksumLines = Get-ChildItem -LiteralPath $target -File -Recurse |
     Where-Object { $_.Name -ne "SHA256SUMS" } |
     Sort-Object FullName |
@@ -90,5 +85,10 @@ $checksumLines = Get-ChildItem -LiteralPath $target -File -Recurse |
     (Join-Path $target "SHA256SUMS"),
     $checksumLines,
     [System.Text.UTF8Encoding]::new($false))
+
+python $validator $target --require-mcp
+if ($LASTEXITCODE -ne 0) {
+    throw "The assembled Agent Plugin failed producer validation."
+}
 
 Write-Output "Agent Plugin package: $target"

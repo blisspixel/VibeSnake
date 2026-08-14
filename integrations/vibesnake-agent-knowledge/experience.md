@@ -3,8 +3,8 @@ type: "Curriculum"
 title: "Vibe Snake Signal School and Style Contracts"
 description: "Deterministic lessons and self-selected public goals for agent-native play."
 tags: [vibesnake, curriculum, styles, evaluation]
-generated: { by: process:vibesnake-okf-generator, at: 2026-08-13T21:30:45Z }
-verified: { by: process:vibesnake-quality-gate, at: 2026-08-13T21:30:56Z }
+generated: { by: process:vibesnake-okf-generator, at: 2026-08-14T00:23:09Z }
+verified: { by: process:vibesnake-quality-gate, at: 2026-08-14T00:23:09Z }
 stale_after: "2026-11-13"
 status: draft
 sources:
@@ -34,5 +34,5 @@ A style contract reports progress from public episode metrics. It does not chang
 * `combo-route`
 * `recover-route`
 
-Lessons declare an official mode, practice seed, step cap, metric, and target. Qualification should use separate withheld blind seeds and versioned divisions.
-Bounded symbolic bursts reduce routine tool-call cost before lesson-selectable sessions are added, while preserving exact replay, metric, rival-step, and division identity.
+Call `start_lesson` with one published lesson ID to create its canonical open-seed practice session. Every observation returns the instruction and primary-metric progress; accepted moves and bursts return exact progress deltas, and verified finalization returns a replay-hash-bound outcome. Reaching a practice target is not mastery or qualification.
+Bounded symbolic bursts reduce routine tool-call cost and stop when the selected lesson target first transitions to reached, while preserving exact replay, metric, and control-division identity. The complete eight-behavior curriculum and withheld-seed qualification remain future work.

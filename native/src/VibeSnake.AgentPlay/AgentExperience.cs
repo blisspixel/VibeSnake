@@ -154,17 +154,62 @@ public sealed record AgentSignalLessonDefinition(
     ulong PracticeSeed,
     int MaximumSteps,
     AgentExperienceMetric Metric,
-    int Target);
+    int Target,
+    string EvaluationPolicyId);
+
+public sealed record AgentLessonProgressV1(
+    string Schema,
+    string LessonId,
+    string Title,
+    string Instruction,
+    string EvaluationPolicyId,
+    AgentExperienceMetric Metric,
+    int Current,
+    int Target,
+    int Remaining,
+    bool TargetReached)
+{
+    public const string Contract = "vibesnake-agent-lesson-progress-v1";
+}
+
+public sealed record AgentLessonProgressDeltaV1(
+    string Schema,
+    string LessonId,
+    AgentExperienceMetric Metric,
+    int Previous,
+    int Current,
+    int Delta,
+    int Target,
+    bool TargetReachedThisMutation)
+{
+    public const string Contract = "vibesnake-agent-lesson-progress-delta-v1";
+}
+
+public sealed record AgentLessonOutcomeV1(
+    string Schema,
+    string LessonId,
+    string EvaluationPolicyId,
+    AgentExperienceMetric Metric,
+    int FinalValue,
+    int Target,
+    int Shortfall,
+    bool TargetReached,
+    string ReplayPayloadHash)
+{
+    public const string Contract = "vibesnake-agent-lesson-outcome-v1";
+}
 
 public static class AgentSignalSchoolCatalog
 {
+    public const string PrimaryMetricEvaluationPolicy = "primary-public-metric-v1";
+
     public static IReadOnlyList<AgentSignalLessonDefinition> All { get; } =
         Array.AsReadOnly(new[]
         {
             Lesson(
                 "first-turn",
                 "First Signal",
-                "Make one accepted turn without attempting a reversal.",
+                "Reach one accepted direction change.",
                 RunModeCatalog.ClassicId,
                 7UL,
                 16,
@@ -173,7 +218,7 @@ public static class AgentSignalSchoolCatalog
             Lesson(
                 "wrap-line",
                 "Open Circuit",
-                "Cross one board edge intentionally and continue safely.",
+                "Produce one typed board-wrap event.",
                 RunModeCatalog.ClassicId,
                 65_535UL,
                 160,
@@ -182,7 +227,7 @@ public static class AgentSignalSchoolCatalog
             Lesson(
                 "hunger-route",
                 "Feed the Signal",
-                "Collect food while playing under Vibe hunger pressure.",
+                "Collect one food under Vibe rules.",
                 RunModeCatalog.VibeId,
                 4_294_967_291UL,
                 180,
@@ -191,7 +236,7 @@ public static class AgentSignalSchoolCatalog
             Lesson(
                 "power-route",
                 "Tune the Current",
-                "Collect and activate one visible power.",
+                "Activate one visible power.",
                 RunModeCatalog.VibeId,
                 32_452_843UL,
                 320,
@@ -200,7 +245,7 @@ public static class AgentSignalSchoolCatalog
             Lesson(
                 "combo-route",
                 "Hold the Chorus",
-                "Reach a three-food combo without letting the route collapse.",
+                "Reach a peak combo of three.",
                 RunModeCatalog.VibeId,
                 49_979_687UL,
                 480,
@@ -209,9 +254,9 @@ public static class AgentSignalSchoolCatalog
             Lesson(
                 "recover-route",
                 "Return from Static",
-                "Use protection to recover from one attributable collision.",
+                "Produce one typed collision-prevented recovery.",
                 RunModeCatalog.VibeId,
-                4_294_967_291UL,
+                0UL,
                 600,
                 AgentExperienceMetric.Recoveries,
                 1),
@@ -226,9 +271,51 @@ public static class AgentSignalSchoolCatalog
 
     public static bool IsCompleted(string id, AgentEpisodeMetricsV1 metrics)
     {
+        return Evaluate(id, metrics).TargetReached;
+    }
+
+    public static AgentLessonProgressV1 Evaluate(
+        string id,
+        AgentEpisodeMetricsV1 metrics)
+    {
         ArgumentNullException.ThrowIfNull(metrics);
         var lesson = Get(id);
-        return metrics.ValueFor(lesson.Metric) >= lesson.Target;
+        var current = metrics.ValueFor(lesson.Metric);
+        return new AgentLessonProgressV1(
+            AgentLessonProgressV1.Contract,
+            lesson.Id,
+            lesson.Title,
+            lesson.Instruction,
+            lesson.EvaluationPolicyId,
+            lesson.Metric,
+            current,
+            lesson.Target,
+            Math.Max(0, lesson.Target - current),
+            current >= lesson.Target);
+    }
+
+    public static AgentLessonProgressDeltaV1 Delta(
+        AgentLessonProgressV1 previous,
+        AgentLessonProgressV1 current)
+    {
+        ArgumentNullException.ThrowIfNull(previous);
+        ArgumentNullException.ThrowIfNull(current);
+        if (previous.LessonId != current.LessonId
+            || previous.Metric != current.Metric
+            || previous.Target != current.Target)
+        {
+            throw new ArgumentException("Lesson progress values must describe the same target.");
+        }
+
+        return new AgentLessonProgressDeltaV1(
+            AgentLessonProgressDeltaV1.Contract,
+            current.LessonId,
+            current.Metric,
+            previous.Current,
+            current.Current,
+            current.Current - previous.Current,
+            current.Target,
+            !previous.TargetReached && current.TargetReached);
     }
 
     private static AgentSignalLessonDefinition Lesson(
@@ -240,7 +327,16 @@ public static class AgentSignalSchoolCatalog
         int maximumSteps,
         AgentExperienceMetric metric,
         int target) =>
-        new(id, title, instruction, modeId, practiceSeed, maximumSteps, metric, target);
+        new(
+            id,
+            title,
+            instruction,
+            modeId,
+            practiceSeed,
+            maximumSteps,
+            metric,
+            target,
+            PrimaryMetricEvaluationPolicy);
 }
 
 internal sealed class AgentEpisodeMetricsTracker
@@ -304,4 +400,20 @@ internal sealed class AgentEpisodeMetricsTracker
             _recoveries,
             _starvationWarnings,
             _directionChanges);
+}
+
+internal static class AgentEpisodeMetricsReplayEvaluator
+{
+    public static AgentEpisodeMetricsV1 Evaluate(RunReplay replay)
+    {
+        ArgumentNullException.ThrowIfNull(replay);
+        var playback = new RunReplayPlayback(replay);
+        var metrics = new AgentEpisodeMetricsTracker();
+        while (playback.TryAdvance(out var frame))
+        {
+            metrics.Record(frame!.Result, frame.Snapshot);
+        }
+
+        return metrics.Snapshot(playback.StepIndex);
+    }
 }

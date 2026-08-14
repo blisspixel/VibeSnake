@@ -237,7 +237,7 @@ jobs:
       - name: Test native rules with coverage floor
         shell: pwsh
         env:
-          VIBESNAKE_AGENT_HOST_ASSEMBLY: ${{ github.workspace }}/TestResults/agent-plugin/portable/vibesnake-agent/bin/VibeSnake.AgentHost.dll
+          VIBESNAKE_AGENT_PLUGIN_ROOT: ${{ github.workspace }}/TestResults/agent-plugin/portable/vibesnake-agent
         run: ./scripts/test_native_coverage.ps1
 
       - name: Upload native parity divergence evidence

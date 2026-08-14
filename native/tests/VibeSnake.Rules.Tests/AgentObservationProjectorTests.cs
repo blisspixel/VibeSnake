@@ -91,7 +91,7 @@ public sealed class AgentObservationProjectorTests
             metrics,
             rival: null);
 
-        Assert.Equal(AgentObservationV1.Contract, observation.Schema);
+        Assert.Equal(AgentObservationV2.Contract, observation.Schema);
         Assert.Equal("projection", observation.MatchId);
         Assert.Equal(RulesetIdentity.CurrentId, observation.RulesetId);
         Assert.Equal(RulesetIdentity.CurrentVersion, observation.RulesVersion);
@@ -242,7 +242,7 @@ public sealed class AgentObservationProjectorTests
             "Diagnostic",
             "Future",
         ];
-        var propertyNames = typeof(AgentObservationV1)
+        var propertyNames = typeof(AgentObservationV2)
             .GetProperties()
             .Select(property => property.Name)
             .ToArray();

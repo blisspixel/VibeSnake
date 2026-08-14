@@ -84,13 +84,8 @@ public sealed class AgentViewerClientTests
             new ReplayStore(temporary.Path),
             () => "match_godot_viewer",
             () => 321UL);
-        var started = registry.StartMatch(
-            RunModeCatalog.VibeId,
-            AgentSeedVisibility.Open,
-            "321",
-            maximumSteps: 1,
-            styleContractId: AgentStyleContractCatalog.StillwaterId,
-            rivalPersonalityId: "optimal",
+        var started = registry.StartLesson(
+            "first-turn",
             watchEnabled: true,
             passport: new AgentPassportV1(
                 AgentPassportV1.Contract,
@@ -131,6 +126,7 @@ public sealed class AgentViewerClientTests
             started.Observation.StateHash,
             AgentAction.Up,
             AgentPublicIntent.TakeRisk);
+        _ = registry.Finish(started.MatchHandle);
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(45));
         try
         {
@@ -203,8 +199,8 @@ public sealed class AgentViewerClientTests
             RunModeCatalog.CurrentModeVersion,
             3UL,
             AgentSeedVisibility.Open)).Observe();
-        var validFrame = new AgentViewerFrameV2(
-            AgentViewerFrameV2.Contract,
+        var validFrame = new AgentViewerFrameV3(
+            AgentViewerFrameV3.Contract,
             0,
             observation,
             AgentMatchEndReason.None,
@@ -306,26 +302,26 @@ public sealed class AgentViewerClientTests
             Lifecycle = AgentMatchLifecycle.FailedClosed,
             IsActionAwaited = false,
         };
-        (AgentViewerFrameV2 Frame, AgentViewerClientState State, string Status)[] cases =
+        (AgentViewerFrameV3 Frame, AgentViewerClientState State, string Status)[] cases =
         [
-            (new AgentViewerFrameV2(
-                AgentViewerFrameV2.Contract,
+            (new AgentViewerFrameV3(
+                AgentViewerFrameV3.Contract,
                 0,
                 completed,
                 AgentMatchEndReason.RulesTerminal,
                 VerifiedResultAvailable: true),
                 AgentViewerClientState.Completed,
                 "ENDED BY RULES"),
-            (new AgentViewerFrameV2(
-                AgentViewerFrameV2.Contract,
+            (new AgentViewerFrameV3(
+                AgentViewerFrameV3.Contract,
                 0,
                 aborted,
                 AgentMatchEndReason.AgentFinished,
                 VerifiedResultAvailable: true),
                 AgentViewerClientState.Completed,
                 "AGENT FINISHED MATCH"),
-            (new AgentViewerFrameV2(
-                AgentViewerFrameV2.Contract,
+            (new AgentViewerFrameV3(
+                AgentViewerFrameV3.Contract,
                 0,
                 failed,
                 AgentMatchEndReason.ReplayFailure,
@@ -406,7 +402,7 @@ public sealed class AgentViewerClientTests
         Assert.Equal(new GridPoint(7, 8), projected.BaitPosition);
     }
 
-    private static string SerializeFrame(AgentViewerFrameV2 frame) =>
+    private static string SerializeFrame(AgentViewerFrameV3 frame) =>
         JsonSerializer.Serialize(frame, ViewerJsonOptions) + "\n";
 
     private static string CreateTestPipeName() =>
@@ -422,7 +418,7 @@ public sealed class AgentViewerClientTests
         return options;
     }
 
-    private static async Task<AgentViewerFrameV2> TakeFrameAsync(
+    private static async Task<AgentViewerFrameV3> TakeFrameAsync(
         AgentViewerClient client,
         long minimumSequence = 0)
     {

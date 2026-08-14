@@ -259,6 +259,69 @@ public sealed class AgentMatchSessionTests
     }
 
     [Fact]
+    public void Lesson_step_and_burst_report_equivalent_idempotent_progress()
+    {
+        var lesson = AgentSignalSchoolCatalog.Get("first-turn");
+        var step = new AgentMatchSession(new AgentMatchOptions(
+            "lesson-step",
+            lesson.ModeId,
+            RunModeCatalog.CurrentModeVersion,
+            lesson.PracticeSeed,
+            AgentSeedVisibility.Open,
+            lesson.MaximumSteps,
+            lessonId: lesson.Id));
+        var burst = new AgentMatchSession(new AgentMatchOptions(
+            "lesson-burst",
+            lesson.ModeId,
+            RunModeCatalog.CurrentModeVersion,
+            lesson.PracticeSeed,
+            AgentSeedVisibility.Open,
+            lesson.MaximumSteps,
+            actionProfile: AgentPassportV1.FourDirectionBurstActionProfile,
+            lessonId: lesson.Id));
+        var stepInitial = step.Observe();
+        var burstInitial = burst.Observe();
+        var stepRequest = Request("lesson-step-1", stepInitial, AgentAction.Up);
+        var burstRequest = new AgentBurstRequest(
+            "lesson-burst-1",
+            burstInitial.Tick,
+            burstInitial.StateHash,
+            AgentAction.Up,
+            maximumSteps: AgentBurstRequest.MaximumBurstSteps);
+
+        var rejected = step.SubmitAction(new AgentActionRequest(
+            "lesson-stale",
+            stepInitial.Tick + 1,
+            stepInitial.StateHash,
+            AgentAction.Up));
+        var stepResponse = step.SubmitAction(stepRequest);
+        var burstResponse = burst.SubmitBurst(burstRequest);
+        var stepRetry = step.SubmitAction(stepRequest);
+        var burstRetry = burst.SubmitBurst(burstRequest);
+        var stepResult = step.Finish();
+        var burstResult = burst.Finish();
+
+        Assert.Same(stepResponse, stepRetry);
+        Assert.Same(burstResponse, burstRetry);
+        Assert.False(rejected.Accepted);
+        Assert.False(rejected.RulesAdvanced);
+        Assert.Equal(AgentActionRejection.StaleTick, rejected.Rejection);
+        Assert.Equal(0, rejected.LessonDelta!.Delta);
+        Assert.False(rejected.LessonDelta.TargetReachedThisMutation);
+        Assert.Equal(stepInitial.LessonProgress, rejected.Observation.LessonProgress);
+        Assert.Equal(stepResponse.Observation.StateHash, burstResponse.Observation.StateHash);
+        Assert.Equal(1, burstResponse.StepsAdvanced);
+        Assert.Equal(AgentBurstStopReason.LessonTargetReached, burstResponse.StopReason);
+        Assert.Null(burstResponse.MatchResult);
+        Assert.Equal(stepResponse.Observation.LessonProgress, burstResponse.Observation.LessonProgress);
+        Assert.Equal(stepResponse.LessonDelta, burstResponse.LessonDelta);
+        Assert.Equal(1, stepResponse.LessonDelta!.Delta);
+        Assert.True(stepResponse.LessonDelta.TargetReachedThisMutation);
+        Assert.Equal(stepResult.ReplayPayloadHash, burstResult.ReplayPayloadHash);
+        Assert.Equal(stepResult.LessonOutcome, burstResult.LessonOutcome);
+    }
+
+    [Fact]
     public void Burst_stops_at_first_public_decision_event_and_remains_bounded()
     {
         var session = CreateBurstSession(maximumSteps: 100);
@@ -808,12 +871,12 @@ public sealed class AgentMatchSessionTests
 
     private static AgentActionRequest Request(
         string key,
-        AgentObservationV1 observation,
+        AgentObservationV2 observation,
         AgentAction action,
         AgentPublicIntent declaredIntent = AgentPublicIntent.Undeclared) =>
         new(key, observation.Tick, observation.StateHash, action, declaredIntent);
 
-    private static AgentAction ChooseStarvationAction(AgentObservationV1 observation)
+    private static AgentAction ChooseStarvationAction(AgentObservationV2 observation)
     {
         Direction[] candidates =
         [
@@ -881,13 +944,13 @@ public sealed class AgentMatchSessionTests
 
     private sealed class RecordingViewerSink : IAgentViewerSink
     {
-        public List<AgentViewerFrameV2> Frames { get; } = [];
+        public List<AgentViewerFrameV3> Frames { get; } = [];
 
         public int Attempts { get; private set; }
 
         public bool Throw { get; set; }
 
-        public bool TryPublish(AgentViewerFrameV2 frame)
+        public bool TryPublish(AgentViewerFrameV3 frame)
         {
             Attempts++;
             if (Throw)

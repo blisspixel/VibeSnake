@@ -36,7 +36,7 @@ public sealed class AgentSessionRegistry : IDisposable
         _timeProvider = timeProvider ?? TimeProvider.System;
     }
 
-    public StartAgentMatchV1 StartMatch(
+    public StartAgentMatchV2 StartMatch(
         string modeId,
         AgentSeedVisibility seedVisibility,
         string? gameplaySeed,
@@ -45,7 +45,50 @@ public sealed class AgentSessionRegistry : IDisposable
         string? rivalPersonalityId = null,
         bool watchEnabled = false,
         AgentPassportV1? passport = null,
+        string actionProfile = AgentPassportV1.FourDirectionActionProfile) =>
+        StartMatchCore(
+            modeId,
+            seedVisibility,
+            gameplaySeed,
+            maximumSteps,
+            styleContractId,
+            rivalPersonalityId,
+            watchEnabled,
+            passport,
+            actionProfile,
+            lessonId: null);
+
+    public StartAgentMatchV2 StartLesson(
+        string lessonId,
+        bool watchEnabled = false,
+        AgentPassportV1? passport = null,
         string actionProfile = AgentPassportV1.FourDirectionActionProfile)
+    {
+        var lesson = AgentSignalSchoolCatalog.Get(lessonId);
+        return StartMatchCore(
+            lesson.ModeId,
+            AgentSeedVisibility.Open,
+            lesson.PracticeSeed.ToString(CultureInfo.InvariantCulture),
+            lesson.MaximumSteps,
+            styleContractId: null,
+            rivalPersonalityId: null,
+            watchEnabled,
+            passport,
+            actionProfile,
+            lesson.Id);
+    }
+
+    private StartAgentMatchV2 StartMatchCore(
+        string modeId,
+        AgentSeedVisibility seedVisibility,
+        string? gameplaySeed,
+        int? maximumSteps,
+        string? styleContractId,
+        string? rivalPersonalityId,
+        bool watchEnabled,
+        AgentPassportV1? passport,
+        string actionProfile,
+        string? lessonId)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(modeId);
         if (!RunModeCatalog.IsSupportedIdentity(
@@ -88,7 +131,8 @@ public sealed class AgentSessionRegistry : IDisposable
                 styleContractId,
                 rivalPersonalityId,
                 passport,
-                actionProfile);
+                actionProfile,
+                lessonId);
             AgentViewerServer? viewer = null;
             try
             {
@@ -102,8 +146,8 @@ public sealed class AgentSessionRegistry : IDisposable
                         _nextOrder++,
                         _timeProvider.GetTimestamp(),
                         viewer));
-                return new StartAgentMatchV1(
-                    StartAgentMatchV1.Contract,
+                return new StartAgentMatchV2(
+                    StartAgentMatchV2.Contract,
                     handle,
                     RetentionPolicy,
                     session.Observe(),
@@ -117,17 +161,17 @@ public sealed class AgentSessionRegistry : IDisposable
         }
     }
 
-    public AgentObservationV1 Observe(string matchHandle) =>
+    public AgentObservationV2 Observe(string matchHandle) =>
         GetSession(matchHandle).Observe();
 
-    public AgentActionResponseV1 PlayMove(
+    public AgentActionResponseV2 PlayMove(
         string matchHandle,
         string idempotencyKey,
         int expectedTick,
         string expectedStateHash,
         AgentAction action,
         AgentPublicIntent declaredIntent = AgentPublicIntent.Undeclared) =>
-        AgentActionResponseV1.FromResponse(
+        AgentActionResponseV2.FromResponse(
             GetSession(matchHandle).SubmitAction(new AgentActionRequest(
                 idempotencyKey,
                 expectedTick,
@@ -135,7 +179,7 @@ public sealed class AgentSessionRegistry : IDisposable
                 action,
                 declaredIntent)));
 
-    public AgentBurstResponseV1 PlayBurst(
+    public AgentBurstResponseV2 PlayBurst(
         string matchHandle,
         string idempotencyKey,
         int expectedTick,
@@ -143,7 +187,7 @@ public sealed class AgentSessionRegistry : IDisposable
         AgentAction initialAction,
         int maximumSteps,
         AgentPublicIntent declaredIntent = AgentPublicIntent.Undeclared) =>
-        AgentBurstResponseV1.FromResponse(
+        AgentBurstResponseV2.FromResponse(
             GetSession(matchHandle).SubmitBurst(new AgentBurstRequest(
                 idempotencyKey,
                 expectedTick,
@@ -152,17 +196,17 @@ public sealed class AgentSessionRegistry : IDisposable
                 maximumSteps,
                 declaredIntent)));
 
-    public AgentMatchSummaryV1 Finish(string matchHandle) =>
-        AgentMatchSummaryV1.FromResult(GetSession(matchHandle).Finish());
+    public AgentMatchSummaryV2 Finish(string matchHandle) =>
+        AgentMatchSummaryV2.FromResult(GetSession(matchHandle).Finish());
 
-    public AgentMatchResultStatusV1 GetResult(string matchHandle)
+    public AgentMatchResultStatusV2 GetResult(string matchHandle)
     {
         var result = GetSession(matchHandle).GetResult();
-        return new AgentMatchResultStatusV1(
-            AgentMatchResultStatusV1.Contract,
+        return new AgentMatchResultStatusV2(
+            AgentMatchResultStatusV2.Contract,
             matchHandle,
             result is not null,
-            result is null ? null : AgentMatchSummaryV1.FromResult(result));
+            result is null ? null : AgentMatchSummaryV2.FromResult(result));
     }
 
     public AgentReplaySaveV1 SaveVerifiedReplay(string matchHandle)

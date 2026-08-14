@@ -66,6 +66,7 @@ public enum AgentBurstStopReason : byte
     MatchStepLimit = 2,
     RulesTerminal = 3,
     ReplayFailure = 4,
+    LessonTargetReached = 5,
 }
 
 public sealed record AgentPassportV1
@@ -216,7 +217,8 @@ public sealed record AgentMatchOptions
         string? styleContractId = null,
         string? rivalPersonalityId = null,
         AgentPassportV1? passport = null,
-        string actionProfile = AgentPassportV1.FourDirectionActionProfile)
+        string actionProfile = AgentPassportV1.FourDirectionActionProfile,
+        string? lessonId = null)
     {
         ValidateToken(matchId, MaximumMatchIdLength, nameof(matchId));
         if (!RunModeCatalog.IsSupportedIdentity(modeId, modeVersion))
@@ -269,6 +271,22 @@ public sealed record AgentMatchOptions
             _ = AiPersonalityCatalog.GetBuiltIn(rivalPersonalityId);
         }
 
+        if (lessonId is not null)
+        {
+            var lesson = AgentSignalSchoolCatalog.Get(lessonId);
+            if (seedVisibility != AgentSeedVisibility.Open
+                || modeId != lesson.ModeId
+                || gameplaySeed != lesson.PracticeSeed
+                || maximumSteps != lesson.MaximumSteps
+                || styleContractId is not null
+                || rivalPersonalityId is not null)
+            {
+                throw new ArgumentException(
+                    "Signal School lessons require their canonical open seed, mode, step cap, and no style or rival.",
+                    nameof(lessonId));
+            }
+        }
+
         MatchId = matchId;
         ModeId = modeId;
         ModeVersion = modeVersion;
@@ -279,6 +297,7 @@ public sealed record AgentMatchOptions
         RivalPersonalityId = rivalPersonalityId;
         ActionProfile = actionProfile;
         Passport = passport ?? AgentPassportV1.CreateAnonymous(actionProfile);
+        LessonId = lessonId;
     }
 
     public string MatchId { get; }
@@ -300,6 +319,8 @@ public sealed record AgentMatchOptions
     public string ActionProfile { get; }
 
     public AgentPassportV1 Passport { get; }
+
+    public string? LessonId { get; }
 
     internal RunConfig CreateRunConfig() =>
         RunModeCatalog.CreateConfig(RunModeCatalog.Get(ModeId, ModeVersion));
@@ -473,7 +494,7 @@ public sealed record AgentRivalResultV1(
     ReplayVerificationCode ReplayVerificationCode,
     AgentEpisodeMetricsV1 EpisodeMetrics);
 
-public sealed record AgentObservationV1(
+public sealed record AgentObservationV2(
     string Schema,
     string MatchId,
     string RulesetId,
@@ -528,16 +549,18 @@ public sealed record AgentObservationV1(
     bool IsActionAwaited,
     AgentEpisodeMetricsV1 EpisodeMetrics,
     AgentStyleProgressV1? StyleContract,
+    AgentLessonProgressV1? LessonProgress,
     AgentRivalObservationV1? Rival)
 {
-    public const string Contract = "vibesnake-agent-observation-v1";
+    public const string Contract = "vibesnake-agent-observation-v2";
 }
 
 public sealed record AgentActionResponse(
     bool Accepted,
     bool RulesAdvanced,
     AgentActionRejection Rejection,
-    AgentObservationV1 Observation,
+    AgentLessonProgressDeltaV1? LessonDelta,
+    AgentObservationV2 Observation,
     AgentMatchResult? MatchResult);
 
 public sealed record AgentBurstResponse(
@@ -547,7 +570,8 @@ public sealed record AgentBurstResponse(
     int StepsAdvanced,
     AgentBurstStopReason? StopReason,
     RunEventKind? StopEvent,
-    AgentObservationV1 Observation,
+    AgentLessonProgressDeltaV1? LessonDelta,
+    AgentObservationV2 Observation,
     AgentMatchResult? MatchResult);
 
 public sealed record AgentMatchResult(
@@ -573,9 +597,10 @@ public sealed record AgentMatchResult(
     ReplayVerificationCode ReplayVerificationCode,
     AgentEpisodeMetricsV1 EpisodeMetrics,
     AgentStyleProgressV1? StyleContract,
+    AgentLessonOutcomeV1? LessonOutcome,
     AgentRivalResultV1? Rival,
     RunReplay VerifiedReplay,
     RunReplay? VerifiedRivalReplay)
 {
-    public const string Contract = "vibesnake-agent-match-result-v1";
+    public const string Contract = "vibesnake-agent-match-result-v2";
 }

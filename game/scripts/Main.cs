@@ -167,7 +167,7 @@ public partial class Main : Node2D
     private bool _spectatorKeyboardRouteQualified;
     private bool _spectatorControllerRouteQualified;
     private AgentViewerClient? _agentViewer;
-    private AgentViewerFrameV2? _agentViewerFrame;
+    private AgentViewerFrameV3? _agentViewerFrame;
     private RunSnapshot? _agentViewerSnapshot;
     private string _agentViewerStatusId = "status.agent-viewer.connecting";
     private bool _agentViewerSmokeEnabled;
@@ -9555,6 +9555,20 @@ public partial class Main : Node2D
         _ => throw new ArgumentOutOfRangeException(nameof(intent)),
     };
 
+    private static string AgentLessonMetricCopyId(AgentExperienceMetric metric) => metric switch
+    {
+        AgentExperienceMetric.SurvivalSteps => "agent-arena.lesson.metric.survival-steps",
+        AgentExperienceMetric.FoodEaten => "agent-arena.lesson.metric.food-eaten",
+        AgentExperienceMetric.PeakCombo => "agent-arena.lesson.metric.peak-combo",
+        AgentExperienceMetric.Wraps => "agent-arena.lesson.metric.wraps",
+        AgentExperienceMetric.NearMisses => "agent-arena.lesson.metric.near-misses",
+        AgentExperienceMetric.PowersCollected => "agent-arena.lesson.metric.powers-collected",
+        AgentExperienceMetric.PowersActivated => "agent-arena.lesson.metric.powers-activated",
+        AgentExperienceMetric.Recoveries => "agent-arena.lesson.metric.recoveries",
+        AgentExperienceMetric.DirectionChanges => "agent-arena.lesson.metric.direction-changes",
+        _ => throw new ArgumentOutOfRangeException(nameof(metric)),
+    };
+
     private static string AgentActionFeedbackCopyId(AgentPreviousActionV1? action)
     {
         if (action is null)
@@ -9710,15 +9724,32 @@ public partial class Main : Node2D
         var panel = ActiveShellPalette.CanvasBackground;
         panel.A = 0.90f;
         DrawRect(new Rect2(20.0f, 610.0f, 1240.0f, 108.0f), panel);
-        var style = observation.StyleContract is null
-            ? Localize("agent-arena.style.open")
-            : Localize(
-                "agent-arena.style.progress",
+        var style = observation.LessonProgress is not null
+            ? Localize(
+                !observation.LessonProgress.TargetReached
+                    ? "agent-arena.lesson.progress"
+                    : _agentViewerFrame.VerifiedResultAvailable
+                        ? "agent-arena.lesson.verified"
+                        : observation.Lifecycle == AgentMatchLifecycle.FailedClosed
+                            ? "agent-arena.lesson.unverified"
+                            : "agent-arena.lesson.hit",
                 ShellTextArgument.From(
-                    "style",
-                    observation.StyleContract.DisplayName.ToUpperInvariant()),
-                ShellTextArgument.From("current", observation.StyleContract.Current),
-                ShellTextArgument.From("target", observation.StyleContract.Target));
+                    "lesson",
+                    observation.LessonProgress.Title.ToUpperInvariant()),
+                ShellTextArgument.From(
+                    "metric",
+                    Localize(AgentLessonMetricCopyId(observation.LessonProgress.Metric))),
+                ShellTextArgument.From("current", observation.LessonProgress.Current),
+                ShellTextArgument.From("target", observation.LessonProgress.Target))
+            : observation.StyleContract is null
+                ? Localize("agent-arena.style.open")
+                : Localize(
+                    "agent-arena.style.progress",
+                    ShellTextArgument.From(
+                        "style",
+                        observation.StyleContract.DisplayName.ToUpperInvariant()),
+                    ShellTextArgument.From("current", observation.StyleContract.Current),
+                    ShellTextArgument.From("target", observation.StyleContract.Target));
         var rival = observation.Rival is null
             ? Localize("agent-arena.rival.solo")
             : Localize(
@@ -13087,8 +13118,8 @@ public partial class Main : Node2D
 
         const int migratedRequiredFlowCount = 13;
         const double requiredExpansionRatio = 1.30;
-        var passed = ShellLocalization.All.Count == 561
-            && ShellLocalization.All.Count(entry => entry.Parameters.Count > 0) == 79
+        var passed = ShellLocalization.All.Count == 574
+            && ShellLocalization.All.Count(entry => entry.Parameters.Count > 0) == 83
             && migratedRequiredFlowCount == 13
             && minimumExpansionRatio >= requiredExpansionRatio
             && missingGlyphs.Count == 0

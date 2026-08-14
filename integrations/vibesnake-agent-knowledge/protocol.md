@@ -3,8 +3,8 @@ type: "Protocol"
 title: "Vibe Snake MCP agent host"
 description: "The local stdio MCP surface and its portable Agent Plugin packaging."
 tags: [vibesnake, mcp, agent-plugins, stdio]
-generated: { by: process:vibesnake-okf-generator, at: 2026-08-13T21:30:45Z }
-verified: { by: process:vibesnake-quality-gate, at: 2026-08-13T21:30:56Z }
+generated: { by: process:vibesnake-okf-generator, at: 2026-08-14T00:23:09Z }
+verified: { by: process:vibesnake-quality-gate, at: 2026-08-14T00:23:09Z }
 stale_after: "2026-11-13"
 status: draft
 sources:
@@ -17,13 +17,22 @@ sources:
   - id: plugin-manifest
     resource: ../vibesnake-agent-plugin/plugin.json
     title: "Agent Plugin manifest"
-  - id: agent-plugins-spec
+  - id: agent-plugins-normative-spec
+    resource: https://raw.githubusercontent.com/agentplugins/agent-plugins-spec/1fc1b6270e3cc492ec2d24ad7a34277c6d53b9c1/spec/1.0.0.md
+    title: "Immutable Agent Plugins 1.0.0 normative specification"
+  - id: agent-plugins-website
     resource: https://agent-plugins.org/specification
-    title: "Agent Plugins 1.0.0 specification"
+    title: "Agent Plugins public specification website"
+  - id: mcp-specification
+    resource: https://modelcontextprotocol.io/specification/2026-07-28
+    title: "Model Context Protocol 2026-07-28 specification"
+  - id: mcp-csharp-sdk
+    resource: https://github.com/modelcontextprotocol/csharp-sdk/releases/tag/v2.2.0
+    title: "Official C# SDK 2.2.0 release"
 ---
 # Versions
 
-The host version is `0.2.0`. The Agent Plugin version is `0.2.1` and targets `https://agent-plugins.org/schemas/1.0.0/plugin.schema.json`.
+The host version is `0.3.0`. The Agent Plugin version is `0.3.0` and targets `https://agent-plugins.org/schemas/1.0.0/plugin.schema.json`.
 The MCP server targets stable protocol `2026-07-28` through the official C# SDK `2.2.0`.
 Clients must speak the stateless MCP `2026-07-28` era: every request carries protocol metadata, optional discovery uses `server/discover`, and there is no protocol session. Legacy `initialize` handshakes are rejected and this preview provides no downlevel fallback.
 
@@ -35,6 +44,7 @@ Clients must speak the stateless MCP `2026-07-28` era: every request carries pro
 * `play_burst`
 * `play_move`
 * `save_verified_replay`
+* `start_lesson`
 * `start_match`
 
 # Resources

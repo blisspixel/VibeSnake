@@ -4,7 +4,7 @@ Status: Accepted for post-1.0 development
 
 Decision date: 2026-08-12
 
-Implementation note: the development tree now exercises this post-1.0 boundary through a Rules-only session assembly, local stdio MCP host, explicit replay save, and read-only same-user pipe viewer. The preview is not part of the supported 1.0 release contract. A 1.0 candidate must exclude every preview assembly and entry point and pass the dedicated artifact assertion before artifact qualification. Human experience acceptance is still open.
+Implementation note: the development tree now exercises this post-1.0 boundary through a Rules-only session assembly, local stdio MCP host, six selectable canonical Signal School practices, explicit replay save, and read-only same-user pipe viewer. Practice observations expose exact instructions and progress, mutations expose deltas, and successful finalization exposes replay-derived hash-bound outcomes. The preview is not part of the supported 1.0 release contract. A 1.0 candidate must exclude every preview assembly and entry point and pass the dedicated artifact assertion before artifact qualification. The complete eight-behavior curriculum and human experience acceptance remain open.
 
 ## Context
 
@@ -19,6 +19,7 @@ External agent play introduces different trust, pacing, privacy, and compatibili
 - Keep `SnakeRun`, replay schema 1, built-in `SpectatorMatchSession`, and human score and progression contracts unchanged for the first implementation.
 - Make local, turn-based symbolic play the first profile. Rules do not advance while an agent deliberates. A valid action advances exactly one rules step, while stale or illegal actions advance none.
 - Add `four-direction-burst-v1` as a separate control division. One request may apply one initial action and continue for at most 16 steps under the fixed `decision-event-stop-v1` public-event policy. It cannot accept action arrays, custom predicates, code, callbacks, or rewards, and it cannot share qualification identity silently with `four-direction-step-v1`.
+- Expose canonical Signal School practices through a dedicated `start_lesson` adapter. A selected lesson owns its open seed, mode, cap, instruction, primary public metric, and target. Target-reaching bursts stop on the exact producing step, but only verified replay finalization produces a lesson outcome.
 - Require every mutating action to carry an expected tick, expected state hash, and bounded idempotency key. Serialize actions per match and fail closed on replay divergence.
 - Use one idempotency-key namespace across step and burst mutations. Exact retries return the cached typed response; changed payloads and cross-operation key reuse advance no additional rules state.
 - Expose an allowlisted, versioned observation instead of serializing `RunSnapshot` directly. Exclude random state, future outcomes, controller internals, private user data, paths, diagnostics, prompts, credentials, and hidden reasoning.
