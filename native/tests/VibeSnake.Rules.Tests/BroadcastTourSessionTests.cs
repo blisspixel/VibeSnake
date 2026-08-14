@@ -31,6 +31,30 @@ public sealed class BroadcastTourSessionTests
     }
 
     [Fact]
+    public void Rematch_after_empty_progress_only_starts_unlocked_events()
+    {
+        var first = BroadcastTourCatalog.Events.Single(item => item.Id == "local-first-signal");
+        var later = BroadcastTourCatalog.Events.Single(item => item.Id == "district-power-route");
+
+        Assert.True(BroadcastTourSession.CanStart(first, []));
+        Assert.False(BroadcastTourSession.CanStart(later, []));
+        Assert.True(BroadcastTourSession.CanStart(first, ["local-first-signal"]));
+        Assert.True(
+            BroadcastTourSession.CanStart(
+                later,
+                [
+                    "local-first-signal",
+                    "local-wrap-school",
+                    "local-hold-line",
+                    "district-power-route",
+                ]));
+        Assert.False(
+            BroadcastTourSession.CanStart(later with { RivalId = "forged" }, []));
+        Assert.Throws<ArgumentNullException>(() =>
+            BroadcastTourSession.CanStart(null!, []));
+    }
+
+    [Fact]
     public void Every_event_constructs_the_exact_fixed_seed_and_rules_identity()
     {
         foreach (var item in BroadcastTourCatalog.Events)

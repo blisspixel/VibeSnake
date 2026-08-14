@@ -104,6 +104,7 @@ public partial class Main : Node2D
     private string _observedAudioOutputSignature = string.Empty;
     private ulong? _radioPlaybackVerificationDueMilliseconds;
     private bool _radioPlaybackVerificationReported;
+    private bool _radioPlaybackRetryRequired;
     private ShellTheme? _shellTheme;
     private ShellLocale _shellLocale = ShellLocale.English;
     private ReplayStore? _replayStore;
@@ -130,8 +131,10 @@ public partial class Main : Node2D
     private string? _onboardingStatusCaption;
     private AchievementsStore? _achievementsStore;
     private AchievementsDocument _achievements = AchievementsDocument.CreateDefaults();
+    private bool _achievementsWritable = true;
     private ProgressionStore? _progressionStore;
     private ProgressionDocument _progression = ProgressionDocument.CreateDefaults();
+    private bool _progressionWritable = true;
     private int _progressionGoalCursor;
     private string? _progressionStatusCaption;
     private readonly ProgressionNotificationQueue _progressionNotifications = new();
@@ -146,6 +149,7 @@ public partial class Main : Node2D
     private string? _cosmeticStatusCaption;
     private PersonalBestStore? _personalBestStore;
     private PersonalBestDocument _personalBests = PersonalBestDocument.CreateDefaults();
+    private bool _personalBestsWritable = true;
     private ScoreHistoryStore? _scoreHistoryStore;
     private ScoreHistoryDocument _scoreHistory = ScoreHistoryDocument.CreateDefaults();
     private bool _scoreHistoryWritable = true;
@@ -157,6 +161,7 @@ public partial class Main : Node2D
     private SpectatorLeagueStore? _spectatorLeagueStore;
     private SpectatorLeagueDocument _spectatorLeague =
         SpectatorLeagueDocument.CreateDefaults();
+    private bool _spectatorLeagueWritable = true;
     private SpectatorSelection _spectatorSelection = SpectatorSelection.CreateDefault();
     private int _spectatorSelectionCursor;
     private SpectatorMatchSession? _spectatorMatch;
@@ -555,6 +560,7 @@ public partial class Main : Node2D
         {
             SetRunPaused(true);
             _pausedByFocusLoss = false;
+            _rulesStepAccumulatorMilliseconds = 0.0;
             PlayCue(AudioCue.Pause);
             _structuredLog?.Warning(
                 "input",
@@ -1026,11 +1032,13 @@ public partial class Main : Node2D
     private void CycleRadioStation()
     {
         var current = _radioPolicy.Snapshot;
-        var snapshot = current.Mode is RadioPlaybackMode.StationUnavailable
-            or RadioPlaybackMode.NoStations
-            or RadioPlaybackMode.Stopped
+        var snapshot = (_radioPlaybackRetryRequired
+            || current.Mode is RadioPlaybackMode.StationUnavailable
+                or RadioPlaybackMode.NoStations
+                or RadioPlaybackMode.Stopped)
             ? _radioPolicy.RetryIsolatedTracks()
             : _radioPolicy.TuneNextStation();
+        _radioPlaybackRetryRequired = false;
         _radioPlayer?.Synchronize();
         ScheduleRadioPlaybackVerification();
         PlayCue(AudioCue.Navigate);
@@ -1048,6 +1056,7 @@ public partial class Main : Node2D
         if (_achievementsStore is null)
         {
             _achievements = AchievementsDocument.CreateDefaults();
+            _achievementsWritable = false;
             return;
         }
 
@@ -1055,6 +1064,7 @@ public partial class Main : Node2D
         if (loaded.IsSuccess && loaded.Document is not null)
         {
             _achievements = loaded.Document;
+            _achievementsWritable = true;
             _structuredLog?.Information(
                 "shell",
                 "Loaded " + _achievements.UnlockedCount + " permanent run unlock(s).",
@@ -1063,6 +1073,7 @@ public partial class Main : Node2D
         }
 
         _achievements = AchievementsDocument.CreateDefaults();
+        _achievementsWritable = false;
         if (loaded.Code is AchievementsLoadCode.UnsupportedSchema
             or AchievementsLoadCode.InvalidJson
             or AchievementsLoadCode.InvalidField)
@@ -1079,6 +1090,7 @@ public partial class Main : Node2D
         if (_progressionStore is null)
         {
             _progression = ProgressionDocument.CreateDefaults();
+            _progressionWritable = false;
             return;
         }
 
@@ -1086,6 +1098,7 @@ public partial class Main : Node2D
         if (loaded.IsSuccess && loaded.Document is not null)
         {
             _progression = loaded.Document;
+            _progressionWritable = true;
             _structuredLog?.Information(
                 "progression",
                 $"Loaded {_progression.CompletedTourEventIds.Count} completed tour event(s).",
@@ -1094,6 +1107,7 @@ public partial class Main : Node2D
         }
 
         _progression = ProgressionDocument.CreateDefaults();
+        _progressionWritable = false;
         _progressionStatusCaption = Localize("status.progression.load-defaults");
         _structuredLog?.Warning(
             "progression",
@@ -1104,7 +1118,7 @@ public partial class Main : Node2D
     private bool TrySaveProgression(string failureEventCode)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(failureEventCode);
-        if (_progressionStore is null)
+        if (_progressionStore is null || !_progressionWritable)
         {
             _structuredLog?.Warning(
                 "progression",
@@ -1137,6 +1151,7 @@ public partial class Main : Node2D
     private void PersistProgression(SnakeRun run)
     {
         ArgumentNullException.ThrowIfNull(run);
+        var previous = _progression;
         try
         {
             _progression = _progression.WithHumanRun(
@@ -1149,6 +1164,7 @@ public partial class Main : Node2D
                 or InvalidOperationException
                 or OverflowException)
         {
+            _progression = previous;
             _progressionStatusCaption = Localize("status.progression.save-failed");
             _structuredLog?.Warning(
                 "progression",
@@ -1159,6 +1175,7 @@ public partial class Main : Node2D
 
         if (!TrySaveProgression("progression_save_failed"))
         {
+            _progression = previous;
             _progressionStatusCaption = Localize("status.progression.save-failed");
             return;
         }
@@ -1215,6 +1232,7 @@ public partial class Main : Node2D
         if (_personalBestStore is null)
         {
             _personalBests = PersonalBestDocument.CreateDefaults();
+            _personalBestsWritable = false;
             return;
         }
 
@@ -1222,10 +1240,12 @@ public partial class Main : Node2D
         if (loaded.IsSuccess && loaded.Document is not null)
         {
             _personalBests = loaded.Document;
+            _personalBestsWritable = true;
             return;
         }
 
         _personalBests = PersonalBestDocument.CreateDefaults();
+        _personalBestsWritable = false;
         _structuredLog?.Warning(
             "scores",
             loaded.Message,
@@ -1238,7 +1258,7 @@ public partial class Main : Node2D
     {
         ArgumentNullException.ThrowIfNull(run);
         var identity = RunScoreIdentity.FromRun(run, context);
-        if (_personalBestStore is null)
+        if (_personalBestStore is null || !_personalBestsWritable)
         {
             var existing = _personalBests.Find(identity)?.BestScore;
             _structuredLog?.Warning(
@@ -1252,6 +1272,7 @@ public partial class Main : Node2D
                 BestScore: Math.Max(existing ?? 0, run.Score));
         }
 
+        var previous = _personalBests;
         try
         {
             var update = _personalBests.Apply(identity);
@@ -1274,6 +1295,7 @@ public partial class Main : Node2D
             or InvalidDataException
             or InvalidOperationException)
         {
+            _personalBests = previous;
             _structuredLog?.Warning(
                 "scores",
                 exception.Message,
@@ -1414,6 +1436,7 @@ public partial class Main : Node2D
         if (_spectatorLeagueStore is null)
         {
             _spectatorLeague = SpectatorLeagueDocument.CreateDefaults();
+            _spectatorLeagueWritable = false;
             return;
         }
 
@@ -1421,10 +1444,12 @@ public partial class Main : Node2D
         if (loaded.IsSuccess && loaded.Document is not null)
         {
             _spectatorLeague = loaded.Document;
+            _spectatorLeagueWritable = true;
             return;
         }
 
         _spectatorLeague = SpectatorLeagueDocument.CreateDefaults();
+        _spectatorLeagueWritable = false;
         _structuredLog?.Warning(
             "spectator",
             loaded.Message,
@@ -1495,7 +1520,7 @@ public partial class Main : Node2D
     private IReadOnlyList<string> PersistAchievementUnlocks(
         IReadOnlyList<RunEventDetail> orderedEvents)
     {
-        if (_achievementsStore is null || orderedEvents.Count == 0)
+        if (_achievementsStore is null || !_achievementsWritable || orderedEvents.Count == 0)
         {
             return Array.Empty<string>();
         }
@@ -1527,6 +1552,7 @@ public partial class Main : Node2D
             .OrderBy(id => id, StringComparer.Ordinal)
             .ToList();
 
+        var previous = _achievements;
         try
         {
             _achievements = _achievements.WithUnlocks(newlyEarned);
@@ -1565,6 +1591,7 @@ public partial class Main : Node2D
             or ArgumentException
             or InvalidOperationException)
         {
+            _achievements = previous;
             WriteLocalCrashReport(
                 "AchievementsSave",
                 exception,
@@ -1900,17 +1927,19 @@ public partial class Main : Node2D
             return;
         }
 
-        _spectatorMatchPersisted = true;
+        var previous = _spectatorLeague;
         try
         {
-            _spectatorLeague = _spectatorLeague.WithMatch(spectator.BuildResult());
-            if (_spectatorLeagueStore is null)
+            if (_spectatorLeagueStore is null || !_spectatorLeagueWritable)
             {
+                _spectatorMatchPersisted = true;
                 _spectatorStatusCaption = Localize("status.spectator.save-failed");
                 return;
             }
 
+            _spectatorLeague = _spectatorLeague.WithMatch(spectator.BuildResult());
             _spectatorLeagueStore.Save(_spectatorLeague);
+            _spectatorMatchPersisted = true;
             _spectatorStatusCaption = Localize("status.spectator.saved");
             _structuredLog?.Information(
                 "spectator",
@@ -1924,6 +1953,7 @@ public partial class Main : Node2D
                 or InvalidDataException
                 or InvalidOperationException)
         {
+            _spectatorLeague = previous;
             _spectatorStatusCaption = Localize("status.spectator.save-failed");
             _structuredLog?.Warning(
                 "spectator",
@@ -1941,9 +1971,10 @@ public partial class Main : Node2D
                 "Spectator challenge persistence requires an active descriptor.");
         }
 
+        var previous = _spectatorLeague;
         try
         {
-            if (_spectatorLeagueStore is null)
+            if (_spectatorLeagueStore is null || !_spectatorLeagueWritable)
             {
                 throw new InvalidOperationException(
                     "Spectator challenge persistence is unavailable.");
@@ -1968,6 +1999,7 @@ public partial class Main : Node2D
                 or InvalidDataException
                 or InvalidOperationException)
         {
+            _spectatorLeague = previous;
             _structuredLog?.Warning(
                 "spectator",
                 exception.Message,
@@ -2216,23 +2248,12 @@ public partial class Main : Node2D
             return Array.Empty<string>();
         }
 
+        var previous = _progression;
         _progression = updatedProgression;
-        var saved = false;
-        try
+        var saved = TrySaveProgression("broadcast_tour_save_failed");
+        if (!saved)
         {
-            if (_progressionStore is not null)
-            {
-                _progressionStore.Save(_progression);
-                saved = true;
-            }
-        }
-        catch (Exception exception) when (
-            exception is IOException or UnauthorizedAccessException)
-        {
-            _structuredLog?.Warning(
-                "progression",
-                exception.Message,
-                eventCode: "broadcast_tour_save_failed");
+            _progression = previous;
         }
 
         _progressionNotifications.Enqueue(
@@ -3519,6 +3540,8 @@ public partial class Main : Node2D
         }
 
         var failure = runtime.LastFailure ?? "Playback did not advance after startup.";
+        _radioPlaybackRetryRequired = true;
+        _radioPlayer?.ForceReload();
         ShowAudioStatus("MUSIC COULD NOT START. PRESS J TO RETRY.", persist: true);
         _structuredLog?.Warning(
             "radio",
@@ -3931,26 +3954,31 @@ public partial class Main : Node2D
     {
         if (isRestart && _activeGhostRace is not null && _activeGhostSlot is { } ghostSlot)
         {
-            if (_offlineChallengeStore is null)
+            if (_replayOperation is not null || _queuedReplaySave is not null)
             {
-                ShowReplayStatus("GHOST RACE RESTART UNAVAILABLE");
+                ShowReplayStatus("RUN START PAUSED: FINISHING THE CURRENT REPLAY OPERATION");
                 return;
             }
 
-            var prepared = LoadGhostRace(_offlineChallengeStore, ghostSlot);
-            if (prepared.GhostRace is null)
+            if (_offlineChallengeStore is not null)
             {
-                ShowReplayStatus(prepared.Caption);
-                return;
+                var prepared = LoadGhostRace(_offlineChallengeStore, ghostSlot);
+                if (prepared.GhostRace is not null)
+                {
+                    _activeGhostRace = prepared.GhostRace;
+                    BeginPreparedRun(
+                        prepared.GhostRace.PlayerRun,
+                        ScoreRunContextCatalog.SeededChallenge,
+                        tourEvent: null,
+                        isRestart: true);
+                    return;
+                }
             }
 
-            _activeGhostRace = prepared.GhostRace;
-            BeginPreparedRun(
-                prepared.GhostRace.PlayerRun,
-                ScoreRunContextCatalog.SeededChallenge,
-                tourEvent: null,
-                isRestart: true);
-            return;
+            // Ghost files may have been reset; rematch as a normal run instead
+            // of leaving the player stuck on the ended screen.
+            _activeGhostRace = null;
+            _activeGhostSlot = null;
         }
 
         if (isRestart && _activeSpectatorChallenge is not null)
@@ -3971,8 +3999,18 @@ public partial class Main : Node2D
 
         if (isRestart && _activeTourEvent is { } tourEvent)
         {
-            StartTourEvent(tourEvent, isRestart: true);
-            return;
+            if (BroadcastTourSession.CanStart(
+                tourEvent,
+                _progression.CompletedTourEventIds))
+            {
+                StartTourEvent(tourEvent, isRestart: true);
+                return;
+            }
+
+            // Progression reset can lock a later rematch. Keep the ended run
+            // restartable as a normal human run instead of crashing.
+            _activeTourEvent = null;
+            _tourRunOutcome = null;
         }
 
         _activeSpectatorChallenge = null;
@@ -4011,9 +4049,7 @@ public partial class Main : Node2D
             return;
         }
 
-        var cards = BroadcastTourSession.BuildCards(_progression.CompletedTourEventIds);
-        var card = cards.Single(item => item.Event.Id == tourEvent.Id);
-        if (card.State == BroadcastTourEventState.Locked)
+        if (!BroadcastTourSession.CanStart(tourEvent, _progression.CompletedTourEventIds))
         {
             throw new InvalidOperationException("A locked Broadcast Tour event cannot start.");
         }
@@ -5309,8 +5345,6 @@ public partial class Main : Node2D
     private void OpenOfflineComparisons()
     {
         TransitionToScreen(ScreenState.Comparisons);
-        _activeGhostRace = null;
-        _activeGhostSlot = null;
         _ghostSlotCursor = 0;
         _pendingGhostDeletion = null;
         _ghostSlots = [];
@@ -6568,10 +6602,14 @@ public partial class Main : Node2D
         LoadOnboardingProgress();
         LoadAchievements();
         LoadProgression();
+        LoadSpectatorLeague();
         LoadPersonalBests();
         LoadScoreHistory();
         LoadInputBindings();
         InitializeRadio(allowCheckoutFallback: true);
+        _ghostSlots = [];
+        _ghostSlotCursor = 0;
+        _pendingGhostDeletion = null;
         _replayBrowserEntries = [];
         _replayPlayback = null;
         _pendingReplayDeletion = null;
@@ -6609,6 +6647,10 @@ public partial class Main : Node2D
                     _onboardingProgress = OnboardingProgressDocument.CreateDefaults();
                     _onboardingWasNewProfile = true;
                     _onboardingSession = null;
+                    _spectatorLeague = SpectatorLeagueDocument.CreateDefaults();
+                    _achievementsWritable = true;
+                    _progressionWritable = true;
+                    _spectatorLeagueWritable = true;
                     break;
                 case PlayerDataCategory.PersonalBests:
                     _personalBests = PersonalBestDocument.CreateDefaults();
@@ -6617,12 +6659,16 @@ public partial class Main : Node2D
                     _scoreBrowseCategoryCursor = 0;
                     _scoreBrowseStatusCaption = null;
                     _runEndSummary = null;
+                    _personalBestsWritable = true;
                     break;
                 case PlayerDataCategory.Replays:
                     _replayBrowserEntries = [];
                     _replayPlayback = null;
                     _pendingReplayDeletion = null;
                     _replayStatusCaption = null;
+                    _ghostSlots = [];
+                    _ghostSlotCursor = 0;
+                    _pendingGhostDeletion = null;
                     break;
                 case PlayerDataCategory.OptionalContent:
                     InitializeRadio(allowCheckoutFallback: true);

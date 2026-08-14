@@ -177,6 +177,8 @@ internal sealed partial class RadioStreamPlayer : Node
         StopCurrent();
     }
 
+    public void ForceReload() => StopCurrent();
+
     public RadioStreamRuntimeSnapshot CaptureRuntimeSnapshot() => new(
         PlayerReady: _player is not null,
         Playing: _player?.Playing ?? false,

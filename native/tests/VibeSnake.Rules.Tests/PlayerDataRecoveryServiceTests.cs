@@ -300,6 +300,52 @@ public sealed class PlayerDataRecoveryServiceTests
     }
 
     [Fact]
+    public void Leftover_reset_staging_path_keeps_live_data_after_verified_backup()
+    {
+        using var fixture = new RecoveryFixture();
+        fixture.Write("preferences.json", "keep");
+        fixture.Write("input/keyboard.input_bindings.json", "keyboard");
+        fixture.Write(".resetting-blocked", "block");
+        var plan = fixture.Service.CreateResetPlan(
+            [PlayerDataCategory.Preferences],
+            "blocked");
+
+        var result = fixture.Service.Reset(plan);
+
+        Assert.Equal(PlayerDataResetCode.IoError, result.Code);
+        Assert.Equal("backups/blocked", result.BackupLocation);
+        Assert.Equal("keep", File.ReadAllText(fixture.Resolve("preferences.json")));
+        Assert.Equal(
+            "keyboard",
+            File.ReadAllText(fixture.Resolve("input/keyboard.input_bindings.json")));
+        Assert.True(File.Exists(fixture.Resolve(".resetting-blocked")));
+        Assert.True(Directory.Exists(fixture.Resolve("backups/blocked")));
+    }
+
+    [Fact]
+    public void Partial_target_removal_restores_already_removed_files()
+    {
+        using var fixture = new RecoveryFixture();
+        fixture.Write("preferences.json", "preferences");
+        fixture.Write("input/keyboard.input_bindings.json", "keyboard");
+        var staging = fixture.Resolve(".resetting-partial-remove");
+        Directory.CreateDirectory(staging);
+        File.Move(
+            fixture.Resolve("preferences.json"),
+            Path.Combine(staging, "preferences.json"));
+
+        fixture.Service.RollbackRemovedTargets(
+            staging,
+            [("preferences.json", false)]);
+
+        Assert.Equal("preferences", File.ReadAllText(fixture.Resolve("preferences.json")));
+        Assert.Equal(
+            "keyboard",
+            File.ReadAllText(fixture.Resolve("input/keyboard.input_bindings.json")));
+        Assert.False(File.Exists(Path.Combine(staging, "preferences.json")));
+    }
+
+    [Fact]
     public void Restore_staging_conflict_and_invalid_roots_fail_closed()
     {
         using var fixture = new RecoveryFixture();

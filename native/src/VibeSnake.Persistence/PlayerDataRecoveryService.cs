@@ -243,7 +243,7 @@ public sealed class PlayerDataRecoveryService
                     RelativeBackupLocation(plan.BackupId));
             }
 
-            RemoveTargets(plan.RelativeTargets);
+            RemoveTargets(plan.RelativeTargets, plan.BackupId);
             return new PlayerDataResetResult(
                 PlayerDataResetCode.Success,
                 snapshot.Count == 0
@@ -582,19 +582,74 @@ public sealed class PlayerDataRecoveryService
         }
     }
 
-    private void RemoveTargets(IReadOnlyList<string> relativeTargets)
+    private void RemoveTargets(IReadOnlyList<string> relativeTargets, string backupId)
     {
-        foreach (var relativeTarget in relativeTargets)
+        var stagingPath = Path.Combine(UserDataRoot, ".resetting-" + backupId);
+        if (Directory.Exists(stagingPath) || File.Exists(stagingPath))
         {
-            var target = ResolveUserPath(relativeTarget);
-            if (File.Exists(target))
+            throw new IOException(
+                "A previous reset staging path exists; player data was not reset.");
+        }
+
+        Directory.CreateDirectory(stagingPath);
+        var moved = new List<(string Relative, bool IsDirectory)>();
+        try
+        {
+            foreach (var relativeTarget in relativeTargets)
             {
-                File.Delete(target);
+                var target = ResolveUserPath(relativeTarget);
+                var staged = ResolveRelativePath(stagingPath, relativeTarget);
+                if (File.Exists(target))
+                {
+                    Directory.CreateDirectory(Path.GetDirectoryName(staged)!);
+                    File.Move(target, staged);
+                    moved.Add((relativeTarget, false));
+                }
+                else if (Directory.Exists(target))
+                {
+                    AssertDirectoryTreeSafe(target);
+                    Directory.CreateDirectory(Path.GetDirectoryName(staged)!);
+                    Directory.Move(target, staged);
+                    moved.Add((relativeTarget, true));
+                }
             }
-            else if (Directory.Exists(target))
+        }
+        catch
+        {
+            RollbackRemovedTargets(stagingPath, moved);
+            TryDeleteDirectory(stagingPath);
+            throw;
+        }
+
+        TryDeleteDirectory(stagingPath);
+    }
+
+    internal void RollbackRemovedTargets(
+        string stagingPath,
+        List<(string Relative, bool IsDirectory)> moved)
+    {
+        for (var index = moved.Count - 1; index >= 0; index--)
+        {
+            var (relative, isDirectory) = moved[index];
+            try
             {
-                AssertDirectoryTreeSafe(target);
-                Directory.Delete(target, recursive: true);
+                var staged = ResolveRelativePath(stagingPath, relative);
+                var destination = ResolveUserPath(relative);
+                Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
+                if (isDirectory && Directory.Exists(staged))
+                {
+                    Directory.Move(staged, destination);
+                }
+                else if (File.Exists(staged))
+                {
+                    File.Move(staged, destination);
+                }
+            }
+            catch (Exception exception) when (
+                exception is IOException or UnauthorizedAccessException)
+            {
+                // Continue rolling back remaining targets so live data stays as
+                // complete as possible and a later restore is not blocked.
             }
         }
     }

@@ -69,6 +69,16 @@ public static class BroadcastTourSession
             .ToArray();
     }
 
+    public static bool CanStart(
+        BroadcastTourEvent item,
+        IReadOnlyCollection<string> completedEventIds)
+    {
+        ArgumentNullException.ThrowIfNull(item);
+        return BuildCards(completedEventIds).Any(card =>
+            card.Event.Id == item.Id
+            && card.State != BroadcastTourEventState.Locked);
+    }
+
     public static SnakeRun CreateRun(BroadcastTourEvent item)
     {
         var canonical = RequireCanonicalEvent(item);
