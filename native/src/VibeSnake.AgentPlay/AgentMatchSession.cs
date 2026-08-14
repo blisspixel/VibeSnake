@@ -12,6 +12,7 @@ public sealed class AgentMatchSession
     private readonly SnakeRun _run;
     private readonly RunReplayRecorder _recorder;
     private readonly AgentEpisodeMetricsTracker _metrics = new();
+    private readonly AgentStyleEvidenceTracker? _styleEvidence;
     private readonly SnakeRun? _rivalRun;
     private readonly AiPersonalityController? _rivalController;
     private readonly RunReplayRecorder? _rivalRecorder;
@@ -23,7 +24,7 @@ public sealed class AgentMatchSession
     private IReadOnlyList<RunEventDetail> _previousEvents =
         Array.Empty<RunEventDetail>();
     private AgentPreviousActionV1? _previousAction;
-    private AgentMatchResult? _matchResult;
+    private AgentMatchResultV4? _matchResult;
     private long _viewerSequence;
 
     public AgentMatchSession(
@@ -46,6 +47,13 @@ public sealed class AgentMatchSession
         _config = options.CreateRunConfig();
         _run = SnakeRun.Create(options.GameplaySeed, _config);
         _recorder = new RunReplayRecorder(_run);
+        _styleEvidence = options.StyleContractId is null
+            ? null
+            : new AgentStyleEvidenceTracker(
+                options.StyleContractId,
+                options.ModeId,
+                _config,
+                _run.GetSnapshot());
         if (options.RivalPersonalityId is { } rivalId)
         {
             _rivalRun = SnakeRun.Create(options.GameplaySeed, _config);
@@ -67,7 +75,7 @@ public sealed class AgentMatchSession
 
     public AgentMatchLifecycle Lifecycle { get; private set; }
 
-    public AgentObservationV3 Observe()
+    public AgentObservationV4 Observe()
     {
         lock (_sync)
         {
@@ -99,7 +107,7 @@ public sealed class AgentMatchSession
                     request.DeclaredIntent);
             }
 
-            if (_options.ActionProfile != AgentPassportV2.FourDirectionActionProfile)
+            if (_options.ActionProfile != AgentPassportV3.FourDirectionActionProfile)
             {
                 return Remember(
                     request.IdempotencyKey,
@@ -194,7 +202,7 @@ public sealed class AgentMatchSession
                     request.DeclaredIntent);
             }
 
-            if (_options.ActionProfile != AgentPassportV2.FourDirectionBurstActionProfile)
+            if (_options.ActionProfile != AgentPassportV3.FourDirectionBurstActionProfile)
             {
                 return Remember(
                     request.IdempotencyKey,
@@ -371,7 +379,7 @@ public sealed class AgentMatchSession
         }
     }
 
-    public AgentMatchResult Finish()
+    public AgentMatchResultV4 Finish()
     {
         lock (_sync)
         {
@@ -412,7 +420,7 @@ public sealed class AgentMatchSession
         }
     }
 
-    public AgentMatchResult? GetResult()
+    public AgentMatchResultV4? GetResult()
     {
         lock (_sync)
         {
@@ -494,6 +502,33 @@ public sealed class AgentMatchSession
 
         var result = _run.Step();
         _previousEvents = Array.AsReadOnly(result.OrderedEvents.ToArray());
+        var steppedSnapshot = _run.GetSnapshot();
+        _metrics.Record(result, steppedSnapshot);
+        try
+        {
+            _styleEvidence?.Record(snapshot, result, steppedSnapshot);
+        }
+        catch (Exception exception) when (
+            exception is ArgumentException
+                or InvalidOperationException
+                or OverflowException)
+        {
+            var failed = FailClosedAfterRecorderError(
+                action,
+                declaredIntent,
+                rulesAdvanced: true);
+            if (publishViewer)
+            {
+                PublishViewerFrame(
+                    failed.Observation,
+                    AgentViewerOperationKind.Step,
+                    snapshot.Tick,
+                    snapshot.StateHash,
+                    failed.RulesAdvanced ? 1 : 0);
+            }
+            return failed;
+        }
+
         if (!_recorder.TryCompleteStep(result, _run))
         {
             var failed = FailClosedAfterRecorderError(
@@ -512,8 +547,6 @@ public sealed class AgentMatchSession
             return failed;
         }
 
-        var steppedSnapshot = _run.GetSnapshot();
-        _metrics.Record(result, steppedSnapshot);
         if (!AdvanceRival())
         {
             var failed = FailClosedAfterRecorderError(
@@ -608,7 +641,7 @@ public sealed class AgentMatchSession
     private bool TryComplete(
         AgentMatchEndReason endReason,
         AgentMatchLifecycle lifecycle,
-        out AgentMatchResult? result)
+        out AgentMatchResultV4? result)
     {
         result = null;
         var agent = _replayFinalizer.Finalize(
@@ -646,11 +679,40 @@ public sealed class AgentMatchSession
         var snapshot = _run.GetSnapshot();
         var episodeMetrics = _metrics.Snapshot(snapshot.Tick);
         AgentEpisodeMetricsV1 replayMetrics;
+        AgentStyleOutcomeV2? styleOutcome = null;
         try
         {
             replayMetrics = AgentEpisodeMetricsReplayEvaluator.Evaluate(agent.Replay);
+            if (_options.StyleContractId is { } styleContractId)
+            {
+                if (_styleEvidence is null)
+                {
+                    throw new InvalidOperationException(
+                        "The selected style contract had no live evidence tracker.");
+                }
+
+                var replayStyleEvidence = AgentStyleEvidenceReplayEvaluator.Evaluate(
+                    styleContractId,
+                    _options.ModeId,
+                    agent.Replay);
+                if (_styleEvidence.Facts != replayStyleEvidence.Facts
+                    || !AgentStyleEvidenceReplayEvaluator.Equivalent(
+                    _styleEvidence.Snapshot(),
+                    replayStyleEvidence.Progress))
+                {
+                    throw new InvalidOperationException(
+                        "Live style evidence diverged from the verified replay.");
+                }
+
+                styleOutcome = AgentStyleEvidenceReplayEvaluator.CreateOutcome(
+                    replayStyleEvidence.Progress,
+                    agent.Replay.PayloadHash);
+            }
         }
-        catch (ArgumentException)
+        catch (Exception exception) when (
+            exception is ArgumentException
+                or InvalidOperationException
+                or OverflowException)
         {
             Lifecycle = AgentMatchLifecycle.FailedClosed;
             return false;
@@ -663,8 +725,8 @@ public sealed class AgentMatchSession
 
         Lifecycle = lifecycle;
         var rivalResult = CreateRivalResult(rivalReplay, rivalVerification);
-        _matchResult = new AgentMatchResult(
-            AgentMatchResult.Contract,
+        _matchResult = new AgentMatchResultV4(
+            AgentMatchResultV4.Contract,
             _options.MatchId,
             Lifecycle,
             endReason,
@@ -684,13 +746,8 @@ public sealed class AgentMatchSession
             snapshot.StateHash,
             agent.Replay.PayloadHash,
             agent.Verification.Code,
-            episodeMetrics,
-            _options.StyleContractId is null
-                ? null
-                : AgentStyleContractCatalog.Evaluate(
-                    _options.StyleContractId,
-                    _options.ModeId,
-                    episodeMetrics),
+            replayMetrics,
+            styleOutcome,
             _options.LessonId is null
                 ? null
                 : CreateLessonOutcome(
@@ -774,7 +831,7 @@ public sealed class AgentMatchSession
         return response;
     }
 
-    private AgentObservationV3 CreateObservation() =>
+    private AgentObservationV4 CreateObservation() =>
         AgentObservationProjector.Project(
             _options,
             _config,
@@ -783,7 +840,8 @@ public sealed class AgentMatchSession
             _previousAction,
             Lifecycle,
             _metrics.Snapshot(_run.GetSnapshot().Tick),
-            CreateRivalObservation());
+            CreateRivalObservation(),
+            _styleEvidence?.Snapshot());
 
     private AgentLessonProgressV1? CreateLessonProgress()
     {
@@ -907,7 +965,7 @@ public sealed class AgentMatchSession
     }
 
     private void PublishViewerFrame(
-        AgentObservationV3 observation,
+        AgentObservationV4 observation,
         AgentViewerOperationKind operation,
         int startTick,
         string startStateHash,
@@ -922,8 +980,10 @@ public sealed class AgentMatchSession
 
         try
         {
-            _ = _viewerSink.TryPublish(new AgentViewerFrameV5(
-                AgentViewerFrameV5.Contract,
+            var verifiedResultAvailable =
+                _matchResult?.ReplayVerificationCode == ReplayVerificationCode.Verified;
+            _ = _viewerSink.TryPublish(new AgentViewerFrameV6(
+                AgentViewerFrameV6.Contract,
                 _viewerSequence++,
                 operation,
                 startTick,
@@ -936,7 +996,8 @@ public sealed class AgentMatchSession
                     ?? (Lifecycle == AgentMatchLifecycle.FailedClosed
                         ? AgentMatchEndReason.ReplayFailure
                         : AgentMatchEndReason.None),
-                _matchResult?.ReplayVerificationCode == ReplayVerificationCode.Verified));
+                verifiedResultAvailable,
+                verifiedResultAvailable ? _matchResult?.StyleOutcome : null));
         }
         catch (Exception)
         {

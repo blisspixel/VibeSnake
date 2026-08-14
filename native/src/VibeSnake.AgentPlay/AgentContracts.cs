@@ -84,8 +84,8 @@ public sealed record AgentMatchOptions
         int maximumSteps = DefaultMaximumSteps,
         string? styleContractId = null,
         string? rivalPersonalityId = null,
-        AgentPassportV2? passport = null,
-        string actionProfile = AgentPassportV2.FourDirectionActionProfile,
+        AgentPassportV3? passport = null,
+        string actionProfile = AgentPassportV3.FourDirectionActionProfile,
         string? lessonId = null)
     {
         ValidateToken(matchId, MaximumMatchIdLength, nameof(matchId));
@@ -108,7 +108,7 @@ public sealed record AgentMatchOptions
                 $"An agent match must contain between 1 and {MaximumAllowedSteps} steps.");
         }
 
-        if (!AgentPassportV2.IsSupportedActionProfile(actionProfile))
+        if (!AgentPassportV3.IsSupportedActionProfile(actionProfile))
         {
             throw new ArgumentException(
                 "The action profile is unsupported.",
@@ -164,7 +164,7 @@ public sealed record AgentMatchOptions
         StyleContractId = styleContractId;
         RivalPersonalityId = rivalPersonalityId;
         ActionProfile = actionProfile;
-        Passport = passport ?? AgentPassportV2.CreateAnonymous(actionProfile);
+        Passport = passport ?? AgentPassportV3.CreateAnonymous(actionProfile);
         LessonId = lessonId;
     }
 
@@ -186,7 +186,7 @@ public sealed record AgentMatchOptions
 
     public string ActionProfile { get; }
 
-    public AgentPassportV2 Passport { get; }
+    public AgentPassportV3 Passport { get; }
 
     public string? LessonId { get; }
 
@@ -362,7 +362,7 @@ public sealed record AgentRivalResultV1(
     ReplayVerificationCode ReplayVerificationCode,
     AgentEpisodeMetricsV1 EpisodeMetrics);
 
-public sealed record AgentObservationV3(
+public sealed record AgentObservationV4(
     string Schema,
     string MatchId,
     string RulesetId,
@@ -373,7 +373,7 @@ public sealed record AgentObservationV3(
     string ConfigHash,
     AgentSeedVisibility SeedVisibility,
     ulong? GameplaySeed,
-    AgentPassportV2 Passport,
+    AgentPassportV3 Passport,
     int Tick,
     int MaximumSteps,
     int StepsRemaining,
@@ -416,11 +416,11 @@ public sealed record AgentObservationV3(
     AgentMatchLifecycle Lifecycle,
     bool IsActionAwaited,
     AgentEpisodeMetricsV1 EpisodeMetrics,
-    AgentStyleProgressV1? StyleContract,
+    AgentStyleProgressV2? StyleContract,
     AgentLessonProgressV1? LessonProgress,
     AgentRivalObservationV1? Rival)
 {
-    public const string Contract = "vibesnake-agent-observation-v3";
+    public const string Contract = "vibesnake-agent-observation-v4";
 }
 
 public sealed record AgentActionResponse(
@@ -428,8 +428,8 @@ public sealed record AgentActionResponse(
     bool RulesAdvanced,
     AgentActionRejection Rejection,
     AgentLessonProgressDeltaV1? LessonDelta,
-    AgentObservationV3 Observation,
-    AgentMatchResult? MatchResult);
+    AgentObservationV4 Observation,
+    AgentMatchResultV4? MatchResult);
 
 public sealed record AgentBurstResponse(
     bool Accepted,
@@ -439,10 +439,10 @@ public sealed record AgentBurstResponse(
     AgentBurstStopReason? StopReason,
     RunEventKind? StopEvent,
     AgentLessonProgressDeltaV1? LessonDelta,
-    AgentObservationV3 Observation,
-    AgentMatchResult? MatchResult);
+    AgentObservationV4 Observation,
+    AgentMatchResultV4? MatchResult);
 
-public sealed record AgentMatchResult(
+public sealed record AgentMatchResultV4(
     string Schema,
     string MatchId,
     AgentMatchLifecycle Lifecycle,
@@ -455,7 +455,7 @@ public sealed record AgentMatchResult(
     string ConfigHash,
     AgentSeedVisibility SeedVisibility,
     ulong GameplaySeed,
-    AgentPassportV2 Passport,
+    AgentPassportV3 Passport,
     int FinalTick,
     RunStatus RunStatus,
     DeathCause DeathCause,
@@ -464,11 +464,11 @@ public sealed record AgentMatchResult(
     string ReplayPayloadHash,
     ReplayVerificationCode ReplayVerificationCode,
     AgentEpisodeMetricsV1 EpisodeMetrics,
-    AgentStyleProgressV1? StyleContract,
+    AgentStyleOutcomeV2? StyleOutcome,
     AgentLessonOutcomeV1? LessonOutcome,
     AgentRivalResultV1? Rival,
     RunReplay VerifiedReplay,
     RunReplay? VerifiedRivalReplay)
 {
-    public const string Contract = "vibesnake-agent-match-result-v3";
+    public const string Contract = "vibesnake-agent-match-result-v4";
 }

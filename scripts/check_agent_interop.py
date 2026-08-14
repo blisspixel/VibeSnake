@@ -56,13 +56,18 @@ HOST_CONTRACT_PATHS = (
     Path("native/src/VibeSnake.AgentPlay/AgentContracts.cs"),
     Path("native/src/VibeSnake.AgentPlay/AgentIdentity.cs"),
     Path("native/src/VibeSnake.AgentPlay/AgentExperience.cs"),
+    Path("native/src/VibeSnake.AgentPlay/AgentMatchSession.cs"),
+    Path("native/src/VibeSnake.AgentPlay/AgentObservationProjector.cs"),
+    Path("native/src/VibeSnake.AgentPlay/AgentStyleEvidence.cs"),
     Path("native/src/VibeSnake.AgentPlay/AgentViewer.cs"),
     Path("native/src/VibeSnake.Rules/CosmeticSetCatalog.cs"),
     Path("native/src/VibeSnake.Rules/StationIdentityCatalog.cs"),
     Path("native/tools/VibeSnake.AgentHost/AgentViewerServer.cs"),
     Path("native/tools/VibeSnake.AgentHost/AgentHostContracts.cs"),
     Path("native/tools/VibeSnake.AgentHost/AgentResources.cs"),
+    Path("native/tools/VibeSnake.AgentHost/AgentSessionRegistry.cs"),
     Path("native/tools/VibeSnake.AgentHost/McpAgentTools.cs"),
+    Path("native/tools/VibeSnake.AgentHost/Program.cs"),
 )
 PLUGIN_CONTRACT_PATHS = (
     Path("integrations/vibesnake-agent-plugin/skills/play-vibesnake/SKILL.md"),

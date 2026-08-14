@@ -3,8 +3,8 @@ type: "Game Rules"
 title: "Vibe Snake agent rules and observations"
 description: "The public, deterministic rules boundary available to an external agent."
 tags: [vibesnake, rules, observation, agents]
-generated: { by: process:vibesnake-okf-generator, at: 2026-08-14T04:39:55Z }
-verified: { by: process:vibesnake-quality-gate, at: 2026-08-14T04:39:55Z }
+generated: { by: process:vibesnake-okf-generator, at: 2026-08-14T06:53:58Z }
+verified: { by: process:vibesnake-quality-gate, at: 2026-08-14T06:53:58Z }
 stale_after: "2026-11-13"
 status: draft
 sources:
@@ -26,7 +26,7 @@ sources:
 ---
 # Authority
 
-The rules authority is `vibesnake-core@4`. The public observation schema is `vibesnake-agent-observation-v3`.
+The rules authority is `vibesnake-core@4`. The public observation schema is `vibesnake-agent-observation-v4`.
 This knowledge bundle is descriptive. The rules assembly, tool schemas, and verified replay remain authoritative.
 
 # Actions
@@ -36,7 +36,7 @@ Each mutation is bound to the observed tick, state hash, and one shared idempote
 
 # Public observation
 
-The observation includes the catalog-validated public Agent Passport, board, ordered body, direction queue, food, visible powers and obstacles, score, combo, hunger, active effects, adaptive policy, previous public events, episode metrics, optional style progress, and optional Signal School progress.
+The observation includes the catalog-validated public Agent Passport v3, board, ordered body, direction queue, food, visible powers and obstacles, score, combo, hunger, active effects, adaptive policy, previous public events, episode metrics, optional two-criterion live style progress, and optional Signal School progress.
 Passport identity is caller-declared and ephemeral. Avatar, accent, and station IDs must resolve through the host's closed identity resource; they affect presentation only and remain independent of human progression and cosmetics.
 It excludes random state, future outcomes, controller internals, profiles, progression, paths, prompts, credentials, diagnostics, and hidden reasoning.
 

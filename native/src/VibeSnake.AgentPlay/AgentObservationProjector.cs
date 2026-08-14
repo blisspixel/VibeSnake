@@ -4,7 +4,7 @@ namespace VibeSnake.AgentPlay;
 
 internal static class AgentObservationProjector
 {
-    public static AgentObservationV3 Project(
+    public static AgentObservationV4 Project(
         AgentMatchOptions options,
         RunConfig config,
         RunSnapshot snapshot,
@@ -12,7 +12,8 @@ internal static class AgentObservationProjector
         AgentPreviousActionV1? previousAction,
         AgentMatchLifecycle lifecycle,
         AgentEpisodeMetricsV1 metrics,
-        AgentRivalObservationV1? rival)
+        AgentRivalObservationV1? rival,
+        AgentStyleProgressV2? styleProgress = null)
     {
         ArgumentNullException.ThrowIfNull(options);
         ArgumentNullException.ThrowIfNull(config);
@@ -32,8 +33,8 @@ internal static class AgentObservationProjector
                 pickup.VisibilityTicksRemaining)
             : null;
 
-        return new AgentObservationV3(
-            AgentObservationV3.Contract,
+        return new AgentObservationV4(
+            AgentObservationV4.Contract,
             options.MatchId,
             RulesetIdentity.CurrentId,
             RulesetIdentity.CurrentVersion,
@@ -90,12 +91,7 @@ internal static class AgentObservationProjector
                 && snapshot.Status == RunStatus.Running
                 && snapshot.Tick < options.MaximumSteps,
             metrics,
-            options.StyleContractId is null
-                ? null
-                : AgentStyleContractCatalog.Evaluate(
-                    options.StyleContractId,
-                    options.ModeId,
-                    metrics),
+            styleProgress,
             options.LessonId is null
                 ? null
                 : AgentSignalSchoolCatalog.Evaluate(options.LessonId, metrics),

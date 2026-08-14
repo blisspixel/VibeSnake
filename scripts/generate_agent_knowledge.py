@@ -88,12 +88,12 @@ def render_bundle(repository_root: Path) -> dict[str, str]:
     rules_version = _match(rules_identity, r"CurrentVersion = ([0-9]+)", "rules version")
     observation_schema = _match(
         contracts,
-        r"record AgentObservationV3\(.*?Contract = \"([^\"]+)\"",
+        r"record AgentObservationV4\(.*?Contract = \"([^\"]+)\"",
         "observation schema",
     )
     result_schema = _match(
         contracts,
-        r"record AgentMatchResult\(.*?Contract = \"([^\"]+)\"",
+        r"record AgentMatchResultV4\(.*?Contract = \"([^\"]+)\"",
         "result schema",
     )
     host_version = _match(program, r'HostVersion = "([^"]+)"', "host version")
@@ -104,7 +104,12 @@ def render_bundle(repository_root: Path) -> dict[str, str]:
     )
     tool_names = sorted(set(re.findall(r'Name = "([a-z_]+)"', tools)))
     resource_uris = sorted(set(re.findall(r'UriTemplate = "([^"]+)"', resources)))
-    style_ids = re.findall(r'public const string \w+Id = "([a-z-]+)";', experience)
+    style_catalog = _match(
+        experience,
+        r"public static class AgentStyleContractCatalog\s*\{(.*?)\n\}",
+        "style catalog",
+    )
+    style_ids = re.findall(r'public const string \w+Id = "([a-z-]+)";', style_catalog)
     lesson_ids = re.findall(r'\n\s+"([a-z-]+)",\n\s+"[^"]+",', experience)
     plugin_schema = plugin["$schema"]
     plugin_version = plugin["version"]
@@ -156,7 +161,7 @@ def render_bundle(repository_root: Path) -> dict[str, str]:
             "",
             "# Public observation",
             "",
-            "The observation includes the catalog-validated public Agent Passport, board, ordered body, direction queue, food, visible powers and obstacles, score, combo, hunger, active effects, adaptive policy, previous public events, episode metrics, optional style progress, and optional Signal School progress.",
+            "The observation includes the catalog-validated public Agent Passport v3, board, ordered body, direction queue, food, visible powers and obstacles, score, combo, hunger, active effects, adaptive policy, previous public events, episode metrics, optional two-criterion live style progress, and optional Signal School progress.",
             "Passport identity is caller-declared and ephemeral. Avatar, accent, and station IDs must resolve through the host's closed identity resource; they affect presentation only and remain independent of human progression and cosmetics.",
             "It excludes random state, future outcomes, controller internals, profiles, progression, paths, prompts, credentials, diagnostics, and hidden reasoning.",
             "",
@@ -218,7 +223,7 @@ def render_bundle(repository_root: Path) -> dict[str, str]:
             "",
             "# Live viewer",
             "",
-            "The optional same-user pipe uses `vibesnake-agent-viewer-frame-v5`. Every frame declares initial, step, burst, or finish origin and binds exact steps advanced to the pre-mutation tick and state hash. Burst frames carry closed stop reason and final-step event, while terminal truth, immutable match identity, catalog-bound Passport v2, action facts, and contiguous state anchors are cross-validated before presentation. Malformed, oversized, contradictory, unknown-catalog, or identity-drifting input clears pending content and rejects the stream. The host keeps only the latest unsent frame, the client reports sequence gaps as coalesced earlier updates, and the exact packaged-host transcript opens the viewer and receives a terminal burst. The verified replay remains the canonical complete history, and viewer timing never advances rules or score.",
+            "The optional same-user pipe uses `vibesnake-agent-viewer-frame-v6`. Every frame declares initial, step, burst, or finish origin and binds exact steps advanced to the pre-mutation tick and state hash. Burst frames carry closed stop reason and final-step event, while terminal truth, immutable match identity, catalog-bound Passport v3, action facts, contiguous state anchors, two ordered live style criteria, and the optional replay-bound terminal style outcome are cross-validated before presentation. Malformed, oversized, contradictory, unknown-catalog, identity-drifting, or criterion-drifting input clears pending content and rejects the stream. The host keeps only the latest unsent frame, the client reports sequence gaps as coalesced earlier updates, and the exact packaged-host transcript opens the viewer and receives a terminal burst. The verified replay remains the canonical complete history, and viewer timing never advances rules or score.",
             "",
             "# Trust boundary",
             "",
@@ -234,6 +239,11 @@ def render_bundle(repository_root: Path) -> dict[str, str]:
         ["vibesnake", "curriculum", "styles", "evaluation"],
         [
             ("agent-experience", "../../native/src/VibeSnake.AgentPlay/AgentExperience.cs", "Agent experience catalog"),
+            (
+                "style-evidence",
+                "../../native/src/VibeSnake.AgentPlay/AgentStyleEvidence.cs",
+                "Replay-derived style evidence evaluator",
+            ),
             ("experience-design", "../../docs/design/AGENT_ARENA.md", "Agent Arena experience contract"),
         ],
         *lifecycle,
@@ -243,7 +253,8 @@ def render_bundle(repository_root: Path) -> dict[str, str]:
             "",
             *(f"* `{style_id}`" for style_id in style_ids),
             "",
-            "A style contract reports progress from public episode metrics. It does not change rules, scoring, spawn order, or replay verification.",
+            "Each style publishes exactly two ordered, factual criteria under `replay-composite-core4-v1`. Stillwater combines rules-advanced-step survival with structural-open-exit rate. Crownchaser combines peak combo with uninterrupted food continuity through the first combo of four. Edge Prophet combines rewarded body-proximity near misses with a same-step wrap fact under the pinned `vibesnake-core@4` evaluator. Mutagenist combines distinct activated power kinds with concurrent active power kinds. Redline combines food count with safe progress toward the exact pre-step visible food.",
+            "Live style values are rules-advanced-step observations and may rise or fall. Rate criteria expose integer numerators and denominators and use floor basis points. Successful finalization independently reconstructs the same facts from the verified replay, requires agreement with live evidence, and binds the terminal style outcome to the replay payload hash. These facts do not prove intent, planning, mastery, personality, or spectator appeal. A style never changes rules, scoring, spawn order, or replay verification.",
             "",
             "# Signal School",
             "",
@@ -270,7 +281,7 @@ def render_bundle(repository_root: Path) -> dict[str, str]:
         (
             "# Verified result",
             "",
-            f"A successfully finalized completed, capped, or explicitly finished match returns `{result_schema}` with final state hash, replay payload hash, rules and mode identity, outcome, metrics, and verification code. A Signal School result also carries a primary-metric outcome reconstructed from the verified replay and bound to that replay payload hash. Failed-closed finalization returns neither a verified result nor a verified replay.",
+            f"A successfully finalized completed, capped, or explicitly finished match returns `{result_schema}` with final state hash, replay payload hash, rules and mode identity, outcome, metrics, and verification code. A styled result carries exactly two criterion outcomes independently reconstructed from and bound to that verified replay. A Signal School result also carries its primary-metric outcome reconstructed from the verified replay and bound to the same payload hash. Failed-closed finalization returns neither a verified result, a style or lesson outcome, nor a verified replay.",
             "",
             "# Persistence",
             "",

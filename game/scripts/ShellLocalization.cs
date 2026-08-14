@@ -216,8 +216,32 @@ internal static class ShellLocalization
         Entry("agent-arena.style.open", "OPEN EXHIBITION"),
         Entry("agent-arena.rival.solo", "SOLO"),
         Entry(
-            "agent-arena.style.progress",
-            "{style} {current}/{target}"),
+            "agent-arena.style.live",
+            "STYLE {style} | LIVE OBSERVATIONS {met}/2"),
+        Entry(
+            "agent-arena.style.replay-verified",
+            "STYLE {style} | REPLAY-VERIFIED CRITERIA {met}/2"),
+        Entry(
+            "agent-arena.style.replay-unavailable",
+            "STYLE {style} | REPLAY EVIDENCE UNAVAILABLE"),
+        Entry(
+            "agent-arena.style.criterion",
+            "{state} | {criterion} {current}/{target}"),
+        Entry(
+            "agent-arena.style.criterion.observed-met",
+            "[+] OBSERVED MET"),
+        Entry(
+            "agent-arena.style.criterion.observed-not-met",
+            "[ ] OBSERVED NOT MET"),
+        Entry(
+            "agent-arena.style.criterion.verified-met",
+            "[+] VERIFIED MET"),
+        Entry(
+            "agent-arena.style.criterion.verified-not-met",
+            "[ ] VERIFIED NOT MET"),
+        Entry(
+            "agent-arena.style.criterion.replay-unverified",
+            "[?] REPLAY UNVERIFIED"),
         Entry(
             "agent-arena.lesson.progress",
             "SIGNAL SCHOOL {lesson} | {metric} {current}/{target}"),
@@ -228,8 +252,11 @@ internal static class ShellLocalization
             "agent-arena.lesson.verified",
             "SIGNAL SCHOOL {lesson} | {metric} {current}/{target} | TARGET VERIFIED"),
         Entry(
+            "agent-arena.lesson.verified-not-met",
+            "SIGNAL SCHOOL {lesson} | {metric} {current}/{target} | REPLAY VERIFIED | TARGET NOT MET"),
+        Entry(
             "agent-arena.lesson.unverified",
-            "SIGNAL SCHOOL {lesson} | {metric} {current}/{target} | TARGET UNVERIFIED"),
+            "SIGNAL SCHOOL {lesson} | {metric} {current}/{target} | REPLAY EVIDENCE UNAVAILABLE"),
         Entry("agent-arena.lesson.metric.survival-steps", "SURVIVAL STEPS"),
         Entry("agent-arena.lesson.metric.food-eaten", "FOOD"),
         Entry("agent-arena.lesson.metric.peak-combo", "PEAK COMBO"),

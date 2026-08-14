@@ -28,7 +28,7 @@ public sealed class AgentViewerClient : IDisposable
     private readonly string _accessToken;
     private readonly CancellationTokenSource _shutdown = new();
     private readonly Task _readerTask;
-    private AgentViewerFrameV5? _latestFrame;
+    private AgentViewerFrameV6? _latestFrame;
     private long _lastPresentedSequence = -1;
     private AgentViewerClientState _state = AgentViewerClientState.Connecting;
     private string _status = "CONNECTING TO AGENT MATCH";
@@ -71,7 +71,7 @@ public sealed class AgentViewerClient : IDisposable
     }
 
     public bool TryTakeLatest(
-        out AgentViewerFrameV5? frame,
+        out AgentViewerFrameV6? frame,
         out long coalescedFrames)
     {
         lock (_sync)
@@ -143,7 +143,7 @@ public sealed class AgentViewerClient : IDisposable
             await pipe.FlushAsync(cancellationToken).ConfigureAwait(false);
 
             long lastSequence = -1;
-            AgentViewerFrameV5? lastFrame = null;
+            AgentViewerFrameV6? lastFrame = null;
             while (!cancellationToken.IsCancellationRequested)
             {
                 var line = await ReadLineBoundedAsync(pipe, cancellationToken).ConfigureAwait(false);
@@ -159,11 +159,11 @@ public sealed class AgentViewerClient : IDisposable
                     return;
                 }
 
-                var frame = JsonSerializer.Deserialize<AgentViewerFrameV5>(line, SerializerOptions);
+                var frame = JsonSerializer.Deserialize<AgentViewerFrameV6>(line, SerializerOptions);
                 if (frame is null
-                    || frame.Schema != AgentViewerFrameV5.Contract
+                    || frame.Schema != AgentViewerFrameV6.Contract
                     || frame.Observation is null
-                    || frame.Observation.Schema != AgentObservationV3.Contract
+                    || frame.Observation.Schema != AgentObservationV4.Contract
                     || !HasValidObservationShape(frame.Observation)
                     || frame.Sequence <= lastSequence
                     || !HasConsistentOperation(frame, lastFrame)
@@ -212,8 +212,8 @@ public sealed class AgentViewerClient : IDisposable
     }
 
     private static bool HasConsistentOperation(
-        AgentViewerFrameV5 frame,
-        AgentViewerFrameV5? previousFrame)
+        AgentViewerFrameV6 frame,
+        AgentViewerFrameV6? previousFrame)
     {
         if (frame.Sequence < 0
             || frame.StartTick < 0
@@ -274,7 +274,7 @@ public sealed class AgentViewerClient : IDisposable
         };
     }
 
-    private static bool HasConsistentBurst(AgentViewerFrameV5 frame)
+    private static bool HasConsistentBurst(AgentViewerFrameV6 frame)
     {
         if (frame.Sequence <= 0
             || frame.StepsAdvanced > AgentBurstRequest.MaximumBurstSteps
@@ -303,7 +303,7 @@ public sealed class AgentViewerClient : IDisposable
         return selectedEvent?.Kind == stopEvent;
     }
 
-    private static bool HasValidObservationShape(AgentObservationV3 observation) =>
+    private static bool HasValidObservationShape(AgentObservationV4 observation) =>
         !string.IsNullOrWhiteSpace(observation.MatchId)
         && string.Equals(
             observation.RulesetId,
@@ -320,6 +320,7 @@ public sealed class AgentViewerClient : IDisposable
             RunConfig.ConfigHashAlgorithmId,
             StringComparison.Ordinal)
         && IsLowerHex(observation.ConfigHash, 64)
+        && HasCanonicalModeConfiguration(observation)
         && HasValidPassport(observation.Passport)
         && Enum.IsDefined(observation.SeedVisibility)
         && (observation.SeedVisibility == AgentSeedVisibility.Open
@@ -327,6 +328,7 @@ public sealed class AgentViewerClient : IDisposable
             : observation.GameplaySeed is null)
         && observation.Tick >= 0
         && observation.MaximumSteps > 0
+        && observation.MaximumSteps <= AgentMatchOptions.MaximumAllowedSteps
         && observation.Tick <= observation.MaximumSteps
         && observation.StepsRemaining >= 0
         && observation.StepsRemaining == observation.MaximumSteps - observation.Tick
@@ -346,18 +348,42 @@ public sealed class AgentViewerClient : IDisposable
         && observation.DetachedObstacles is not null
         && Enum.IsDefined(observation.Status)
         && Enum.IsDefined(observation.DeathCause)
+        && HasConsistentRunStatus(observation.Status, observation.DeathCause)
         && Enum.IsDefined(observation.Direction)
         && Enum.IsDefined(observation.AdaptiveDifficultyState)
         && !string.IsNullOrWhiteSpace(observation.AdaptivePolicyId)
-        && Enum.IsDefined(observation.Lifecycle);
+        && Enum.IsDefined(observation.Lifecycle)
+        && !(observation.StyleContract is not null && observation.LessonProgress is not null)
+        && HasValidEpisodeMetrics(observation)
+        && HasValidStyleProgress(observation)
+        && HasValidLessonProgress(observation)
+        && HasValidRivalObservation(observation);
 
-    private static bool HasValidPassport(AgentPassportV2? passport) =>
+    private static bool HasCanonicalModeConfiguration(AgentObservationV4 observation)
+    {
+        var mode = RunModeCatalog.All.First(item =>
+            string.Equals(item.Id, observation.ModeId, StringComparison.Ordinal)
+            && item.Version == observation.ModeVersion);
+        var config = RunModeCatalog.CreateConfig(mode);
+        return string.Equals(
+                observation.ConfigHash,
+                config.ComputeConfigHash(),
+                StringComparison.Ordinal)
+            && observation.WrapsAtEdges
+            && observation.AdaptationEnabled == config.EnableAdaptation
+            && string.Equals(
+                observation.AdaptivePolicyId,
+                config.AdaptivePolicyId,
+                StringComparison.Ordinal);
+    }
+
+    private static bool HasValidPassport(AgentPassportV3? passport) =>
         passport is not null
-        && string.Equals(passport.Schema, AgentPassportV2.Contract, StringComparison.Ordinal)
+        && string.Equals(passport.Schema, AgentPassportV3.Contract, StringComparison.Ordinal)
         && IsIdentityToken(passport.AgentId, 64)
         && IsIdentityToken(passport.PolicyVersion, 64)
         && !string.IsNullOrWhiteSpace(passport.DisplayName)
-        && passport.DisplayName.Length <= AgentPassportV2.MaximumDisplayNameLength
+        && passport.DisplayName.Length <= AgentPassportV3.MaximumDisplayNameLength
         && passport.DisplayName == passport.DisplayName.Trim()
         && !passport.DisplayName.Any(char.IsControl)
         && CosmeticSetCatalog.Find(passport.AvatarId) is not null
@@ -367,9 +393,264 @@ public sealed class AgentViewerClient : IDisposable
             string.Equals(station.Id, passport.StationId, StringComparison.Ordinal))
         && string.Equals(
             passport.ObservationProfile,
-            AgentPassportV2.SymbolicStepObservationProfile,
+            AgentPassportV3.SymbolicStepObservationProfile,
             StringComparison.Ordinal)
-        && AgentPassportV2.IsSupportedActionProfile(passport.ActionProfile);
+        && AgentPassportV3.IsSupportedActionProfile(passport.ActionProfile);
+
+    private static bool HasValidEpisodeMetrics(AgentObservationV4 observation)
+    {
+        var metrics = observation.EpisodeMetrics;
+        return metrics is not null
+            && string.Equals(
+                metrics.Schema,
+                AgentEpisodeMetricsV1.Contract,
+                StringComparison.Ordinal)
+            && metrics.SurvivalSteps == observation.Tick
+            && metrics.FoodEaten is >= 0 && metrics.FoodEaten <= observation.Tick
+            && metrics.PeakCombo is >= 0 && metrics.PeakCombo <= metrics.FoodEaten
+            && observation.ComboCount is >= 0 && observation.ComboCount <= metrics.PeakCombo
+            && metrics.Wraps is >= 0 && metrics.Wraps <= observation.Tick
+            && metrics.NearMisses is >= 0 && metrics.NearMisses <= observation.Tick * 2
+            && metrics.PowersCollected is >= 0 && metrics.PowersCollected <= observation.Tick
+            && metrics.PowersActivated is >= 0
+            && metrics.PowersActivated <= observation.Tick * 2
+            && metrics.PowersActivated <= metrics.PowersCollected + metrics.Recoveries
+            && metrics.Recoveries is >= 0 && metrics.Recoveries <= observation.Tick * 2
+            && metrics.StarvationWarnings is >= 0
+            && metrics.StarvationWarnings <= observation.Tick
+            && metrics.DirectionChanges is >= 0
+            && metrics.DirectionChanges <= observation.Tick;
+    }
+
+    private static bool HasValidStyleProgress(AgentObservationV4 observation)
+    {
+        var progress = observation.StyleContract;
+        if (progress is null)
+        {
+            return true;
+        }
+
+        if (!AgentStyleContractCatalog.IsValidProgress(progress)
+            || !SupportsStyleMode(progress.ContractId, observation.ModeId))
+        {
+            return false;
+        }
+
+        var first = progress.Criteria[0];
+        var second = progress.Criteria[1];
+        var metrics = observation.EpisodeMetrics;
+        return progress.ContractId switch
+        {
+            AgentStyleContractCatalog.StillwaterId =>
+                first.Current == observation.Tick
+                && second.Denominator == observation.Tick
+                && second.Numerator <= observation.Tick
+                    - (observation.Status == RunStatus.Running ? 0 : 1),
+            AgentStyleContractCatalog.CrownchaserId =>
+                first.Current == metrics.PeakCombo
+                && HasValidCrownchaserContinuity(second, observation),
+            AgentStyleContractCatalog.EdgeProphetId =>
+                first.Current <= metrics.NearMisses
+                && second.Current <= first.Current
+                && second.Current <= metrics.Wraps,
+            AgentStyleContractCatalog.MutagenistId =>
+                first.Current <= Math.Min(9, metrics.PowersActivated)
+                && second.Current <= first.Current,
+            AgentStyleContractCatalog.RedlineId =>
+                first.Current == metrics.FoodEaten
+                && second.Denominator == observation.Tick
+                && second.Numerator <= observation.Tick
+                    - (observation.Status == RunStatus.Dead ? 1 : 0),
+            _ => false,
+        };
+    }
+
+    private static bool HasValidCrownchaserContinuity(
+        AgentStyleCriterionProgressV2 continuity,
+        AgentObservationV4 observation)
+    {
+        var metrics = observation.EpisodeMetrics;
+        if (metrics.PeakCombo < 4)
+        {
+            return continuity.Numerator == Math.Min(observation.ComboCount, metrics.FoodEaten)
+                && continuity.Denominator == metrics.FoodEaten;
+        }
+
+        return continuity.Numerator == 4
+            && continuity.Denominator is >= 4
+            && continuity.Denominator <= metrics.FoodEaten;
+    }
+
+    private static bool HasValidLessonProgress(AgentObservationV4 observation)
+    {
+        var progress = observation.LessonProgress;
+        if (progress is null)
+        {
+            return true;
+        }
+
+        AgentSignalLessonDefinition definition;
+        try
+        {
+            definition = AgentSignalSchoolCatalog.Get(progress.LessonId);
+        }
+        catch (ArgumentException)
+        {
+            return false;
+        }
+
+        var current = observation.EpisodeMetrics.ValueFor(definition.Metric);
+        return string.Equals(
+                progress.Schema,
+                AgentLessonProgressV1.Contract,
+                StringComparison.Ordinal)
+            && string.Equals(progress.Title, definition.Title, StringComparison.Ordinal)
+            && string.Equals(progress.Instruction, definition.Instruction, StringComparison.Ordinal)
+            && string.Equals(
+                progress.EvaluationPolicyId,
+                definition.EvaluationPolicyId,
+                StringComparison.Ordinal)
+            && progress.Metric == definition.Metric
+            && progress.Current == current
+            && progress.Target == definition.Target
+            && progress.Remaining == Math.Max(0, definition.Target - current)
+            && progress.TargetReached == (current >= definition.Target)
+            && string.Equals(observation.ModeId, definition.ModeId, StringComparison.Ordinal)
+            && observation.SeedVisibility == AgentSeedVisibility.Open
+            && observation.GameplaySeed == definition.PracticeSeed
+            && observation.MaximumSteps == definition.MaximumSteps
+            && observation.StyleContract is null
+            && observation.Rival is null;
+    }
+
+    private static bool HasValidRivalObservation(AgentObservationV4 observation)
+    {
+        var rival = observation.Rival;
+        if (rival is null)
+        {
+            return true;
+        }
+
+        var personality = AiPersonalityCatalog.BuiltIn.FirstOrDefault(item =>
+            string.Equals(item.Id, rival.PersonalityId, StringComparison.Ordinal));
+        return personality is not null
+            && string.Equals(personality.Name, rival.DisplayName, StringComparison.Ordinal)
+            && rival.Tick is >= 0
+            && rival.Tick <= observation.Tick
+            && Enum.IsDefined(rival.Status)
+            && Enum.IsDefined(rival.DeathCause)
+            && HasConsistentRunStatus(rival.Status, rival.DeathCause)
+            && rival.Score is >= 0 and <= SnakeRun.MaximumScore;
+    }
+
+    private static bool HasConsistentRunStatus(RunStatus status, DeathCause deathCause) =>
+        status switch
+        {
+            RunStatus.Running or RunStatus.Won => deathCause == DeathCause.None,
+            RunStatus.Dead => deathCause is DeathCause.SelfCollision or DeathCause.Starvation,
+            _ => false,
+        };
+
+    private static bool HasValidStyleOutcome(
+        AgentStyleOutcomeV2 outcome,
+        AgentStyleProgressV2 progress,
+        string modeId) =>
+        AgentStyleContractCatalog.IsValidOutcome(outcome)
+        && SupportsStyleMode(outcome.ContractId, modeId)
+        && HasSameStyleProgress(progress, outcome);
+
+    private static bool SupportsStyleMode(string contractId, string modeId) =>
+        AgentStyleContractCatalog.All.Any(definition =>
+            string.Equals(definition.Id, contractId, StringComparison.Ordinal)
+            && definition.SupportedModeIds.Contains(modeId, StringComparer.Ordinal));
+
+    private static bool HasSameStyleIdentity(
+        AgentStyleProgressV2? expected,
+        AgentStyleProgressV2? actual)
+    {
+        if (expected is null || actual is null)
+        {
+            return expected is null && actual is null;
+        }
+
+        return string.Equals(expected.Schema, actual.Schema, StringComparison.Ordinal)
+            && string.Equals(expected.ContractId, actual.ContractId, StringComparison.Ordinal)
+            && string.Equals(expected.DisplayName, actual.DisplayName, StringComparison.Ordinal)
+            && string.Equals(
+                expected.EvaluationPolicyId,
+                actual.EvaluationPolicyId,
+                StringComparison.Ordinal)
+            && HasSameCriterionIdentity(expected.Criteria, actual.Criteria);
+    }
+
+    private static bool HasSameCriterionIdentity(
+        IReadOnlyList<AgentStyleCriterionProgressV2> expected,
+        IReadOnlyList<AgentStyleCriterionProgressV2> actual)
+    {
+        if (expected.Count != 2 || actual.Count != 2)
+        {
+            return false;
+        }
+
+        for (var index = 0; index < expected.Count; index++)
+        {
+            if (!string.Equals(
+                    expected[index].CriterionId,
+                    actual[index].CriterionId,
+                    StringComparison.Ordinal)
+                || !string.Equals(
+                    expected[index].DisplayName,
+                    actual[index].DisplayName,
+                    StringComparison.Ordinal)
+                || expected[index].Comparator != actual[index].Comparator
+                || expected[index].Unit != actual[index].Unit
+                || expected[index].Target != actual[index].Target)
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private static bool HasSameStyleProgress(
+        AgentStyleProgressV2 progress,
+        AgentStyleOutcomeV2 outcome)
+    {
+        if (!string.Equals(progress.ContractId, outcome.ContractId, StringComparison.Ordinal)
+            || !string.Equals(progress.DisplayName, outcome.DisplayName, StringComparison.Ordinal)
+            || !string.Equals(
+                progress.EvaluationPolicyId,
+                outcome.EvaluationPolicyId,
+                StringComparison.Ordinal)
+            || progress.CriteriaSatisfied != outcome.CriteriaSatisfied
+            || progress.AllCriteriaSatisfied != outcome.AllCriteriaSatisfied
+            || progress.Criteria.Count != 2
+            || outcome.Criteria.Count != 2)
+        {
+            return false;
+        }
+
+        for (var index = 0; index < progress.Criteria.Count; index++)
+        {
+            var expected = progress.Criteria[index];
+            var actual = outcome.Criteria[index];
+            if (!string.Equals(expected.CriterionId, actual.CriterionId, StringComparison.Ordinal)
+                || !string.Equals(expected.DisplayName, actual.DisplayName, StringComparison.Ordinal)
+                || expected.Comparator != actual.Comparator
+                || expected.Unit != actual.Unit
+                || expected.Current != actual.Current
+                || expected.Target != actual.Target
+                || expected.Numerator != actual.Numerator
+                || expected.Denominator != actual.Denominator
+                || expected.Satisfied != actual.Satisfied)
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
 
     private static bool IsIdentityToken(string? value, int maximumLength) =>
         !string.IsNullOrWhiteSpace(value)
@@ -396,8 +677,8 @@ public sealed class AgentViewerClient : IDisposable
                     || action.Rejection == AgentActionRejection.ReplayFailure));
 
     private static bool HasConsistentIdentity(
-        AgentObservationV3 expected,
-        AgentObservationV3 actual) =>
+        AgentObservationV4 expected,
+        AgentObservationV4 actual) =>
         string.Equals(expected.MatchId, actual.MatchId, StringComparison.Ordinal)
         && string.Equals(expected.RulesetId, actual.RulesetId, StringComparison.Ordinal)
         && expected.RulesVersion == actual.RulesVersion
@@ -414,9 +695,22 @@ public sealed class AgentViewerClient : IDisposable
         && expected.MaximumSteps == actual.MaximumSteps
         && expected.BoardWidth == actual.BoardWidth
         && expected.BoardHeight == actual.BoardHeight
-        && expected.WrapsAtEdges == actual.WrapsAtEdges;
+        && expected.WrapsAtEdges == actual.WrapsAtEdges
+        && HasSameStyleIdentity(expected.StyleContract, actual.StyleContract)
+        && HasSameRivalIdentity(expected.Rival, actual.Rival);
 
-    private static bool HasConsistentOutcome(AgentViewerFrameV5 frame)
+    private static bool HasSameRivalIdentity(
+        AgentRivalObservationV1? expected,
+        AgentRivalObservationV1? actual) =>
+        expected is null || actual is null
+            ? expected is null && actual is null
+            : string.Equals(
+                expected.PersonalityId,
+                actual.PersonalityId,
+                StringComparison.Ordinal)
+            && string.Equals(expected.DisplayName, actual.DisplayName, StringComparison.Ordinal);
+
+    private static bool HasConsistentOutcome(AgentViewerFrameV6 frame)
     {
         var observation = frame.Observation;
         if (!HasConsistentEndReason(frame)
@@ -428,24 +722,35 @@ public sealed class AgentViewerClient : IDisposable
         {
             return observation.Lifecycle == AgentMatchLifecycle.AwaitingAction
                 && frame.EndReason == AgentMatchEndReason.None
-                && !frame.VerifiedResultAvailable;
+                && !frame.VerifiedResultAvailable
+                && frame.StyleOutcome is null;
         }
 
         if (observation.Lifecycle == AgentMatchLifecycle.FailedClosed)
         {
             return frame.EndReason == AgentMatchEndReason.ReplayFailure
-                && !frame.VerifiedResultAvailable;
+                && !frame.VerifiedResultAvailable
+                && frame.StyleOutcome is null;
         }
 
-        return frame.VerifiedResultAvailable
+        var successfulTerminal = frame.VerifiedResultAvailable
             && (observation.Lifecycle == AgentMatchLifecycle.Completed
                 && frame.EndReason is AgentMatchEndReason.RulesTerminal
                     or AgentMatchEndReason.StepLimit
                 || observation.Lifecycle == AgentMatchLifecycle.Aborted
                 && frame.EndReason == AgentMatchEndReason.AgentFinished);
+        if (!successfulTerminal)
+        {
+            return false;
+        }
+
+        return observation.StyleContract is { } style
+            ? frame.StyleOutcome is { } outcome
+                && HasValidStyleOutcome(outcome, style, observation.ModeId)
+            : frame.StyleOutcome is null;
     }
 
-    private static bool HasConsistentRunEnd(AgentViewerFrameV5 frame) =>
+    private static bool HasConsistentRunEnd(AgentViewerFrameV6 frame) =>
         frame.EndReason switch
         {
             AgentMatchEndReason.None => frame.Observation.Status == RunStatus.Running,
@@ -459,7 +764,7 @@ public sealed class AgentViewerClient : IDisposable
             _ => false,
         };
 
-    private static bool HasConsistentEndReason(AgentViewerFrameV5 frame)
+    private static bool HasConsistentEndReason(AgentViewerFrameV6 frame)
     {
         if (frame.Operation == AgentViewerOperationKind.Finish)
         {
@@ -513,7 +818,7 @@ public sealed class AgentViewerClient : IDisposable
     }
 
     private static (AgentViewerClientState State, string Status) DescribeFrame(
-        AgentViewerFrameV5 frame) => frame.EndReason switch
+        AgentViewerFrameV6 frame) => frame.EndReason switch
         {
             AgentMatchEndReason.None => (
                 AgentViewerClientState.Watching,
@@ -594,18 +899,24 @@ public sealed class AgentViewerClient : IDisposable
         {
             PropertyNameCaseInsensitive = false,
             PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
+            AllowDuplicateProperties = false,
+            RespectRequiredConstructorParameters = true,
+            UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow,
         };
-        options.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.SnakeCaseLower));
+        options.Converters.Add(
+            new JsonStringEnumConverter(
+                JsonNamingPolicy.SnakeCaseLower,
+                allowIntegerValues: false));
         return options;
     }
 }
 
 public static class AgentViewerPresentation
 {
-    public static RunSnapshot ProjectSnapshot(AgentObservationV3 observation)
+    public static RunSnapshot ProjectSnapshot(AgentObservationV4 observation)
     {
         ArgumentNullException.ThrowIfNull(observation);
-        if (observation.Schema != AgentObservationV3.Contract
+        if (observation.Schema != AgentObservationV4.Contract
             || observation.Body is null
             || observation.Body.Count == 0
             || observation.PendingDirections is null

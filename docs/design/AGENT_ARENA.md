@@ -12,7 +12,7 @@ Agent Arena is a post-1.0 optional capability. The development tree contains the
 
 ## Developer preview status
 
-The source preview implements symbolic-step play, a separate bounded symbolic-burst division, open and blind seeds, verified replays, a read-only live viewer, five closed Style Contracts, six selectable deterministic Signal School practices with primary-metric evaluators, ephemeral public Agent Passports with closed avatar, accent, and station catalogs, five closed self-declared public intents, and equal-seed named rivals. A burst applies one initial action, continues for at most 16 steps, and stops on a fixed public decision-event catalog, the selected lesson's first target transition, terminal state, match cap, replay failure, or its requested bound. Exact retries are cached across a shared step-and-burst mutation-key namespace. At host capacity, a live match idle for 30 minutes may be reclaimed without a result or replay, while viewer activity remains presentation only. The versioned `vibesnake-agent-viewer-frame-v5` contract identifies initial, step, burst, and finish operations; binds exact steps advanced to the pre-mutation tick and state hash; publishes burst stop reason and event, exact terminal and failed-closed truth, and verified-result availability; and rejects unknown-catalog, identity, or cross-field drift. Monotonic sequence gaps are presented as coalesced earlier updates instead of one apparent step, awaiting-agent copy says that rules are paused, and a real terminal-burst Godot smoke exercises muted, high-contrast, reduced-motion snap, and 150-percent-text settings. Composed pseudo-localized overlay geometry is measured separately. The screen resolves the agent-owned avatar and accent independently of human cosmetics and shows the catalog station plus lesson target state. `start_lesson` returns canonical practice progress, mutation deltas, and a replay-derived final outcome. The longer experience contract below remains intentionally broader. Visual control, all eight observable behaviors represented by eight canonical Signal School lessons, Rival Breaker, expressive composite Style Contract evaluation, free-form captions, persisted exhibition receipts and passport history, qualification-time decks, rankings, turning-point summaries, and the same-seed human handoff are not implemented yet.
+The source preview implements symbolic-step play, a separate bounded symbolic-burst division, open and blind seeds, verified replays, a read-only live viewer, five closed two-criterion Style Contracts, six selectable deterministic Signal School practices with primary-metric evaluators, ephemeral public Agent Passports with closed avatar, accent, and station catalogs, five closed self-declared public intents, and equal-seed named rivals. A burst applies one initial action, continues for at most 16 steps, and stops on a fixed public decision-event catalog, the selected lesson's first target transition, terminal state, match cap, replay failure, or its requested bound. Exact retries are cached across a shared step-and-burst mutation-key namespace. At host capacity, a live match idle for 30 minutes may be reclaimed without a result or replay, while viewer activity remains presentation only. The versioned `vibesnake-agent-viewer-frame-v6` contract identifies initial, step, burst, and finish operations; binds exact steps advanced to the pre-mutation tick and state hash; publishes burst stop reason and event, exact terminal and failed-closed truth, replay-verified style outcomes, and verified-result availability; and rejects unknown-catalog, identity, style, or cross-field drift. Monotonic sequence gaps are presented as coalesced earlier updates instead of one apparent step, awaiting-agent copy says that rules are paused, and a real terminal-burst Godot smoke exercises muted, high-contrast, reduced-motion snap, and 150-percent-text settings. Composed pseudo-localized overlay geometry is measured separately. The screen resolves the agent-owned avatar and accent independently of human cosmetics and shows the catalog station plus lesson target state. `start_lesson` returns canonical practice progress, mutation deltas, and a replay-derived final outcome. The longer experience contract below remains intentionally broader. Visual control, all eight observable behaviors represented by eight canonical Signal School lessons, Rival Breaker, free-form captions, persisted exhibition receipts and passport history, qualification-time decks, rankings, turning-point summaries, and the same-seed human handoff are not implemented yet. Human review must still determine whether the factual composite style presentation is legible and entertaining.
 
 ## Target core loop
 
@@ -40,7 +40,7 @@ Results from different control profiles are not ranked together.
 | Symbolic burst | Complete public state with bounded event stops | A bounded continuation stops at a public event or budget | Efficient deliberative agents |
 | Visual control | Rendered frame and logical controls | Presentation-paced input | Computer-use and vision agents |
 
-Each division declares Classic or Vibe, exact rules and configuration identity, open or blind seed visibility, action-call and step budgets, memory policy, and agent version.
+Every current division declares Classic or Vibe, exact rules and configuration identity, open or blind seed visibility, a step cap, bounded mutation capacity, memory policy, and agent version. Exact per-lesson action-call and UTF-8 interaction-byte budgets remain an AA-05 acceptance target and must be published before curriculum completion is claimed.
 
 ## Signal School
 
@@ -57,22 +57,22 @@ Signal School is a deterministic curriculum, not a hidden tutorial score. Lesson
 
 The preview exposes six canonical primary-target practices through `start_lesson`: `first-turn`, `wrap-line`, `hunger-route`, `power-route`, `combo-route`, and `recover-route`. Each fixes its mode, open seed, cap, instruction, public metric, and threshold. Observations expose progress, accepted mutations expose exact deltas, a target-reaching burst stops on that exact step, and successful finalization returns a replay-derived outcome bound to the replay payload hash. These practices cover one accepted direction change, one typed wrap, one food in Vibe mode, one power activation, a peak combo of three, and one typed collision-prevented recovery. They do not yet cover the full target sequence above: exit preservation and attributable death are absent, and `first-turn` does not teach recovery from a rejected reversal. The completed curriculum contains eight observable behaviors represented by eight canonical lessons and qualifies each stated behavior through immutable replay, event, and bounded action-attempt evidence rather than only a catalog count or primary threshold.
 
-Failure review remains factual and bounded. A completed lesson reports the first unmet requirement and a closed reason such as voluntary finish, rules terminal, step cap, insufficient attempt evidence, or target reached. Replay failure remains failed closed and creates no successful outcome. Same-lesson retry never resumes the old rules state: a bounded retry descriptor names the canonical lesson and the client calls `start_lesson` to create a fresh ephemeral session with no inherited score, replay, mutation keys, or practice history.
+The AA-05 failure-review target is factual and bounded. A completed lesson will report the first unmet requirement and a closed reason such as voluntary finish, rules terminal, step cap, insufficient attempt evidence, or target reached. Replay failure remains failed closed and creates no successful outcome. The planned same-lesson retry never resumes the old rules state: a bounded retry descriptor names the canonical lesson and the client calls `start_lesson` to create a fresh ephemeral session with no inherited score, replay, mutation keys, or practice history.
 
 ## Style Contracts
 
-Score alone should not define successful agent play. A Style Contract combines one primary objective with one optional expressive objective. The preview exposes and evaluates the first five contracts below using their primary metrics. Expressive objectives and Rival Breaker remain target contracts rather than qualified preview results.
+Score alone should not define successful agent play. The preview evaluates five closed Style Contracts through exactly two ordered facts reconstructed from rules-advanced steps. Live values are observations and may rise or fall. A successfully finalized result independently replays the action trace, requires exact agreement with the live fact accumulator, and binds the two-criterion outcome to the verified replay payload hash.
 
-| Contract | Primary objective | Expressive objective |
+| Contract | Criterion one | Criterion two |
 | --- | --- | --- |
-| Stillwater | Survive 200 steps | Preserve open exits and avoid dead ends |
-| Crownchaser | Reach a four-food peak combo | Sustain combo continuity |
-| Edge Prophet | Produce three near misses | Add intentional wraps without needless danger |
-| Mutagenist | Activate two powers | Demonstrate useful power timing and synergy |
-| Redline | Collect six food | Reach food efficiently while preserving recovery space |
-| Rival Breaker | Beat a named verified outcome | Win on the rival's characteristic terms |
+| Stillwater | At least 200 rules-advanced steps | At least 9,900 basis points of all rules-advanced steps end Running with at least two structural non-reversing exits; terminal steps remain in the denominator |
+| Crownchaser | Peak combo at least 4 | Uninterrupted current combo-chain food divided by all food through the first combo of 4 equals 10,000 basis points |
+| Edge Prophet | At least 3 positive NearMiss events at the post-step head with at least three occupied non-wrapping adjacent body cells under pinned `vibesnake-core@4` | At least 1 of those events has Wrapped in the same rules-advanced step |
+| Mutagenist | At least 2 distinct activated power kinds | At least 2 concurrently active power kinds in one post-step state |
+| Redline | At least 6 food collected | At least 6,500 basis points of rules-advanced steps with visible pre-step food either eat or reduce wrapped distance to that exact target, end non-dead, and retain a structural exit unless won |
+| Rival Breaker, planned for AA-08 | Beat a named verified outcome | Win on the rival's characteristic terms |
 
-Contracts wrap official Classic and Vibe rules. They do not create hidden mechanics or alternate physics.
+Structural exits use wrapped collision geometry, the departing-tail and food-growth rules, and no temporary collision immunity. Redline credits an eligible step when it eats the pre-step target, including when Magnet moved that target during the step, or reduces wrapped Manhattan distance to the exact captured target, then leaves a non-dead state with an onward structural exit unless the run is won. Rate criteria expose exact integer numerators and denominators and use floor basis points with zero for an empty denominator. Edge Prophet derives its rewarded body-proximity subtype from positive head-position near-miss evidence plus post-step body adjacency under `vibesnake-core@4`; a later rules identity must requalify that evaluator. These facts do not prove calmness, intent, planning, useful timing, mastery, personality, or spectator appeal. Contracts wrap official Classic and Vibe rules and create no hidden mechanics or alternate physics.
 
 ## Observation contract
 
@@ -83,9 +83,9 @@ The symbolic observation is a closed, versioned allowlist containing:
 - Run status, death cause, current direction, head, body, and accepted pending directions.
 - Food, visible power pickup, bait, detached obstacles, score, combo, hunger, and public timers.
 - Active public effects and remaining step budget.
-- Ordered events from the immediately preceding accepted action. A rejection response clears this event list, so an agent must consume accepted-step events from that accepted response.
+- Ordered events from the immediately preceding rules-advanced step. Preflight and other zero-step rejections clear this event list; a post-step `replay_failure` retains only that exceptional rules-advanced step's events.
 - Previous action acceptance or rejection.
-- Declared contract progress and optional public rival summary when available.
+- Declared contract progress with exactly two ordered live criteria, exact rate numerators and denominators, and an optional public rival summary when available.
 
 It excludes random-generator state, future spawns, controller decisions, other live actions, private user data, local paths, diagnostics, credentials, prompts, hidden reasoning, and engine-computed route advice.
 
@@ -102,15 +102,15 @@ The base action is `up`, `right`, `down`, `left`, or `continue`. Every mutating 
 - A changed public intent changes the idempotent request identity but never changes rules, scoring, rewards, replay verification, or qualification.
 - The `four-direction-burst-v1` profile advances at most 16 steps, applies only one initial turn, and stops through fixed `decision-event-stop-v1` public events rather than caller-defined predicates.
 
-The service returns factual events rather than a fabricated dense reward. A burst returns its actual step count, closed stop reason, optional first stop event, final-step ordered events, and refreshed observation. The preview terminal metric vector contains survival steps, food eaten, peak combo, wraps, near misses, powers collected, powers activated, recoveries, starvation warnings, and direction changes, plus the selected contract's primary threshold result. Route efficiency, risk exposure beyond near misses, dead-end measures, and expressive multi-metric contract evaluation remain AA-03 and AA-08 targets.
+The service returns factual events rather than a fabricated dense reward. A burst returns its actual step count, closed stop reason, optional first stop event, final-step ordered events, and refreshed observation. The preview terminal metric vector contains survival steps, food eaten, peak combo, wraps, near misses, powers collected, powers activated, recoveries, starvation warnings, and direction changes. A styled result adds exactly two replay-derived criterion results bound to the same verified replay hash. Broader risk exposure, recovery-resource explanation, and qualification-time comparison remain AA-03 and AA-08 targets.
 
 ## Agent identity and memory
 
-The preview accepts an ephemeral public Agent Passport v2 containing:
+The preview accepts an ephemeral public Agent Passport v3 containing:
 
 - Caller-declared agent ID and policy version. The preview validates bounds but does not establish global identity or persistence.
 - Bounded, trimmed, control-character-free display name plus avatar, accent, and station IDs from closed public catalogs.
-- The fixed `symbolic-step-v2` observation profile and one supported action profile.
+- The fixed `symbolic-step-v3` observation profile and one supported action profile.
 
 A later persisted passport may add:
 
@@ -131,7 +131,7 @@ It never contains prompt history, chain of thought, credentials, raw provider re
 
 ## Broadcast language
 
-The viewer presents a competitor, not a request log. It shows the matchup, contract, agent display name, catalog-bound avatar, accent, and station, rival score, match status, latest closed self-declared public intent, every current closed action acceptance or rejection reason, exact end reason, and whether a verified result exists. A rejected attempt may change the displayed attempted intent, but the adjacent rejection label makes clear that no rules step was accepted. A disconnect says only that match control remains with the host and never claims that a replay exists. It should next add engine-observed risks and resources, composite Style Contract truth, record changes, typed highlights, and a post-run turning-point summary.
+The viewer presents a competitor, not a request log. It shows the matchup, contract, agent display name, catalog-bound avatar, accent, and station, both factual style criteria when selected, rival score, match status, latest closed self-declared public intent, every current closed action acceptance or rejection reason, exact end reason, and whether a verified result exists. Live style copy says observed; only a matching terminal outcome says replay verified; failed-closed copy says evidence unavailable. A rejected attempt may change the displayed attempted intent. Preflight and logical rejection labels mean no rules step advanced; `replay_failure` with `rules_advanced=true` reports the exceptional real step and failed-closed evidence state. A disconnect says only that match control remains with the host and never claims that a replay exists. It should next add engine-observed risks and resources, record changes, typed highlights, and a post-run turning-point summary.
 
 The current preview accepts only `seek_food`, `seek_power`, `preserve_space`, `take_risk`, or `recover`, plus `undeclared`. These values are clearly self-reported, appear only in public action feedback and the viewer, and cannot affect rules or verification. Free-form captions and confidence are deferred until they have a concrete moderation and accessibility benefit. Private reasoning is never requested or displayed.
 
@@ -139,7 +139,7 @@ The current preview accepts only `seek_food`, `seek_power`, `preserve_space`, `t
 
 Human availability does not serialize the build plan. Deterministic work on clarity, pacing controls, event selection, replay handoff, accessibility, recovery, packaging, and agent curricula continues from explicit contracts. Human evidence is collected whenever available and decides whether a behavior is kept, revised, removed, or promoted as fun.
 
-AA-03 legibility and AA-04 efficient control are parallelizable foundations; AA-05 waits for both to stabilize. The target dependency order is:
+AA-03a catalog identity and AA-03b replay-derived style truth now provide AA-05's stable machine dependency, while observed risk and resource presentation and human legibility evidence remain active AA-03 lanes. AA-04 efficient control is complete. The target dependency order is:
 
 1. Make every action correct, recoverable, and replay-verifiable.
 2. Make goal, style, public intent, risk, resources, and outcomes readable without diagnostics.

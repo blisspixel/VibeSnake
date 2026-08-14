@@ -47,6 +47,13 @@ before a session is created. Unknown identifiers and legacy or mixed passport
 schemas fail closed, and none of these presentation fields may read or mutate
 human progression, cosmetics, scores, or saves.
 
+Live Style Contract progress is reconstructed only from typed rules-advanced steps. Only successful finalization independently reconstructs the same facts from a verified replay and produces a replay-bound outcome.
+The terminal style outcome is returned only after independent replay evaluation
+matches the bounded live facts and carries the verified replay payload hash.
+Malformed criterion shapes, arithmetic, catalog identity, evaluator output, or
+replay divergence fail closed without a verified outcome. Declared intent,
+viewer timing, and passport identity never contribute to style evidence.
+
 Step and burst mutations share one idempotency-key namespace capped at 4,096
 unique records per match. Known keys are never evicted; after the cap, every
 unseen key fails closed without advancing rules. The burst

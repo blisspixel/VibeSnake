@@ -30,41 +30,164 @@ public sealed class AgentExperienceTests
     }
 
     [Fact]
-    public void Style_catalog_is_closed_unique_and_mode_aware()
+    public void Style_catalog_is_closed_unique_exactly_two_criteria_and_mode_aware()
     {
+        var expected = new Dictionary<string, (string FirstId, int FirstTarget, AgentStyleCriterionUnit FirstUnit, string SecondId, int SecondTarget, AgentStyleCriterionUnit SecondUnit)>(StringComparer.Ordinal)
+        {
+            [AgentStyleContractCatalog.StillwaterId] = (
+                "survival_steps",
+                200,
+                AgentStyleCriterionUnit.Count,
+                "structural_open_exit_rate_bp",
+                9_900,
+                AgentStyleCriterionUnit.BasisPoints),
+            [AgentStyleContractCatalog.CrownchaserId] = (
+                "peak_combo",
+                4,
+                AgentStyleCriterionUnit.Count,
+                "clean_pre_peak_continuity_bp",
+                10_000,
+                AgentStyleCriterionUnit.BasisPoints),
+            [AgentStyleContractCatalog.EdgeProphetId] = (
+                "rewarded_body_proximity_near_misses",
+                3,
+                AgentStyleCriterionUnit.Count,
+                "wrapped_rewarded_body_proximity_near_misses",
+                1,
+                AgentStyleCriterionUnit.Count),
+            [AgentStyleContractCatalog.MutagenistId] = (
+                "distinct_power_kinds_activated",
+                2,
+                AgentStyleCriterionUnit.Count,
+                "maximum_concurrent_active_power_kinds",
+                2,
+                AgentStyleCriterionUnit.Count),
+            [AgentStyleContractCatalog.RedlineId] = (
+                "food_eaten",
+                6,
+                AgentStyleCriterionUnit.Count,
+                "safe_food_progress_rate_bp",
+                6_500,
+                AgentStyleCriterionUnit.BasisPoints),
+        };
+
         Assert.Equal(5, AgentStyleContractCatalog.All.Count);
+        Assert.Equal(expected.Keys, AgentStyleContractCatalog.All.Select(value => value.Id));
         Assert.Equal(
             AgentStyleContractCatalog.All.Count,
             AgentStyleContractCatalog.All.Select(value => value.Id).Distinct().Count());
         Assert.All(AgentStyleContractCatalog.All, definition =>
         {
             Assert.Same(definition, AgentStyleContractCatalog.Get(definition.Id));
-            Assert.True(definition.Target > 0);
+            Assert.Equal(AgentStyleContractCatalog.EvaluationPolicyId, definition.EvaluationPolicyId);
+            Assert.Equal(2, definition.Criteria.Count);
+            Assert.Equal(2, definition.Criteria.Select(value => value.Id).Distinct().Count());
             Assert.NotEmpty(definition.SupportedModeIds);
-        });
+            Assert.All(definition.Criteria, criterion =>
+            {
+                Assert.Equal(AgentStyleCriterionComparator.AtLeast, criterion.Comparator);
+                Assert.True(criterion.Target > 0);
+                Assert.False(string.IsNullOrWhiteSpace(criterion.Description));
+            });
 
-        var metrics = Metrics(survival: 220, food: 7, combo: 5, wraps: 3, nearMisses: 4, powers: 2);
-        foreach (var definition in AgentStyleContractCatalog.All)
-        {
-            var mode = definition.SupportedModeIds[0];
-            var progress = AgentStyleContractCatalog.Evaluate(definition.Id, mode, metrics);
-            Assert.Equal(definition.Id, progress.ContractId);
-            Assert.Equal(definition.Metric, progress.Metric);
-            Assert.Equal(definition.Target, progress.Target);
-            Assert.Equal(metrics.ValueFor(definition.Metric), progress.Current);
-            Assert.Equal(progress.Current >= progress.Target, progress.Completed);
-        }
+            var values = expected[definition.Id];
+            Assert.Collection(
+                definition.Criteria,
+                first =>
+                {
+                    Assert.Equal(values.FirstId, first.Id);
+                    Assert.Equal(values.FirstTarget, first.Target);
+                    Assert.Equal(values.FirstUnit, first.Unit);
+                },
+                second =>
+                {
+                    Assert.Equal(values.SecondId, second.Id);
+                    Assert.Equal(values.SecondTarget, second.Target);
+                    Assert.Equal(values.SecondUnit, second.Unit);
+                });
+
+            AgentStyleContractCatalog.ValidateMode(definition.Id, definition.SupportedModeIds[0]);
+        });
 
         Assert.Throws<ArgumentException>(() => AgentStyleContractCatalog.Get(" "));
         Assert.Throws<ArgumentException>(() => AgentStyleContractCatalog.Get("unknown"));
-        Assert.Throws<ArgumentException>(() => AgentStyleContractCatalog.Evaluate(
+        Assert.Throws<ArgumentException>(() => AgentStyleContractCatalog.ValidateMode(
             AgentStyleContractCatalog.CrownchaserId,
-            RunModeCatalog.ClassicId,
-            metrics));
-        Assert.Throws<ArgumentNullException>(() => AgentStyleContractCatalog.Evaluate(
-            AgentStyleContractCatalog.StillwaterId,
-            RunModeCatalog.ClassicId,
-            null!));
+            RunModeCatalog.ClassicId));
+        Assert.Equal([AgentStyleCriterionComparator.AtLeast], Enum.GetValues<AgentStyleCriterionComparator>());
+        Assert.Equal(
+            [AgentStyleCriterionUnit.Count, AgentStyleCriterionUnit.BasisPoints],
+            Enum.GetValues<AgentStyleCriterionUnit>());
+    }
+
+    [Theory]
+    [InlineData(0, 0, 0)]
+    [InlineData(198, 200, 9_900)]
+    [InlineData(197, 200, 9_850)]
+    [InlineData(13, 20, 6_500)]
+    [InlineData(12, 20, 6_000)]
+    [InlineData(1, 3, 3_333)]
+    public void Style_evidence_basis_points_uses_full_denominator_and_integer_floor(
+        long numerator,
+        long denominator,
+        int expected)
+    {
+        Assert.Equal(expected, AgentStyleEvidenceMath.BasisPoints(numerator, denominator));
+    }
+
+    [Fact]
+    public void Shared_structural_evidence_counts_non_reversal_wrap_and_departing_tail_exits()
+    {
+        var config = new RunConfig(Width: 5, Height: 5, PowerSpawnIntervalTicks: 0);
+        var initial = SnakeRun.Create(1UL, config).GetSnapshot();
+        var openBoard = initial with
+        {
+            Direction = Direction.Left,
+            Body = [new GridPoint(1, 2), new GridPoint(0, 2)],
+            DetachedObstacles = [],
+            DetachedObstacleTicksRemaining = 0,
+        };
+
+        Assert.Equal(3, AgentStyleEvidenceMath.StructuralOpenExitCount(config, openBoard));
+
+        var tailAndWrapOnly = openBoard with
+        {
+            Direction = Direction.Down,
+            Body =
+            [
+                new GridPoint(2, 2),
+                new GridPoint(1, 3),
+                new GridPoint(2, 3),
+                new GridPoint(2, 1),
+                new GridPoint(1, 1),
+                new GridPoint(1, 2),
+            ],
+            DetachedObstacles = [new GridPoint(0, 2)],
+            DetachedObstacleTicksRemaining = 2,
+        };
+        Assert.Equal(
+            1,
+            AgentStyleEvidenceMath.StructuralOpenExitCount(config, tailAndWrapOnly));
+        Assert.Equal(
+            1,
+            AgentStyleEvidenceMath.WrappedManhattanDistance(
+                new GridPoint(0, 2),
+                new GridPoint(4, 2),
+                config.Width,
+                config.Height));
+        Assert.Equal(
+            4,
+            AgentStyleEvidenceMath.WrappedManhattanDistance(
+                new GridPoint(0, 0),
+                new GridPoint(2, 2),
+                config.Width,
+                config.Height));
+
+        Assert.Equal(
+            0,
+            AgentStyleEvidenceMath.StructuralOpenExitCount(
+                config,
+                openBoard with { Status = RunStatus.Dead, DeathCause = DeathCause.SelfCollision }));
     }
 
     [Fact]
@@ -179,11 +302,91 @@ public sealed class AgentExperienceTests
         Assert.Equal(0, initial.EpisodeMetrics.SurvivalSteps);
         Assert.Equal(AgentStyleContractCatalog.StillwaterId, initial.StyleContract!.ContractId);
         Assert.Equal(1, response.Observation.EpisodeMetrics.SurvivalSteps);
-        Assert.Equal(1, response.Observation.StyleContract!.Current);
-        var result = Assert.IsType<AgentMatchResult>(response.MatchResult);
+        Assert.Equal(
+            1,
+            response.Observation.StyleContract!.Criteria
+                .Single(value => value.CriterionId == "survival_steps")
+                .Current);
+        var result = Assert.IsType<AgentMatchResultV4>(response.MatchResult);
         Assert.Equal(response.Observation.EpisodeMetrics, result.EpisodeMetrics);
-        Assert.Equal(response.Observation.StyleContract, result.StyleContract);
-        Assert.False(result.StyleContract!.Completed);
+        var outcome = Assert.IsType<AgentStyleOutcomeV2>(result.StyleOutcome);
+        Assert.Equal(AgentStyleOutcomeV2.Contract, outcome.Schema);
+        Assert.Equal(response.Observation.StyleContract.ContractId, outcome.ContractId);
+        Assert.Equal(response.Observation.StyleContract.Criteria, outcome.Criteria);
+        Assert.False(outcome.AllCriteriaSatisfied);
+        Assert.Equal(result.ReplayPayloadHash, outcome.ReplayPayloadHash);
+        Assert.Equal(
+            response.Observation.StyleContract,
+            AgentStyleEvidenceReplayEvaluator.EvaluateProgress(
+                AgentStyleContractCatalog.StillwaterId,
+                RunModeCatalog.VibeId,
+                result.VerifiedReplay));
+        Assert.Equal(
+            outcome,
+            AgentStyleEvidenceReplayEvaluator.EvaluateOutcome(
+                AgentStyleContractCatalog.StillwaterId,
+                RunModeCatalog.VibeId,
+                result.VerifiedReplay));
+    }
+
+    [Theory]
+    [InlineData(AgentStyleContractCatalog.StillwaterId, RunModeCatalog.ClassicId)]
+    [InlineData(AgentStyleContractCatalog.CrownchaserId, RunModeCatalog.VibeId)]
+    [InlineData(AgentStyleContractCatalog.EdgeProphetId, RunModeCatalog.VibeId)]
+    [InlineData(AgentStyleContractCatalog.MutagenistId, RunModeCatalog.VibeId)]
+    [InlineData(AgentStyleContractCatalog.RedlineId, RunModeCatalog.ClassicId)]
+    public void Style_selection_does_not_change_rules_state_or_verified_replay(
+        string styleId,
+        string modeId)
+    {
+        AgentMatchSession Create(string matchId, string? selectedStyle) => new(
+            new AgentMatchOptions(
+                matchId,
+                modeId,
+                RunModeCatalog.CurrentModeVersion,
+                987UL,
+                AgentSeedVisibility.Open,
+                maximumSteps: 3,
+                styleContractId: selectedStyle));
+
+        var unstyled = Create("rules-identity-unstyled", null);
+        var styled = Create("rules-identity-styled", styleId);
+        Assert.Equal(unstyled.Observe().StateHash, styled.Observe().StateHash);
+        Assert.Null(unstyled.Observe().StyleContract);
+        Assert.Equal(styleId, styled.Observe().StyleContract!.ContractId);
+
+        AgentAction[] actions = [AgentAction.Up, AgentAction.Right, AgentAction.Down];
+        for (var index = 0; index < actions.Length; index++)
+        {
+            var left = unstyled.Observe();
+            var right = styled.Observe();
+            var leftResponse = unstyled.SubmitAction(new AgentActionRequest(
+                $"unstyled-{index}",
+                left.Tick,
+                left.StateHash,
+                actions[index]));
+            var rightResponse = styled.SubmitAction(new AgentActionRequest(
+                $"styled-{index}",
+                right.Tick,
+                right.StateHash,
+                actions[index]));
+
+            Assert.Equal(leftResponse.Accepted, rightResponse.Accepted);
+            Assert.Equal(leftResponse.RulesAdvanced, rightResponse.RulesAdvanced);
+            Assert.Equal(leftResponse.Observation.StateHash, rightResponse.Observation.StateHash);
+            Assert.Equal(
+                leftResponse.Observation.EpisodeMetrics,
+                rightResponse.Observation.EpisodeMetrics);
+        }
+
+        var unstyledResult = unstyled.GetResult()!;
+        var styledResult = styled.GetResult()!;
+        Assert.Null(unstyledResult.StyleOutcome);
+        Assert.NotNull(styledResult.StyleOutcome);
+        Assert.Equal(unstyledResult.ReplayPayloadHash, styledResult.ReplayPayloadHash);
+        Assert.Equal(
+            unstyledResult.VerifiedReplay.Serialize(),
+            styledResult.VerifiedReplay.Serialize());
     }
 
     [Fact]
@@ -244,7 +447,7 @@ public sealed class AgentExperienceTests
                 AgentSeedVisibility.Open,
                 lesson.MaximumSteps,
                 lessonId: lesson.Id));
-            AgentMatchResult? result = null;
+            AgentMatchResultV4? result = null;
             for (var step = 0; step < lesson.MaximumSteps && result is null; step++)
             {
                 var observation = session.Observe();
@@ -319,7 +522,7 @@ public sealed class AgentExperienceTests
         Assert.Null(session.GetResult());
     }
 
-    private static AgentAction ChooseLessonAction(string lessonId, AgentObservationV3 observation)
+    private static AgentAction ChooseLessonAction(string lessonId, AgentObservationV4 observation)
     {
         if (lessonId == "first-turn")
         {
@@ -348,7 +551,7 @@ public sealed class AgentExperienceTests
     }
 
     private static AgentAction FindPathAction(
-        AgentObservationV3 observation,
+        AgentObservationV4 observation,
         AgentPointV1 target)
     {
         var blocked = observation.Body.Skip(1)
@@ -396,7 +599,7 @@ public sealed class AgentExperienceTests
         [current, TurnLeft(current), TurnRight(current)];
 
     private static AgentPointV1? Advance(
-        AgentObservationV3 observation,
+        AgentObservationV4 observation,
         AgentPointV1 point,
         Direction direction)
     {

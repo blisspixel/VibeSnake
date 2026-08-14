@@ -12,15 +12,16 @@ Treat the MCP tool schemas and returned observations as authoritative. Use this 
 1. Read `vibesnake://agent/rules`, `vibesnake://agent/modes`, and `vibesnake://agent/identity` once per host version. Read `vibesnake://agent/styles`, `vibesnake://agent/rivals`, or `vibesnake://agent/signal-school` when using those experiences.
 2. Choose `classic` for fixed rules or `vibe` for the declared adaptive policy.
 3. Choose `open` to receive the seed during play or `blind` to receive it only in the result.
-4. Choose one style for the run. Only the preview's primary metric is scored; the route language is strategic flavor:
-   - Stillwater: survive 200 steps while prioritizing open space.
-   - Crownchaser: reach a peak combo of 4 while preserving continuity.
-   - Edge Prophet: produce 3 typed near-miss events while using controlled edge risk.
-   - Mutagenist: activate 2 powers without sacrificing survival.
-   - Redline: collect 6 food while seeking direct routes under pressure.
+4. Choose one style for the run. Each style publishes exactly two closed, replay-derived criteria. Live values are observations, while only the terminal style outcome is replay verified:
+   - Stillwater: survive at least 200 rules-advanced steps. At least 99 percent of all rules-advanced steps must end Running with at least two structural non-reversing exits; terminal steps stay in the denominator.
+   - Crownchaser: reach a peak combo of at least 4 with a 100 percent uninterrupted food chain through the first combo of 4.
+   - Edge Prophet: produce at least 3 positive NearMiss events at the post-step head with at least three occupied non-wrapping adjacent body cells, including at least 1 with Wrapped in the same rules-advanced step. This `vibesnake-core@4` reconstruction does not prove intent.
+   - Mutagenist: activate at least 2 distinct power kinds and reach at least 2 concurrently active power kinds.
+   - Redline: collect at least 6 food. On at least 65 percent of rules-advanced steps with visible pre-step food, eat or reduce wrapped distance to that exact captured target, end non-dead, and retain a structural exit unless won. Eating qualifies even if Magnet moves the food during the step.
+   Rate criteria use floor integer basis points and return the exact numerator and denominator. An empty denominator produces zero basis points. These observations do not prove planning, mastery, personality, or spectator appeal.
 5. Optionally choose one named built-in rival. A rival uses the same gameplay seed and exact configuration in an independent lane.
 6. Choose `four-direction-step-v1` for one tool call per decision or `four-direction-burst-v1` for bounded straight continuations that stop at public decision events.
-7. Optionally provide a public Agent Passport with a caller-declared agent ID and policy version, bounded display name, and `avatar_id`, `accent_id`, and `station_id` selected from `vibesnake://agent/identity`. Its action profile must match the selected match profile. Unknown catalog IDs reject before a session is created. Never put prompts, reasoning, credentials, or personal data in a passport.
+7. Optionally provide a public Agent Passport v3 with a caller-declared agent ID and policy version, bounded display name, and `avatar_id`, `accent_id`, and `station_id` selected from `vibesnake://agent/identity`. Its `symbolic-step-v3` observation profile and action profile must match the selected match profile. Unknown catalog IDs reject before a session is created. Never put prompts, reasoning, credentials, or personal data in a passport.
 8. When live watching is requested, set `watchEnabled` to true. Give the returned capability only to the local same-user launcher, and do not persist, quote, or repeat its token. Live frames are best effort; explicitly save the verified replay if later viewing is wanted.
 9. For an exhibition, call `start_match` with the action profile, optional passport, `styleContractId`, and `rivalPersonalityId`. For a blind match, omit `gameplaySeed`. Keep `maximumSteps` at or below 2000.
 
@@ -43,7 +44,7 @@ Call `start_lesson` with one published lesson ID, an action profile, and an opti
 5. Reject plans that immediately reverse direction. The host advances zero steps for illegal or stale input.
 6. Optionally set `declaredIntent` to `seek_food`, `seek_power`, `preserve_space`, `take_risk`, or `recover` so a human viewer can follow the public plan. Use `undeclared` when no label is accurate.
 7. Call `play_move` with a new bounded idempotency key and the exact `tick` and `state_hash` from that observation.
-8. If the request is rejected, use the refreshed observation in the response. Do not blindly retry with a new key.
+8. If the request is rejected, inspect `rules_advanced` before assuming zero advancement, then use the refreshed observation. Preflight and logical rejections advance zero steps; a post-step `replay_failure` may report one real step and always fails closed. Do not blindly retry with a new key.
 9. If transport delivery is uncertain, retry the identical request, including its declared intent, with the identical key. Never reuse a key for different input.
 10. Repeat until `is_action_awaited` is false or a match result is returned.
 
@@ -77,7 +78,7 @@ The rival advances once for each accepted agent step while its lane is running. 
 Call `finish_match` only to stop early. Normal terminal and step-limit endings finalize automatically. Then:
 
 1. Call `get_match_result` if the terminal response did not include a result.
-2. Report the selected style or lesson outcome, score, final tick, end reason, run status, and replay verification code.
+2. For a styled match, report the two live criterion values as observed until a result exists. Then report the replay-bound `style_outcome`, its exact numerator and denominator for rate criteria, score, final tick, end reason, run status, and replay verification code. Never turn a satisfied criterion into a claim about intent or mastery.
 3. Call `save_verified_replay` only when persistence or human viewing is desired. A rivalry saves both independently verified lane replays.
 4. Treat each replay payload hash and final state hash as lane verification identifiers. The preview does not yet produce the planned hash-linked public exhibition receipt.
 5. For a rematch, start a new open-seed match with the revealed seed. Never treat a previous handle as durable.

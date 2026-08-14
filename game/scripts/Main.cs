@@ -170,7 +170,7 @@ public partial class Main : Node2D
     private bool _spectatorControllerRouteQualified;
 #if AGENT_ARENA_PREVIEW
     private AgentViewerClient? _agentViewer;
-    private AgentViewerFrameV5? _agentViewerFrame;
+    private AgentViewerFrameV6? _agentViewerFrame;
     private long _agentViewerCoalescedFrames;
     private bool _agentViewerSnappedLatestFrame;
     private RunSnapshot? _agentViewerSnapshot;
@@ -9698,6 +9698,58 @@ public partial class Main : Node2D
         _ => throw new ArgumentOutOfRangeException(nameof(metric)),
     };
 
+    private static string AgentStyleCriterionStateCopyId(
+        AgentStyleCriterionProgressV2 criterion,
+        bool replayVerified,
+        bool replayEvidenceUnavailable)
+    {
+        if (replayEvidenceUnavailable)
+        {
+            return "agent-arena.style.criterion.replay-unverified";
+        }
+
+        if (replayVerified)
+        {
+            return criterion.Satisfied
+                ? "agent-arena.style.criterion.verified-met"
+                : "agent-arena.style.criterion.verified-not-met";
+        }
+
+        return criterion.Satisfied
+            ? "agent-arena.style.criterion.observed-met"
+            : "agent-arena.style.criterion.observed-not-met";
+    }
+
+    private static string FormatAgentStyleCriterionValue(
+        int value,
+        AgentStyleCriterionUnit unit) => unit switch
+        {
+            AgentStyleCriterionUnit.Count => value.ToString(CultureInfo.InvariantCulture),
+            AgentStyleCriterionUnit.BasisPoints =>
+                (value / 100m).ToString("0.##", CultureInfo.InvariantCulture) + "%",
+            _ => throw new ArgumentOutOfRangeException(nameof(unit)),
+        };
+
+    private string AgentStyleCriterionCopy(
+        AgentStyleCriterionProgressV2 criterion,
+        bool replayVerified,
+        bool replayEvidenceUnavailable) =>
+        Localize(
+            "agent-arena.style.criterion",
+            ShellTextArgument.From(
+                "state",
+                Localize(AgentStyleCriterionStateCopyId(
+                    criterion,
+                    replayVerified,
+                    replayEvidenceUnavailable))),
+            ShellTextArgument.From("criterion", criterion.DisplayName.ToUpperInvariant()),
+            ShellTextArgument.From(
+                "current",
+                FormatAgentStyleCriterionValue(criterion.Current, criterion.Unit)),
+            ShellTextArgument.From(
+                "target",
+                FormatAgentStyleCriterionValue(criterion.Target, criterion.Unit)));
+
     private static string AgentActionFeedbackCopyId(AgentPreviousActionV1? action)
     {
         if (action is null)
@@ -9739,7 +9791,7 @@ public partial class Main : Node2D
         _ => throw new ArgumentOutOfRangeException(nameof(endReason)),
     };
 
-    private string AgentViewerOperationCopy(AgentViewerFrameV5 frame) => frame.Operation switch
+    private string AgentViewerOperationCopy(AgentViewerFrameV6 frame) => frame.Operation switch
     {
         AgentViewerOperationKind.Initial => Localize("agent-arena.operation.initial"),
         AgentViewerOperationKind.Step => Localize(
@@ -9977,15 +10029,24 @@ public partial class Main : Node2D
         var panel = ActiveShellPalette.CanvasBackground;
         panel.A = 0.90f;
         DrawRect(new Rect2(20.0f, 580.0f, 1240.0f, 138.0f), panel);
+        var styleProgress = observation.StyleContract;
+        var styleOutcome = _agentViewerFrame.StyleOutcome;
+        IReadOnlyList<AgentStyleCriterionProgressV2>? styleCriteria =
+            styleOutcome?.Criteria ?? styleProgress?.Criteria;
+        var replayVerified = styleOutcome is not null;
+        var replayEvidenceUnavailable = styleProgress is not null
+            && observation.Lifecycle == AgentMatchLifecycle.FailedClosed;
         var style = observation.LessonProgress is not null
             ? Localize(
-                !observation.LessonProgress.TargetReached
-                    ? "agent-arena.lesson.progress"
+                observation.Lifecycle == AgentMatchLifecycle.FailedClosed
+                    ? "agent-arena.lesson.unverified"
                     : _agentViewerFrame.VerifiedResultAvailable
-                        ? "agent-arena.lesson.verified"
-                        : observation.Lifecycle == AgentMatchLifecycle.FailedClosed
-                            ? "agent-arena.lesson.unverified"
-                            : "agent-arena.lesson.hit",
+                        ? observation.LessonProgress.TargetReached
+                            ? "agent-arena.lesson.verified"
+                            : "agent-arena.lesson.verified-not-met"
+                        : observation.LessonProgress.TargetReached
+                            ? "agent-arena.lesson.hit"
+                            : "agent-arena.lesson.progress",
                 ShellTextArgument.From(
                     "lesson",
                     observation.LessonProgress.Title.ToUpperInvariant()),
@@ -9994,15 +10055,43 @@ public partial class Main : Node2D
                     Localize(AgentLessonMetricCopyId(observation.LessonProgress.Metric))),
                 ShellTextArgument.From("current", observation.LessonProgress.Current),
                 ShellTextArgument.From("target", observation.LessonProgress.Target))
-            : observation.StyleContract is null
+            : styleProgress is null
                 ? Localize("agent-arena.style.open")
-                : Localize(
-                    "agent-arena.style.progress",
-                    ShellTextArgument.From(
-                        "style",
-                        observation.StyleContract.DisplayName.ToUpperInvariant()),
-                    ShellTextArgument.From("current", observation.StyleContract.Current),
-                    ShellTextArgument.From("target", observation.StyleContract.Target));
+                : replayVerified
+                    ? Localize(
+                        "agent-arena.style.replay-verified",
+                        ShellTextArgument.From(
+                            "style",
+                            styleProgress.DisplayName.ToUpperInvariant()),
+                        ShellTextArgument.From(
+                            "met",
+                            styleOutcome!.CriteriaSatisfied))
+                    : replayEvidenceUnavailable
+                        ? Localize(
+                            "agent-arena.style.replay-unavailable",
+                            ShellTextArgument.From(
+                                "style",
+                                styleProgress.DisplayName.ToUpperInvariant()))
+                        : Localize(
+                            "agent-arena.style.live",
+                            ShellTextArgument.From(
+                                "style",
+                                styleProgress.DisplayName.ToUpperInvariant()),
+                            ShellTextArgument.From(
+                                "met",
+                                styleProgress.CriteriaSatisfied));
+        var firstStyleCriterion = styleCriteria is { Count: 2 }
+            ? AgentStyleCriterionCopy(
+                styleCriteria[0],
+                replayVerified,
+                replayEvidenceUnavailable)
+            : null;
+        var secondStyleCriterion = styleCriteria is { Count: 2 }
+            ? AgentStyleCriterionCopy(
+                styleCriteria[1],
+                replayVerified,
+                replayEvidenceUnavailable)
+            : null;
         var rival = observation.Rival is null
             ? Localize("agent-arena.rival.solo")
             : Localize(
@@ -10045,36 +10134,87 @@ public partial class Main : Node2D
             13,
             1208.0f,
             ActiveShellPalette.GoldText);
-        DrawFittedAgentLabel(
-            Localize(
-                "agent-arena.matchup",
-                ShellTextArgument.From("style", style),
-                ShellTextArgument.From("rival", rival)),
-            new Vector2(38.0f, 628.0f),
-            11,
-            1222.0f,
-            ActiveShellPalette.GoldText);
-        DrawFittedAgentLabel(
-            Localize(
-                "agent-arena.operation-status",
-                ShellTextArgument.From("operation", operation),
-                ShellTextArgument.From("delivery", delivery)),
-            new Vector2(38.0f, 653.0f),
-            10,
-            1222.0f,
-            ActiveShellPalette.AccentText);
-        DrawFittedAgentLabel(
-            Localize(
-                "agent-arena.status",
-                ShellTextArgument.From("status", Localize(_agentViewerStatusId)),
-                ShellTextArgument.From("outcome", outcome),
-                ShellTextArgument.From("step", observation.Tick),
-                ShellTextArgument.From("maximum", observation.MaximumSteps),
-                ShellTextArgument.From("frame", _agentViewerFrame.Sequence)),
-            new Vector2(38.0f, 680.0f),
-            9,
-            1222.0f,
-            ActiveShellPalette.BodyText);
+        if (firstStyleCriterion is not null && secondStyleCriterion is not null)
+        {
+            DrawFittedAgentLabel(
+                style,
+                new Vector2(38.0f, 628.0f),
+                10,
+                600.0f,
+                ActiveShellPalette.GoldText);
+            DrawFittedAgentLabel(
+                rival,
+                new Vector2(660.0f, 628.0f),
+                10,
+                600.0f,
+                ActiveShellPalette.GoldText);
+            DrawFittedAgentLabel(
+                firstStyleCriterion,
+                new Vector2(38.0f, 653.0f),
+                8,
+                600.0f,
+                ActiveShellPalette.AccentText);
+            DrawFittedAgentLabel(
+                secondStyleCriterion,
+                new Vector2(660.0f, 653.0f),
+                8,
+                600.0f,
+                ActiveShellPalette.AccentText);
+            DrawFittedAgentLabel(
+                Localize(
+                    "agent-arena.operation-status",
+                    ShellTextArgument.From("operation", operation),
+                    ShellTextArgument.From("delivery", delivery)),
+                new Vector2(38.0f, 680.0f),
+                8,
+                600.0f,
+                ActiveShellPalette.BodyText);
+            DrawFittedAgentLabel(
+                Localize(
+                    "agent-arena.status",
+                    ShellTextArgument.From("status", Localize(_agentViewerStatusId)),
+                    ShellTextArgument.From("outcome", outcome),
+                    ShellTextArgument.From("step", observation.Tick),
+                    ShellTextArgument.From("maximum", observation.MaximumSteps),
+                    ShellTextArgument.From("frame", _agentViewerFrame.Sequence)),
+                new Vector2(660.0f, 680.0f),
+                8,
+                600.0f,
+                ActiveShellPalette.BodyText);
+        }
+        else
+        {
+            DrawFittedAgentLabel(
+                Localize(
+                    "agent-arena.matchup",
+                    ShellTextArgument.From("style", style),
+                    ShellTextArgument.From("rival", rival)),
+                new Vector2(38.0f, 628.0f),
+                11,
+                1222.0f,
+                ActiveShellPalette.GoldText);
+            DrawFittedAgentLabel(
+                Localize(
+                    "agent-arena.operation-status",
+                    ShellTextArgument.From("operation", operation),
+                    ShellTextArgument.From("delivery", delivery)),
+                new Vector2(38.0f, 653.0f),
+                10,
+                1222.0f,
+                ActiveShellPalette.AccentText);
+            DrawFittedAgentLabel(
+                Localize(
+                    "agent-arena.status",
+                    ShellTextArgument.From("status", Localize(_agentViewerStatusId)),
+                    ShellTextArgument.From("outcome", outcome),
+                    ShellTextArgument.From("step", observation.Tick),
+                    ShellTextArgument.From("maximum", observation.MaximumSteps),
+                    ShellTextArgument.From("frame", _agentViewerFrame.Sequence)),
+                new Vector2(38.0f, 680.0f),
+                9,
+                1222.0f,
+                ActiveShellPalette.BodyText);
+        }
         DrawFittedAgentLabel(
             Localize(
                 "agent-arena.intent-status",
@@ -13319,7 +13459,7 @@ public partial class Main : Node2D
                 ShellTextArgument.From(
                     "style",
                     Pseudo(
-                        "agent-arena.lesson.unverified",
+                        "agent-arena.lesson.verified-not-met",
                         ShellTextArgument.From("lesson", maximumIdentityToken),
                         ShellTextArgument.From(
                             "metric",
@@ -13406,6 +13546,96 @@ public partial class Main : Node2D
                     + $"top={top:0.0}/{priorBottom:0.0},bottom={bottom:0.0}/718.0");
             }
             priorBottom = bottom;
+        }
+
+        var longestCriterion = Pseudo(
+            "agent-arena.style.criterion",
+            ShellTextArgument.From(
+                "state",
+                Pseudo("agent-arena.style.criterion.replay-unverified")),
+            ShellTextArgument.From(
+                "criterion",
+                "WRAPPED REWARDED BODY-PROXIMITY NEAR MISSES"),
+            ShellTextArgument.From("current", "100.00%"),
+            ShellTextArgument.From("target", "100.00%"));
+        var styleOverlayCells = new (
+            string Id,
+            string Text,
+            int BaseFontSize,
+            float X,
+            float MaximumWidth)[]
+        {
+            ("style-summary",
+                Pseudo(
+                    "agent-arena.style.replay-verified",
+                    ShellTextArgument.From("style", maximumIdentityToken),
+                    ShellTextArgument.From("met", 2)),
+                10,
+                38.0f,
+                600.0f),
+            ("style-rival",
+                Pseudo(
+                    "agent-arena.rival.score",
+                    ShellTextArgument.From("rival", maximumIdentityToken),
+                    ShellTextArgument.From("agent_score", "999999"),
+                    ShellTextArgument.From("rival_score", "999999")),
+                10,
+                660.0f,
+                600.0f),
+            ("style-criterion-first", longestCriterion, 8, 38.0f, 600.0f),
+            ("style-criterion-second", longestCriterion, 8, 660.0f, 600.0f),
+            ("style-operation",
+                Pseudo(
+                    "agent-arena.operation-status",
+                    ShellTextArgument.From("operation", longestOperation),
+                    ShellTextArgument.From("delivery", longestDelivery)),
+                8,
+                38.0f,
+                600.0f),
+            ("style-status",
+                Pseudo(
+                    "agent-arena.status",
+                    ShellTextArgument.From(
+                        "status",
+                        Pseudo("status.agent-viewer.disconnected")),
+                    ShellTextArgument.From(
+                        "outcome",
+                        Pseudo("agent-arena.outcome.agent-finished")),
+                    ShellTextArgument.From("step", int.MaxValue),
+                    ShellTextArgument.From("maximum", int.MaxValue),
+                    ShellTextArgument.From("frame", long.MaxValue)),
+                8,
+                660.0f,
+                600.0f),
+        };
+        foreach (var cell in styleOverlayCells)
+        {
+            var fontSize = Math.Max(
+                10,
+                (int)Math.Round(
+                    cell.BaseFontSize * ShellSettings.MaximumTextScale,
+                    MidpointRounding.AwayFromZero));
+            var fittedText = FitAgentOverlayText(
+                font,
+                cell.Text,
+                fontSize,
+                cell.MaximumWidth);
+            var width = font.GetStringSize(
+                fittedText,
+                HorizontalAlignment.Left,
+                -1.0f,
+                fontSize).X;
+            var cellPassed = float.IsFinite(width)
+                && width <= cell.MaximumWidth
+                && cell.X >= 20.0f
+                && cell.X + width <= 1260.0f;
+            agentViewerOverlayLayoutPassed &= cellPassed;
+            if (!cellPassed)
+            {
+                agentViewerOverlayFailures.Add(
+                    $"{cell.Id}:width={width:0.0}/{cell.MaximumWidth:0.0},"
+                    + $"bounds={cell.X:0.0}/{cell.X + width:0.0}");
+            }
         }
 
         var glyphPrompt = ShellLocalization.Format(
@@ -13520,8 +13750,8 @@ public partial class Main : Node2D
 
         const int migratedRequiredFlowCount = 13;
         const double requiredExpansionRatio = 1.30;
-        var passed = ShellLocalization.All.Count == 604
-            && ShellLocalization.All.Count(entry => entry.Parameters.Count > 0) == 87
+        var passed = ShellLocalization.All.Count == 613
+            && ShellLocalization.All.Count(entry => entry.Parameters.Count > 0) == 91
             && migratedRequiredFlowCount == 13
             && minimumExpansionRatio >= requiredExpansionRatio
             && missingGlyphs.Count == 0

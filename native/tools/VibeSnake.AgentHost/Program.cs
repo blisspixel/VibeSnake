@@ -12,7 +12,7 @@ namespace VibeSnake.AgentHost;
 public static class Program
 {
     public const string HostName = "vibesnake-agent-host";
-    public const string HostVersion = "0.5.0";
+    public const string HostVersion = "0.6.0";
     public const string McpProtocolVersion = "2026-07-28";
 
     public static async Task Main(string[] args)
@@ -64,8 +64,14 @@ public static class Program
         {
             PropertyNameCaseInsensitive = false,
             PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
+            AllowDuplicateProperties = false,
+            RespectRequiredConstructorParameters = true,
+            UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow,
         };
-        options.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.SnakeCaseLower));
+        options.Converters.Add(
+            new JsonStringEnumConverter(
+                JsonNamingPolicy.SnakeCaseLower,
+                allowIntegerValues: false));
         return options;
     }
 }

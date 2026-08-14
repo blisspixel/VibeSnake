@@ -28,22 +28,23 @@ public sealed class AgentResources
     public static string GetRules() => JsonSerializer.Serialize(
         new
         {
-            contract = "vibesnake-agent-rules-resource-v5",
+            contract = "vibesnake-agent-rules-resource-v6",
             ruleset_id = RulesetIdentity.CurrentId,
             rules_version = RulesetIdentity.CurrentVersion,
-            observation_schema = AgentObservationV3.Contract,
-            observation_profile = AgentPassportV2.SymbolicStepObservationProfile,
-            passport_schema = AgentPassportV2.Contract,
+            observation_schema = AgentObservationV4.Contract,
+            result_schema = AgentMatchResultV4.Contract,
+            observation_profile = AgentPassportV3.SymbolicStepObservationProfile,
+            passport_schema = AgentPassportV3.Contract,
             identity_resource = "vibesnake://agent/identity",
             actions = Enum.GetNames<AgentAction>().Select(value => value.ToLowerInvariant()),
             action_profiles = new[]
             {
-                AgentPassportV2.FourDirectionActionProfile,
-                AgentPassportV2.FourDirectionBurstActionProfile,
+                AgentPassportV3.FourDirectionActionProfile,
+                AgentPassportV3.FourDirectionBurstActionProfile,
             },
             public_intents = Enum.GetNames<AgentPublicIntent>()
                 .Select(value => JsonNamingPolicy.SnakeCaseLower.ConvertName(value)),
-            action_semantics = "play_move advances exactly one clock-free rules step in four-direction-step-v1. play_burst advances at most 16 steps in four-direction-burst-v1, applying one initial action and then continuing until its bound or a fixed public decision event. Rejected mutations advance none.",
+            action_semantics = "play_move advances exactly one clock-free rules step in four-direction-step-v1. play_burst advances at most 16 steps in four-direction-burst-v1, applying one initial action and then continuing until its bound or a fixed public decision event. Preflight and logical rejections advance none; a post-step replay failure may report rules_advanced=true and always fails closed.",
             burst = new
             {
                 contract = AgentBurstPolicy.Contract,
@@ -55,7 +56,7 @@ public sealed class AgentResources
             },
             viewer = new
             {
-                frame_contract = AgentViewerFrameV5.Contract,
+                frame_contract = AgentViewerFrameV6.Contract,
                 operations = Enum.GetNames<AgentViewerOperationKind>()
                     .Select(JsonNamingPolicy.SnakeCaseLower.ConvertName),
                 pre_mutation_tick_and_state_hash = true,
@@ -73,7 +74,7 @@ public sealed class AgentResources
             maximum_retained_matches = AgentSessionRegistry.MaximumRetainedMatches,
             live_match_idle_lease_minutes = AgentSessionRegistry.LiveMatchIdleLeaseMinutes,
             idle_reclamation = "At capacity, only an inactive live match whose 30-minute valid-handle operation lease expired may be reclaimed. Reclamation creates no result or replay, and viewer activity never refreshes or ends the lease.",
-            replay = "A successfully finalized completed, capped, or explicitly finished match returns a deterministic verified lane result and replay. Failed-closed finalization returns neither; an exhibition receipt is not part of this contract.",
+            replay = "A successfully finalized completed, capped, or explicitly finished match returns a deterministic verified lane result and replay. A styled result adds an exact two-criterion outcome reconstructed from and bound to that replay. Failed-closed finalization returns neither; an exhibition receipt is not part of this contract.",
             rivalry = "An optional built-in rival advances once per accepted agent step on the same seed and exact configuration. Each lane has an independent verified replay.",
             privacy = "Observations exclude random state, future outcomes, controller internals, profiles, progression, paths, prompts, credentials, diagnostics, and hidden reasoning.",
         },
@@ -83,13 +84,13 @@ public sealed class AgentResources
         UriTemplate = "vibesnake://agent/identity",
         Name = "Vibe Snake agent identity catalog",
         MimeType = "application/json")]
-    [Description("Closed presentation identities accepted by Agent Passport v2.")]
+    [Description("Closed presentation identities accepted by Agent Passport v3.")]
     public static string GetIdentity() => JsonSerializer.Serialize(
         new
         {
-            contract = "vibesnake-agent-identity-resource-v1",
-            passport_schema = AgentPassportV2.Contract,
-            observation_profile = AgentPassportV2.SymbolicStepObservationProfile,
+            contract = "vibesnake-agent-identity-resource-v2",
+            passport_schema = AgentPassportV3.Contract,
+            observation_profile = AgentPassportV3.SymbolicStepObservationProfile,
             avatars = CosmeticSetCatalog.Sets.Select(avatar => new
             {
                 id = avatar.Id,
@@ -148,11 +149,19 @@ public sealed class AgentResources
         UriTemplate = "vibesnake://agent/styles",
         Name = "Vibe Snake style contracts",
         MimeType = "application/json")]
-    [Description("Agent-selectable play styles with public metrics, targets, and supported modes.")]
+    [Description("Agent-selectable play styles with two closed replay-derived criteria and supported modes.")]
     public static string GetStyles() => JsonSerializer.Serialize(
         new
         {
-            contract = "vibesnake-agent-style-catalog-v1",
+            contract = "vibesnake-agent-style-catalog-v2",
+            progress_schema = AgentStyleProgressV2.Contract,
+            outcome_schema = AgentStyleOutcomeV2.Contract,
+            semantics = new
+            {
+                live = "Observation values are rules-advanced-step facts and may rise or fall. They are not replay-verified outcomes.",
+                terminal = "A successfully finalized styled result contains a style outcome reconstructed from the verified replay and bound to its payload hash.",
+                interpretation = "Criteria describe observed behavior only. They do not prove intent, planning, mastery, personality, or spectator appeal.",
+            },
             styles = AgentStyleContractCatalog.All,
         },
         JsonOptions);
@@ -201,12 +210,12 @@ public sealed class AgentResources
         # Vibe Snake Agent Playbook
 
         1. Read `vibesnake://agent/rules`, `vibesnake://agent/modes`, and `vibesnake://agent/identity`. Optionally read the style, rival, or Signal School resources.
-        2. Call `start_match` for an exhibition, or `start_lesson` with a closed Signal School lesson ID for canonical open-seed practice. Select either `four-direction-step-v1` or `four-direction-burst-v1`. If supplying a passport, use only the closed avatar, accent, and station IDs from the identity resource.
+        2. Call `start_match` for an exhibition, or `start_lesson` with a closed Signal School lesson ID for canonical open-seed practice. Select either `four-direction-step-v1` or `four-direction-burst-v1`. If supplying Passport v3, use only the closed avatar, accent, and station IDs from the identity resource and declare `symbolic-step-v3`.
         3. Read the returned observation. Use only visible board state.
         4. Use `play_move` for one exact decision. In a burst-profile match, use `play_burst` for a safe straight continuation of at most 16 steps; it stops on the first fixed public decision event. Supply the exact tick and state hash plus a new idempotency key. Optionally declare one closed public intent so a viewer can follow the plan.
-        5. On rejection or burst stop, inspect the reason, final-step public events, and refreshed observation. Rejected requests do not step the rules.
+        5. On rejection or burst stop, inspect the reason, actual advancement, final-step public events, and refreshed observation. Preflight and logical rejections do not step the rules. A `replay_failure` can report `rules_advanced=true` after a real step and always fails closed without a verified result.
         6. Continue until the result appears, or call `finish_match` to request early finalization.
-        7. Confirm that finalization returned a verified result. Call `save_verified_replay` only when persistence for later human viewing is desired.
+        7. Confirm that finalization returned a verified result. For a styled match, use only its replay-bound style outcome as verified criterion evidence. Call `save_verified_replay` only when persistence for later human viewing is desired.
 
         Public intents are `seek_food`, `seek_power`, `preserve_space`, `take_risk`, and `recover`. They are self-reported presentation only. `continue` preserves the current direction. Never submit the current direction or its opposite as a turn. Response latency has no scoring effect. At capacity, a live handle idle for 30 minutes may be reclaimed without producing a result or replay; viewer activity is never match control.
         """;

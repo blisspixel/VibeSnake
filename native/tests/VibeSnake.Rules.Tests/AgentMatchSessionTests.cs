@@ -142,6 +142,45 @@ public sealed class AgentMatchSessionTests
     }
 
     [Fact]
+    public void Styled_rejections_and_idempotent_retries_do_not_mutate_evidence()
+    {
+        var session = new AgentMatchSession(new AgentMatchOptions(
+            "styled-idempotency",
+            RunModeCatalog.ClassicId,
+            RunModeCatalog.CurrentModeVersion,
+            123UL,
+            AgentSeedVisibility.Open,
+            maximumSteps: 10,
+            styleContractId: AgentStyleContractCatalog.StillwaterId));
+        var initial = session.Observe();
+        var rejected = session.SubmitAction(Request("styled-rejected", initial, AgentAction.Left));
+        var request = Request("styled-accepted", initial, AgentAction.Up);
+
+        var accepted = session.SubmitAction(request);
+        var retry = session.SubmitAction(request);
+        var conflict = session.SubmitAction(new AgentActionRequest(
+            request.IdempotencyKey,
+            request.ExpectedTick,
+            request.ExpectedStateHash,
+            request.Action,
+            AgentPublicIntent.TakeRisk));
+
+        Assert.Equal(AgentActionRejection.IllegalDirection, rejected.Rejection);
+        Assert.False(rejected.RulesAdvanced);
+        Assert.Equal(initial.StyleContract, rejected.Observation.StyleContract);
+        Assert.Same(accepted, retry);
+        Assert.Equal(AgentActionRejection.IdempotencyConflict, conflict.Rejection);
+        Assert.False(conflict.RulesAdvanced);
+        Assert.Equal(accepted.Observation.StyleContract, conflict.Observation.StyleContract);
+        Assert.Equal(1, session.Observe().Tick);
+
+        var result = session.Finish();
+        Assert.Single(result.VerifiedReplay.Steps);
+        Assert.Equal(accepted.Observation.StyleContract!.Criteria, result.StyleOutcome!.Criteria);
+        Assert.Equal(result.ReplayPayloadHash, result.StyleOutcome.ReplayPayloadHash);
+    }
+
+    [Fact]
     public async Task Concurrent_retry_is_serialized_and_steps_once()
     {
         var session = CreateSession();
@@ -284,7 +323,7 @@ public sealed class AgentMatchSessionTests
             lesson.PracticeSeed,
             AgentSeedVisibility.Open,
             lesson.MaximumSteps,
-            actionProfile: AgentPassportV2.FourDirectionBurstActionProfile,
+            actionProfile: AgentPassportV3.FourDirectionBurstActionProfile,
             lessonId: lesson.Id));
         var stepInitial = step.Observe();
         var burstInitial = burst.Observe();
@@ -485,7 +524,7 @@ public sealed class AgentMatchSessionTests
                 AgentBurstRequest.MaximumBurstSteps));
         }
 
-        var result = Assert.IsType<AgentMatchResult>(terminal!.MatchResult);
+        var result = Assert.IsType<AgentMatchResultV4>(terminal!.MatchResult);
         Assert.Equal(AgentBurstStopReason.RulesTerminal, terminal.StopReason);
         Assert.Equal(AgentMatchEndReason.RulesTerminal, result.EndReason);
         Assert.True(result.VerifiedReplay.Verify().IsValid);
@@ -516,10 +555,11 @@ public sealed class AgentMatchSessionTests
             123UL,
             AgentSeedVisibility.Open,
             maximumSteps: 1,
+            styleContractId: AgentStyleContractCatalog.StillwaterId,
             rivalPersonalityId: failedLane == AgentReplayLane.Rival ? "optimal" : null,
             actionProfile: burst
-                ? AgentPassportV2.FourDirectionBurstActionProfile
-                : AgentPassportV2.FourDirectionActionProfile);
+                ? AgentPassportV3.FourDirectionBurstActionProfile
+                : AgentPassportV3.FourDirectionActionProfile);
         var session = new AgentMatchSession(
             options,
             viewer,
@@ -568,10 +608,55 @@ public sealed class AgentMatchSessionTests
         Assert.Equal(1, viewer.Frames[^1].StepsAdvanced);
         Assert.Equal(AgentMatchEndReason.ReplayFailure, viewer.Frames[^1].EndReason);
         Assert.False(viewer.Frames[^1].VerifiedResultAvailable);
+        Assert.NotNull(viewer.Frames[^1].Observation.StyleContract);
+        Assert.Null(viewer.Frames[^1].StyleOutcome);
         Assert.Equal(
             AgentActionRejection.ReplayFailure,
             viewer.Frames[^1].Observation.PreviousAction!.Rejection);
         Assert.Throws<InvalidOperationException>(() => session.Finish());
+    }
+
+    [Fact]
+    public void Recorder_step_failure_preserves_advanced_metrics_and_style_progress()
+    {
+        var viewer = new RecordingViewerSink();
+        var session = new AgentMatchSession(
+            new AgentMatchOptions(
+                "failed-recorder-step",
+                RunModeCatalog.ClassicId,
+                RunModeCatalog.CurrentModeVersion,
+                123UL,
+                AgentSeedVisibility.Open,
+                maximumSteps: 10,
+                styleContractId: AgentStyleContractCatalog.StillwaterId),
+            viewer);
+        var initial = session.Observe();
+        var recorderField = typeof(AgentMatchSession).GetField(
+            "_recorder",
+            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+        var recorder = Assert.IsType<RunReplayRecorder>(recorderField!.GetValue(session));
+        Assert.True(recorder.TryRecordCommand(Direction.Up));
+
+        var request = Request("failed-recorder-step", initial, AgentAction.Continue);
+        var response = session.SubmitAction(request);
+
+        Assert.False(response.Accepted);
+        Assert.True(response.RulesAdvanced);
+        Assert.Equal(AgentActionRejection.ReplayFailure, response.Rejection);
+        Assert.Null(response.MatchResult);
+        Assert.Equal(AgentMatchLifecycle.FailedClosed, response.Observation.Lifecycle);
+        Assert.Equal(1, response.Observation.Tick);
+        Assert.Equal(1, response.Observation.EpisodeMetrics.SurvivalSteps);
+        var progress = Assert.IsType<AgentStyleProgressV2>(response.Observation.StyleContract);
+        Assert.Equal(1, progress.Criteria[0].Current);
+        Assert.Equal(1, progress.Criteria[1].Denominator);
+        Assert.Null(session.GetResult());
+        var failedFrame = Assert.Single(viewer.Frames, frame => frame.Sequence == 1);
+        Assert.Equal(AgentMatchEndReason.ReplayFailure, failedFrame.EndReason);
+        Assert.False(failedFrame.VerifiedResultAvailable);
+        Assert.Null(failedFrame.StyleOutcome);
+        Assert.Equal(progress, failedFrame.Observation.StyleContract);
+        Assert.Same(response, session.SubmitAction(request));
     }
 
     [Fact]
@@ -634,10 +719,10 @@ public sealed class AgentMatchSessionTests
         Assert.False(rejectedBurst.RulesAdvanced);
         Assert.False(rejectedStep.RulesAdvanced);
         Assert.Equal(
-            AgentPassportV2.FourDirectionActionProfile,
+            AgentPassportV3.FourDirectionActionProfile,
             stepObservation.Passport.ActionProfile);
         Assert.Equal(
-            AgentPassportV2.FourDirectionBurstActionProfile,
+            AgentPassportV3.FourDirectionBurstActionProfile,
             burstObservation.Passport.ActionProfile);
         Assert.Equal(AgentViewerOperationKind.Burst, stepViewer.Frames[^1].Operation);
         Assert.Equal(0, stepViewer.Frames[^1].StepsAdvanced);
@@ -657,7 +742,7 @@ public sealed class AgentMatchSessionTests
         }
 
         var terminalResponse = Assert.IsType<AgentActionResponse>(terminal);
-        var matchResult = Assert.IsType<AgentMatchResult>(terminalResponse.MatchResult);
+        var matchResult = Assert.IsType<AgentMatchResultV4>(terminalResponse.MatchResult);
         Assert.Equal(AgentMatchEndReason.RulesTerminal, matchResult.EndReason);
         Assert.Equal(AgentMatchLifecycle.Completed, matchResult.Lifecycle);
         Assert.Equal(RunStatus.Dead, matchResult.RunStatus);
@@ -681,7 +766,7 @@ public sealed class AgentMatchSessionTests
 
         Assert.Equal(AgentMatchLifecycle.Aborted, result.Lifecycle);
         Assert.Equal(AgentMatchEndReason.AgentFinished, result.EndReason);
-        Assert.Equal(AgentMatchResult.Contract, result.Schema);
+        Assert.Equal(AgentMatchResultV4.Contract, result.Schema);
         Assert.Equal("match", result.MatchId);
         Assert.Equal(RulesetIdentity.CurrentId, result.RulesetId);
         Assert.Equal(RulesetIdentity.CurrentVersion, result.RulesVersion);
@@ -691,7 +776,7 @@ public sealed class AgentMatchSessionTests
         Assert.Equal(session.Observe().ConfigHash, result.ConfigHash);
         Assert.Equal(AgentSeedVisibility.Open, result.SeedVisibility);
         Assert.Equal(123UL, result.GameplaySeed);
-        Assert.Same(AgentPassportV2.Anonymous, result.Passport);
+        Assert.Same(AgentPassportV3.Anonymous, result.Passport);
         Assert.Equal(1, result.FinalTick);
         Assert.Equal(RunStatus.Running, result.RunStatus);
         Assert.Equal(DeathCause.None, result.DeathCause);
@@ -732,7 +817,7 @@ public sealed class AgentMatchSessionTests
             Assert.Equal(response.Observation.Tick, response.Observation.Rival!.Tick);
         }
 
-        var result = Assert.IsType<AgentMatchResult>(response!.MatchResult);
+        var result = Assert.IsType<AgentMatchResultV4>(response!.MatchResult);
         var rival = Assert.IsType<AgentRivalResultV1>(result.Rival);
         var rivalReplay = Assert.IsType<RunReplay>(result.VerifiedRivalReplay);
         Assert.Equal("optimal", rival.PersonalityId);
@@ -902,7 +987,7 @@ public sealed class AgentMatchSessionTests
                 AgentSeedVisibility.Open,
                 maximumSteps,
                 rivalPersonalityId: rivalPersonalityId,
-                actionProfile: AgentPassportV2.FourDirectionBurstActionProfile),
+                actionProfile: AgentPassportV3.FourDirectionBurstActionProfile),
             viewerSink);
 
     private static AgentActionResponse Act(
@@ -916,12 +1001,12 @@ public sealed class AgentMatchSessionTests
 
     private static AgentActionRequest Request(
         string key,
-        AgentObservationV3 observation,
+        AgentObservationV4 observation,
         AgentAction action,
         AgentPublicIntent declaredIntent = AgentPublicIntent.Undeclared) =>
         new(key, observation.Tick, observation.StateHash, action, declaredIntent);
 
-    private static AgentAction ChooseStarvationAction(AgentObservationV3 observation)
+    private static AgentAction ChooseStarvationAction(AgentObservationV4 observation)
     {
         Direction[] candidates =
         [
@@ -989,13 +1074,13 @@ public sealed class AgentMatchSessionTests
 
     private sealed class RecordingViewerSink : IAgentViewerSink
     {
-        public List<AgentViewerFrameV5> Frames { get; } = [];
+        public List<AgentViewerFrameV6> Frames { get; } = [];
 
         public int Attempts { get; private set; }
 
         public bool Throw { get; set; }
 
-        public bool TryPublish(AgentViewerFrameV5 frame)
+        public bool TryPublish(AgentViewerFrameV6 frame)
         {
             Attempts++;
             if (Throw)
@@ -1010,9 +1095,9 @@ public sealed class AgentMatchSessionTests
 
     private sealed class LatestViewerSink : IAgentViewerSink
     {
-        public AgentViewerFrameV5? Latest { get; private set; }
+        public AgentViewerFrameV6? Latest { get; private set; }
 
-        public bool TryPublish(AgentViewerFrameV5 frame)
+        public bool TryPublish(AgentViewerFrameV6 frame)
         {
             Latest = frame;
             return true;

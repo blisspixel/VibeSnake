@@ -6,7 +6,7 @@
     "protocol_version": "2026-07-28",
     "sdk_package": "ModelContextProtocol",
     "sdk_version": "2.2.0",
-    "host_version": "0.5.0",
+    "host_version": "0.6.0",
     "transport": "stdio",
     "session_model": "stateless"
   },
@@ -17,7 +17,7 @@
     "spec_source_commit": "1fc1b6270e3cc492ec2d24ad7a34277c6d53b9c1",
     "spec_source_url": "https://raw.githubusercontent.com/agentplugins/agent-plugins-spec/1fc1b6270e3cc492ec2d24ad7a34277c6d53b9c1/spec/1.0.0.md",
     "spec_source_sha256": "97a658b7dca3ce1b4c2266b95da300fa51d9dc4ade59d73168e5f9104272da18",
-    "plugin_version": "0.5.0",
+    "plugin_version": "0.6.0",
     "plugin_schema_url": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
     "plugin_schema_sha256": "0a4aad95ce337878ad38802ebf0daa3fde76abe3f65400c86bcbb1ec0b3ab883",
     "mcp_schema_url": "https://agent-plugins.org/schemas/1.0.0/mcp.schema.json",
@@ -33,8 +33,8 @@
   },
   "okf": {
     "spec_version": "0.2",
-    "generated_at": "2026-08-14T04:39:55Z",
-    "verified_at": "2026-08-14T04:39:55Z",
+    "generated_at": "2026-08-14T06:53:58Z",
+    "verified_at": "2026-08-14T06:53:58Z",
     "stale_after": "2026-11-13"
   },
   "mcp_apps": {
@@ -58,6 +58,10 @@
       {
         "version": "0.5.0",
         "sha256": "dd1d76bc8836d0fbfa3f75bd15be2120945087174a9a07bf820191a966e59153"
+      },
+      {
+        "version": "0.6.0",
+        "sha256": "47a320d8e6a7f85e80c64404ce4b60e6e3aac1f275bcc81f7febc73d7b1503b3"
       }
     ],
     "plugin": [
@@ -80,6 +84,10 @@
       {
         "version": "0.5.0",
         "sha256": "5dcb63f9e697c82c58c4417185228ef629aedf302816d81df21c964771ac9432"
+      },
+      {
+        "version": "0.6.0",
+        "sha256": "3e616707fdaf2f16d2f33ee9da22a698d863ccb4d5411086a9b321b92e6a1af1"
       }
     ]
   }
