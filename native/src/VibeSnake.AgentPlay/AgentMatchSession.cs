@@ -403,10 +403,11 @@ public sealed class AgentMatchSession
             }
 
             var start = _run.GetSnapshot();
+            var lifecycle = DetermineFinishLifecycle(start);
 
             if (!TryComplete(
                 AgentMatchEndReason.AgentFinished,
-                AgentMatchLifecycle.Aborted,
+                lifecycle,
                 out var result))
             {
                 PublishViewerFrame(
@@ -426,6 +427,30 @@ public sealed class AgentMatchSession
                 stepsAdvanced: 0);
             return result!;
         }
+    }
+
+    private AgentMatchLifecycle DetermineFinishLifecycle(RunSnapshot snapshot)
+    {
+        if (_options.LessonId is not null)
+        {
+            var lessonProgress = CreateLessonProgress();
+            if (lessonProgress?.AllRequirementsSatisfied == true)
+            {
+                return AgentMatchLifecycle.Completed;
+            }
+        }
+
+        if (snapshot.Status != RunStatus.Running)
+        {
+            return AgentMatchLifecycle.Completed;
+        }
+
+        if (snapshot.Tick >= _options.MaximumSteps)
+        {
+            return AgentMatchLifecycle.Completed;
+        }
+
+        return AgentMatchLifecycle.Aborted;
     }
 
     public AgentMatchResultV5? GetResult()

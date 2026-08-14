@@ -137,7 +137,7 @@ public sealed class McpAgentTools
         Destructive = false,
         Idempotent = true,
         OpenWorld = false)]
-    [Description("Explicitly ends a running match, finalizes a nonterminal verified replay, and returns the result. Calling it again returns the same result.")]
+    [Description("Explicitly ends a running match, finalizes a nonterminal verified replay, and returns the result. Lessons with all requirements satisfied, terminal states, and step-limit exhaustion receive lifecycle completed; other agent-finished matches receive lifecycle aborted. Style criteria show measurements, not grades. Calling finish_match again returns the same result.")]
     public AgentMatchSummaryV5 FinishMatch(
         [Description("Opaque handle returned by start_match.")] string matchHandle) =>
         Execute(() => _registry.Finish(matchHandle));
@@ -176,6 +176,8 @@ public sealed class McpAgentTools
         }
         catch (Exception exception) when (
             exception is ArgumentException
+                or ArgumentNullException
+                or ArgumentOutOfRangeException
                 or InvalidOperationException
                 or KeyNotFoundException)
         {
