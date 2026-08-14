@@ -97,6 +97,9 @@ Progression-specific native ownership:
 
 - [ProgressionCatalog.cs](../../native/src/VibeSnake.Rules/ProgressionCatalog.cs): exact goals, lanes, pacing bands, metric projection, and highlighted-goal rules.
 - [CosmeticSetCatalog.cs](../../native/src/VibeSnake.Rules/CosmeticSetCatalog.cs): eight curated presentation-only sets and exact expression-reward requirements.
+- [StationIdentityCatalog.cs](../../native/src/VibeSnake.Rules/StationIdentityCatalog.cs): eight stable station presentation identities without broadcast approval or scheduling policy.
+- [AgentIdentity.cs](../../native/src/VibeSnake.AgentPlay/AgentIdentity.cs): Passport v2 plus the closed agent accent catalog and catalog-validation boundary.
+- [AgentExperience.cs](../../native/src/VibeSnake.AgentPlay/AgentExperience.cs): Signal School and the current primary-metric Style Contract catalog. Composite replay-derived style facts remain the next AA-03 tranche.
 - [BroadcastTourCatalog.cs](../../native/src/VibeSnake.Rules/BroadcastTourCatalog.cs): four tiers and twelve dependency-gated event contracts.
 - [BroadcastTourSession.cs](../../native/src/VibeSnake.Rules/BroadcastTourSession.cs): fixed-seed practice construction and exact terminal primary/style evaluation.
 - [ProgressionDocument.cs](../../native/src/VibeSnake.Persistence/ProgressionDocument.cs): strict atomic progression, reward, Tour, cosmetic selection, and loadout persistence.

@@ -284,7 +284,7 @@ public sealed class AgentMatchSessionTests
             lesson.PracticeSeed,
             AgentSeedVisibility.Open,
             lesson.MaximumSteps,
-            actionProfile: AgentPassportV1.FourDirectionBurstActionProfile,
+            actionProfile: AgentPassportV2.FourDirectionBurstActionProfile,
             lessonId: lesson.Id));
         var stepInitial = step.Observe();
         var burstInitial = burst.Observe();
@@ -518,8 +518,8 @@ public sealed class AgentMatchSessionTests
             maximumSteps: 1,
             rivalPersonalityId: failedLane == AgentReplayLane.Rival ? "optimal" : null,
             actionProfile: burst
-                ? AgentPassportV1.FourDirectionBurstActionProfile
-                : AgentPassportV1.FourDirectionActionProfile);
+                ? AgentPassportV2.FourDirectionBurstActionProfile
+                : AgentPassportV2.FourDirectionActionProfile);
         var session = new AgentMatchSession(
             options,
             viewer,
@@ -634,10 +634,10 @@ public sealed class AgentMatchSessionTests
         Assert.False(rejectedBurst.RulesAdvanced);
         Assert.False(rejectedStep.RulesAdvanced);
         Assert.Equal(
-            AgentPassportV1.FourDirectionActionProfile,
+            AgentPassportV2.FourDirectionActionProfile,
             stepObservation.Passport.ActionProfile);
         Assert.Equal(
-            AgentPassportV1.FourDirectionBurstActionProfile,
+            AgentPassportV2.FourDirectionBurstActionProfile,
             burstObservation.Passport.ActionProfile);
         Assert.Equal(AgentViewerOperationKind.Burst, stepViewer.Frames[^1].Operation);
         Assert.Equal(0, stepViewer.Frames[^1].StepsAdvanced);
@@ -691,7 +691,7 @@ public sealed class AgentMatchSessionTests
         Assert.Equal(session.Observe().ConfigHash, result.ConfigHash);
         Assert.Equal(AgentSeedVisibility.Open, result.SeedVisibility);
         Assert.Equal(123UL, result.GameplaySeed);
-        Assert.Same(AgentPassportV1.Anonymous, result.Passport);
+        Assert.Same(AgentPassportV2.Anonymous, result.Passport);
         Assert.Equal(1, result.FinalTick);
         Assert.Equal(RunStatus.Running, result.RunStatus);
         Assert.Equal(DeathCause.None, result.DeathCause);
@@ -902,7 +902,7 @@ public sealed class AgentMatchSessionTests
                 AgentSeedVisibility.Open,
                 maximumSteps,
                 rivalPersonalityId: rivalPersonalityId,
-                actionProfile: AgentPassportV1.FourDirectionBurstActionProfile),
+                actionProfile: AgentPassportV2.FourDirectionBurstActionProfile),
             viewerSink);
 
     private static AgentActionResponse Act(
@@ -916,12 +916,12 @@ public sealed class AgentMatchSessionTests
 
     private static AgentActionRequest Request(
         string key,
-        AgentObservationV2 observation,
+        AgentObservationV3 observation,
         AgentAction action,
         AgentPublicIntent declaredIntent = AgentPublicIntent.Undeclared) =>
         new(key, observation.Tick, observation.StateHash, action, declaredIntent);
 
-    private static AgentAction ChooseStarvationAction(AgentObservationV2 observation)
+    private static AgentAction ChooseStarvationAction(AgentObservationV3 observation)
     {
         Direction[] candidates =
         [
@@ -989,13 +989,13 @@ public sealed class AgentMatchSessionTests
 
     private sealed class RecordingViewerSink : IAgentViewerSink
     {
-        public List<AgentViewerFrameV4> Frames { get; } = [];
+        public List<AgentViewerFrameV5> Frames { get; } = [];
 
         public int Attempts { get; private set; }
 
         public bool Throw { get; set; }
 
-        public bool TryPublish(AgentViewerFrameV4 frame)
+        public bool TryPublish(AgentViewerFrameV5 frame)
         {
             Attempts++;
             if (Throw)
@@ -1010,9 +1010,9 @@ public sealed class AgentMatchSessionTests
 
     private sealed class LatestViewerSink : IAgentViewerSink
     {
-        public AgentViewerFrameV4? Latest { get; private set; }
+        public AgentViewerFrameV5? Latest { get; private set; }
 
-        public bool TryPublish(AgentViewerFrameV4 frame)
+        public bool TryPublish(AgentViewerFrameV5 frame)
         {
             Latest = frame;
             return true;

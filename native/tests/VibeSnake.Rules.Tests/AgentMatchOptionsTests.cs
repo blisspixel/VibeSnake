@@ -24,21 +24,21 @@ public sealed class AgentMatchOptionsTests
         Assert.Equal(7, options.MaximumSteps);
         Assert.Null(options.StyleContractId);
         Assert.Null(options.RivalPersonalityId);
-        Assert.Equal(AgentPassportV1.FourDirectionActionProfile, options.ActionProfile);
-        Assert.Same(AgentPassportV1.Anonymous, options.Passport);
+        Assert.Equal(AgentPassportV2.FourDirectionActionProfile, options.ActionProfile);
+        Assert.Same(AgentPassportV2.Anonymous, options.Passport);
         Assert.Equal(RunModeCatalog.ClassicId, options.CreateRunConfig().ModeId);
     }
 
     [Fact]
     public void Passport_validates_public_identity_and_fixed_profiles()
     {
-        var passport = new AgentPassportV1(
-            AgentPassportV1.Contract,
+        var passport = new AgentPassportV2(
+            AgentPassportV2.Contract,
             "coil-agent",
             "policy-2",
             "Coil Agent",
-            "#a0b1c2",
-            "neon-shed",
+            "redline",
+            "coil-gold",
             "ourotron");
         var options = new AgentMatchOptions(
             "passport",
@@ -49,63 +49,63 @@ public sealed class AgentMatchOptionsTests
             passport: passport);
 
         Assert.Same(passport, options.Passport);
-        Assert.Equal("#A0B1C2", passport.Color);
-        Assert.Equal(AgentPassportV1.SymbolicStepObservationProfile, passport.ObservationProfile);
-        Assert.Equal(AgentPassportV1.FourDirectionActionProfile, passport.ActionProfile);
-        Assert.Throws<ArgumentException>(() => new AgentPassportV1(
-            "wrong", "agent", "v1", "Agent", "#FFFFFF", "shed", "station"));
-        Assert.Throws<ArgumentException>(() => new AgentPassportV1(
-            AgentPassportV1.Contract, "bad id", "v1", "Agent", "#FFFFFF", "shed", "station"));
-        Assert.Throws<ArgumentException>(() => new AgentPassportV1(
-            AgentPassportV1.Contract, "agent", "v1", " Agent", "#FFFFFF", "shed", "station"));
-        Assert.Throws<ArgumentException>(() => new AgentPassportV1(
-            AgentPassportV1.Contract, "agent", "v1", "A\u0001", "#FFFFFF", "shed", "station"));
-        Assert.Throws<ArgumentException>(() => new AgentPassportV1(
-            AgentPassportV1.Contract,
+        Assert.Equal("redline", passport.AvatarId);
+        Assert.Equal("coil-gold", passport.AccentId);
+        Assert.Equal("ourotron", passport.StationId);
+        Assert.Equal(AgentPassportV2.SymbolicStepObservationProfile, passport.ObservationProfile);
+        Assert.Equal(AgentPassportV2.FourDirectionActionProfile, passport.ActionProfile);
+        Assert.Throws<ArgumentException>(() => new AgentPassportV2(
+            "wrong", "agent", "v1", "Agent", "redline", "coil-gold", "ourotron"));
+        Assert.Throws<ArgumentException>(() => new AgentPassportV2(
+            AgentPassportV2.Contract, "bad id", "v1", "Agent", "redline", "coil-gold", "ourotron"));
+        Assert.Throws<ArgumentException>(() => new AgentPassportV2(
+            AgentPassportV2.Contract, "agent", "v1", " Agent", "redline", "coil-gold", "ourotron"));
+        Assert.Throws<ArgumentException>(() => new AgentPassportV2(
+            AgentPassportV2.Contract, "agent", "v1", "A\u0001", "redline", "coil-gold", "ourotron"));
+        Assert.Throws<ArgumentException>(() => new AgentPassportV2(
+            AgentPassportV2.Contract,
             "agent",
             "v1",
-            new string('a', AgentPassportV1.MaximumDisplayNameLength + 1),
-            "#FFFFFF",
-            "shed",
-            "station"));
-        Assert.Throws<ArgumentException>(() => new AgentPassportV1(
-            AgentPassportV1.Contract, "agent", "v1", "Agent", "FFFFFF", "shed", "station"));
-        Assert.ThrowsAny<ArgumentException>(() => new AgentPassportV1(
-            AgentPassportV1.Contract, "agent", "v1", "Agent", null!, "shed", "station"));
-        Assert.Throws<ArgumentException>(() => new AgentPassportV1(
-            AgentPassportV1.Contract, "agent", "v1", "Agent", "#ZZZZZZ", "shed", "station"));
-        Assert.Throws<ArgumentException>(() => new AgentPassportV1(
-            AgentPassportV1.Contract, "agent", "v1", "Agent", "#FFFFFF", "bad shed", "station"));
-        Assert.Throws<ArgumentException>(() => new AgentPassportV1(
-            AgentPassportV1.Contract, "agent", "v1", "Agent", "#FFFFFF", "shed", "bad station"));
-        Assert.Throws<ArgumentException>(() => new AgentPassportV1(
-            AgentPassportV1.Contract,
+            new string('a', AgentPassportV2.MaximumDisplayNameLength + 1),
+            "redline",
+            "coil-gold",
+            "ourotron"));
+        Assert.ThrowsAny<ArgumentException>(() => new AgentPassportV2(
+            AgentPassportV2.Contract, "agent", "v1", "Agent", null!, "coil-gold", "ourotron"));
+        Assert.Throws<ArgumentException>(() => new AgentPassportV2(
+            AgentPassportV2.Contract, "agent", "v1", "Agent", "unknown", "coil-gold", "ourotron"));
+        Assert.Throws<ArgumentException>(() => new AgentPassportV2(
+            AgentPassportV2.Contract, "agent", "v1", "Agent", "redline", "unknown", "ourotron"));
+        Assert.Throws<ArgumentException>(() => new AgentPassportV2(
+            AgentPassportV2.Contract, "agent", "v1", "Agent", "redline", "coil-gold", "unknown"));
+        Assert.Throws<ArgumentException>(() => new AgentPassportV2(
+            AgentPassportV2.Contract,
             "agent",
             "v1",
             "Agent",
-            "#FFFFFF",
-            "shed",
-            "station",
+            "redline",
+            "coil-gold",
+            "ourotron",
             observationProfile: "visual-v1"));
-        Assert.Throws<ArgumentException>(() => new AgentPassportV1(
-            AgentPassportV1.Contract,
+        Assert.Throws<ArgumentException>(() => new AgentPassportV2(
+            AgentPassportV2.Contract,
             "agent",
             "v1",
             "Agent",
-            "#FFFFFF",
-            "shed",
-            "station",
+            "redline",
+            "coil-gold",
+            "ourotron",
             actionProfile: "burst-v1"));
 
-        var burstPassport = new AgentPassportV1(
-            AgentPassportV1.Contract,
+        var burstPassport = new AgentPassportV2(
+            AgentPassportV2.Contract,
             "burst-agent",
             "policy-1",
             "Burst Agent",
-            "#FFFFFF",
-            "shed",
-            "station",
-            actionProfile: AgentPassportV1.FourDirectionBurstActionProfile);
+            "edge-prophet",
+            "pit-orange",
+            "the_pit",
+            actionProfile: AgentPassportV2.FourDirectionBurstActionProfile);
         var burstOptions = new AgentMatchOptions(
             "burst-passport",
             RunModeCatalog.ClassicId,
@@ -113,10 +113,10 @@ public sealed class AgentMatchOptionsTests
             1UL,
             AgentSeedVisibility.Open,
             passport: burstPassport,
-            actionProfile: AgentPassportV1.FourDirectionBurstActionProfile);
+            actionProfile: AgentPassportV2.FourDirectionBurstActionProfile);
         Assert.Same(burstPassport, burstOptions.Passport);
         Assert.Equal(
-            AgentPassportV1.FourDirectionBurstActionProfile,
+            AgentPassportV2.FourDirectionBurstActionProfile,
             burstOptions.ActionProfile);
         Assert.Throws<ArgumentException>(() => new AgentMatchOptions(
             "mismatched-passport",
@@ -125,7 +125,7 @@ public sealed class AgentMatchOptionsTests
             1UL,
             AgentSeedVisibility.Open,
             passport: passport,
-            actionProfile: AgentPassportV1.FourDirectionBurstActionProfile));
+            actionProfile: AgentPassportV2.FourDirectionBurstActionProfile));
         Assert.Throws<ArgumentException>(() => new AgentMatchOptions(
             "unknown-profile",
             RunModeCatalog.ClassicId,
@@ -134,7 +134,7 @@ public sealed class AgentMatchOptionsTests
             AgentSeedVisibility.Open,
             actionProfile: "unknown"));
         Assert.Throws<ArgumentException>(() =>
-            AgentPassportV1.CreateAnonymous("unknown"));
+            AgentPassportV2.CreateAnonymous("unknown"));
     }
 
     [Fact]
@@ -197,7 +197,7 @@ public sealed class AgentMatchOptionsTests
             lesson.PracticeSeed,
             AgentSeedVisibility.Open,
             lesson.MaximumSteps,
-            actionProfile: AgentPassportV1.FourDirectionBurstActionProfile,
+            actionProfile: AgentPassportV2.FourDirectionBurstActionProfile,
             lessonId: lesson.Id);
 
         Assert.Equal(lesson.Id, options.LessonId);

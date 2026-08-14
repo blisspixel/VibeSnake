@@ -28,15 +28,18 @@ public sealed class AgentResources
     public static string GetRules() => JsonSerializer.Serialize(
         new
         {
-            contract = "vibesnake-agent-rules-resource-v4",
+            contract = "vibesnake-agent-rules-resource-v5",
             ruleset_id = RulesetIdentity.CurrentId,
             rules_version = RulesetIdentity.CurrentVersion,
-            observation_schema = AgentObservationV2.Contract,
+            observation_schema = AgentObservationV3.Contract,
+            observation_profile = AgentPassportV2.SymbolicStepObservationProfile,
+            passport_schema = AgentPassportV2.Contract,
+            identity_resource = "vibesnake://agent/identity",
             actions = Enum.GetNames<AgentAction>().Select(value => value.ToLowerInvariant()),
             action_profiles = new[]
             {
-                AgentPassportV1.FourDirectionActionProfile,
-                AgentPassportV1.FourDirectionBurstActionProfile,
+                AgentPassportV2.FourDirectionActionProfile,
+                AgentPassportV2.FourDirectionBurstActionProfile,
             },
             public_intents = Enum.GetNames<AgentPublicIntent>()
                 .Select(value => JsonNamingPolicy.SnakeCaseLower.ConvertName(value)),
@@ -52,7 +55,7 @@ public sealed class AgentResources
             },
             viewer = new
             {
-                frame_contract = AgentViewerFrameV4.Contract,
+                frame_contract = AgentViewerFrameV5.Contract,
                 operations = Enum.GetNames<AgentViewerOperationKind>()
                     .Select(JsonNamingPolicy.SnakeCaseLower.ConvertName),
                 pre_mutation_tick_and_state_hash = true,
@@ -73,6 +76,48 @@ public sealed class AgentResources
             replay = "A successfully finalized completed, capped, or explicitly finished match returns a deterministic verified lane result and replay. Failed-closed finalization returns neither; an exhibition receipt is not part of this contract.",
             rivalry = "An optional built-in rival advances once per accepted agent step on the same seed and exact configuration. Each lane has an independent verified replay.",
             privacy = "Observations exclude random state, future outcomes, controller internals, profiles, progression, paths, prompts, credentials, diagnostics, and hidden reasoning.",
+        },
+        JsonOptions);
+
+    [McpServerResource(
+        UriTemplate = "vibesnake://agent/identity",
+        Name = "Vibe Snake agent identity catalog",
+        MimeType = "application/json")]
+    [Description("Closed presentation identities accepted by Agent Passport v2.")]
+    public static string GetIdentity() => JsonSerializer.Serialize(
+        new
+        {
+            contract = "vibesnake-agent-identity-resource-v1",
+            passport_schema = AgentPassportV2.Contract,
+            observation_profile = AgentPassportV2.SymbolicStepObservationProfile,
+            avatars = CosmeticSetCatalog.Sets.Select(avatar => new
+            {
+                id = avatar.Id,
+                name = avatar.Name,
+            }),
+            accents = AgentAccentCatalog.All.Select(accent => new
+            {
+                id = accent.Id,
+                name = accent.DisplayName,
+                color = new
+                {
+                    red = accent.Color.Red,
+                    green = accent.Color.Green,
+                    blue = accent.Color.Blue,
+                },
+            }),
+            stations = StationIdentityCatalog.All.Select(station => new
+            {
+                id = station.Id,
+                name = station.DisplayName,
+            }),
+            semantics = new
+            {
+                declaration = "Passport identity is caller-declared and catalog-validated, not authenticated.",
+                presentation = "Avatar, accent, and station choices are presentation-only and never change rules, score, verification, or qualification.",
+                independence = "Agent presentation is independent of the watching human's selected cosmetic and progression unlocks.",
+                station_boundary = "A station identity is a presentation affinity, not approval to schedule, publish, moderate, or provide station audio.",
+            },
         },
         JsonOptions);
 
@@ -155,8 +200,8 @@ public sealed class AgentResources
         """
         # Vibe Snake Agent Playbook
 
-        1. Read `vibesnake://agent/rules`, `vibesnake://agent/modes`, and optionally the style, rival, or Signal School resources.
-        2. Call `start_match` for an exhibition, or `start_lesson` with a closed Signal School lesson ID for canonical open-seed practice. Select either `four-direction-step-v1` or `four-direction-burst-v1`.
+        1. Read `vibesnake://agent/rules`, `vibesnake://agent/modes`, and `vibesnake://agent/identity`. Optionally read the style, rival, or Signal School resources.
+        2. Call `start_match` for an exhibition, or `start_lesson` with a closed Signal School lesson ID for canonical open-seed practice. Select either `four-direction-step-v1` or `four-direction-burst-v1`. If supplying a passport, use only the closed avatar, accent, and station IDs from the identity resource.
         3. Read the returned observation. Use only visible board state.
         4. Use `play_move` for one exact decision. In a burst-profile match, use `play_burst` for a safe straight continuation of at most 16 steps; it stops on the first fixed public decision event. Supply the exact tick and state hash plus a new idempotency key. Optionally declare one closed public intent so a viewer can follow the plan.
         5. On rejection or burst stop, inspect the reason, final-step public events, and refreshed observation. Rejected requests do not step the rules.

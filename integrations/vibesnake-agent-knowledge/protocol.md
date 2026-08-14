@@ -3,8 +3,8 @@ type: "Protocol"
 title: "Vibe Snake MCP agent host"
 description: "The local stdio MCP surface and its portable Agent Plugin packaging."
 tags: [vibesnake, mcp, agent-plugins, stdio]
-generated: { by: process:vibesnake-okf-generator, at: 2026-08-14T02:33:19Z }
-verified: { by: process:vibesnake-quality-gate, at: 2026-08-14T02:33:19Z }
+generated: { by: process:vibesnake-okf-generator, at: 2026-08-14T04:39:55Z }
+verified: { by: process:vibesnake-quality-gate, at: 2026-08-14T04:39:55Z }
 stale_after: "2026-11-13"
 status: draft
 sources:
@@ -38,7 +38,7 @@ sources:
 ---
 # Versions
 
-The host version is `0.4.0`. The Agent Plugin version is `0.4.0` and targets `https://agent-plugins.org/schemas/1.0.0/plugin.schema.json`.
+The host version is `0.5.0`. The Agent Plugin version is `0.5.0` and targets `https://agent-plugins.org/schemas/1.0.0/plugin.schema.json`.
 The MCP server targets stable protocol `2026-07-28` through the official C# SDK `2.2.0`.
 Clients must speak the stateless MCP `2026-07-28` era: every request carries protocol metadata, optional discovery uses `server/discover`, and there is no protocol session. Legacy `initialize` handshakes are rejected and this preview provides no downlevel fallback.
 
@@ -55,6 +55,7 @@ Clients must speak the stateless MCP `2026-07-28` era: every request carries pro
 
 # Resources
 
+* `vibesnake://agent/identity`
 * `vibesnake://agent/modes`
 * `vibesnake://agent/playbook`
 * `vibesnake://agent/rivals`
@@ -64,7 +65,7 @@ Clients must speak the stateless MCP `2026-07-28` era: every request carries pro
 
 # Live viewer
 
-The optional same-user pipe uses `vibesnake-agent-viewer-frame-v4`. Every frame declares initial, step, burst, or finish origin and binds exact steps advanced to the pre-mutation tick and state hash. Burst frames carry closed stop reason and final-step event, while terminal truth, immutable match identity, action facts, and contiguous state anchors are cross-validated before presentation. Malformed, oversized, contradictory, or identity-drifting input clears pending content and rejects the stream. The host keeps only the latest unsent frame, the client reports sequence gaps as coalesced earlier updates, and the exact packaged-host transcript opens the viewer and receives a terminal burst. The verified replay remains the canonical complete history, and viewer timing never advances rules or score.
+The optional same-user pipe uses `vibesnake-agent-viewer-frame-v5`. Every frame declares initial, step, burst, or finish origin and binds exact steps advanced to the pre-mutation tick and state hash. Burst frames carry closed stop reason and final-step event, while terminal truth, immutable match identity, catalog-bound Passport v2, action facts, and contiguous state anchors are cross-validated before presentation. Malformed, oversized, contradictory, unknown-catalog, or identity-drifting input clears pending content and rejects the stream. The host keeps only the latest unsent frame, the client reports sequence gaps as coalesced earlier updates, and the exact packaged-host transcript opens the viewer and receives a terminal burst. The verified replay remains the canonical complete history, and viewer timing never advances rules or score.
 
 # Trust boundary
 

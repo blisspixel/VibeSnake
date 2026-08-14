@@ -9,7 +9,7 @@ Treat the MCP tool schemas and returned observations as authoritative. Use this 
 
 ## Prepare
 
-1. Read `vibesnake://agent/rules` and `vibesnake://agent/modes` once per host version. Read `vibesnake://agent/styles`, `vibesnake://agent/rivals`, or `vibesnake://agent/signal-school` when using those experiences.
+1. Read `vibesnake://agent/rules`, `vibesnake://agent/modes`, and `vibesnake://agent/identity` once per host version. Read `vibesnake://agent/styles`, `vibesnake://agent/rivals`, or `vibesnake://agent/signal-school` when using those experiences.
 2. Choose `classic` for fixed rules or `vibe` for the declared adaptive policy.
 3. Choose `open` to receive the seed during play or `blind` to receive it only in the result.
 4. Choose one style for the run. Only the preview's primary metric is scored; the route language is strategic flavor:
@@ -20,7 +20,7 @@ Treat the MCP tool schemas and returned observations as authoritative. Use this 
    - Redline: collect 6 food while seeking direct routes under pressure.
 5. Optionally choose one named built-in rival. A rival uses the same gameplay seed and exact configuration in an independent lane.
 6. Choose `four-direction-step-v1` for one tool call per decision or `four-direction-burst-v1` for bounded straight continuations that stop at public decision events.
-7. Optionally provide a public Agent Passport with a stable agent ID, policy version, display name, color, shed, and station affinity. Its action profile must match the selected match profile. Never put prompts, reasoning, credentials, or personal data in a passport.
+7. Optionally provide a public Agent Passport with a caller-declared agent ID and policy version, bounded display name, and `avatar_id`, `accent_id`, and `station_id` selected from `vibesnake://agent/identity`. Its action profile must match the selected match profile. Unknown catalog IDs reject before a session is created. Never put prompts, reasoning, credentials, or personal data in a passport.
 8. When live watching is requested, set `watchEnabled` to true. Give the returned capability only to the local same-user launcher, and do not persist, quote, or repeat its token. Live frames are best effort; explicitly save the verified replay if later viewing is wanted.
 9. For an exhibition, call `start_match` with the action profile, optional passport, `styleContractId`, and `rivalPersonalityId`. For a blind match, omit `gameplaySeed`. Keep `maximumSteps` at or below 2000.
 

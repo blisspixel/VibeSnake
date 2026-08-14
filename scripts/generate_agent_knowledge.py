@@ -88,7 +88,7 @@ def render_bundle(repository_root: Path) -> dict[str, str]:
     rules_version = _match(rules_identity, r"CurrentVersion = ([0-9]+)", "rules version")
     observation_schema = _match(
         contracts,
-        r"record AgentObservationV2\(.*?Contract = \"([^\"]+)\"",
+        r"record AgentObservationV3\(.*?Contract = \"([^\"]+)\"",
         "observation schema",
     )
     result_schema = _match(
@@ -133,6 +133,12 @@ def render_bundle(repository_root: Path) -> dict[str, str]:
         [
             ("rules-identity", "../../native/src/VibeSnake.Rules/RulesetIdentity.cs", "Ruleset identity"),
             ("agent-contracts", "../../native/src/VibeSnake.AgentPlay/AgentContracts.cs", "Agent contracts"),
+            ("agent-identity", "../../native/src/VibeSnake.AgentPlay/AgentIdentity.cs", "Agent identity catalogs"),
+            (
+                "station-identity",
+                "../../native/src/VibeSnake.Rules/StationIdentityCatalog.cs",
+                "Station identity catalog",
+            ),
             ("mode-catalog", "../../native/src/VibeSnake.Rules/RunModeCatalog.cs", "Official mode catalog"),
         ],
         *lifecycle,
@@ -150,7 +156,8 @@ def render_bundle(repository_root: Path) -> dict[str, str]:
             "",
             "# Public observation",
             "",
-            "The observation includes the board, ordered body, direction queue, food, visible powers and obstacles, score, combo, hunger, active effects, adaptive policy, previous public events, episode metrics, optional style progress, and optional Signal School progress.",
+            "The observation includes the catalog-validated public Agent Passport, board, ordered body, direction queue, food, visible powers and obstacles, score, combo, hunger, active effects, adaptive policy, previous public events, episode metrics, optional style progress, and optional Signal School progress.",
+            "Passport identity is caller-declared and ephemeral. Avatar, accent, and station IDs must resolve through the host's closed identity resource; they affect presentation only and remain independent of human progression and cosmetics.",
             "It excludes random state, future outcomes, controller internals, profiles, progression, paths, prompts, credentials, diagnostics, and hidden reasoning.",
             "",
             "# Seed divisions",
@@ -211,7 +218,7 @@ def render_bundle(repository_root: Path) -> dict[str, str]:
             "",
             "# Live viewer",
             "",
-            "The optional same-user pipe uses `vibesnake-agent-viewer-frame-v4`. Every frame declares initial, step, burst, or finish origin and binds exact steps advanced to the pre-mutation tick and state hash. Burst frames carry closed stop reason and final-step event, while terminal truth, immutable match identity, action facts, and contiguous state anchors are cross-validated before presentation. Malformed, oversized, contradictory, or identity-drifting input clears pending content and rejects the stream. The host keeps only the latest unsent frame, the client reports sequence gaps as coalesced earlier updates, and the exact packaged-host transcript opens the viewer and receives a terminal burst. The verified replay remains the canonical complete history, and viewer timing never advances rules or score.",
+            "The optional same-user pipe uses `vibesnake-agent-viewer-frame-v5`. Every frame declares initial, step, burst, or finish origin and binds exact steps advanced to the pre-mutation tick and state hash. Burst frames carry closed stop reason and final-step event, while terminal truth, immutable match identity, catalog-bound Passport v2, action facts, and contiguous state anchors are cross-validated before presentation. Malformed, oversized, contradictory, unknown-catalog, or identity-drifting input clears pending content and rejects the stream. The host keeps only the latest unsent frame, the client reports sequence gaps as coalesced earlier updates, and the exact packaged-host transcript opens the viewer and receives a terminal burst. The verified replay remains the canonical complete history, and viewer timing never advances rules or score.",
             "",
             "# Trust boundary",
             "",
@@ -243,7 +250,7 @@ def render_bundle(repository_root: Path) -> dict[str, str]:
             *(f"* `{lesson_id}`" for lesson_id in lesson_ids),
             "",
             "Call `start_lesson` with one published lesson ID to create its canonical open-seed practice session. Every observation returns the instruction and primary-metric progress; accepted moves and bursts return exact progress deltas, and verified finalization returns a replay-hash-bound outcome. Reaching a practice target is not mastery or qualification.",
-            "Bounded symbolic bursts reduce routine tool-call cost and stop when the selected lesson target first transitions to reached, while preserving exact replay, metric, and control-division identity. The complete eight-behavior curriculum and withheld-seed qualification remain future work.",
+            "Bounded symbolic bursts reduce routine tool-call cost and stop when the selected lesson target first transitions to reached, while preserving exact replay, metric, and control-division identity. The complete eight-behavior curriculum and qualification-time seed decks remain future work.",
             "",
         )
     )

@@ -170,13 +170,17 @@ public partial class Main : Node2D
     private bool _spectatorControllerRouteQualified;
 #if AGENT_ARENA_PREVIEW
     private AgentViewerClient? _agentViewer;
-    private AgentViewerFrameV4? _agentViewerFrame;
+    private AgentViewerFrameV5? _agentViewerFrame;
     private long _agentViewerCoalescedFrames;
     private bool _agentViewerSnappedLatestFrame;
     private RunSnapshot? _agentViewerSnapshot;
     private string _agentViewerStatusId = "status.agent-viewer.connecting";
     private bool _agentViewerSmokeEnabled;
     private ulong? _agentViewerSmokeDeadlineMilliseconds;
+    private string? _agentViewerPresentedAvatarId;
+    private string? _agentViewerPresentedAccentId;
+    private string? _agentViewerPresentedStationId;
+    private string? _agentViewerHumanCosmeticIdBeforePresentation;
 #endif
     private int _loreDepthFilterIndex;
     private int _loreBrowseCursor;
@@ -483,6 +487,8 @@ public partial class Main : Node2D
 #if AGENT_ARENA_PREVIEW
         if (agentWatchPipe is not null && agentWatchToken is not null)
         {
+            _agentViewerHumanCosmeticIdBeforePresentation =
+                _progression.SelectedCosmeticSetId;
             _agentViewer = new AgentViewerClient(agentWatchPipe, agentWatchToken);
             TransitionToScreen(ScreenState.AgentWatch);
             _agentViewerStatusId = AgentViewerStatusCopyId(_agentViewer.State);
@@ -4163,6 +4169,10 @@ public partial class Main : Node2D
         _agentViewerStatusId = "status.agent-viewer.connecting";
         _agentViewerSmokeEnabled = false;
         _agentViewerSmokeDeadlineMilliseconds = null;
+        _agentViewerPresentedAvatarId = null;
+        _agentViewerPresentedAccentId = null;
+        _agentViewerPresentedStationId = null;
+        _agentViewerHumanCosmeticIdBeforePresentation = null;
 #endif
         _activeSpectatorChallenge = null;
         _activeSpectatorChallengePersonalityId = null;
@@ -9523,6 +9533,63 @@ public partial class Main : Node2D
         }
     }
 
+    private static string FitAgentOverlayText(
+        Font font,
+        string text,
+        int fontSize,
+        float maximumWidth)
+    {
+        ArgumentNullException.ThrowIfNull(font);
+        ArgumentNullException.ThrowIfNull(text);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(fontSize);
+        if (!float.IsFinite(maximumWidth) || maximumWidth <= 0.0f)
+        {
+            throw new ArgumentOutOfRangeException(nameof(maximumWidth));
+        }
+
+        float WidthOf(string candidate) => font.GetStringSize(
+            candidate,
+            HorizontalAlignment.Left,
+            -1.0f,
+            fontSize).X;
+        if (WidthOf(text) <= maximumWidth)
+        {
+            return text;
+        }
+
+        const string omission = "..";
+        var elements = new List<string>();
+        var enumerator = StringInfo.GetTextElementEnumerator(text);
+        while (enumerator.MoveNext())
+        {
+            elements.Add(enumerator.GetTextElement());
+        }
+
+        var low = 0;
+        var high = elements.Count;
+        var best = omission;
+        while (low <= high)
+        {
+            var kept = low + ((high - low) / 2);
+            var prefixCount = (kept + 1) / 2;
+            var suffixCount = kept / 2;
+            var candidate = string.Concat(elements.Take(prefixCount))
+                + omission
+                + string.Concat(elements.Skip(elements.Count - suffixCount));
+            if (WidthOf(candidate) <= maximumWidth)
+            {
+                best = candidate;
+                low = kept + 1;
+            }
+            else
+            {
+                high = kept - 1;
+            }
+        }
+
+        return best;
+    }
+
 #if AGENT_ARENA_PREVIEW
     private void PollAgentViewer(ulong nowMilliseconds)
     {
@@ -9672,7 +9739,7 @@ public partial class Main : Node2D
         _ => throw new ArgumentOutOfRangeException(nameof(endReason)),
     };
 
-    private string AgentViewerOperationCopy(AgentViewerFrameV4 frame) => frame.Operation switch
+    private string AgentViewerOperationCopy(AgentViewerFrameV5 frame) => frame.Operation switch
     {
         AgentViewerOperationKind.Initial => Localize("agent-arena.operation.initial"),
         AgentViewerOperationKind.Step => Localize(
@@ -9738,11 +9805,6 @@ public partial class Main : Node2D
         ? value.ToUpperInvariant()
         : value[..16].ToUpperInvariant() + "..";
 
-    private static Color AgentPassportColor(string value) => new(
-        Convert.ToByte(value.Substring(1, 2), 16) / 255.0f,
-        Convert.ToByte(value.Substring(3, 2), 16) / 255.0f,
-        Convert.ToByte(value.Substring(5, 2), 16) / 255.0f);
-
     private void DrawFittedAgentLabel(
         string text,
         Vector2 position,
@@ -9760,63 +9822,6 @@ public partial class Main : Node2D
             position,
             fontSize,
             color);
-    }
-
-    private static string FitAgentOverlayText(
-        Font font,
-        string text,
-        int fontSize,
-        float maximumWidth)
-    {
-        ArgumentNullException.ThrowIfNull(font);
-        ArgumentNullException.ThrowIfNull(text);
-        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(fontSize);
-        if (!float.IsFinite(maximumWidth) || maximumWidth <= 0.0f)
-        {
-            throw new ArgumentOutOfRangeException(nameof(maximumWidth));
-        }
-
-        float WidthOf(string candidate) => font.GetStringSize(
-            candidate,
-            HorizontalAlignment.Left,
-            -1.0f,
-            fontSize).X;
-        if (WidthOf(text) <= maximumWidth)
-        {
-            return text;
-        }
-
-        const string omission = "..";
-        var elements = new List<string>();
-        var enumerator = StringInfo.GetTextElementEnumerator(text);
-        while (enumerator.MoveNext())
-        {
-            elements.Add(enumerator.GetTextElement());
-        }
-
-        var low = 0;
-        var high = elements.Count;
-        var best = omission;
-        while (low <= high)
-        {
-            var kept = low + ((high - low) / 2);
-            var prefixCount = (kept + 1) / 2;
-            var suffixCount = kept / 2;
-            var candidate = string.Concat(elements.Take(prefixCount))
-                + omission
-                + string.Concat(elements.Skip(elements.Count - suffixCount));
-            if (WidthOf(candidate) <= maximumWidth)
-            {
-                best = candidate;
-                low = kept + 1;
-            }
-            else
-            {
-                high = kept - 1;
-            }
-        }
-
-        return best;
     }
 
     private void CheckAgentViewerSmokeTimeout(ulong nowMilliseconds)
@@ -9855,11 +9860,29 @@ public partial class Main : Node2D
                 throw new InvalidOperationException(
                     "Agent viewer accessibility smoke profile was not retained.");
             }
+            var passport = _agentViewerFrame?.Observation.Passport
+                ?? throw new InvalidOperationException(
+                    "Agent viewer presentation had no terminal passport.");
+            if (_agentViewerPresentedAvatarId != passport.AvatarId
+                || _agentViewerPresentedAccentId != passport.AccentId
+                || _agentViewerPresentedStationId != passport.StationId)
+            {
+                throw new InvalidOperationException(
+                    "Agent viewer presentation did not retain the closed passport identity.");
+            }
+            if (_agentViewerHumanCosmeticIdBeforePresentation
+                != _progression.SelectedCosmeticSetId)
+            {
+                throw new InvalidOperationException(
+                    "Agent viewer presentation changed human cosmetic progression.");
+            }
             GD.Print(
                 "VIBESNAKE_AGENT_VIEWER_SMOKE_OK "
                 + $"hash={stateHash} frame={frameSequence} "
                 + $"operation={operation} steps={stepsAdvanced} "
                 + $"coalesced={coalescedFrames} "
+                + $"avatar={passport.AvatarId} accent={passport.AccentId} "
+                + $"station={passport.StationId} "
                 + "motion=snap "
                 + "accessibility=muted,high-contrast,reduced-motion,text-150");
             GetTree().Quit();
@@ -9926,6 +9949,17 @@ public partial class Main : Node2D
 
         var observation = _agentViewerFrame.Observation;
         var mode = RunModeCatalog.Get(observation.ModeId, observation.ModeVersion);
+        var passport = observation.Passport;
+        var agentCosmetic = CosmeticSetCatalog.Find(passport.AvatarId)
+            ?? throw new InvalidOperationException(
+                "Agent passport referenced an unavailable avatar.");
+        var agentAccent = AgentAccentCatalog.Get(passport.AccentId);
+        var agentStation = StationIdentityCatalog.Get(passport.StationId);
+        _agentViewerPresentedAvatarId = agentCosmetic.Id;
+        _agentViewerPresentedAccentId = agentAccent.Id;
+        _agentViewerPresentedStationId = agentStation.Id;
+        _agentViewerHumanCosmeticIdBeforePresentation ??=
+            _progression.SelectedCosmeticSetId;
         DrawRun(
             _agentViewerSnapshot,
             Localize(observation.IsActionAwaited
@@ -9933,7 +9967,8 @@ public partial class Main : Node2D
                 : _agentViewerFrame.VerifiedResultAvailable
                     ? "agent-arena.run.complete"
                     : "agent-arena.run.failed"),
-            mode);
+            mode,
+            agentCosmetic);
         if (!_capturePresentation.ShowSpectatorOverlays)
         {
             return;
@@ -9993,7 +10028,7 @@ public partial class Main : Node2D
                 ShellTextArgument.From("count", _agentViewerCoalescedFrames));
         DrawRect(
             new Rect2(38.0f, 588.0f, 9.0f, 9.0f),
-            AgentPassportColor(observation.Passport.Color));
+            CosmeticColor(agentAccent.Color));
         DrawFittedAgentLabel(
             Localize(
                 "agent-arena.identity",
@@ -10001,11 +10036,11 @@ public partial class Main : Node2D
                     "agent",
                     observation.Passport.DisplayName.ToUpperInvariant()),
                 ShellTextArgument.From(
-                    "shed",
-                    CompactAgentPassportToken(observation.Passport.ShedId)),
+                    "avatar",
+                    CompactAgentPassportToken(agentCosmetic.Name)),
                 ShellTextArgument.From(
                     "station",
-                    CompactAgentPassportToken(observation.Passport.StationAffinity))),
+                    CompactAgentPassportToken(agentStation.DisplayName))),
             new Vector2(52.0f, 602.0f),
             13,
             1208.0f,
@@ -10686,7 +10721,8 @@ public partial class Main : Node2D
     private void DrawRun(
         RunSnapshot? replaySnapshot = null,
         string? replayStatus = null,
-        RunModeDefinition? presentedMode = null)
+        RunModeDefinition? presentedMode = null,
+        CosmeticSetDefinition? presentedCosmetic = null)
     {
         if (_run is null && replaySnapshot is null)
         {
@@ -10879,7 +10915,7 @@ public partial class Main : Node2D
             }
         }
 
-        var activeCosmetic = ActiveCosmeticSet;
+        var activeCosmetic = presentedCosmetic ?? ActiveCosmeticSet;
         for (var index = 0; index < snapshot.Body.Count; index++)
         {
             var isHead = index == snapshot.Body.Count - 1;
@@ -10913,9 +10949,9 @@ public partial class Main : Node2D
         DrawActiveHeadOutlines(snapshot, presentedHead);
         if (usesVibePresentation)
         {
-            DrawVibeTrail(snapshot, accessibility, presentedBody);
+            DrawVibeTrail(snapshot, accessibility, presentedBody, activeCosmetic);
         }
-        DrawHeadDirectionMarker(snapshot, presentedHead);
+        DrawHeadDirectionMarker(snapshot, presentedHead, activeCosmetic);
 
         if (_screenState == ScreenState.Ended
             && _capturePresentation.ShowTerminalOverlay)
@@ -11213,7 +11249,8 @@ public partial class Main : Node2D
     private void DrawVibeTrail(
         RunSnapshot snapshot,
         AccessibilityPresentationPolicy accessibility,
-        IReadOnlyList<Vector2> presentedBody)
+        IReadOnlyList<Vector2> presentedBody,
+        CosmeticSetDefinition cosmetic)
     {
         var budget = VibeLevelDirector.ResolveEffectiveBudget(
             _vibeLevelDirector.CurrentLevel,
@@ -11226,7 +11263,6 @@ public partial class Main : Node2D
             return;
         }
 
-        var cosmetic = ActiveCosmeticSet;
         if (cosmetic.TrailOpacityPercent == 0)
         {
             return;
@@ -11252,7 +11288,10 @@ public partial class Main : Node2D
         _ => throw new ArgumentOutOfRangeException(nameof(definition), definition.HudRole, "Unknown Vibe HUD role."),
     };
 
-    private void DrawHeadDirectionMarker(RunSnapshot snapshot, Vector2 presentedHead)
+    private void DrawHeadDirectionMarker(
+        RunSnapshot snapshot,
+        Vector2 presentedHead,
+        CosmeticSetDefinition cosmetic)
     {
         var center = new Vector2(
             (presentedHead.X * CellSize) + (CellSize * 0.5f),
@@ -11265,7 +11304,6 @@ public partial class Main : Node2D
             RulesDirection.Left => Vector2.Left,
             _ => throw new ArgumentOutOfRangeException(nameof(snapshot)),
         };
-        var cosmetic = ActiveCosmeticSet;
         var markerColor = CosmeticColor(cosmetic.Secondary);
         DrawLine(
             center,
@@ -13270,7 +13308,7 @@ public partial class Main : Node2D
                 Pseudo(
                 "agent-arena.identity",
                 ShellTextArgument.From("agent", maximumIdentityToken),
-                ShellTextArgument.From("shed", "MAXIMUM-SHED-ID.."),
+                ShellTextArgument.From("avatar", "MAXIMUM-AVATAR.."),
                 ShellTextArgument.From("station", "MAXIMUM-STATION..")),
                 13,
                 602.0f,

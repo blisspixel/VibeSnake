@@ -28,7 +28,7 @@ public sealed class AgentViewerClient : IDisposable
     private readonly string _accessToken;
     private readonly CancellationTokenSource _shutdown = new();
     private readonly Task _readerTask;
-    private AgentViewerFrameV4? _latestFrame;
+    private AgentViewerFrameV5? _latestFrame;
     private long _lastPresentedSequence = -1;
     private AgentViewerClientState _state = AgentViewerClientState.Connecting;
     private string _status = "CONNECTING TO AGENT MATCH";
@@ -71,7 +71,7 @@ public sealed class AgentViewerClient : IDisposable
     }
 
     public bool TryTakeLatest(
-        out AgentViewerFrameV4? frame,
+        out AgentViewerFrameV5? frame,
         out long coalescedFrames)
     {
         lock (_sync)
@@ -143,7 +143,7 @@ public sealed class AgentViewerClient : IDisposable
             await pipe.FlushAsync(cancellationToken).ConfigureAwait(false);
 
             long lastSequence = -1;
-            AgentViewerFrameV4? lastFrame = null;
+            AgentViewerFrameV5? lastFrame = null;
             while (!cancellationToken.IsCancellationRequested)
             {
                 var line = await ReadLineBoundedAsync(pipe, cancellationToken).ConfigureAwait(false);
@@ -159,11 +159,11 @@ public sealed class AgentViewerClient : IDisposable
                     return;
                 }
 
-                var frame = JsonSerializer.Deserialize<AgentViewerFrameV4>(line, SerializerOptions);
+                var frame = JsonSerializer.Deserialize<AgentViewerFrameV5>(line, SerializerOptions);
                 if (frame is null
-                    || frame.Schema != AgentViewerFrameV4.Contract
+                    || frame.Schema != AgentViewerFrameV5.Contract
                     || frame.Observation is null
-                    || frame.Observation.Schema != AgentObservationV2.Contract
+                    || frame.Observation.Schema != AgentObservationV3.Contract
                     || !HasValidObservationShape(frame.Observation)
                     || frame.Sequence <= lastSequence
                     || !HasConsistentOperation(frame, lastFrame)
@@ -187,7 +187,7 @@ public sealed class AgentViewerClient : IDisposable
                 }
             }
         }
-        catch (JsonException)
+        catch (Exception exception) when (exception is JsonException or ArgumentException)
         {
             if (!cancellationToken.IsCancellationRequested)
             {
@@ -212,8 +212,8 @@ public sealed class AgentViewerClient : IDisposable
     }
 
     private static bool HasConsistentOperation(
-        AgentViewerFrameV4 frame,
-        AgentViewerFrameV4? previousFrame)
+        AgentViewerFrameV5 frame,
+        AgentViewerFrameV5? previousFrame)
     {
         if (frame.Sequence < 0
             || frame.StartTick < 0
@@ -274,7 +274,7 @@ public sealed class AgentViewerClient : IDisposable
         };
     }
 
-    private static bool HasConsistentBurst(AgentViewerFrameV4 frame)
+    private static bool HasConsistentBurst(AgentViewerFrameV5 frame)
     {
         if (frame.Sequence <= 0
             || frame.StepsAdvanced > AgentBurstRequest.MaximumBurstSteps
@@ -303,7 +303,7 @@ public sealed class AgentViewerClient : IDisposable
         return selectedEvent?.Kind == stopEvent;
     }
 
-    private static bool HasValidObservationShape(AgentObservationV2 observation) =>
+    private static bool HasValidObservationShape(AgentObservationV3 observation) =>
         !string.IsNullOrWhiteSpace(observation.MatchId)
         && string.Equals(
             observation.RulesetId,
@@ -320,7 +320,7 @@ public sealed class AgentViewerClient : IDisposable
             RunConfig.ConfigHashAlgorithmId,
             StringComparison.Ordinal)
         && IsLowerHex(observation.ConfigHash, 64)
-        && observation.Passport is not null
+        && HasValidPassport(observation.Passport)
         && Enum.IsDefined(observation.SeedVisibility)
         && (observation.SeedVisibility == AgentSeedVisibility.Open
             ? observation.GameplaySeed is not null
@@ -351,6 +351,33 @@ public sealed class AgentViewerClient : IDisposable
         && !string.IsNullOrWhiteSpace(observation.AdaptivePolicyId)
         && Enum.IsDefined(observation.Lifecycle);
 
+    private static bool HasValidPassport(AgentPassportV2? passport) =>
+        passport is not null
+        && string.Equals(passport.Schema, AgentPassportV2.Contract, StringComparison.Ordinal)
+        && IsIdentityToken(passport.AgentId, 64)
+        && IsIdentityToken(passport.PolicyVersion, 64)
+        && !string.IsNullOrWhiteSpace(passport.DisplayName)
+        && passport.DisplayName.Length <= AgentPassportV2.MaximumDisplayNameLength
+        && passport.DisplayName == passport.DisplayName.Trim()
+        && !passport.DisplayName.Any(char.IsControl)
+        && CosmeticSetCatalog.Find(passport.AvatarId) is not null
+        && AgentAccentCatalog.All.Any(accent =>
+            string.Equals(accent.Id, passport.AccentId, StringComparison.Ordinal))
+        && StationIdentityCatalog.All.Any(station =>
+            string.Equals(station.Id, passport.StationId, StringComparison.Ordinal))
+        && string.Equals(
+            passport.ObservationProfile,
+            AgentPassportV2.SymbolicStepObservationProfile,
+            StringComparison.Ordinal)
+        && AgentPassportV2.IsSupportedActionProfile(passport.ActionProfile);
+
+    private static bool IsIdentityToken(string? value, int maximumLength) =>
+        !string.IsNullOrWhiteSpace(value)
+        && value.Length <= maximumLength
+        && value.All(character =>
+            char.IsAsciiLetterOrDigit(character)
+            || character is '-' or '_' or '.');
+
     private static bool IsStateHash(string? value) => IsLowerHex(value, 16);
 
     private static bool IsLowerHex(string? value, int length) =>
@@ -369,8 +396,8 @@ public sealed class AgentViewerClient : IDisposable
                     || action.Rejection == AgentActionRejection.ReplayFailure));
 
     private static bool HasConsistentIdentity(
-        AgentObservationV2 expected,
-        AgentObservationV2 actual) =>
+        AgentObservationV3 expected,
+        AgentObservationV3 actual) =>
         string.Equals(expected.MatchId, actual.MatchId, StringComparison.Ordinal)
         && string.Equals(expected.RulesetId, actual.RulesetId, StringComparison.Ordinal)
         && expected.RulesVersion == actual.RulesVersion
@@ -389,7 +416,7 @@ public sealed class AgentViewerClient : IDisposable
         && expected.BoardHeight == actual.BoardHeight
         && expected.WrapsAtEdges == actual.WrapsAtEdges;
 
-    private static bool HasConsistentOutcome(AgentViewerFrameV4 frame)
+    private static bool HasConsistentOutcome(AgentViewerFrameV5 frame)
     {
         var observation = frame.Observation;
         if (!HasConsistentEndReason(frame)
@@ -418,7 +445,7 @@ public sealed class AgentViewerClient : IDisposable
                 && frame.EndReason == AgentMatchEndReason.AgentFinished);
     }
 
-    private static bool HasConsistentRunEnd(AgentViewerFrameV4 frame) =>
+    private static bool HasConsistentRunEnd(AgentViewerFrameV5 frame) =>
         frame.EndReason switch
         {
             AgentMatchEndReason.None => frame.Observation.Status == RunStatus.Running,
@@ -432,7 +459,7 @@ public sealed class AgentViewerClient : IDisposable
             _ => false,
         };
 
-    private static bool HasConsistentEndReason(AgentViewerFrameV4 frame)
+    private static bool HasConsistentEndReason(AgentViewerFrameV5 frame)
     {
         if (frame.Operation == AgentViewerOperationKind.Finish)
         {
@@ -486,7 +513,7 @@ public sealed class AgentViewerClient : IDisposable
     }
 
     private static (AgentViewerClientState State, string Status) DescribeFrame(
-        AgentViewerFrameV4 frame) => frame.EndReason switch
+        AgentViewerFrameV5 frame) => frame.EndReason switch
         {
             AgentMatchEndReason.None => (
                 AgentViewerClientState.Watching,
@@ -575,10 +602,10 @@ public sealed class AgentViewerClient : IDisposable
 
 public static class AgentViewerPresentation
 {
-    public static RunSnapshot ProjectSnapshot(AgentObservationV2 observation)
+    public static RunSnapshot ProjectSnapshot(AgentObservationV3 observation)
     {
         ArgumentNullException.ThrowIfNull(observation);
-        if (observation.Schema != AgentObservationV2.Contract
+        if (observation.Schema != AgentObservationV3.Contract
             || observation.Body is null
             || observation.Body.Count == 0
             || observation.PendingDirections is null

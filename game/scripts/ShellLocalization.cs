@@ -244,7 +244,7 @@ internal static class ShellLocalization
             "VS {rival} {agent_score}-{rival_score}"),
         Entry(
             "agent-arena.identity",
-            "{agent}  SHED {shed}  STATION {station}"),
+            "{agent}  AVATAR {avatar}  STATION {station}"),
         Entry(
             "agent-arena.matchup",
             "{style}  {rival}"),

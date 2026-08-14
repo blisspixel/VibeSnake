@@ -319,7 +319,7 @@ public sealed class AgentExperienceTests
         Assert.Null(session.GetResult());
     }
 
-    private static AgentAction ChooseLessonAction(string lessonId, AgentObservationV2 observation)
+    private static AgentAction ChooseLessonAction(string lessonId, AgentObservationV3 observation)
     {
         if (lessonId == "first-turn")
         {
@@ -348,7 +348,7 @@ public sealed class AgentExperienceTests
     }
 
     private static AgentAction FindPathAction(
-        AgentObservationV2 observation,
+        AgentObservationV3 observation,
         AgentPointV1 target)
     {
         var blocked = observation.Body.Skip(1)
@@ -396,7 +396,7 @@ public sealed class AgentExperienceTests
         [current, TurnLeft(current), TurnRight(current)];
 
     private static AgentPointV1? Advance(
-        AgentObservationV2 observation,
+        AgentObservationV3 observation,
         AgentPointV1 point,
         Direction direction)
     {

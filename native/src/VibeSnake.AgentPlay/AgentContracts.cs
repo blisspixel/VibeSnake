@@ -69,138 +69,6 @@ public enum AgentBurstStopReason : byte
     LessonTargetReached = 5,
 }
 
-public sealed record AgentPassportV1
-{
-    public const string Contract = "vibesnake-agent-passport-v1";
-    public const string SymbolicStepObservationProfile = "symbolic-step-v1";
-    public const string FourDirectionActionProfile = "four-direction-step-v1";
-    public const string FourDirectionBurstActionProfile = "four-direction-burst-v1";
-    public const int MaximumDisplayNameLength = 48;
-
-    public AgentPassportV1(
-        string schema,
-        string agentId,
-        string policyVersion,
-        string displayName,
-        string color,
-        string shedId,
-        string stationAffinity,
-        string observationProfile = SymbolicStepObservationProfile,
-        string actionProfile = FourDirectionActionProfile)
-    {
-        if (schema != Contract)
-        {
-            throw new ArgumentException("The agent passport schema is unsupported.", nameof(schema));
-        }
-
-        AgentMatchOptions.ValidateToken(agentId, 64, nameof(agentId));
-        AgentMatchOptions.ValidateToken(policyVersion, 64, nameof(policyVersion));
-        ValidateDisplayName(displayName);
-        ArgumentException.ThrowIfNullOrWhiteSpace(color);
-        if (color.Length != 7
-            || color[0] != '#'
-            || color.Skip(1).Any(character => !char.IsAsciiHexDigit(character)))
-        {
-            throw new ArgumentException("Agent passport color must be #RRGGBB.", nameof(color));
-        }
-
-        AgentMatchOptions.ValidateToken(shedId, 64, nameof(shedId));
-        AgentMatchOptions.ValidateToken(stationAffinity, 64, nameof(stationAffinity));
-        if (observationProfile != SymbolicStepObservationProfile)
-        {
-            throw new ArgumentException(
-                "The host supports only symbolic-step-v1 observations.",
-                nameof(observationProfile));
-        }
-
-        if (!IsSupportedActionProfile(actionProfile))
-        {
-            throw new ArgumentException(
-                "The host supports only four-direction-step-v1 or four-direction-burst-v1 actions.",
-                nameof(actionProfile));
-        }
-
-        Schema = schema;
-        AgentId = agentId;
-        PolicyVersion = policyVersion;
-        DisplayName = displayName;
-        Color = color.ToUpperInvariant();
-        ShedId = shedId;
-        StationAffinity = stationAffinity;
-        ObservationProfile = observationProfile;
-        ActionProfile = actionProfile;
-    }
-
-    public string Schema { get; }
-
-    public string AgentId { get; }
-
-    public string PolicyVersion { get; }
-
-    public string DisplayName { get; }
-
-    public string Color { get; }
-
-    public string ShedId { get; }
-
-    public string StationAffinity { get; }
-
-    public string ObservationProfile { get; }
-
-    public string ActionProfile { get; }
-
-    public static AgentPassportV1 Anonymous { get; } = new(
-        Contract,
-        "anonymous-agent",
-        "unversioned",
-        "External Agent",
-        "#64FFFF",
-        "agent-default",
-        "open-frequency");
-
-    public static AgentPassportV1 CreateAnonymous(string actionProfile)
-    {
-        if (actionProfile == FourDirectionActionProfile)
-        {
-            return Anonymous;
-        }
-
-        if (!IsSupportedActionProfile(actionProfile))
-        {
-            throw new ArgumentException(
-                "The action profile is unsupported.",
-                nameof(actionProfile));
-        }
-
-        return new AgentPassportV1(
-            Contract,
-            "anonymous-agent",
-            "unversioned",
-            "External Agent",
-            "#64FFFF",
-            "agent-default",
-            "open-frequency",
-            SymbolicStepObservationProfile,
-            actionProfile);
-    }
-
-    public static bool IsSupportedActionProfile(string actionProfile) =>
-        actionProfile is FourDirectionActionProfile or FourDirectionBurstActionProfile;
-
-    private static void ValidateDisplayName(string value)
-    {
-        ArgumentException.ThrowIfNullOrWhiteSpace(value);
-        if (value.Length > MaximumDisplayNameLength
-            || value != value.Trim()
-            || value.Any(character => char.IsControl(character)))
-        {
-            throw new ArgumentException(
-                $"Agent display names must be trimmed, contain no controls, and use at most {MaximumDisplayNameLength} characters.",
-                nameof(value));
-        }
-    }
-}
-
 public sealed record AgentMatchOptions
 {
     public const int DefaultMaximumSteps = 2_000;
@@ -216,8 +84,8 @@ public sealed record AgentMatchOptions
         int maximumSteps = DefaultMaximumSteps,
         string? styleContractId = null,
         string? rivalPersonalityId = null,
-        AgentPassportV1? passport = null,
-        string actionProfile = AgentPassportV1.FourDirectionActionProfile,
+        AgentPassportV2? passport = null,
+        string actionProfile = AgentPassportV2.FourDirectionActionProfile,
         string? lessonId = null)
     {
         ValidateToken(matchId, MaximumMatchIdLength, nameof(matchId));
@@ -240,7 +108,7 @@ public sealed record AgentMatchOptions
                 $"An agent match must contain between 1 and {MaximumAllowedSteps} steps.");
         }
 
-        if (!AgentPassportV1.IsSupportedActionProfile(actionProfile))
+        if (!AgentPassportV2.IsSupportedActionProfile(actionProfile))
         {
             throw new ArgumentException(
                 "The action profile is unsupported.",
@@ -296,7 +164,7 @@ public sealed record AgentMatchOptions
         StyleContractId = styleContractId;
         RivalPersonalityId = rivalPersonalityId;
         ActionProfile = actionProfile;
-        Passport = passport ?? AgentPassportV1.CreateAnonymous(actionProfile);
+        Passport = passport ?? AgentPassportV2.CreateAnonymous(actionProfile);
         LessonId = lessonId;
     }
 
@@ -318,7 +186,7 @@ public sealed record AgentMatchOptions
 
     public string ActionProfile { get; }
 
-    public AgentPassportV1 Passport { get; }
+    public AgentPassportV2 Passport { get; }
 
     public string? LessonId { get; }
 
@@ -494,7 +362,7 @@ public sealed record AgentRivalResultV1(
     ReplayVerificationCode ReplayVerificationCode,
     AgentEpisodeMetricsV1 EpisodeMetrics);
 
-public sealed record AgentObservationV2(
+public sealed record AgentObservationV3(
     string Schema,
     string MatchId,
     string RulesetId,
@@ -505,7 +373,7 @@ public sealed record AgentObservationV2(
     string ConfigHash,
     AgentSeedVisibility SeedVisibility,
     ulong? GameplaySeed,
-    AgentPassportV1 Passport,
+    AgentPassportV2 Passport,
     int Tick,
     int MaximumSteps,
     int StepsRemaining,
@@ -552,7 +420,7 @@ public sealed record AgentObservationV2(
     AgentLessonProgressV1? LessonProgress,
     AgentRivalObservationV1? Rival)
 {
-    public const string Contract = "vibesnake-agent-observation-v2";
+    public const string Contract = "vibesnake-agent-observation-v3";
 }
 
 public sealed record AgentActionResponse(
@@ -560,7 +428,7 @@ public sealed record AgentActionResponse(
     bool RulesAdvanced,
     AgentActionRejection Rejection,
     AgentLessonProgressDeltaV1? LessonDelta,
-    AgentObservationV2 Observation,
+    AgentObservationV3 Observation,
     AgentMatchResult? MatchResult);
 
 public sealed record AgentBurstResponse(
@@ -571,7 +439,7 @@ public sealed record AgentBurstResponse(
     AgentBurstStopReason? StopReason,
     RunEventKind? StopEvent,
     AgentLessonProgressDeltaV1? LessonDelta,
-    AgentObservationV2 Observation,
+    AgentObservationV3 Observation,
     AgentMatchResult? MatchResult);
 
 public sealed record AgentMatchResult(
@@ -587,7 +455,7 @@ public sealed record AgentMatchResult(
     string ConfigHash,
     AgentSeedVisibility SeedVisibility,
     ulong GameplaySeed,
-    AgentPassportV1 Passport,
+    AgentPassportV2 Passport,
     int FinalTick,
     RunStatus RunStatus,
     DeathCause DeathCause,
@@ -602,5 +470,5 @@ public sealed record AgentMatchResult(
     RunReplay VerifiedReplay,
     RunReplay? VerifiedRivalReplay)
 {
-    public const string Contract = "vibesnake-agent-match-result-v2";
+    public const string Contract = "vibesnake-agent-match-result-v3";
 }

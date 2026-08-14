@@ -36,7 +36,7 @@ public sealed class AgentSessionRegistry : IDisposable
         _timeProvider = timeProvider ?? TimeProvider.System;
     }
 
-    public StartAgentMatchV2 StartMatch(
+    public StartAgentMatchV3 StartMatch(
         string modeId,
         AgentSeedVisibility seedVisibility,
         string? gameplaySeed,
@@ -44,8 +44,8 @@ public sealed class AgentSessionRegistry : IDisposable
         string? styleContractId = null,
         string? rivalPersonalityId = null,
         bool watchEnabled = false,
-        AgentPassportV1? passport = null,
-        string actionProfile = AgentPassportV1.FourDirectionActionProfile) =>
+        AgentPassportV2? passport = null,
+        string actionProfile = AgentPassportV2.FourDirectionActionProfile) =>
         StartMatchCore(
             modeId,
             seedVisibility,
@@ -58,11 +58,11 @@ public sealed class AgentSessionRegistry : IDisposable
             actionProfile,
             lessonId: null);
 
-    public StartAgentMatchV2 StartLesson(
+    public StartAgentMatchV3 StartLesson(
         string lessonId,
         bool watchEnabled = false,
-        AgentPassportV1? passport = null,
-        string actionProfile = AgentPassportV1.FourDirectionActionProfile)
+        AgentPassportV2? passport = null,
+        string actionProfile = AgentPassportV2.FourDirectionActionProfile)
     {
         var lesson = AgentSignalSchoolCatalog.Get(lessonId);
         return StartMatchCore(
@@ -78,7 +78,7 @@ public sealed class AgentSessionRegistry : IDisposable
             lesson.Id);
     }
 
-    private StartAgentMatchV2 StartMatchCore(
+    private StartAgentMatchV3 StartMatchCore(
         string modeId,
         AgentSeedVisibility seedVisibility,
         string? gameplaySeed,
@@ -86,7 +86,7 @@ public sealed class AgentSessionRegistry : IDisposable
         string? styleContractId,
         string? rivalPersonalityId,
         bool watchEnabled,
-        AgentPassportV1? passport,
+        AgentPassportV2? passport,
         string actionProfile,
         string? lessonId)
     {
@@ -146,8 +146,8 @@ public sealed class AgentSessionRegistry : IDisposable
                         _nextOrder++,
                         _timeProvider.GetTimestamp(),
                         viewer));
-                return new StartAgentMatchV2(
-                    StartAgentMatchV2.Contract,
+                return new StartAgentMatchV3(
+                    StartAgentMatchV3.Contract,
                     handle,
                     RetentionPolicy,
                     session.Observe(),
@@ -161,17 +161,17 @@ public sealed class AgentSessionRegistry : IDisposable
         }
     }
 
-    public AgentObservationV2 Observe(string matchHandle) =>
+    public AgentObservationV3 Observe(string matchHandle) =>
         GetSession(matchHandle).Observe();
 
-    public AgentActionResponseV2 PlayMove(
+    public AgentActionResponseV3 PlayMove(
         string matchHandle,
         string idempotencyKey,
         int expectedTick,
         string expectedStateHash,
         AgentAction action,
         AgentPublicIntent declaredIntent = AgentPublicIntent.Undeclared) =>
-        AgentActionResponseV2.FromResponse(
+        AgentActionResponseV3.FromResponse(
             GetSession(matchHandle).SubmitAction(new AgentActionRequest(
                 idempotencyKey,
                 expectedTick,
@@ -179,7 +179,7 @@ public sealed class AgentSessionRegistry : IDisposable
                 action,
                 declaredIntent)));
 
-    public AgentBurstResponseV2 PlayBurst(
+    public AgentBurstResponseV3 PlayBurst(
         string matchHandle,
         string idempotencyKey,
         int expectedTick,
@@ -187,7 +187,7 @@ public sealed class AgentSessionRegistry : IDisposable
         AgentAction initialAction,
         int maximumSteps,
         AgentPublicIntent declaredIntent = AgentPublicIntent.Undeclared) =>
-        AgentBurstResponseV2.FromResponse(
+        AgentBurstResponseV3.FromResponse(
             GetSession(matchHandle).SubmitBurst(new AgentBurstRequest(
                 idempotencyKey,
                 expectedTick,
@@ -196,17 +196,17 @@ public sealed class AgentSessionRegistry : IDisposable
                 maximumSteps,
                 declaredIntent)));
 
-    public AgentMatchSummaryV2 Finish(string matchHandle) =>
-        AgentMatchSummaryV2.FromResult(GetSession(matchHandle).Finish());
+    public AgentMatchSummaryV3 Finish(string matchHandle) =>
+        AgentMatchSummaryV3.FromResult(GetSession(matchHandle).Finish());
 
-    public AgentMatchResultStatusV2 GetResult(string matchHandle)
+    public AgentMatchResultStatusV3 GetResult(string matchHandle)
     {
         var result = GetSession(matchHandle).GetResult();
-        return new AgentMatchResultStatusV2(
-            AgentMatchResultStatusV2.Contract,
+        return new AgentMatchResultStatusV3(
+            AgentMatchResultStatusV3.Contract,
             matchHandle,
             result is not null,
-            result is null ? null : AgentMatchSummaryV2.FromResult(result));
+            result is null ? null : AgentMatchSummaryV3.FromResult(result));
     }
 
     public AgentReplaySaveV1 SaveVerifiedReplay(string matchHandle)

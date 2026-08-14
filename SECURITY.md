@@ -41,6 +41,12 @@ Optional agent public intent is a closed enum. It changes idempotent request
 identity but has no rules, scoring, reward, replay, qualification, filesystem,
 network, or execution authority.
 
+Agent Passport display names are untrusted bounded presentation text. Avatar,
+accent, and station identifiers must resolve through the closed public catalogs
+before a session is created. Unknown identifiers and legacy or mixed passport
+schemas fail closed, and none of these presentation fields may read or mutate
+human progression, cosmetics, scores, or saves.
+
 Step and burst mutations share one idempotency-key namespace capped at 4,096
 unique records per match. Known keys are never evicted; after the cap, every
 unseen key fails closed without advancing rules. The burst

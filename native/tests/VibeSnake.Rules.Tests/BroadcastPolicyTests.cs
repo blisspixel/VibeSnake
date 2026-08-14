@@ -1,4 +1,5 @@
 using VibeSnake.Persistence;
+using VibeSnake.Rules;
 
 namespace VibeSnake.Rules.Tests;
 
@@ -19,8 +20,13 @@ public sealed class BroadcastPolicyTests
             "underground_scales",
         ];
         var stations = BroadcastStationCatalog.All;
+        var identities = StationIdentityCatalog.All;
 
+        Assert.Equal(expectedIds, identities.Select(identity => identity.Id));
         Assert.Equal(expectedIds, stations.Select(station => station.StationId));
+        Assert.Equal(
+            identities.Select(identity => identity.DisplayName),
+            stations.Select(station => station.StationName));
         Assert.Equal(8, stations.Select(station => station.StationName).Distinct().Count());
         Assert.Equal(8, stations.Select(station => station.HostName).Distinct().Count());
         Assert.Equal(8, stations.Select(station => station.VisualIdentity).Distinct().Count());

@@ -67,7 +67,7 @@ public sealed class AgentMatchSession
 
     public AgentMatchLifecycle Lifecycle { get; private set; }
 
-    public AgentObservationV2 Observe()
+    public AgentObservationV3 Observe()
     {
         lock (_sync)
         {
@@ -99,7 +99,7 @@ public sealed class AgentMatchSession
                     request.DeclaredIntent);
             }
 
-            if (_options.ActionProfile != AgentPassportV1.FourDirectionActionProfile)
+            if (_options.ActionProfile != AgentPassportV2.FourDirectionActionProfile)
             {
                 return Remember(
                     request.IdempotencyKey,
@@ -194,7 +194,7 @@ public sealed class AgentMatchSession
                     request.DeclaredIntent);
             }
 
-            if (_options.ActionProfile != AgentPassportV1.FourDirectionBurstActionProfile)
+            if (_options.ActionProfile != AgentPassportV2.FourDirectionBurstActionProfile)
             {
                 return Remember(
                     request.IdempotencyKey,
@@ -774,7 +774,7 @@ public sealed class AgentMatchSession
         return response;
     }
 
-    private AgentObservationV2 CreateObservation() =>
+    private AgentObservationV3 CreateObservation() =>
         AgentObservationProjector.Project(
             _options,
             _config,
@@ -907,7 +907,7 @@ public sealed class AgentMatchSession
     }
 
     private void PublishViewerFrame(
-        AgentObservationV2 observation,
+        AgentObservationV3 observation,
         AgentViewerOperationKind operation,
         int startTick,
         string startStateHash,
@@ -922,8 +922,8 @@ public sealed class AgentMatchSession
 
         try
         {
-            _ = _viewerSink.TryPublish(new AgentViewerFrameV4(
-                AgentViewerFrameV4.Contract,
+            _ = _viewerSink.TryPublish(new AgentViewerFrameV5(
+                AgentViewerFrameV5.Contract,
                 _viewerSequence++,
                 operation,
                 startTick,

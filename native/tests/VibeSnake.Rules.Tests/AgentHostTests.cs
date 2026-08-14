@@ -40,14 +40,14 @@ public sealed class AgentHostTests
         var saved = registry.SaveVerifiedReplay(started.MatchHandle);
         var savedAgain = registry.SaveVerifiedReplay(started.MatchHandle);
 
-        Assert.Equal(StartAgentMatchV2.Contract, started.Schema);
+        Assert.Equal(StartAgentMatchV3.Contract, started.Schema);
         Assert.Equal("match_test", started.MatchHandle);
         Assert.Equal(AgentSessionRegistry.RetentionPolicy, started.RetentionPolicy);
         Assert.False(before.IsAvailable);
         Assert.Null(before.Result);
         Assert.True(moved.Accepted);
         Assert.True(after.IsAvailable);
-        var result = Assert.IsType<AgentMatchSummaryV2>(after.Result);
+        var result = Assert.IsType<AgentMatchSummaryV3>(after.Result);
         AssertSummary(result, "match_test", ulong.MaxValue.ToString(CultureInfo.InvariantCulture));
         Assert.True(saved.IsSuccess);
         Assert.Equal(ReplaySaveCode.Saved, saved.Code);
@@ -102,7 +102,7 @@ public sealed class AgentHostTests
 
         var started = registry.StartLesson(
             lesson.Id,
-            actionProfile: AgentPassportV1.FourDirectionBurstActionProfile);
+            actionProfile: AgentPassportV2.FourDirectionBurstActionProfile);
 
         Assert.Equal(lesson.ModeId, started.Observation.ModeId);
         Assert.Equal(lesson.PracticeSeed, started.Observation.GameplaySeed);
@@ -340,7 +340,7 @@ public sealed class AgentHostTests
             AgentSeedVisibility.Open,
             "321",
             4,
-            actionProfile: AgentPassportV1.FourDirectionBurstActionProfile);
+            actionProfile: AgentPassportV2.FourDirectionBurstActionProfile);
         var burst = burstTools.PlayBurst(
             burstStarted.MatchHandle,
             "tool-burst",
@@ -354,7 +354,7 @@ public sealed class AgentHostTests
         Assert.Equal(
             AgentPublicIntent.SeekFood,
             moved.Observation.PreviousAction!.DeclaredIntent);
-        Assert.Equal(AgentActionResponseV2.Contract, moved.Schema);
+        Assert.Equal(AgentActionResponseV3.Contract, moved.Schema);
         Assert.Null(moved.MatchResult);
         Assert.False(pending.IsAvailable);
         Assert.Equal(AgentMatchEndReason.AgentFinished, finished.EndReason);
@@ -362,7 +362,7 @@ public sealed class AgentHostTests
         Assert.NotNull(saved.RivalFileName);
         Assert.Equal(ReplaySaveCode.Saved, saved.RivalCode);
         Assert.Equal(ReplayVerificationCode.Verified, saved.RivalReplayVerificationCode);
-        Assert.Equal(AgentBurstResponseV2.Contract, burst.Schema);
+        Assert.Equal(AgentBurstResponseV3.Contract, burst.Schema);
         Assert.True(burst.Accepted);
         Assert.Equal(2, burst.StepsAdvanced);
         Assert.Equal(AgentBurstStopReason.RequestedLimit, burst.StopReason);
@@ -417,11 +417,24 @@ public sealed class AgentHostTests
     {
         using var rules = JsonDocument.Parse(AgentResources.GetRules());
         using var modes = JsonDocument.Parse(AgentResources.GetModes());
+        using var identity = JsonDocument.Parse(AgentResources.GetIdentity());
         var playbook = AgentResources.GetPlaybook();
 
         Assert.Equal(
-            "vibesnake-agent-rules-resource-v4",
+            "vibesnake-agent-rules-resource-v5",
             rules.RootElement.GetProperty("contract").GetString());
+        Assert.Equal(
+            AgentObservationV3.Contract,
+            rules.RootElement.GetProperty("observation_schema").GetString());
+        Assert.Equal(
+            AgentPassportV2.SymbolicStepObservationProfile,
+            rules.RootElement.GetProperty("observation_profile").GetString());
+        Assert.Equal(
+            AgentPassportV2.Contract,
+            rules.RootElement.GetProperty("passport_schema").GetString());
+        Assert.Equal(
+            "vibesnake://agent/identity",
+            rules.RootElement.GetProperty("identity_resource").GetString());
         Assert.Equal(
             AgentMatchOptions.MaximumAllowedSteps,
             rules.RootElement.GetProperty("maximum_steps").GetInt32());
@@ -433,8 +446,8 @@ public sealed class AgentHostTests
                 .ToArray());
         Assert.Equal(
             [
-                AgentPassportV1.FourDirectionActionProfile,
-                AgentPassportV1.FourDirectionBurstActionProfile,
+                AgentPassportV2.FourDirectionActionProfile,
+                AgentPassportV2.FourDirectionBurstActionProfile,
             ],
             rules.RootElement.GetProperty("action_profiles")
                 .EnumerateArray()
@@ -445,7 +458,7 @@ public sealed class AgentHostTests
             rules.RootElement.GetProperty("burst").GetProperty("maximum_steps").GetInt32());
         var viewer = rules.RootElement.GetProperty("viewer");
         Assert.Equal(
-            AgentViewerFrameV4.Contract,
+            AgentViewerFrameV5.Contract,
             viewer.GetProperty("frame_contract").GetString());
         Assert.Equal(
             ["initial", "step", "burst", "finish"],
@@ -485,10 +498,52 @@ public sealed class AgentHostTests
         Assert.Equal(
             AiPersonalityCatalog.BuiltIn.Count,
             rivals.RootElement.GetProperty("rivals").GetArrayLength());
+        Assert.Equal(
+            "vibesnake-agent-identity-resource-v1",
+            identity.RootElement.GetProperty("contract").GetString());
+        Assert.Equal(
+            AgentPassportV2.Contract,
+            identity.RootElement.GetProperty("passport_schema").GetString());
+        Assert.Equal(
+            CosmeticSetCatalog.Sets.Select(value => value.Id).ToArray(),
+            identity.RootElement.GetProperty("avatars")
+                .EnumerateArray()
+                .Select(value => value.GetProperty("id").GetString()!)
+                .ToArray());
+        Assert.Equal(
+            AgentAccentCatalog.All.Select(value => value.Id).ToArray(),
+            identity.RootElement.GetProperty("accents")
+                .EnumerateArray()
+                .Select(value => value.GetProperty("id").GetString()!)
+                .ToArray());
+        Assert.Equal(
+            StationIdentityCatalog.All.Select(value => value.Id).ToArray(),
+            identity.RootElement.GetProperty("stations")
+                .EnumerateArray()
+                .Select(value => value.GetProperty("id").GetString()!)
+                .ToArray());
+        var identitySemantics = identity.RootElement.GetProperty("semantics");
+        Assert.Contains(
+            "not authenticated",
+            identitySemantics.GetProperty("declaration").GetString(),
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "presentation-only",
+            identitySemantics.GetProperty("presentation").GetString(),
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "independent",
+            identitySemantics.GetProperty("independence").GetString(),
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "not approval",
+            identitySemantics.GetProperty("station_boundary").GetString(),
+            StringComparison.Ordinal);
         Assert.Contains("start_match", playbook, StringComparison.Ordinal);
         Assert.Contains("start_lesson", playbook, StringComparison.Ordinal);
         Assert.Contains("play_burst", playbook, StringComparison.Ordinal);
         Assert.Contains("save_verified_replay", playbook, StringComparison.Ordinal);
+        Assert.Contains("vibesnake://agent/identity", playbook, StringComparison.Ordinal);
         var replayContract = rules.RootElement.GetProperty("replay").GetString();
         Assert.Contains("verified lane result", replayContract, StringComparison.Ordinal);
         Assert.Contains("Failed-closed", replayContract, StringComparison.Ordinal);
@@ -538,8 +593,8 @@ public sealed class AgentHostTests
         using var temporary = new AgentHostTemporaryDirectory();
         var options = Program.CreateSerializerOptions();
         var json = JsonSerializer.Serialize(
-            new AgentMatchResultStatusV2(
-                AgentMatchResultStatusV2.Contract,
+            new AgentMatchResultStatusV3(
+                AgentMatchResultStatusV3.Contract,
                 "match_test",
                 IsAvailable: false,
                 Result: null),
@@ -555,7 +610,7 @@ public sealed class AgentHostTests
         Assert.NotNull(host.Services);
         Assert.NotNull(defaultHost.Services);
         Assert.Equal("vibesnake-agent-host", Program.HostName);
-        Assert.Equal("0.4.0", Program.HostVersion);
+        Assert.Equal("0.5.0", Program.HostVersion);
         Assert.Throws<ArgumentNullException>(() =>
             Program.CreateHostApplicationBuilder(null!, temporary.Path));
     }
@@ -579,7 +634,7 @@ public sealed class AgentHostTests
         var result = registry.GetResult(started.MatchHandle).Result!;
         var saved = registry.SaveVerifiedReplay(started.MatchHandle);
 
-        Assert.Equal(AgentMatchSummaryV2.Contract, result.Schema);
+        Assert.Equal(AgentMatchSummaryV3.Contract, result.Schema);
         Assert.Equal(AgentMatchLifecycle.Completed, result.Lifecycle);
         Assert.Equal(AgentMatchEndReason.StepLimit, result.EndReason);
         Assert.Equal(RulesetIdentity.CurrentId, result.RulesetId);
@@ -662,18 +717,18 @@ public sealed class AgentHostTests
                 ["watchEnabled"] = true,
                 ["styleContractId"] = AgentStyleContractCatalog.StillwaterId,
                 ["rivalPersonalityId"] = "optimal",
-                ["actionProfile"] = AgentPassportV1.FourDirectionBurstActionProfile,
+                ["actionProfile"] = AgentPassportV2.FourDirectionBurstActionProfile,
                 ["passport"] = new Dictionary<string, object?>
                 {
-                    ["schema"] = AgentPassportV1.Contract,
+                    ["schema"] = AgentPassportV2.Contract,
                     ["agent_id"] = "golden-agent",
                     ["policy_version"] = "policy-1",
                     ["display_name"] = "Golden Agent",
-                    ["color"] = "#64FFFF",
-                    ["shed_id"] = "agent-default",
-                    ["station_affinity"] = "open-frequency",
-                    ["observation_profile"] = AgentPassportV1.SymbolicStepObservationProfile,
-                    ["action_profile"] = AgentPassportV1.FourDirectionBurstActionProfile,
+                    ["avatar_id"] = "redline",
+                    ["accent_id"] = "coil-gold",
+                    ["station_id"] = "global_coil",
+                    ["observation_profile"] = AgentPassportV2.SymbolicStepObservationProfile,
+                    ["action_profile"] = AgentPassportV2.FourDirectionBurstActionProfile,
                 },
             },
             cancellationToken: timeout.Token);
@@ -726,7 +781,7 @@ public sealed class AgentHostTests
             new Dictionary<string, object?>
             {
                 ["lessonId"] = "first-turn",
-                ["actionProfile"] = AgentPassportV1.FourDirectionBurstActionProfile,
+                ["actionProfile"] = AgentPassportV2.FourDirectionBurstActionProfile,
             },
             cancellationToken: timeout.Token);
         var lessonDiagnostic = string.Join(
@@ -755,7 +810,7 @@ public sealed class AgentHostTests
                 "start_match",
             ],
             tools.Select(tool => tool.Name).Order().ToArray());
-        Assert.Equal(6, resources.Count);
+        Assert.Equal(7, resources.Count);
         Assert.Contains(
             resources,
             resource => resource.Uri == "vibesnake://agent/playbook");
@@ -768,9 +823,12 @@ public sealed class AgentHostTests
         Assert.Contains(
             resources,
             resource => resource.Uri == "vibesnake://agent/rivals");
+        Assert.Contains(
+            resources,
+            resource => resource.Uri == "vibesnake://agent/identity");
         var rulesText = Assert.IsType<TextResourceContents>(Assert.Single(rules.Contents));
         Assert.Contains(
-            "vibesnake-agent-rules-resource-v4",
+            "vibesnake-agent-rules-resource-v5",
             rulesText.Text,
             StringComparison.Ordinal);
         Assert.False(moved.IsError ?? false);
@@ -852,12 +910,12 @@ public sealed class AgentHostTests
         };
     }
 
-    private static async Task<AgentViewerFrameV4> TakeViewerFrameAsync(
+    private static async Task<AgentViewerFrameV5> TakeViewerFrameAsync(
         AgentViewerClient client,
         long minimumSequence) =>
         (await TakeViewerDeliveryAsync(client, minimumSequence)).Frame;
 
-    private static async Task<(AgentViewerFrameV4 Frame, long CoalescedFrames)>
+    private static async Task<(AgentViewerFrameV5 Frame, long CoalescedFrames)>
         TakeViewerDeliveryAsync(
             AgentViewerClient client,
             long minimumSequence)
@@ -1036,8 +1094,8 @@ public sealed class AgentHostTests
             RunModeCatalog.CurrentModeVersion,
             1UL,
             AgentSeedVisibility.Open)).Observe();
-        Assert.True(server.TryPublish(new AgentViewerFrameV4(
-            AgentViewerFrameV4.Contract,
+        Assert.True(server.TryPublish(new AgentViewerFrameV5(
+            AgentViewerFrameV5.Contract,
             0,
             AgentViewerOperationKind.Initial,
             StartTick: initialObservation.Tick,
@@ -1055,8 +1113,8 @@ public sealed class AgentHostTests
             RunModeCatalog.CurrentModeVersion,
             2UL,
             AgentSeedVisibility.Open)).Observe();
-        Assert.False(server.TryPublish(new AgentViewerFrameV4(
-            AgentViewerFrameV4.Contract,
+        Assert.False(server.TryPublish(new AgentViewerFrameV5(
+            AgentViewerFrameV5.Contract,
             1,
             AgentViewerOperationKind.Initial,
             StartTick: secondObservation.Tick,
@@ -1090,11 +1148,11 @@ public sealed class AgentHostTests
             () => seed);
 
     private static void AssertSummary(
-        AgentMatchSummaryV2 result,
+        AgentMatchSummaryV3 result,
         string expectedHandle,
         string expectedSeed)
     {
-        Assert.Equal(AgentMatchSummaryV2.Contract, result.Schema);
+        Assert.Equal(AgentMatchSummaryV3.Contract, result.Schema);
         Assert.Equal(expectedHandle, result.MatchHandle);
         Assert.Equal(expectedSeed, result.GameplaySeed);
         Assert.Equal(AgentMatchLifecycle.Completed, result.Lifecycle);

@@ -4,7 +4,7 @@ namespace VibeSnake.AgentPlay;
 
 internal static class AgentObservationProjector
 {
-    public static AgentObservationV2 Project(
+    public static AgentObservationV3 Project(
         AgentMatchOptions options,
         RunConfig config,
         RunSnapshot snapshot,
@@ -32,8 +32,8 @@ internal static class AgentObservationProjector
                 pickup.VisibilityTicksRemaining)
             : null;
 
-        return new AgentObservationV2(
-            AgentObservationV2.Contract,
+        return new AgentObservationV3(
+            AgentObservationV3.Contract,
             options.MatchId,
             RulesetIdentity.CurrentId,
             RulesetIdentity.CurrentVersion,

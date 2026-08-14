@@ -23,7 +23,7 @@ Input glyphs remain vector badges selected from the active keyboard or controlle
 - Exact named-parameter rejection cases and unchanged input-glyph parameters.
 - Zero missing fallback-font glyphs across the pseudo-locale catalog.
 - Every pseudo-localized entry fits the 1280 by 720 logical canvas at the maximum 150 percent text scale.
-- The five-row Agent Arena watch overlay fits its actual shared geometry at 150 percent text using composed worst-case pseudo-localized identity, lesson, rival, burst, delivery, status, intent, and rejection copy. A row that exceeds its measured width is middle-elided on Unicode grapheme boundaries so both its leading context and trailing result remain visible without clipping.
+- The five-row Agent Arena watch overlay fits its actual shared geometry at 150 percent text using composed worst-case pseudo-localized catalog avatar and station identity, lesson, rival, burst, delivery, status, intent, and rejection copy. A row that exceeds its measured width is middle-elided on Unicode grapheme boundaries so both its leading context and trailing result remain visible without clipping.
 
 The evidence requires zero direct `DrawLabel` string literals, zero direct action/static prompt-caption literals, zero direct or composed status literals, and zero remaining audited domain-presentation expressions. Rules onboarding emits stable copy IDs, step feedback emits typed `ShellTextReference` values, and Persistence broadcast scheduling emits stable caption IDs. Composed run HUD values remain typed runtime data rather than translatable sentence templates. The automated V080-07 foundation is complete; visible keyboard and controller review on Windows, macOS, and Linux remains required for release closure.
 

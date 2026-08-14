@@ -75,7 +75,6 @@ public static class BroadcastStationCatalog
     [
         Station(
             "flow_signal",
-            "The Flow Signal",
             "Sustained chill, focus, liquid rhythm, and spacious arrangements that never hide warnings.",
             "Cadence Vale",
             "Calm and exact; notices rhythm, restraint, and recovery without scolding failure.",
@@ -84,7 +83,6 @@ public static class BroadcastStationCatalog
             "The Ministry of Focus treats sustained flow as civic practice."),
         Station(
             "chaos_theory",
-            "Chaos Theory",
             "Jazz, bossa, fusion, odd accents, and controlled improvisation with a stable rhythmic floor.",
             "Dr. Sibilant",
             "Curious and playfully analytical; frames risky routes as composition, never unfair randomness.",
@@ -93,7 +91,6 @@ public static class BroadcastStationCatalog
             "The Improvisational Order argues that controlled uncertainty prevents cultural stagnation."),
         Station(
             "global_coil",
-            "The Global Coil",
             "Communal world rhythm and warm dance forms with culturally reviewed context and no novelty framing.",
             "Sol Coil",
             "Warm and connective; relates a local run to a wider circuit without flattening cultural difference.",
@@ -102,7 +99,6 @@ public static class BroadcastStationCatalog
             "Planetary relay collectives treat shared rhythm as warmth across difference."),
         Station(
             "ourotron",
-            "Ourotron",
             "Original synthwave, outrun, and retro-future forms with no artist, franchise, or nostalgia imitation.",
             "Vektor Null",
             "Romantic and precise; speaks of lost futures as archived places rather than borrowed properties.",
@@ -111,7 +107,6 @@ public static class BroadcastStationCatalog
             "The Order of Retrowave preserves imagined futures as inherited memory."),
         Station(
             "the_pit",
-            "The Pit",
             "Bass, drum and bass, and trap built for pressure, with critical cues always above drops and sub energy.",
             "DJ Rattlebyte",
             "Competitive and ecstatic; respects bold recovery more than empty aggression.",
@@ -120,7 +115,6 @@ public static class BroadcastStationCatalog
             "The Venom Syndicate believes controlled pressure reveals a signal's true shape."),
         Station(
             "the_bureau",
-            "The Bureau",
             "Dry civic jazz and talk framing with exact facts, restrained beds, and no false gameplay authority.",
             "Anchor Seven",
             "Deadpan institutional news whose precision exposes bureaucracy without misstating controls or safety.",
@@ -129,7 +123,6 @@ public static class BroadcastStationCatalog
             "The Bureau of Information Comfort makes confusion feel official, never mechanically true."),
         Station(
             "the_strike",
-            "The Strike",
             "Original rock, metal, and alternative forms with decisive rhythm and no contempt-driven aggression.",
             "Rivet",
             "Direct and solidaristic; honors persistence, clear routes, and refusal to coast.",
@@ -138,7 +131,6 @@ public static class BroadcastStationCatalog
             "The Molten Core Collective sees a clean strike as the start of a shared rhythm."),
         Station(
             "underground_scales",
-            "Underground Scales",
             "Hip-hop, beats, and electronic forms grounded in reviewed authorship, local texture, and no stereotype borrowing.",
             "Molt One",
             "Intimate and inventive; treats each shed and route as an authored signature.",
@@ -157,7 +149,6 @@ public static class BroadcastStationCatalog
 
     private static BroadcastStationIdentity Station(
         string id,
-        string name,
         string inclusion,
         string host,
         string perspective,
@@ -165,7 +156,7 @@ public static class BroadcastStationCatalog
         IReadOnlyList<string> shortIds,
         string coilRelationship) => new(
             id,
-            name,
+            StationIdentityCatalog.Get(id).DisplayName,
             inclusion,
             host,
             perspective,

@@ -54,8 +54,11 @@ PLUGIN_KEYS = {
 HOST_CONTRACT_PATHS = (
     Path("native/src/VibeSnake.AgentPlay/AgentBurstPolicy.cs"),
     Path("native/src/VibeSnake.AgentPlay/AgentContracts.cs"),
+    Path("native/src/VibeSnake.AgentPlay/AgentIdentity.cs"),
     Path("native/src/VibeSnake.AgentPlay/AgentExperience.cs"),
     Path("native/src/VibeSnake.AgentPlay/AgentViewer.cs"),
+    Path("native/src/VibeSnake.Rules/CosmeticSetCatalog.cs"),
+    Path("native/src/VibeSnake.Rules/StationIdentityCatalog.cs"),
     Path("native/tools/VibeSnake.AgentHost/AgentViewerServer.cs"),
     Path("native/tools/VibeSnake.AgentHost/AgentHostContracts.cs"),
     Path("native/tools/VibeSnake.AgentHost/AgentResources.cs"),

@@ -90,16 +90,16 @@ public sealed class AgentViewerClientTests
             "321",
             maximumSteps: 3,
             watchEnabled: true,
-            passport: new AgentPassportV1(
-                AgentPassportV1.Contract,
+            passport: new AgentPassportV2(
+                AgentPassportV2.Contract,
                 "godot-smoke-agent",
                 "policy-1",
                 "Godot Smoke Agent",
-                "#64FFFF",
-                "agent-default",
-                "open-frequency",
-                actionProfile: AgentPassportV1.FourDirectionBurstActionProfile),
-            actionProfile: AgentPassportV1.FourDirectionBurstActionProfile);
+                "redline",
+                "signal-cyan",
+                "global_coil",
+                actionProfile: AgentPassportV2.FourDirectionBurstActionProfile),
+            actionProfile: AgentPassportV2.FourDirectionBurstActionProfile);
         var connection = Assert.IsType<AgentViewerConnectionV1>(started.Viewer);
         var userDataRoot = System.IO.Path.Combine(temporary.Path, "godot-user-data");
         Directory.CreateDirectory(userDataRoot);
@@ -241,8 +241,8 @@ public sealed class AgentViewerClientTests
                     Power: null),
             ],
         };
-        var validFrame = new AgentViewerFrameV4(
-            AgentViewerFrameV4.Contract,
+        var validFrame = new AgentViewerFrameV5(
+            AgentViewerFrameV5.Contract,
             0,
             AgentViewerOperationKind.Initial,
             StartTick: observation.Tick,
@@ -613,8 +613,8 @@ public sealed class AgentViewerClientTests
             RunModeCatalog.CurrentModeVersion,
             9UL,
             AgentSeedVisibility.Open)).Observe();
-        var validFrame = new AgentViewerFrameV4(
-            AgentViewerFrameV4.Contract,
+        var validFrame = new AgentViewerFrameV5(
+            AgentViewerFrameV5.Contract,
             0,
             AgentViewerOperationKind.Initial,
             observation.Tick,
@@ -632,7 +632,7 @@ public sealed class AgentViewerClientTests
             Value: null,
             Cause: DeathCause.None,
             Power: PowerKind.Shield);
-        AgentObservationV2[] invalidObservations =
+        AgentObservationV3[] invalidObservations =
         [
             observation with { MatchId = "" },
             observation with { RulesetId = "other-rules" },
@@ -705,6 +705,60 @@ public sealed class AgentViewerClientTests
     }
 
     [Fact]
+    public async Task Viewer_client_rejects_unknown_or_downlevel_passport_identity()
+    {
+        var observation = new AgentMatchSession(new AgentMatchOptions(
+            "invalid-passport",
+            RunModeCatalog.ClassicId,
+            RunModeCatalog.CurrentModeVersion,
+            9UL,
+            AgentSeedVisibility.Open)).Observe();
+        var validFrame = new AgentViewerFrameV5(
+            AgentViewerFrameV5.Contract,
+            0,
+            AgentViewerOperationKind.Initial,
+            observation.Tick,
+            observation.StateHash,
+            StepsAdvanced: 0,
+            BurstStopReason: null,
+            BurstStopEvent: null,
+            observation,
+            AgentMatchEndReason.None,
+            VerifiedResultAvailable: false);
+        var validPayload = SerializeFrame(validFrame);
+        string[] invalidPayloads =
+        [
+            validPayload.Replace(
+                AgentPassportV2.Contract,
+                "vibesnake-agent-passport-v1",
+                StringComparison.Ordinal),
+            validPayload.Replace(
+                $"\"avatar_id\":\"{observation.Passport.AvatarId}\"",
+                "\"avatar_id\":\"unknown\"",
+                StringComparison.Ordinal),
+            validPayload.Replace(
+                $"\"accent_id\":\"{observation.Passport.AccentId}\"",
+                "\"accent_id\":\"unknown\"",
+                StringComparison.Ordinal),
+            validPayload.Replace(
+                $"\"station_id\":\"{observation.Passport.StationId}\"",
+                "\"station_id\":\"unknown\"",
+                StringComparison.Ordinal),
+        ];
+
+        Assert.All(invalidPayloads, payload => Assert.NotEqual(validPayload, payload));
+        foreach (var payload in invalidPayloads)
+        {
+            var pipeName = CreateTestPipeName();
+            var server = ServePayloadAsync(pipeName, payload);
+            using var client = new AgentViewerClient(pipeName, "dG9rZW4");
+
+            await server;
+            await WaitForStateAsync(client, AgentViewerClientState.Rejected);
+        }
+    }
+
+    [Fact]
     public async Task Viewer_client_accepts_zero_step_burst_truth_before_and_after_terminal()
     {
         using var temporary = new TemporaryDirectory();
@@ -718,7 +772,7 @@ public sealed class AgentViewerClientTests
             "10",
             maximumSteps: 1,
             watchEnabled: true,
-            actionProfile: AgentPassportV1.FourDirectionBurstActionProfile);
+            actionProfile: AgentPassportV2.FourDirectionBurstActionProfile);
         var connection = Assert.IsType<AgentViewerConnectionV1>(started.Viewer);
         using var client = new AgentViewerClient(connection.PipeName, connection.AccessToken);
         _ = await TakeFrameAsync(client);
@@ -776,8 +830,8 @@ public sealed class AgentViewerClientTests
             initial.Tick,
             initial.StateHash,
             AgentAction.Left)).Observation;
-        var first = new AgentViewerFrameV4(
-            AgentViewerFrameV4.Contract,
+        var first = new AgentViewerFrameV5(
+            AgentViewerFrameV5.Contract,
             0,
             AgentViewerOperationKind.Initial,
             initial.Tick,
@@ -794,17 +848,22 @@ public sealed class AgentViewerClientTests
             Operation = AgentViewerOperationKind.Step,
             Observation = rejected,
         };
-        var alternatePassport = new AgentPassportV1(
-            AgentPassportV1.Contract,
-            "other-agent",
-            initial.Passport.PolicyVersion,
-            initial.Passport.DisplayName,
-            initial.Passport.Color,
-            initial.Passport.ShedId,
-            initial.Passport.StationAffinity,
-            initial.Passport.ObservationProfile,
-            initial.Passport.ActionProfile);
-        AgentObservationV2[] changedIdentities =
+        AgentPassportV2 AlternatePassport(
+            string? agentId = null,
+            string? avatarId = null,
+            string? accentId = null,
+            string? stationId = null) =>
+            new(
+                AgentPassportV2.Contract,
+                agentId ?? initial.Passport.AgentId,
+                initial.Passport.PolicyVersion,
+                initial.Passport.DisplayName,
+                avatarId ?? initial.Passport.AvatarId,
+                accentId ?? initial.Passport.AccentId,
+                stationId ?? initial.Passport.StationId,
+                initial.Passport.ObservationProfile,
+                initial.Passport.ActionProfile);
+        AgentObservationV3[] changedIdentities =
         [
             rejected with { MatchId = "other-match" },
             rejected with { RulesetId = "other-rules" },
@@ -815,7 +874,10 @@ public sealed class AgentViewerClientTests
             rejected with { ConfigHash = "other-config" },
             rejected with { SeedVisibility = AgentSeedVisibility.Blind },
             rejected with { GameplaySeed = rejected.GameplaySeed + 1 },
-            rejected with { Passport = alternatePassport },
+            rejected with { Passport = AlternatePassport(agentId: "other-agent") },
+            rejected with { Passport = AlternatePassport(avatarId: "redline") },
+            rejected with { Passport = AlternatePassport(accentId: "coil-gold") },
+            rejected with { Passport = AlternatePassport(stationId: "the_pit") },
             rejected with { MaximumSteps = rejected.MaximumSteps + 1 },
             rejected with { BoardWidth = rejected.BoardWidth + 1 },
             rejected with { BoardHeight = rejected.BoardHeight + 1 },
@@ -848,8 +910,8 @@ public sealed class AgentViewerClientTests
             RunModeCatalog.CurrentModeVersion,
             4UL,
             AgentSeedVisibility.Open)).Observe();
-        var frame = new AgentViewerFrameV4(
-            AgentViewerFrameV4.Contract,
+        var frame = new AgentViewerFrameV5(
+            AgentViewerFrameV5.Contract,
             0,
             AgentViewerOperationKind.Initial,
             observation.Tick,
@@ -905,10 +967,10 @@ public sealed class AgentViewerClientTests
             Lifecycle = AgentMatchLifecycle.FailedClosed,
             IsActionAwaited = false,
         };
-        (AgentViewerFrameV4 Frame, AgentViewerClientState State, string Status)[] cases =
+        (AgentViewerFrameV5 Frame, AgentViewerClientState State, string Status)[] cases =
         [
-            (new AgentViewerFrameV4(
-                AgentViewerFrameV4.Contract,
+            (new AgentViewerFrameV5(
+                AgentViewerFrameV5.Contract,
                 1,
                 AgentViewerOperationKind.Step,
                 StartTick: completedStart.Tick,
@@ -921,8 +983,8 @@ public sealed class AgentViewerClientTests
                 VerifiedResultAvailable: true),
                 AgentViewerClientState.Completed,
                 "STEP LIMIT"),
-            (new AgentViewerFrameV4(
-                AgentViewerFrameV4.Contract,
+            (new AgentViewerFrameV5(
+                AgentViewerFrameV5.Contract,
                 1,
                 AgentViewerOperationKind.Finish,
                 StartTick: abortedStart.Tick,
@@ -935,8 +997,8 @@ public sealed class AgentViewerClientTests
                 VerifiedResultAvailable: true),
                 AgentViewerClientState.Completed,
                 "AGENT FINISHED MATCH"),
-            (new AgentViewerFrameV4(
-                AgentViewerFrameV4.Contract,
+            (new AgentViewerFrameV5(
+                AgentViewerFrameV5.Contract,
                 1,
                 AgentViewerOperationKind.Finish,
                 StartTick: failed.Tick,
@@ -993,10 +1055,10 @@ public sealed class AgentViewerClientTests
             first.Observation.Tick,
             first.Observation.StateHash,
             AgentAction.Right));
-        AgentViewerFrameV4[] frames =
+        AgentViewerFrameV5[] frames =
         [
             new(
-                AgentViewerFrameV4.Contract,
+                AgentViewerFrameV5.Contract,
                 0,
                 AgentViewerOperationKind.Initial,
                 StartTick: initial.Tick,
@@ -1008,7 +1070,7 @@ public sealed class AgentViewerClientTests
                 AgentMatchEndReason.None,
                 VerifiedResultAvailable: false),
             new(
-                AgentViewerFrameV4.Contract,
+                AgentViewerFrameV5.Contract,
                 1,
                 AgentViewerOperationKind.Step,
                 StartTick: initial.Tick,
@@ -1020,7 +1082,7 @@ public sealed class AgentViewerClientTests
                 AgentMatchEndReason.None,
                 VerifiedResultAvailable: false),
             new(
-                AgentViewerFrameV4.Contract,
+                AgentViewerFrameV5.Contract,
                 2,
                 AgentViewerOperationKind.Step,
                 StartTick: first.Observation.Tick,
@@ -1074,7 +1136,7 @@ public sealed class AgentViewerClientTests
             123UL,
             AgentSeedVisibility.Open,
             maximumSteps: 10,
-            actionProfile: AgentPassportV1.FourDirectionBurstActionProfile));
+            actionProfile: AgentPassportV2.FourDirectionBurstActionProfile));
         var initial = session.Observe();
         var burst = session.SubmitBurst(new AgentBurstRequest(
             "burst",
@@ -1083,8 +1145,8 @@ public sealed class AgentViewerClientTests
             AgentAction.Up,
             maximumSteps: 2));
         Assert.Equal(2, burst.StepsAdvanced);
-        var frame = new AgentViewerFrameV4(
-            AgentViewerFrameV4.Contract,
+        var frame = new AgentViewerFrameV5(
+            AgentViewerFrameV5.Contract,
             1,
             AgentViewerOperationKind.Burst,
             initial.Tick,
@@ -1204,7 +1266,7 @@ public sealed class AgentViewerClientTests
         Assert.Equal(new GridPoint(7, 8), projected.BaitPosition);
     }
 
-    private static string SerializeFrame(AgentViewerFrameV4 frame) =>
+    private static string SerializeFrame(AgentViewerFrameV5 frame) =>
         JsonSerializer.Serialize(frame, ViewerJsonOptions) + "\n";
 
     private static string CreateTestPipeName() =>
@@ -1220,7 +1282,7 @@ public sealed class AgentViewerClientTests
         return options;
     }
 
-    private static async Task<AgentViewerFrameV4> TakeFrameAsync(
+    private static async Task<AgentViewerFrameV5> TakeFrameAsync(
         AgentViewerClient client,
         long minimumSequence = 0)
     {

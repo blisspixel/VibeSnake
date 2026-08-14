@@ -20,12 +20,12 @@ public sealed class McpAgentTools
         Name = "start_match",
         Title = "Start Vibe Snake match",
         UseStructuredContent = true,
-        OutputSchemaType = typeof(StartAgentMatchV2),
+        OutputSchemaType = typeof(StartAgentMatchV3),
         Destructive = false,
         Idempotent = false,
         OpenWorld = false)]
     [Description("Starts one isolated, clock-free Vibe Snake agent match and returns its explicit opaque handle plus initial public observation. Use only classic or vibe. Blind matches reject caller-selected seeds.")]
-    public StartAgentMatchV2 StartMatch(
+    public StartAgentMatchV3 StartMatch(
         [Description("Official mode ID: classic or vibe.")] string modeId,
         [Description("Seed division: open or blind.")] AgentSeedVisibility seedVisibility,
         [Description("Optional unsigned 64-bit decimal seed for open matches. Use null to let the host generate one. Must be null for blind matches.")] string? gameplaySeed = null,
@@ -33,8 +33,8 @@ public sealed class McpAgentTools
         [Description("Optional style contract: stillwater, crownchaser, edge-prophet, mutagenist, or redline. Mode restrictions are enforced.")] string? styleContractId = null,
         [Description("Optional built-in rival personality ID. Both lanes use the same seed and exact rules configuration.")] string? rivalPersonalityId = null,
         [Description("Set true to mint a one-time same-user named-pipe capability for a read-only local viewer.")] bool watchEnabled = false,
-        [Description("Optional public Agent Passport. IDs are bounded tokens, the display name is presentation-only, and its action profile must match actionProfile.")] AgentPassportV1? passport = null,
-        [Description("Control division: four-direction-step-v1 or four-direction-burst-v1. The default preserves one-step play.")] string actionProfile = AgentPassportV1.FourDirectionActionProfile) =>
+        [Description("Optional public Agent Passport v2. Avatar, accent, and station IDs must come from vibesnake://agent/identity; the display name is presentation-only; and its action profile must match actionProfile.")] AgentPassportV2? passport = null,
+        [Description("Control division: four-direction-step-v1 or four-direction-burst-v1. The default preserves one-step play.")] string actionProfile = AgentPassportV2.FourDirectionActionProfile) =>
         Execute(() => _registry.StartMatch(
             modeId,
             seedVisibility,
@@ -50,16 +50,16 @@ public sealed class McpAgentTools
         Name = "start_lesson",
         Title = "Start Vibe Snake Signal School lesson",
         UseStructuredContent = true,
-        OutputSchemaType = typeof(StartAgentMatchV2),
+        OutputSchemaType = typeof(StartAgentMatchV3),
         Destructive = false,
         Idempotent = false,
         OpenWorld = false)]
     [Description("Starts one canonical open-seed Signal School practice. The lesson owns its fixed mode, seed, step cap, and primary public metric target. Lessons accept no style contract or rival.")]
-    public StartAgentMatchV2 StartLesson(
+    public StartAgentMatchV3 StartLesson(
         [Description("Closed lesson ID from vibesnake://agent/signal-school.")] string lessonId,
         [Description("Set true to mint a one-time same-user named-pipe capability for a read-only local viewer.")] bool watchEnabled = false,
-        [Description("Optional public Agent Passport. Its action profile must match actionProfile.")] AgentPassportV1? passport = null,
-        [Description("Control division: four-direction-step-v1 or four-direction-burst-v1.")] string actionProfile = AgentPassportV1.FourDirectionActionProfile) =>
+        [Description("Optional public Agent Passport v2 using avatar, accent, and station IDs from vibesnake://agent/identity. Its action profile must match actionProfile.")] AgentPassportV2? passport = null,
+        [Description("Control division: four-direction-step-v1 or four-direction-burst-v1.")] string actionProfile = AgentPassportV2.FourDirectionActionProfile) =>
         Execute(() => _registry.StartLesson(
             lessonId,
             watchEnabled,
@@ -70,12 +70,12 @@ public sealed class McpAgentTools
         Name = "observe_match",
         Title = "Observe Vibe Snake match",
         UseStructuredContent = true,
-        OutputSchemaType = typeof(AgentObservationV2),
+        OutputSchemaType = typeof(AgentObservationV3),
         ReadOnly = true,
         Idempotent = true,
         OpenWorld = false)]
     [Description("Returns the current closed public logical-state observation. It never advances rules state and is not a serialization of the human screen.")]
-    public AgentObservationV2 ObserveMatch(
+    public AgentObservationV3 ObserveMatch(
         [Description("Opaque handle returned by start_match.")] string matchHandle) =>
         Execute(() => _registry.Observe(matchHandle));
 
@@ -83,12 +83,12 @@ public sealed class McpAgentTools
         Name = "play_move",
         Title = "Play one Vibe Snake move",
         UseStructuredContent = true,
-        OutputSchemaType = typeof(AgentActionResponseV2),
+        OutputSchemaType = typeof(AgentActionResponseV3),
         Destructive = false,
         Idempotent = true,
         OpenWorld = false)]
     [Description("Submits up, right, down, left, or continue with an optional closed public intent. An accepted request advances exactly one rules step. Stale or illegal requests advance none. Reusing the same idempotency key with the same input returns the original response.")]
-    public AgentActionResponseV2 PlayMove(
+    public AgentActionResponseV3 PlayMove(
         [Description("Opaque handle returned by start_match.")] string matchHandle,
         [Description("Unique ASCII token for this intended action, at most 128 characters.")] string idempotencyKey,
         [Description("Exact tick from the observation being acted upon.")] int expectedTick,
@@ -107,12 +107,12 @@ public sealed class McpAgentTools
         Name = "play_burst",
         Title = "Play bounded Vibe Snake burst",
         UseStructuredContent = true,
-        OutputSchemaType = typeof(AgentBurstResponseV2),
+        OutputSchemaType = typeof(AgentBurstResponseV3),
         Destructive = false,
         Idempotent = true,
         OpenWorld = false)]
     [Description("Advances a four-direction-burst-v1 match by at most 16 clock-free steps. The initial action applies once, later steps continue, and execution stops at the first fixed public decision event, terminal state, match cap, replay failure, or requested bound.")]
-    public AgentBurstResponseV2 PlayBurst(
+    public AgentBurstResponseV3 PlayBurst(
         [Description("Opaque handle returned by start_match.")] string matchHandle,
         [Description("Unique ASCII token for this intended burst, at most 128 characters.")] string idempotencyKey,
         [Description("Exact tick from the observation being acted upon.")] int expectedTick,
@@ -133,12 +133,12 @@ public sealed class McpAgentTools
         Name = "finish_match",
         Title = "Finish Vibe Snake match",
         UseStructuredContent = true,
-        OutputSchemaType = typeof(AgentMatchSummaryV2),
+        OutputSchemaType = typeof(AgentMatchSummaryV3),
         Destructive = false,
         Idempotent = true,
         OpenWorld = false)]
     [Description("Explicitly ends a running match, finalizes a nonterminal verified replay, and returns the result. Calling it again returns the same result.")]
-    public AgentMatchSummaryV2 FinishMatch(
+    public AgentMatchSummaryV3 FinishMatch(
         [Description("Opaque handle returned by start_match.")] string matchHandle) =>
         Execute(() => _registry.Finish(matchHandle));
 
@@ -146,12 +146,12 @@ public sealed class McpAgentTools
         Name = "get_match_result",
         Title = "Get Vibe Snake result",
         UseStructuredContent = true,
-        OutputSchemaType = typeof(AgentMatchResultStatusV2),
+        OutputSchemaType = typeof(AgentMatchResultStatusV3),
         ReadOnly = true,
         Idempotent = true,
         OpenWorld = false)]
     [Description("Returns whether a verified match result is available and includes its public summary when ready. It never advances or finishes a match.")]
-    public AgentMatchResultStatusV2 GetMatchResult(
+    public AgentMatchResultStatusV3 GetMatchResult(
         [Description("Opaque handle returned by start_match.")] string matchHandle) =>
         Execute(() => _registry.GetResult(matchHandle));
 

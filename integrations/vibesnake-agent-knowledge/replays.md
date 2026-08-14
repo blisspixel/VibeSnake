@@ -3,8 +3,8 @@ type: "Replay Contract"
 title: "Verified agent replay handoff"
 description: "How successfully finalized agent play becomes a verified result and human-watchable replay."
 tags: [vibesnake, replay, verification, spectator]
-generated: { by: process:vibesnake-okf-generator, at: 2026-08-14T02:33:19Z }
-verified: { by: process:vibesnake-quality-gate, at: 2026-08-14T02:33:19Z }
+generated: { by: process:vibesnake-okf-generator, at: 2026-08-14T04:39:55Z }
+verified: { by: process:vibesnake-quality-gate, at: 2026-08-14T04:39:55Z }
 stale_after: "2026-11-13"
 status: draft
 sources:
@@ -20,7 +20,7 @@ sources:
 ---
 # Verified result
 
-A successfully finalized completed, capped, or explicitly finished match returns `vibesnake-agent-match-result-v2` with final state hash, replay payload hash, rules and mode identity, outcome, metrics, and verification code. A Signal School result also carries a primary-metric outcome reconstructed from the verified replay and bound to that replay payload hash. Failed-closed finalization returns neither a verified result nor a verified replay.
+A successfully finalized completed, capped, or explicitly finished match returns `vibesnake-agent-match-result-v3` with final state hash, replay payload hash, rules and mode identity, outcome, metrics, and verification code. A Signal School result also carries a primary-metric outcome reconstructed from the verified replay and bound to that replay payload hash. Failed-closed finalization returns neither a verified result nor a verified replay.
 
 # Persistence
 
