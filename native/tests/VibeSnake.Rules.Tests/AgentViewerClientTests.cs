@@ -97,16 +97,16 @@ public sealed class AgentViewerClientTests
             "321",
             maximumSteps: 3,
             watchEnabled: true,
-            passport: new AgentPassportV3(
-                AgentPassportV3.Contract,
+            passport: new AgentPassportV4(
+                AgentPassportV4.Contract,
                 "godot-smoke-agent",
                 "policy-1",
                 "Godot Smoke Agent",
                 "redline",
                 "signal-cyan",
                 "global_coil",
-                actionProfile: AgentPassportV3.FourDirectionBurstActionProfile),
-            actionProfile: AgentPassportV3.FourDirectionBurstActionProfile);
+                actionProfile: AgentPassportV4.FourDirectionBurstActionProfile),
+            actionProfile: AgentPassportV4.FourDirectionBurstActionProfile);
         var connection = Assert.IsType<AgentViewerConnectionV1>(started.Viewer);
         var userDataRoot = System.IO.Path.Combine(temporary.Path, "godot-user-data");
         Directory.CreateDirectory(userDataRoot);
@@ -248,8 +248,8 @@ public sealed class AgentViewerClientTests
                     Power: null),
             ],
         };
-        var validFrame = new AgentViewerFrameV6(
-            AgentViewerFrameV6.Contract,
+        var validFrame = new AgentViewerFrameV7(
+            AgentViewerFrameV7.Contract,
             0,
             AgentViewerOperationKind.Initial,
             StartTick: observation.Tick,
@@ -620,8 +620,8 @@ public sealed class AgentViewerClientTests
             RunModeCatalog.CurrentModeVersion,
             9UL,
             AgentSeedVisibility.Open)).Observe();
-        var validFrame = new AgentViewerFrameV6(
-            AgentViewerFrameV6.Contract,
+        var validFrame = new AgentViewerFrameV7(
+            AgentViewerFrameV7.Contract,
             0,
             AgentViewerOperationKind.Initial,
             observation.Tick,
@@ -639,7 +639,7 @@ public sealed class AgentViewerClientTests
             Value: null,
             Cause: DeathCause.None,
             Power: PowerKind.Shield);
-        AgentObservationV4[] invalidObservations =
+        AgentObservationV5[] invalidObservations =
         [
             observation with { MatchId = "" },
             observation with { RulesetId = "other-rules" },
@@ -781,8 +781,8 @@ public sealed class AgentViewerClientTests
             progress with { AllCriteriaSatisfied = true },
             crownProgress,
         ];
-        var validFrame = new AgentViewerFrameV6(
-            AgentViewerFrameV6.Contract,
+        var validFrame = new AgentViewerFrameV7(
+            AgentViewerFrameV7.Contract,
             0,
             AgentViewerOperationKind.Initial,
             observation.Tick,
@@ -820,8 +820,8 @@ public sealed class AgentViewerClientTests
             RunModeCatalog.CurrentModeVersion,
             9UL,
             AgentSeedVisibility.Open)).Observe();
-        var validFrame = new AgentViewerFrameV6(
-            AgentViewerFrameV6.Contract,
+        var validFrame = new AgentViewerFrameV7(
+            AgentViewerFrameV7.Contract,
             0,
             AgentViewerOperationKind.Initial,
             observation.Tick,
@@ -836,7 +836,7 @@ public sealed class AgentViewerClientTests
         string[] invalidPayloads =
         [
             validPayload.Replace(
-                AgentPassportV3.Contract,
+                AgentPassportV4.Contract,
                 "vibesnake-agent-passport-v1",
                 StringComparison.Ordinal),
             validPayload.Replace(
@@ -875,8 +875,8 @@ public sealed class AgentViewerClientTests
             9UL,
             AgentSeedVisibility.Open,
             styleContractId: AgentStyleContractCatalog.StillwaterId)).Observe();
-        var validFrame = new AgentViewerFrameV6(
-            AgentViewerFrameV6.Contract,
+        var validFrame = new AgentViewerFrameV7(
+            AgentViewerFrameV7.Contract,
             0,
             AgentViewerOperationKind.Initial,
             observation.Tick,
@@ -905,15 +905,15 @@ public sealed class AgentViewerClientTests
                 "\"criteria\":[{\"unknown_criterion_member\":true,",
                 StringComparison.Ordinal),
             validPayload.Replace(
-                AgentViewerFrameV6.Contract,
+                AgentViewerFrameV7.Contract,
                 "vibesnake-agent-viewer-frame-v5",
                 StringComparison.Ordinal),
             validPayload.Replace(
-                AgentObservationV4.Contract,
+                AgentObservationV5.Contract,
                 "vibesnake-agent-observation-v3",
                 StringComparison.Ordinal),
             validPayload.Replace(
-                AgentPassportV3.Contract,
+                AgentPassportV4.Contract,
                 "vibesnake-agent-passport-v2",
                 StringComparison.Ordinal),
             validPayload.Replace(
@@ -949,7 +949,7 @@ public sealed class AgentViewerClientTests
             "10",
             maximumSteps: 1,
             watchEnabled: true,
-            actionProfile: AgentPassportV3.FourDirectionBurstActionProfile);
+            actionProfile: AgentPassportV4.FourDirectionBurstActionProfile);
         var connection = Assert.IsType<AgentViewerConnectionV1>(started.Viewer);
         using var client = new AgentViewerClient(connection.PipeName, connection.AccessToken);
         _ = await TakeFrameAsync(client);
@@ -990,6 +990,29 @@ public sealed class AgentViewerClientTests
         Assert.Equal(0, afterFrame.StepsAdvanced);
         Assert.Equal(AgentMatchEndReason.StepLimit, afterFrame.EndReason);
         Assert.True(afterFrame.VerifiedResultAvailable);
+
+        var wrongProfile = registry.PlayMove(
+            started.MatchHandle,
+            "after-terminal-wrong-profile",
+            terminal.Observation.Tick,
+            terminal.Observation.StateHash,
+            AgentAction.Continue);
+        var wrongProfileFrame = await TakeFrameAsync(client, minimumSequence: 4);
+        Assert.Equal(AgentActionRejection.WrongActionProfile, wrongProfile.Rejection);
+        Assert.Equal(0, wrongProfileFrame.StepsAdvanced);
+        Assert.Equal(AgentMatchEndReason.StepLimit, wrongProfileFrame.EndReason);
+
+        var conflict = registry.PlayBurst(
+            started.MatchHandle,
+            "terminal-viewer-burst",
+            terminal.Observation.Tick,
+            terminal.Observation.StateHash,
+            AgentAction.Left,
+            maximumSteps: 1);
+        var conflictFrame = await TakeFrameAsync(client, minimumSequence: 5);
+        Assert.Equal(AgentActionRejection.IdempotencyConflict, conflict.Rejection);
+        Assert.Equal(0, conflictFrame.StepsAdvanced);
+        Assert.Equal(AgentMatchEndReason.StepLimit, conflictFrame.EndReason);
     }
 
     [Fact]
@@ -1008,8 +1031,8 @@ public sealed class AgentViewerClientTests
             initial.Tick,
             initial.StateHash,
             AgentAction.Left)).Observation;
-        var first = new AgentViewerFrameV6(
-            AgentViewerFrameV6.Contract,
+        var first = new AgentViewerFrameV7(
+            AgentViewerFrameV7.Contract,
             0,
             AgentViewerOperationKind.Initial,
             initial.Tick,
@@ -1026,13 +1049,13 @@ public sealed class AgentViewerClientTests
             Operation = AgentViewerOperationKind.Step,
             Observation = rejected,
         };
-        AgentPassportV3 AlternatePassport(
+        AgentPassportV4 AlternatePassport(
             string? agentId = null,
             string? avatarId = null,
             string? accentId = null,
             string? stationId = null) =>
             new(
-                AgentPassportV3.Contract,
+                AgentPassportV4.Contract,
                 agentId ?? initial.Passport.AgentId,
                 initial.Passport.PolicyVersion,
                 initial.Passport.DisplayName,
@@ -1047,7 +1070,7 @@ public sealed class AgentViewerClientTests
             RunModeCatalog.ClassicId,
             classicConfig,
             SnakeRun.Create(11UL, classicConfig).GetSnapshot()).Snapshot();
-        AgentObservationV4[] changedIdentities =
+        AgentObservationV5[] changedIdentities =
         [
             rejected with { MatchId = "other-match" },
             rejected with { RulesetId = "other-rules" },
@@ -1096,8 +1119,8 @@ public sealed class AgentViewerClientTests
             RunModeCatalog.CurrentModeVersion,
             4UL,
             AgentSeedVisibility.Open)).Observe();
-        var frame = new AgentViewerFrameV6(
-            AgentViewerFrameV6.Contract,
+        var frame = new AgentViewerFrameV7(
+            AgentViewerFrameV7.Contract,
             0,
             AgentViewerOperationKind.Initial,
             observation.Tick,
@@ -1153,10 +1176,10 @@ public sealed class AgentViewerClientTests
             Lifecycle = AgentMatchLifecycle.FailedClosed,
             IsActionAwaited = false,
         };
-        (AgentViewerFrameV6 Frame, AgentViewerClientState State, string Status)[] cases =
+        (AgentViewerFrameV7 Frame, AgentViewerClientState State, string Status)[] cases =
         [
-            (new AgentViewerFrameV6(
-                AgentViewerFrameV6.Contract,
+            (new AgentViewerFrameV7(
+                AgentViewerFrameV7.Contract,
                 1,
                 AgentViewerOperationKind.Step,
                 StartTick: completedStart.Tick,
@@ -1169,8 +1192,8 @@ public sealed class AgentViewerClientTests
                 VerifiedResultAvailable: true),
                 AgentViewerClientState.Completed,
                 "STEP LIMIT"),
-            (new AgentViewerFrameV6(
-                AgentViewerFrameV6.Contract,
+            (new AgentViewerFrameV7(
+                AgentViewerFrameV7.Contract,
                 1,
                 AgentViewerOperationKind.Finish,
                 StartTick: abortedStart.Tick,
@@ -1183,8 +1206,8 @@ public sealed class AgentViewerClientTests
                 VerifiedResultAvailable: true),
                 AgentViewerClientState.Completed,
                 "AGENT FINISHED MATCH"),
-            (new AgentViewerFrameV6(
-                AgentViewerFrameV6.Contract,
+            (new AgentViewerFrameV7(
+                AgentViewerFrameV7.Contract,
                 1,
                 AgentViewerOperationKind.Finish,
                 StartTick: failed.Tick,
@@ -1241,10 +1264,10 @@ public sealed class AgentViewerClientTests
             first.Observation.Tick,
             first.Observation.StateHash,
             AgentAction.Right));
-        AgentViewerFrameV6[] frames =
+        AgentViewerFrameV7[] frames =
         [
             new(
-                AgentViewerFrameV6.Contract,
+                AgentViewerFrameV7.Contract,
                 0,
                 AgentViewerOperationKind.Initial,
                 StartTick: initial.Tick,
@@ -1256,7 +1279,7 @@ public sealed class AgentViewerClientTests
                 AgentMatchEndReason.None,
                 VerifiedResultAvailable: false),
             new(
-                AgentViewerFrameV6.Contract,
+                AgentViewerFrameV7.Contract,
                 1,
                 AgentViewerOperationKind.Step,
                 StartTick: initial.Tick,
@@ -1268,7 +1291,7 @@ public sealed class AgentViewerClientTests
                 AgentMatchEndReason.None,
                 VerifiedResultAvailable: false),
             new(
-                AgentViewerFrameV6.Contract,
+                AgentViewerFrameV7.Contract,
                 2,
                 AgentViewerOperationKind.Step,
                 StartTick: first.Observation.Tick,
@@ -1322,7 +1345,7 @@ public sealed class AgentViewerClientTests
             123UL,
             AgentSeedVisibility.Open,
             maximumSteps: 10,
-            actionProfile: AgentPassportV3.FourDirectionBurstActionProfile));
+            actionProfile: AgentPassportV4.FourDirectionBurstActionProfile));
         var initial = session.Observe();
         var burst = session.SubmitBurst(new AgentBurstRequest(
             "burst",
@@ -1331,8 +1354,8 @@ public sealed class AgentViewerClientTests
             AgentAction.Up,
             maximumSteps: 2));
         Assert.Equal(2, burst.StepsAdvanced);
-        var frame = new AgentViewerFrameV6(
-            AgentViewerFrameV6.Contract,
+        var frame = new AgentViewerFrameV7(
+            AgentViewerFrameV7.Contract,
             1,
             AgentViewerOperationKind.Burst,
             initial.Tick,
@@ -1455,7 +1478,7 @@ public sealed class AgentViewerClientTests
     [Fact]
     public async Task Viewer_client_cross_checks_style_progress_against_observation_facts()
     {
-        AgentObservationV4 StyleObservation(string styleId, string modeId, ulong seed) =>
+        AgentObservationV5 StyleObservation(string styleId, string modeId, ulong seed) =>
             new AgentMatchSession(new AgentMatchOptions(
                 $"strict-{styleId}",
                 modeId,
@@ -1561,7 +1584,7 @@ public sealed class AgentViewerClientTests
             },
         };
 
-        AgentObservationV4[] invalidObservations =
+        AgentObservationV5[] invalidObservations =
         [
             impossibleTerminalStillwater,
             impossibleTerminalRedline,
@@ -1640,6 +1663,24 @@ public sealed class AgentViewerClientTests
     }
 
     [Fact]
+    public async Task Viewer_client_accepts_canonical_progress_for_every_signal_school_lesson()
+    {
+        foreach (var definition in AgentSignalSchoolCatalog.All)
+        {
+            var observation = new AgentMatchSession(new AgentMatchOptions(
+                $"viewer-{definition.Id}",
+                definition.ModeId,
+                RunModeCatalog.CurrentModeVersion,
+                definition.PracticeSeed,
+                AgentSeedVisibility.Open,
+                definition.MaximumSteps,
+                lessonId: definition.Id)).Observe();
+
+            await AssertViewerAcceptsAsync(CreateInitialFrame(observation));
+        }
+    }
+
+    [Fact]
     public async Task Viewer_client_enforces_canonical_lesson_progress_and_ownership()
     {
         var definition = AgentSignalSchoolCatalog.Get("first-turn");
@@ -1651,7 +1692,9 @@ public sealed class AgentViewerClientTests
             AgentSeedVisibility.Open,
             definition.MaximumSteps,
             lessonId: "first-turn")).Observe();
-        var progress = Assert.IsType<AgentLessonProgressV1>(observation.LessonProgress);
+        var progress = Assert.IsType<AgentLessonProgressV2>(observation.LessonProgress);
+        var first = progress.Requirements[0];
+        var second = progress.Requirements[1];
         var rival = new AgentRivalObservationV1(
             "optimal",
             "Optimal",
@@ -1659,7 +1702,7 @@ public sealed class AgentViewerClientTests
             RunStatus.Running,
             DeathCause.None,
             Score: 0);
-        AgentObservationV4[] invalidObservations =
+        AgentObservationV5[] invalidObservations =
         [
             observation with { LessonProgress = progress with { LessonId = "unknown" } },
             observation with { LessonProgress = progress with { Schema = "wrong" } },
@@ -1671,15 +1714,50 @@ public sealed class AgentViewerClientTests
             },
             observation with
             {
-                LessonProgress = progress with { Metric = AgentExperienceMetric.Wraps },
+                LessonProgress = progress with
+                {
+                    Requirements = [first with { EvidenceSource = AgentLessonEvidenceSource.ReplayTrace }, second],
+                },
             },
-            observation with { LessonProgress = progress with { Current = 1 } },
-            observation with { LessonProgress = progress with { Target = progress.Target + 1 } },
             observation with
             {
-                LessonProgress = progress with { Remaining = progress.Remaining + 1 },
+                LessonProgress = progress with
+                {
+                    Requirements = [first with { Current = 1, Satisfied = true }, second],
+                },
             },
-            observation with { LessonProgress = progress with { TargetReached = true } },
+            observation with
+            {
+                LessonProgress = progress with
+                {
+                    Requirements = [first with { Target = first.Target + 1 }, second],
+                },
+            },
+            observation with
+            {
+                LessonProgress = progress with { RequirementsSatisfied = 1 },
+            },
+            observation with
+            {
+                LessonProgress = progress with { AllRequirementsSatisfied = true },
+            },
+            observation with
+            {
+                LessonProgress = progress with { EvidenceState = AgentLessonEvidenceState.Verified },
+            },
+            observation with
+            {
+                LessonProgress = progress with { AttemptEvidenceCount = 1 },
+            },
+            observation with
+            {
+                LessonProgress = progress with
+                {
+                    RetryDescriptor = AgentSignalSchoolCatalog.CreateRetryDescriptor(
+                        progress.LessonId,
+                        observation.Passport.ActionProfile),
+                },
+            },
             observation with
             {
                 SeedVisibility = AgentSeedVisibility.Blind,
@@ -1719,8 +1797,8 @@ public sealed class AgentViewerClientTests
             AgentAction.Continue));
         var terminal = response.Observation;
         var outcome = Assert.IsType<AgentStyleOutcomeV2>(response.MatchResult!.StyleOutcome);
-        var validFrame = new AgentViewerFrameV6(
-            AgentViewerFrameV6.Contract,
+        var validFrame = new AgentViewerFrameV7(
+            AgentViewerFrameV7.Contract,
             Sequence: 1,
             AgentViewerOperationKind.Step,
             StartTick: initial.Tick,
@@ -1741,7 +1819,7 @@ public sealed class AgentViewerClientTests
             Denominator = 1,
             Satisfied = false,
         };
-        AgentViewerFrameV6[] invalidFrames =
+        AgentViewerFrameV7[] invalidFrames =
         [
             validFrame with { StyleOutcome = null },
             validFrame with { StyleOutcome = outcome with { Schema = "wrong" } },
@@ -1767,8 +1845,8 @@ public sealed class AgentViewerClientTests
                 Observation = terminal with { StyleContract = null },
                 StyleOutcome = outcome,
             },
-            new AgentViewerFrameV6(
-                AgentViewerFrameV6.Contract,
+            new AgentViewerFrameV7(
+                AgentViewerFrameV7.Contract,
                 Sequence: 1,
                 AgentViewerOperationKind.Finish,
                 StartTick: initial.Tick,
@@ -1786,6 +1864,117 @@ public sealed class AgentViewerClientTests
                 outcome),
         ];
 
+        await AssertViewerAcceptsAsync(validFrame);
+        foreach (var invalid in invalidFrames)
+        {
+            await AssertViewerRejectsAsync(invalid);
+        }
+    }
+
+    [Fact]
+    public async Task Viewer_client_requires_exact_replay_bound_lesson_outcomes()
+    {
+        var lesson = AgentSignalSchoolCatalog.Get(AgentSignalSchoolCatalog.FirstTurnId);
+        var session = new AgentMatchSession(new AgentMatchOptions(
+            "strict-lesson-outcome",
+            lesson.ModeId,
+            RunModeCatalog.CurrentModeVersion,
+            lesson.PracticeSeed,
+            AgentSeedVisibility.Open,
+            lesson.MaximumSteps,
+            lessonId: lesson.Id));
+        var initial = session.Observe();
+        var rejected = session.SubmitAction(new AgentActionRequest(
+            "strict-lesson-reversal",
+            initial.Tick,
+            initial.StateHash,
+            AgentAction.Left));
+        var accepted = session.SubmitAction(new AgentActionRequest(
+            "strict-lesson-turn",
+            rejected.Observation.Tick,
+            rejected.Observation.StateHash,
+            AgentAction.Up));
+        var result = session.Finish();
+        var terminal = session.Observe();
+        var outcome = Assert.IsType<AgentLessonOutcomeV2>(result.LessonOutcome);
+        var validFrame = new AgentViewerFrameV7(
+            AgentViewerFrameV7.Contract,
+            Sequence: 3,
+            AgentViewerOperationKind.Finish,
+            StartTick: terminal.Tick,
+            StartStateHash: terminal.StateHash,
+            StepsAdvanced: 0,
+            BurstStopReason: null,
+            BurstStopEvent: null,
+            terminal,
+            AgentMatchEndReason.AgentFinished,
+            VerifiedResultAvailable: true,
+            StyleOutcome: null,
+            LessonOutcome: outcome);
+        var first = outcome.Requirements[0];
+        var second = outcome.Requirements[1];
+        AgentViewerFrameV7[] invalidFrames =
+        [
+            validFrame with { LessonOutcome = null },
+            validFrame with { LessonOutcome = outcome with { Schema = "wrong" } },
+            validFrame with
+            {
+                LessonOutcome = outcome with { EndReason = AgentMatchEndReason.StepLimit },
+            },
+            validFrame with
+            {
+                LessonOutcome = outcome with { ReplayPayloadHash = new string('0', 64) },
+            },
+            validFrame with
+            {
+                LessonOutcome = outcome with { AttemptEvidenceHash = new string('0', 64) },
+            },
+            validFrame with
+            {
+                LessonOutcome = outcome with
+                {
+                    Requirements = [first with { Current = 0, Satisfied = false }, second],
+                },
+            },
+            validFrame with
+            {
+                LessonOutcome = outcome with { RequirementsSatisfied = 1 },
+            },
+            validFrame with
+            {
+                LessonOutcome = outcome with
+                {
+                    RetryDescriptor = outcome.RetryDescriptor with
+                    {
+                        ActionProfile = AgentPassportV4.FourDirectionBurstActionProfile,
+                    },
+                },
+            },
+            CreateInitialFrame(initial) with { LessonOutcome = outcome },
+            validFrame with
+            {
+                Observation = terminal with { LessonProgress = null },
+                LessonOutcome = outcome,
+            },
+            validFrame with
+            {
+                Observation = terminal with
+                {
+                    Lifecycle = AgentMatchLifecycle.FailedClosed,
+                    IsActionAwaited = false,
+                    LessonProgress = terminal.LessonProgress! with
+                    {
+                        EvidenceState = AgentLessonEvidenceState.FailedClosed,
+                    },
+                },
+                EndReason = AgentMatchEndReason.ReplayFailure,
+                VerifiedResultAvailable = false,
+                LessonOutcome = outcome,
+            },
+        ];
+
+        Assert.True(accepted.Observation.LessonProgress!.AllRequirementsSatisfied);
+        await AssertViewerAcceptsAsync(validFrame);
         foreach (var invalid in invalidFrames)
         {
             await AssertViewerRejectsAsync(invalid);
@@ -1829,9 +2018,9 @@ public sealed class AgentViewerClientTests
             initialFrame.Observation.Tick,
             initialFrame.Observation.StateHash,
             AgentAction.Continue));
-        var result = Assert.IsType<AgentMatchResultV4>(response.MatchResult);
-        var terminalFrame = new AgentViewerFrameV6(
-            AgentViewerFrameV6.Contract,
+        var result = Assert.IsType<AgentMatchResultV5>(response.MatchResult);
+        var terminalFrame = new AgentViewerFrameV7(
+            AgentViewerFrameV7.Contract,
             Sequence: 1,
             AgentViewerOperationKind.Step,
             StartTick: initialFrame.Observation.Tick,
@@ -1861,7 +2050,7 @@ public sealed class AgentViewerClientTests
         var valid = SerializeFrame(CreateInitialFrame(observation));
         string[] invalidPayloads =
         [
-            $"{{\"schema\":\"{AgentViewerFrameV6.Contract}\"," + valid[1..],
+            $"{{\"schema\":\"{AgentViewerFrameV7.Contract}\"," + valid[1..],
             valid.Replace(
                 "\"criterion_id\":\"survival_steps\"",
                 "\"criterion_id\":\"survival_steps\","
@@ -1945,7 +2134,7 @@ public sealed class AgentViewerClientTests
         var alternate = AiPersonalityCatalog.BuiltIn.First(
             personality => personality.Id != rival.PersonalityId);
 
-        (AgentObservationV4 Initial, AgentObservationV4 Followup)[] identityChanges =
+        (AgentObservationV5 Initial, AgentObservationV5 Followup)[] identityChanges =
         [
             (noRivalInitial, noRivalRejected with { Rival = rival }),
             (rivalInitial, rivalRejected with { Rival = null }),
@@ -1972,9 +2161,396 @@ public sealed class AgentViewerClientTests
         }
     }
 
-    private static AgentViewerFrameV6 CreateInitialFrame(AgentObservationV4 observation) =>
+    [Fact]
+    public async Task Viewer_client_accepts_monotonic_lesson_and_style_identity_across_frames()
+    {
+        var definition = AgentSignalSchoolCatalog.Get(AgentSignalSchoolCatalog.FirstTurnId);
+        var lessonSession = new AgentMatchSession(new AgentMatchOptions(
+            "viewer-lesson-sequence",
+            definition.ModeId,
+            RunModeCatalog.CurrentModeVersion,
+            definition.PracticeSeed,
+            AgentSeedVisibility.Open,
+            definition.MaximumSteps,
+            lessonId: definition.Id));
+        var lessonInitial = lessonSession.Observe();
+        var rejected = lessonSession.SubmitAction(new AgentActionRequest(
+            "viewer-lesson-reversal",
+            lessonInitial.Tick,
+            lessonInitial.StateHash,
+            AgentLessonRouteDriver.OppositeAction(lessonInitial)));
+        Assert.Equal(AgentActionRejection.IllegalDirection, rejected.Rejection);
+        var lessonFirst = CreateInitialFrame(lessonInitial);
+        var lessonSecond = lessonFirst with
+        {
+            Sequence = 1,
+            Operation = AgentViewerOperationKind.Step,
+            Observation = rejected.Observation,
+        };
+        await AssertViewerAcceptsPayloadAsync(
+            SerializeFrame(lessonFirst) + SerializeFrame(lessonSecond),
+            minimumSequence: 1);
+
+        var progressedWithoutPreviousAction = rejected.Observation with { PreviousAction = null };
+        var stableFirst = CreateInitialFrame(progressedWithoutPreviousAction);
+        var stableSecond = stableFirst with
+        {
+            Sequence = 1,
+            Operation = AgentViewerOperationKind.Step,
+            Observation = rejected.Observation,
+        };
+        await AssertViewerAcceptsPayloadAsync(
+            SerializeFrame(stableFirst) + SerializeFrame(stableSecond),
+            minimumSequence: 1);
+
+        var styleSession = new AgentMatchSession(new AgentMatchOptions(
+            "viewer-style-sequence",
+            RunModeCatalog.ClassicId,
+            RunModeCatalog.CurrentModeVersion,
+            81UL,
+            AgentSeedVisibility.Open,
+            styleContractId: AgentStyleContractCatalog.StillwaterId));
+        var styleInitial = styleSession.Observe();
+        var styleRejected = styleSession.SubmitAction(new AgentActionRequest(
+            "viewer-style-reversal",
+            styleInitial.Tick,
+            styleInitial.StateHash,
+            AgentLessonRouteDriver.OppositeAction(styleInitial)));
+        Assert.Equal(AgentActionRejection.IllegalDirection, styleRejected.Rejection);
+        var styleFirst = CreateInitialFrame(styleInitial);
+        var styleSecond = styleFirst with
+        {
+            Sequence = 1,
+            Operation = AgentViewerOperationKind.Step,
+            Observation = styleRejected.Observation,
+        };
+        await AssertViewerAcceptsPayloadAsync(
+            SerializeFrame(styleFirst) + SerializeFrame(styleSecond),
+            minimumSequence: 1);
+    }
+
+    [Fact]
+    public async Task Viewer_client_rejects_lesson_identity_and_evidence_regressions_across_frames()
+    {
+        var definition = AgentSignalSchoolCatalog.Get(AgentSignalSchoolCatalog.FirstTurnId);
+        var session = new AgentMatchSession(new AgentMatchOptions(
+            "viewer-lesson-regression",
+            definition.ModeId,
+            RunModeCatalog.CurrentModeVersion,
+            definition.PracticeSeed,
+            AgentSeedVisibility.Open,
+            definition.MaximumSteps,
+            lessonId: definition.Id));
+        var initial = session.Observe();
+        var rejected = session.SubmitAction(new AgentActionRequest(
+            "viewer-regression-reversal",
+            initial.Tick,
+            initial.StateHash,
+            AgentLessonRouteDriver.OppositeAction(initial)));
+        var progressed = rejected.Observation;
+        var progressedWithoutPreviousAction = progressed with { PreviousAction = null };
+        var first = CreateInitialFrame(progressedWithoutPreviousAction);
+        var second = first with
+        {
+            Sequence = 1,
+            Operation = AgentViewerOperationKind.Step,
+            Observation = progressed,
+        };
+        var initialProgress = Assert.IsType<AgentLessonProgressV2>(initial.LessonProgress);
+        var progressedProgress = Assert.IsType<AgentLessonProgressV2>(progressed.LessonProgress);
+        AgentObservationV5[] regressions =
+        [
+            progressed with { LessonProgress = null },
+            progressed with { LessonProgress = initialProgress },
+            progressed with
+            {
+                LessonProgress = progressedProgress with
+                {
+                    AttemptEvidenceHash = new string('0', 64),
+                },
+            },
+            progressed with
+            {
+                LessonProgress = progressedProgress with
+                {
+                    AttemptEvidenceCount = progressedProgress.AttemptEvidenceCount + 1,
+                },
+            },
+        ];
+
+        foreach (var regression in regressions)
+        {
+            await AssertViewerRejectsPayloadAsync(
+                SerializeFrame(first) + SerializeFrame(second with { Observation = regression }));
+        }
+
+        var noLessonSession = new AgentMatchSession(new AgentMatchOptions(
+            "viewer-lesson-injection",
+            definition.ModeId,
+            RunModeCatalog.CurrentModeVersion,
+            definition.PracticeSeed,
+            AgentSeedVisibility.Open,
+            definition.MaximumSteps));
+        var noLessonInitial = noLessonSession.Observe();
+        var noLessonRejected = noLessonSession.SubmitAction(new AgentActionRequest(
+            "viewer-injected-reversal",
+            noLessonInitial.Tick,
+            noLessonInitial.StateHash,
+            AgentLessonRouteDriver.OppositeAction(noLessonInitial))).Observation;
+        var noLessonFirst = CreateInitialFrame(noLessonInitial);
+        var injectedSecond = noLessonFirst with
+        {
+            Sequence = 1,
+            Operation = AgentViewerOperationKind.Step,
+            Observation = noLessonRejected with { LessonProgress = initialProgress },
+        };
+        await AssertViewerRejectsPayloadAsync(
+            SerializeFrame(noLessonFirst) + SerializeFrame(injectedSecond));
+    }
+
+    [Fact]
+    public async Task Viewer_client_cross_checks_all_lesson_progress_against_live_run_facts()
+    {
+        foreach (var definition in AgentSignalSchoolCatalog.All)
+        {
+            var progressed = DriveLessonToSatisfiedProgress(definition);
+            var invalid = definition.Id switch
+            {
+                AgentSignalSchoolCatalog.FirstTurnId => progressed with
+                {
+                    EpisodeMetrics = progressed.EpisodeMetrics with { DirectionChanges = 0 },
+                },
+                AgentSignalSchoolCatalog.WrapLineId => progressed with
+                {
+                    EpisodeMetrics = progressed.EpisodeMetrics with { Wraps = 0 },
+                },
+                AgentSignalSchoolCatalog.HungerRouteId or AgentSignalSchoolCatalog.ExitRouteId =>
+                    progressed with
+                    {
+                        ComboCount = 0,
+                        EpisodeMetrics = progressed.EpisodeMetrics with
+                        {
+                            FoodEaten = 0,
+                            PeakCombo = 0,
+                        },
+                    },
+                AgentSignalSchoolCatalog.PowerRouteId => progressed with
+                {
+                    EpisodeMetrics = progressed.EpisodeMetrics with
+                    {
+                        PowersCollected = 0,
+                        PowersActivated = 0,
+                    },
+                },
+                AgentSignalSchoolCatalog.RecoverRouteId => progressed with
+                {
+                    EpisodeMetrics = progressed.EpisodeMetrics with { Recoveries = 0 },
+                },
+                AgentSignalSchoolCatalog.ComboRouteId => progressed with
+                {
+                    ComboCount = Math.Min(progressed.ComboCount, 2),
+                    EpisodeMetrics = progressed.EpisodeMetrics with
+                    {
+                        FoodEaten = 2,
+                        PeakCombo = 2,
+                    },
+                },
+                AgentSignalSchoolCatalog.DeathReadId => progressed with
+                {
+                    Status = RunStatus.Running,
+                    DeathCause = DeathCause.None,
+                },
+                _ => throw new InvalidOperationException(definition.Id),
+            };
+            await AssertViewerRejectsAsync(CreateInitialFrame(invalid));
+
+            if (definition.Id == AgentSignalSchoolCatalog.PowerRouteId)
+            {
+                await AssertViewerRejectsAsync(CreateInitialFrame(progressed with
+                {
+                    EpisodeMetrics = progressed.EpisodeMetrics with { PowersActivated = 0 },
+                }));
+            }
+        }
+    }
+
+    [Fact]
+    public async Task Viewer_client_binds_death_lesson_progress_to_the_visible_terminal_event()
+    {
+        var definition = AgentSignalSchoolCatalog.Get(AgentSignalSchoolCatalog.DeathReadId);
+        var session = new AgentMatchSession(new AgentMatchOptions(
+            "viewer-death-evidence",
+            definition.ModeId,
+            RunModeCatalog.CurrentModeVersion,
+            definition.PracticeSeed,
+            AgentSeedVisibility.Open,
+            definition.MaximumSteps,
+            lessonId: definition.Id));
+        AgentActionResponse? response = null;
+        for (var index = 0; index < definition.MaximumSteps; index++)
+        {
+            var observation = session.Observe();
+            response = session.SubmitAction(new AgentActionRequest(
+                $"viewer-death-evidence-{index}",
+                observation.Tick,
+                observation.StateHash,
+                AgentLessonRouteDriver.ChooseAction(definition.Id, observation)));
+            Assert.True(response.Accepted, response.Rejection.ToString());
+            if (response.MatchResult is not null)
+            {
+                break;
+            }
+        }
+
+        var completed = Assert.IsType<AgentActionResponse>(response);
+        var result = Assert.IsType<AgentMatchResultV5>(completed.MatchResult);
+        var terminal = completed.Observation;
+        var progress = Assert.IsType<AgentLessonProgressV2>(terminal.LessonProgress);
+        var outcome = Assert.IsType<AgentLessonOutcomeV2>(result.LessonOutcome);
+        var valid = new AgentViewerFrameV7(
+            AgentViewerFrameV7.Contract,
+            Sequence: terminal.Tick,
+            AgentViewerOperationKind.Step,
+            StartTick: terminal.Tick - 1,
+            StartStateHash: new string('0', 16),
+            StepsAdvanced: 1,
+            BurstStopReason: null,
+            BurstStopEvent: null,
+            terminal,
+            AgentMatchEndReason.RulesTerminal,
+            VerifiedResultAvailable: true,
+            StyleOutcome: null,
+            LessonOutcome: outcome);
+        Assert.Equal(DeathCause.SelfCollision, terminal.DeathCause);
+        Assert.Contains(terminal.PreviousEvents, item =>
+            item.Kind == RunEventKind.Died && item.Cause == terminal.DeathCause);
+        await AssertViewerAcceptsAsync(valid);
+
+        var afterTerminal = session.SubmitAction(new AgentActionRequest(
+            "viewer-death-evidence-after-terminal",
+            terminal.Tick,
+            terminal.StateHash,
+            AgentAction.Continue));
+        Assert.Equal(AgentActionRejection.MatchNotAwaitingAction, afterTerminal.Rejection);
+        Assert.DoesNotContain(afterTerminal.Observation.PreviousEvents, item =>
+            item.Kind == RunEventKind.Died);
+        var postTerminalFrame = valid with
+        {
+            Sequence = valid.Sequence + 1,
+            Operation = AgentViewerOperationKind.Step,
+            StartTick = terminal.Tick,
+            StartStateHash = terminal.StateHash,
+            StepsAdvanced = 0,
+            Observation = afterTerminal.Observation,
+        };
+        await AssertViewerAcceptsPayloadAsync(
+            SerializeFrame(valid) + SerializeFrame(postTerminalFrame),
+            minimumSequence: postTerminalFrame.Sequence);
+
+        await AssertViewerRejectsAsync(valid with
+        {
+            Observation = terminal with
+            {
+                PreviousEvents = terminal.PreviousEvents
+                    .Where(item => item.Kind != RunEventKind.Died)
+                    .ToArray(),
+            },
+        });
+        await AssertViewerRejectsAsync(valid with
+        {
+            Observation = terminal with
+            {
+                PreviousEvents = terminal.PreviousEvents.Select(item =>
+                    item.Kind == RunEventKind.Died
+                        ? item with { Cause = DeathCause.Starvation }
+                        : item).ToArray(),
+            },
+        });
+
+        var unmetRequirements = progress.Requirements
+            .Select(item => item with { Current = 0, Satisfied = false })
+            .ToArray();
+        var unmetProgress = progress with
+        {
+            Requirements = unmetRequirements,
+            RequirementsSatisfied = 0,
+            AllRequirementsSatisfied = false,
+            FirstUnmetRequirementId = unmetRequirements[0].RequirementId,
+        };
+        var unmetOutcome = outcome with
+        {
+            Requirements = unmetRequirements,
+            RequirementsSatisfied = 0,
+            AllRequirementsSatisfied = false,
+            FirstUnmetRequirementId = unmetRequirements[0].RequirementId,
+            ReviewCode = AgentLessonReviewCode.ReplayRequirementUnmet,
+        };
+        Assert.True(AgentSignalSchoolCatalog.IsValidProgress(unmetProgress));
+        Assert.True(AgentSignalSchoolCatalog.IsValidOutcome(unmetOutcome));
+        await AssertViewerRejectsAsync(valid with
+        {
+            Observation = terminal with { LessonProgress = unmetProgress },
+            LessonOutcome = unmetOutcome,
+        });
+    }
+
+    [Fact]
+    public async Task Viewer_client_rejects_noncanonical_attempt_and_retry_ownership()
+    {
+        var wrap = AgentSignalSchoolCatalog.Get(AgentSignalSchoolCatalog.WrapLineId);
+        var wrapObservation = new AgentMatchSession(new AgentMatchOptions(
+            "viewer-attempt-ownership",
+            wrap.ModeId,
+            RunModeCatalog.CurrentModeVersion,
+            wrap.PracticeSeed,
+            AgentSeedVisibility.Open,
+            wrap.MaximumSteps,
+            lessonId: wrap.Id)).Observe();
+        var wrapProgress = Assert.IsType<AgentLessonProgressV2>(wrapObservation.LessonProgress);
+        AgentLessonProgressV2[] invalidAttemptProgress =
+        [
+            wrapProgress with
+            {
+                AttemptEvidenceCount = 1,
+                AttemptEvidenceHash = new string('1', 64),
+            },
+            wrapProgress with { AttemptEvidenceHash = new string('1', 64) },
+        ];
+        foreach (var invalid in invalidAttemptProgress)
+        {
+            await AssertViewerRejectsAsync(CreateInitialFrame(wrapObservation with
+            {
+                LessonProgress = invalid,
+            }));
+        }
+
+        var firstTurn = AgentSignalSchoolCatalog.Get(AgentSignalSchoolCatalog.FirstTurnId);
+        var terminalSession = new AgentMatchSession(new AgentMatchOptions(
+            "viewer-retry-ownership",
+            firstTurn.ModeId,
+            RunModeCatalog.CurrentModeVersion,
+            firstTurn.PracticeSeed,
+            AgentSeedVisibility.Open,
+            firstTurn.MaximumSteps,
+            lessonId: firstTurn.Id));
+        _ = terminalSession.Finish();
+        var terminal = terminalSession.Observe();
+        var terminalProgress = Assert.IsType<AgentLessonProgressV2>(terminal.LessonProgress);
+        await AssertViewerRejectsAsync(CreateInitialFrame(terminal with
+        {
+            LessonProgress = terminalProgress with
+            {
+                RetryDescriptor = terminalProgress.RetryDescriptor! with
+                {
+                    ActionProfile = AgentPassportV4.FourDirectionBurstActionProfile,
+                },
+            },
+        }));
+    }
+
+    private static AgentViewerFrameV7 CreateInitialFrame(AgentObservationV5 observation) =>
         new(
-            AgentViewerFrameV6.Contract,
+            AgentViewerFrameV7.Contract,
             Sequence: 0,
             AgentViewerOperationKind.Initial,
             StartTick: observation.Tick,
@@ -1987,8 +2563,83 @@ public sealed class AgentViewerClientTests
             VerifiedResultAvailable: false,
             StyleOutcome: null);
 
-    private static Task AssertViewerRejectsAsync(AgentViewerFrameV6 frame) =>
+    private static Task AssertViewerRejectsAsync(AgentViewerFrameV7 frame) =>
         AssertViewerRejectsPayloadAsync(SerializeFrame(frame));
+
+    private static async Task AssertViewerAcceptsAsync(AgentViewerFrameV7 frame)
+    {
+        var pipeName = CreateTestPipeName();
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var server = ServePayloadAsync(pipeName, SerializeFrame(frame), release.Task);
+        using var client = new AgentViewerClient(pipeName, "dG9rZW4");
+
+        var received = await TakeFrameAsync(client, frame.Sequence);
+        Assert.Equal(SerializeFrame(frame), SerializeFrame(received));
+        Assert.NotEqual(AgentViewerClientState.Rejected, client.State);
+        release.SetResult();
+        await server;
+    }
+
+    private static async Task AssertViewerAcceptsPayloadAsync(
+        string payload,
+        long minimumSequence)
+    {
+        var pipeName = CreateTestPipeName();
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var server = ServePayloadAsync(pipeName, payload, release.Task);
+        using var client = new AgentViewerClient(pipeName, "dG9rZW4");
+
+        _ = await TakeFrameAsync(client, minimumSequence);
+        Assert.NotEqual(AgentViewerClientState.Rejected, client.State);
+        release.SetResult();
+        await server;
+    }
+
+    private static AgentObservationV5 DriveLessonToSatisfiedProgress(
+        AgentSignalLessonDefinitionV2 definition)
+    {
+        var session = new AgentMatchSession(new AgentMatchOptions(
+            $"viewer-facts-{definition.Id}",
+            definition.ModeId,
+            RunModeCatalog.CurrentModeVersion,
+            definition.PracticeSeed,
+            AgentSeedVisibility.Open,
+            definition.MaximumSteps,
+            lessonId: definition.Id));
+        if (definition.Id == AgentSignalSchoolCatalog.FirstTurnId)
+        {
+            var initial = session.Observe();
+            var rejected = session.SubmitAction(new AgentActionRequest(
+                $"viewer-facts-{definition.Id}-reversal",
+                initial.Tick,
+                initial.StateHash,
+                AgentLessonRouteDriver.OppositeAction(initial)));
+            Assert.Equal(AgentActionRejection.IllegalDirection, rejected.Rejection);
+        }
+
+        for (var index = 0; index < definition.MaximumSteps; index++)
+        {
+            var observation = session.Observe();
+            if (observation.LessonProgress!.AllRequirementsSatisfied)
+            {
+                return observation;
+            }
+
+            var response = session.SubmitAction(new AgentActionRequest(
+                $"viewer-facts-{definition.Id}-{index}",
+                observation.Tick,
+                observation.StateHash,
+                AgentLessonRouteDriver.ChooseAction(definition.Id, observation)));
+            Assert.True(response.Accepted, $"{definition.Id}: {response.Rejection}");
+            if (response.Observation.LessonProgress!.AllRequirementsSatisfied)
+            {
+                return response.Observation;
+            }
+        }
+
+        throw new Xunit.Sdk.XunitException(
+            $"{definition.Id} did not reach all lesson requirements.");
+    }
 
     private static async Task AssertViewerRejectsPayloadAsync(string payload)
     {
@@ -2001,7 +2652,7 @@ public sealed class AgentViewerClientTests
         Assert.False(client.TryTakeLatest(out _, out _));
     }
 
-    private static string SerializeFrame(AgentViewerFrameV6 frame) =>
+    private static string SerializeFrame(AgentViewerFrameV7 frame) =>
         JsonSerializer.Serialize(frame, ViewerJsonOptions) + "\n";
 
     private static string CreateTestPipeName() =>
@@ -2017,7 +2668,7 @@ public sealed class AgentViewerClientTests
         return options;
     }
 
-    private static async Task<AgentViewerFrameV6> TakeFrameAsync(
+    private static async Task<AgentViewerFrameV7> TakeFrameAsync(
         AgentViewerClient client,
         long minimumSequence = 0)
     {

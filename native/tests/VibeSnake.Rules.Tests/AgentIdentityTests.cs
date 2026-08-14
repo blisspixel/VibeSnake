@@ -69,9 +69,9 @@ public sealed class AgentIdentityTests
     [Fact]
     public void Anonymous_passport_uses_closed_defaults_and_no_legacy_presentation_fields()
     {
-        var passport = AgentPassportV3.Anonymous;
+        var passport = AgentPassportV4.Anonymous;
 
-        Assert.Equal(AgentPassportV3.Contract, passport.Schema);
+        Assert.Equal(AgentPassportV4.Contract, passport.Schema);
         Assert.Equal("anonymous-agent", passport.AgentId);
         Assert.Equal("unversioned", passport.PolicyVersion);
         Assert.Equal("External Agent", passport.DisplayName);
@@ -93,7 +93,7 @@ public sealed class AgentIdentityTests
                 "Schema",
                 "StationId",
             ],
-            typeof(AgentPassportV3)
+            typeof(AgentPassportV4)
                 .GetProperties()
                 .Where(property => property.GetMethod?.IsStatic == false)
                 .Select(property => property.Name)
@@ -105,11 +105,11 @@ public sealed class AgentIdentityTests
     public void Passport_json_rejects_legacy_and_mixed_schema_shapes()
     {
         var options = Program.CreateSerializerOptions();
-        var json = JsonSerializer.Serialize(AgentPassportV3.Anonymous, options);
-        var roundTripped = JsonSerializer.Deserialize<AgentPassportV3>(json, options);
+        var json = JsonSerializer.Serialize(AgentPassportV4.Anonymous, options);
+        var roundTripped = JsonSerializer.Deserialize<AgentPassportV4>(json, options);
 
-        Assert.Equal(AgentPassportV3.Anonymous, roundTripped);
-        Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<AgentPassportV3>(
+        Assert.Equal(AgentPassportV4.Anonymous, roundTripped);
+        Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<AgentPassportV4>(
             """
             {
               "schema": "vibesnake-agent-passport-v1",
@@ -130,6 +130,6 @@ public sealed class AgentIdentityTests
             StringComparison.Ordinal);
         Assert.NotEqual(json, mixedJson);
         Assert.Throws<JsonException>(() =>
-            JsonSerializer.Deserialize<AgentPassportV3>(mixedJson, options));
+            JsonSerializer.Deserialize<AgentPassportV4>(mixedJson, options));
     }
 }

@@ -24,6 +24,7 @@ REQUIRED_FILES = (
     Path("native/src/VibeSnake.AgentPlay/AgentBurstPolicy.cs"),
     Path("native/src/VibeSnake.AgentPlay/AgentContracts.cs"),
     Path("native/src/VibeSnake.AgentPlay/AgentIdentity.cs"),
+    Path("native/src/VibeSnake.AgentPlay/AgentLessonEvidence.cs"),
     Path("native/src/VibeSnake.AgentPlay/AgentExperience.cs"),
     Path("native/src/VibeSnake.AgentPlay/AgentMatchSession.cs"),
     Path("native/src/VibeSnake.AgentPlay/AgentObservationProjector.cs"),
@@ -49,6 +50,20 @@ def copy_contract_fixture(target: Path) -> None:
 
 def test_checked_in_interoperability_baseline_is_aligned_and_fresh() -> None:
     assert check_baseline(REPOSITORY_ROOT, date(2026, 8, 13)) == ()
+    baseline = load_baseline(REPOSITORY_ROOT / BASELINE_RELATIVE_PATH)
+    assert baseline["mcp"] == {
+        "protocol_version": "2026-07-28",
+        "sdk_package": "ModelContextProtocol",
+        "sdk_version": "2.2.0",
+        "host_version": "0.7.0",
+        "transport": "stdio",
+        "session_model": "stateless",
+    }
+    assert baseline["agent_plugins"]["spec_version"] == "1.0.0"
+    assert baseline["agent_plugins"]["plugin_version"] == "0.7.0"
+    assert baseline["okf"]["spec_version"] == "0.2"
+    assert baseline["public_contract_history"]["host"][-1]["version"] == "0.7.0"
+    assert baseline["public_contract_history"]["plugin"][-1]["version"] == "0.7.0"
 
 
 def test_interoperability_baseline_rejects_staleness_and_source_drift(tmp_path: Path) -> None:
@@ -123,3 +138,16 @@ def test_public_contract_change_requires_a_new_versioned_digest_entry(tmp_path: 
         calculate_contract_digests(tmp_path)["host"]
         != load_baseline(tmp_path / BASELINE_RELATIVE_PATH)["public_contract_history"]["host"][-1]["sha256"]
     )
+
+
+def test_public_contract_history_requires_strictly_increasing_versions(tmp_path: Path) -> None:
+    copy_contract_fixture(tmp_path)
+    baseline_path = tmp_path / BASELINE_RELATIVE_PATH
+    baseline = load_baseline(baseline_path)
+    baseline["public_contract_history"]["host"][-1]["version"] = "0.1.0"
+    baseline["mcp"]["host_version"] = "0.1.0"
+    baseline_path.write_text(json.dumps(baseline, indent=2) + "\n", encoding="utf-8")
+
+    errors = check_baseline(tmp_path, date(2026, 8, 13))
+
+    assert any("must be greater than the preceding history version" in error for error in errors)

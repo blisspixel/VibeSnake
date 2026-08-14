@@ -3,14 +3,17 @@ type: "Curriculum"
 title: "Vibe Snake Signal School and Style Contracts"
 description: "Deterministic lessons and self-selected public goals for agent-native play."
 tags: [vibesnake, curriculum, styles, evaluation]
-generated: { by: process:vibesnake-okf-generator, at: 2026-08-14T06:53:58Z }
-verified: { by: process:vibesnake-quality-gate, at: 2026-08-14T06:53:58Z }
+generated: { by: process:vibesnake-okf-generator, at: 2026-08-14T09:24:52Z }
+verified: { by: process:vibesnake-quality-gate, at: 2026-08-14T09:24:52Z }
 stale_after: "2026-11-13"
 status: draft
 sources:
   - id: agent-experience
     resource: ../../native/src/VibeSnake.AgentPlay/AgentExperience.cs
     title: "Agent experience catalog"
+  - id: lesson-evidence
+    resource: ../../native/src/VibeSnake.AgentPlay/AgentLessonEvidence.cs
+    title: "Signal School requirement and evidence evaluator"
   - id: style-evidence
     resource: ../../native/src/VibeSnake.AgentPlay/AgentStyleEvidence.cs
     title: "Replay-derived style evidence evaluator"
@@ -34,9 +37,12 @@ Live style values are rules-advanced-step observations and may rise or fall. Rat
 * `first-turn`
 * `wrap-line`
 * `hunger-route`
+* `exit-route`
 * `power-route`
-* `combo-route`
 * `recover-route`
+* `combo-route`
+* `death-read`
 
-Call `start_lesson` with one published lesson ID to create its canonical open-seed practice session. Every observation returns the instruction and primary-metric progress; accepted moves and bursts return exact progress deltas, and verified finalization returns a replay-hash-bound outcome. Reaching a practice target is not mastery or qualification.
-Bounded symbolic bursts reduce routine tool-call cost and stop when the selected lesson target first transitions to reached, while preserving exact replay, metric, and control-division identity. The complete eight-behavior curriculum and qualification-time seed decks remain future work.
+Call `start_lesson` with one of eight published lesson IDs to create its canonical open-seed practice session. Every definition publishes ordered closed requirements under `ordered-replay-attempt-evidence-v2`; observations return live requirement progress and the first unmet requirement, accepted moves and bursts return exact progress deltas, and verified finalization returns a factual outcome. A completed practice is not mastery or qualification.
+Accepted-step facts are independently reconstructed from the verified replay. The rejection-aware first-turn lesson additionally uses a maximum-32 canonical attempt-witness sequence: exact idempotent retries do not add evidence, and stale, conflicting, capacity, or wrong-profile requests cannot qualify. The outcome binds the replay payload hash and distinct attempt-evidence hash into one evidence hash. An ordinary saved replay contains only accepted-step history, so it cannot later prove the rejected reversal without a future receipt that carries the attempt evidence.
+A verified miss names the first unmet requirement and a closed review code. Failed-closed evidence produces no verified lesson outcome and directs the client to a fresh same-lesson `start_lesson` session without inherited rules state, mutation keys, or practice history. The resource also publishes exact action-call and UTF-8 byte measurements from checked-in canonical routes; these are evidence, not product-wide limits. Byte accounting covers each exact camelCase MCP tool arguments object and snake_case structured response only; it excludes MCP framing, logs, viewer traffic, and token estimates. Bounded straight-line burst fixtures choose an observation-derived bound from 1 through 16, never exceed the paired step route's action-call count, and reduce calls for at least six of eight lessons. Checked-in non-practice seeds are deterministic evaluator evidence, not qualification-time decks.

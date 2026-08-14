@@ -12,11 +12,12 @@ public sealed class AgentWireJsonStrictnessTests
     {
         var options = Program.CreateSerializerOptions();
         const string valid =
-            "{\"schema\":\"vibesnake-agent-match-result-status-v4\","
+            "{\"schema\":\"vibesnake-agent-match-result-status-v5\","
             + "\"match_handle\":\"match_test\",\"is_available\":false,\"result\":null}";
 
-        var deserialized = JsonSerializer.Deserialize<AgentMatchResultStatusV4>(valid, options);
+        var deserialized = JsonSerializer.Deserialize<AgentMatchResultStatusV5>(valid, options);
         Assert.NotNull(deserialized);
+        Assert.Equal(AgentMatchResultStatusV5.Contract, deserialized.Schema);
         Assert.False(options.AllowDuplicateProperties);
         Assert.True(options.RespectRequiredConstructorParameters);
         Assert.Equal(JsonUnmappedMemberHandling.Disallow, options.UnmappedMemberHandling);
@@ -31,15 +32,15 @@ public sealed class AgentWireJsonStrictnessTests
             var missing = "{" + string.Join(",", retained) + "}";
 
             Assert.Throws<JsonException>(() =>
-                JsonSerializer.Deserialize<AgentMatchResultStatusV4>(missing, options));
+                JsonSerializer.Deserialize<AgentMatchResultStatusV5>(missing, options));
         }
 
         Assert.Throws<JsonException>(() =>
-            JsonSerializer.Deserialize<AgentMatchResultStatusV4>(
+            JsonSerializer.Deserialize<AgentMatchResultStatusV5>(
                 valid[..^1] + ",\"unknown\":true}",
                 options));
         Assert.Throws<JsonException>(() =>
-            JsonSerializer.Deserialize<AgentMatchResultStatusV4>(
+            JsonSerializer.Deserialize<AgentMatchResultStatusV5>(
                 valid.Replace("\"match_handle\"", "\"Match_Handle\"", StringComparison.Ordinal),
                 options));
     }
@@ -49,11 +50,11 @@ public sealed class AgentWireJsonStrictnessTests
     {
         var options = Program.CreateSerializerOptions();
         const string valid =
-            "{\"schema\":\"vibesnake-agent-match-result-status-v4\","
+            "{\"schema\":\"vibesnake-agent-match-result-status-v5\","
             + "\"match_handle\":\"match_test\",\"is_available\":false,\"result\":null}";
         string[] duplicateMembers =
         [
-            "{\"schema\":\"vibesnake-agent-match-result-status-v4\"," + valid[1..],
+            "{\"schema\":\"vibesnake-agent-match-result-status-v5\"," + valid[1..],
             valid.Replace(
                 "\"is_available\":false",
                 "\"is_available\":false,\"is_available\":false",
@@ -63,7 +64,7 @@ public sealed class AgentWireJsonStrictnessTests
         foreach (var duplicate in duplicateMembers)
         {
             Assert.Throws<JsonException>(() =>
-                JsonSerializer.Deserialize<AgentMatchResultStatusV4>(duplicate, options));
+                JsonSerializer.Deserialize<AgentMatchResultStatusV5>(duplicate, options));
         }
 
         Assert.Equal(

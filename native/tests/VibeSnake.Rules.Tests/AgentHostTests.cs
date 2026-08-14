@@ -1,7 +1,8 @@
 using System.Globalization;
-using System.Text.Json;
 using System.IO.Pipes;
 using System.Text;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using Microsoft.Extensions.DependencyInjection;
 using ModelContextProtocol;
 using ModelContextProtocol.Client;
@@ -40,14 +41,14 @@ public sealed class AgentHostTests
         var saved = registry.SaveVerifiedReplay(started.MatchHandle);
         var savedAgain = registry.SaveVerifiedReplay(started.MatchHandle);
 
-        Assert.Equal(StartAgentMatchV4.Contract, started.Schema);
+        Assert.Equal(StartAgentMatchV5.Contract, started.Schema);
         Assert.Equal("match_test", started.MatchHandle);
         Assert.Equal(AgentSessionRegistry.RetentionPolicy, started.RetentionPolicy);
         Assert.False(before.IsAvailable);
         Assert.Null(before.Result);
         Assert.True(moved.Accepted);
         Assert.True(after.IsAvailable);
-        var result = Assert.IsType<AgentMatchSummaryV4>(after.Result);
+        var result = Assert.IsType<AgentMatchSummaryV5>(after.Result);
         AssertSummary(result, "match_test", ulong.MaxValue.ToString(CultureInfo.InvariantCulture));
         Assert.True(saved.IsSuccess);
         Assert.Equal(ReplaySaveCode.Saved, saved.Code);
@@ -102,7 +103,7 @@ public sealed class AgentHostTests
 
         var started = registry.StartLesson(
             lesson.Id,
-            actionProfile: AgentPassportV3.FourDirectionBurstActionProfile);
+            actionProfile: AgentPassportV4.FourDirectionBurstActionProfile);
 
         Assert.Equal(lesson.ModeId, started.Observation.ModeId);
         Assert.Equal(lesson.PracticeSeed, started.Observation.GameplaySeed);
@@ -340,7 +341,7 @@ public sealed class AgentHostTests
             AgentSeedVisibility.Open,
             "321",
             4,
-            actionProfile: AgentPassportV3.FourDirectionBurstActionProfile);
+            actionProfile: AgentPassportV4.FourDirectionBurstActionProfile);
         var burst = burstTools.PlayBurst(
             burstStarted.MatchHandle,
             "tool-burst",
@@ -354,7 +355,7 @@ public sealed class AgentHostTests
         Assert.Equal(
             AgentPublicIntent.SeekFood,
             moved.Observation.PreviousAction!.DeclaredIntent);
-        Assert.Equal(AgentActionResponseV4.Contract, moved.Schema);
+        Assert.Equal(AgentActionResponseV5.Contract, moved.Schema);
         Assert.Null(moved.MatchResult);
         Assert.False(pending.IsAvailable);
         Assert.Equal(AgentMatchEndReason.AgentFinished, finished.EndReason);
@@ -362,7 +363,7 @@ public sealed class AgentHostTests
         Assert.NotNull(saved.RivalFileName);
         Assert.Equal(ReplaySaveCode.Saved, saved.RivalCode);
         Assert.Equal(ReplayVerificationCode.Verified, saved.RivalReplayVerificationCode);
-        Assert.Equal(AgentBurstResponseV4.Contract, burst.Schema);
+        Assert.Equal(AgentBurstResponseV5.Contract, burst.Schema);
         Assert.True(burst.Accepted);
         Assert.Equal(2, burst.StepsAdvanced);
         Assert.Equal(AgentBurstStopReason.RequestedLimit, burst.StopReason);
@@ -401,7 +402,20 @@ public sealed class AgentHostTests
         {
             Assert.False(value.Tool!.OpenWorld);
             Assert.True(value.Tool.UseStructuredContent);
-            Assert.NotNull(value.Tool.OutputSchemaType);
+            Assert.Equal(
+                value.Tool.Name switch
+                {
+                    "start_match" or "start_lesson" => typeof(StartAgentMatchV5),
+                    "observe_match" => typeof(AgentObservationV5),
+                    "play_move" => typeof(AgentActionResponseV5),
+                    "play_burst" => typeof(AgentBurstResponseV5),
+                    "finish_match" => typeof(AgentMatchSummaryV5),
+                    "get_match_result" => typeof(AgentMatchResultStatusV5),
+                    "save_verified_replay" => typeof(AgentReplaySaveV1),
+                    _ => throw new InvalidOperationException(
+                        $"Unexpected MCP tool {value.Tool.Name}."),
+                },
+                value.Tool.OutputSchemaType);
         });
         Assert.True(methods.Single(value => value.Tool!.Name == "observe_match").Tool!.ReadOnly);
         Assert.True(methods.Single(value => value.Tool!.Name == "get_match_result").Tool!.ReadOnly);
@@ -421,19 +435,19 @@ public sealed class AgentHostTests
         var playbook = AgentResources.GetPlaybook();
 
         Assert.Equal(
-            "vibesnake-agent-rules-resource-v6",
+            "vibesnake-agent-rules-resource-v7",
             rules.RootElement.GetProperty("contract").GetString());
         Assert.Equal(
-            AgentObservationV4.Contract,
+            AgentObservationV5.Contract,
             rules.RootElement.GetProperty("observation_schema").GetString());
         Assert.Equal(
-            AgentPassportV3.SymbolicStepObservationProfile,
+            AgentPassportV4.SymbolicStepObservationProfile,
             rules.RootElement.GetProperty("observation_profile").GetString());
         Assert.Equal(
-            AgentPassportV3.Contract,
+            AgentPassportV4.Contract,
             rules.RootElement.GetProperty("passport_schema").GetString());
         Assert.Equal(
-            AgentMatchResultV4.Contract,
+            AgentMatchResultV5.Contract,
             rules.RootElement.GetProperty("result_schema").GetString());
         Assert.Equal(
             "vibesnake://agent/identity",
@@ -449,8 +463,8 @@ public sealed class AgentHostTests
                 .ToArray());
         Assert.Equal(
             [
-                AgentPassportV3.FourDirectionActionProfile,
-                AgentPassportV3.FourDirectionBurstActionProfile,
+                AgentPassportV4.FourDirectionActionProfile,
+                AgentPassportV4.FourDirectionBurstActionProfile,
             ],
             rules.RootElement.GetProperty("action_profiles")
                 .EnumerateArray()
@@ -461,7 +475,7 @@ public sealed class AgentHostTests
             rules.RootElement.GetProperty("burst").GetProperty("maximum_steps").GetInt32());
         var viewer = rules.RootElement.GetProperty("viewer");
         Assert.Equal(
-            AgentViewerFrameV6.Contract,
+            AgentViewerFrameV7.Contract,
             viewer.GetProperty("frame_contract").GetString());
         Assert.Equal(
             ["initial", "step", "burst", "finish"],
@@ -525,20 +539,71 @@ public sealed class AgentHostTests
         Assert.Equal(
             AgentSignalSchoolCatalog.All.Count,
             school.RootElement.GetProperty("lessons").GetArrayLength());
+        Assert.Equal(8, AgentSignalSchoolCatalog.All.Count);
         Assert.Equal(
-            "vibesnake-agent-signal-school-v2",
+            "vibesnake-agent-signal-school-v3",
             school.RootElement.GetProperty("contract").GetString());
-        var firstLesson = school.RootElement.GetProperty("lessons")[0];
-        Assert.Equal("direction_changes", firstLesson.GetProperty("metric").GetString());
-        Assert.False(string.IsNullOrWhiteSpace(firstLesson.GetProperty("instruction").GetString()));
+        Assert.Equal(
+            AgentSignalSchoolCatalog.EvaluationPolicyId,
+            school.RootElement.GetProperty("evaluation_policy").GetString());
+        Assert.Equal(
+            AgentSignalSchoolCatalog.MaximumAttemptWitnesses,
+            school.RootElement.GetProperty("maximum_attempt_witnesses").GetInt32());
+        Assert.Equal(
+            AgentLessonProgressV2.Contract,
+            school.RootElement.GetProperty("progress_schema").GetString());
+        Assert.Equal(
+            AgentLessonProgressDeltaV2.Contract,
+            school.RootElement.GetProperty("delta_schema").GetString());
+        Assert.Equal(
+            AgentLessonOutcomeV2.Contract,
+            school.RootElement.GetProperty("outcome_schema").GetString());
+        Assert.Equal(
+            AgentLessonRetryDescriptorV1.Contract,
+            school.RootElement.GetProperty("retry_schema").GetString());
+        var publishedLessons = school.RootElement.GetProperty("lessons")
+            .EnumerateArray()
+            .ToArray();
+        Assert.Equal(
+            [
+                "first-turn",
+                "wrap-line",
+                "hunger-route",
+                "exit-route",
+                "power-route",
+                "recover-route",
+                "combo-route",
+                "death-read",
+            ],
+            publishedLessons.Select(value => value.GetProperty("id").GetString()!).ToArray());
+        Assert.All(publishedLessons, lesson =>
+        {
+            Assert.False(string.IsNullOrWhiteSpace(lesson.GetProperty("instruction").GetString()));
+            var requirements = lesson.GetProperty("requirements").EnumerateArray().ToArray();
+            Assert.Equal(2, requirements.Length);
+            Assert.Equal(
+                requirements.Length,
+                requirements.Select(value => value.GetProperty("id").GetString())
+                    .Distinct(StringComparer.Ordinal)
+                    .Count());
+            Assert.All(requirements, requirement =>
+            {
+                var source = requirement.GetProperty("evidence_source").GetString();
+                Assert.True(source is "replay_trace" or "attempt_witness");
+            });
+        });
+        Assert.Contains(
+            publishedLessons[0].GetProperty("requirements").EnumerateArray(),
+            requirement => requirement.GetProperty("evidence_source").GetString()
+                == "attempt_witness");
         Assert.Equal(
             AiPersonalityCatalog.BuiltIn.Count,
             rivals.RootElement.GetProperty("rivals").GetArrayLength());
         Assert.Equal(
-            "vibesnake-agent-identity-resource-v2",
+            "vibesnake-agent-identity-resource-v3",
             identity.RootElement.GetProperty("contract").GetString());
         Assert.Equal(
-            AgentPassportV3.Contract,
+            AgentPassportV4.Contract,
             identity.RootElement.GetProperty("passport_schema").GetString());
         Assert.Equal(
             CosmeticSetCatalog.Sets.Select(value => value.Id).ToArray(),
@@ -580,13 +645,105 @@ public sealed class AgentHostTests
         Assert.Contains("play_burst", playbook, StringComparison.Ordinal);
         Assert.Contains("save_verified_replay", playbook, StringComparison.Ordinal);
         Assert.Contains("vibesnake://agent/identity", playbook, StringComparison.Ordinal);
+        var lessonSemantics = school.RootElement.GetProperty("evidence_semantics");
+        Assert.Contains(
+            "verified replay",
+            lessonSemantics.GetProperty("replay").GetString(),
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "distinct from replay schema 1",
+            lessonSemantics.GetProperty("attempts").GetString(),
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "fresh session",
+            lessonSemantics.GetProperty("failed_closed").GetString(),
+            StringComparison.Ordinal);
+        var interactionAccounting = school.RootElement.GetProperty("interaction_accounting");
+        Assert.Equal(
+            "mcp-tool-arguments-and-structured-response-json-v1",
+            interactionAccounting.GetProperty("policy").GetString());
+        Assert.Contains(
+            "play_move and play_burst",
+            interactionAccounting.GetProperty("action_calls").GetString(),
+            StringComparison.Ordinal);
+        Assert.Equal(
+            [
+                "mcp_or_json_rpc_framing",
+                "logs_or_stderr",
+                "viewer_traffic",
+                "token_estimates",
+            ],
+            interactionAccounting.GetProperty("excluded")
+                .EnumerateArray()
+                .Select(value => value.GetString()!)
+                .ToArray());
+        var qualificationEvidence = school.RootElement.GetProperty("qualification_evidence");
+        Assert.Equal(
+            "measured",
+            qualificationEvidence.GetProperty("status").GetString());
+        Assert.Equal(
+            ["start_lesson", "play_move", "play_burst", "finish_match"],
+            qualificationEvidence.GetProperty("included_calls")
+                .EnumerateArray()
+                .Select(value => value.GetString()!)
+                .ToArray());
+        Assert.Contains(
+            "observation-derived maximumSteps between 1 and 16",
+            qualificationEvidence.GetProperty("burst_measurement").GetString(),
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "at least six of eight lessons must use fewer",
+            qualificationEvidence.GetProperty("regression_policy").GetString(),
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "only required arguments",
+            qualificationEvidence.GetProperty("request_policy").GetString(),
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "match_route-{lesson_id}",
+            qualificationEvidence.GetProperty("fixture_policy").GetString(),
+            StringComparison.Ordinal);
+        Assert.Equal(
+            ["lesson_id", "action_profile"],
+            qualificationEvidence.GetProperty("dimensions")
+                .EnumerateArray()
+                .Select(value => value.GetString()!)
+                .ToArray());
+        Assert.Equal(
+            [
+                "action_calls",
+                "request_utf8_bytes",
+                "response_utf8_bytes",
+                "total_utf8_bytes",
+            ],
+            qualificationEvidence.GetProperty("measures")
+                .EnumerateArray()
+                .Select(value => value.GetString()!)
+                .ToArray());
+        var qualificationObservations = qualificationEvidence.GetProperty("observations")
+            .EnumerateArray()
+            .ToArray();
+        Assert.Equal(16, qualificationObservations.Length);
+        Assert.Equal(
+            AgentSignalSchoolCatalog.All.SelectMany(lesson => new[]
+            {
+                $"{lesson.Id}/{AgentPassportV4.FourDirectionActionProfile}",
+                $"{lesson.Id}/{AgentPassportV4.FourDirectionBurstActionProfile}",
+            }),
+            qualificationObservations.Select(value =>
+                $"{value.GetProperty("lesson_id").GetString()}/{value.GetProperty("action_profile").GetString()}"));
+        Assert.All(qualificationObservations, value => Assert.Equal(
+            value.GetProperty("request_utf8_bytes").GetInt32()
+                + value.GetProperty("response_utf8_bytes").GetInt32(),
+            value.GetProperty("total_utf8_bytes").GetInt32()));
         var replayContract = rules.RootElement.GetProperty("replay").GetString();
         Assert.Contains("verified lane result", replayContract, StringComparison.Ordinal);
         Assert.Contains("Failed-closed", replayContract, StringComparison.Ordinal);
         Assert.DoesNotContain("replay receipt", replayContract, StringComparison.Ordinal);
         Assert.Contains("request early finalization", playbook, StringComparison.Ordinal);
         Assert.Contains("Confirm that finalization returned a verified result", playbook, StringComparison.Ordinal);
-        Assert.Contains("successful finalization", AgentViewerServer.ViewerRetentionPolicy, StringComparison.Ordinal);
+        Assert.Contains("canonical accepted-step history", AgentViewerServer.ViewerRetentionPolicy, StringComparison.Ordinal);
+        Assert.Contains("bounded attempt evidence", AgentViewerServer.ViewerRetentionPolicy, StringComparison.Ordinal);
         Assert.DoesNotContain("chain of thought", AgentResources.GetRules(), StringComparison.OrdinalIgnoreCase);
     }
 
@@ -624,13 +781,73 @@ public sealed class AgentHostTests
     }
 
     [Fact]
+    public void Signal_school_publishes_exact_canonical_route_interaction_evidence()
+    {
+        using var temporary = new AgentHostTemporaryDirectory();
+        var measured = AgentSignalSchoolCatalog.All
+            .SelectMany(definition => new[]
+            {
+                MeasureQualificationRoute(
+                    definition,
+                    AgentPassportV4.FourDirectionActionProfile,
+                    temporary.Path),
+                MeasureQualificationRoute(
+                    definition,
+                    AgentPassportV4.FourDirectionBurstActionProfile,
+                    temporary.Path),
+            })
+            .ToArray();
+        using var school = JsonDocument.Parse(AgentResources.GetSignalSchool());
+        var evidence = school.RootElement.GetProperty("qualification_evidence");
+        var observations = evidence.GetProperty("observations");
+
+        Assert.Equal(16, measured.Length);
+        Assert.All(measured, value =>
+        {
+            Assert.Equal(
+                AgentLessonRouteDriver.DriveSession(
+                    AgentSignalSchoolCatalog.Get(value.LessonId),
+                    value.ActionProfile).Calls.Count,
+                value.ActionCalls);
+            Assert.True(value.ActionCalls > 0);
+            Assert.True(value.RequestUtf8Bytes > 0);
+            Assert.True(value.ResponseUtf8Bytes > 0);
+            Assert.Equal(
+                value.RequestUtf8Bytes + value.ResponseUtf8Bytes,
+                value.TotalUtf8Bytes);
+        });
+        var actionCallsByLesson = measured
+            .GroupBy(value => value.LessonId, StringComparer.Ordinal)
+            .ToDictionary(
+                group => group.Key,
+                group => group.ToDictionary(
+                    value => value.ActionProfile,
+                    value => value.ActionCalls,
+                    StringComparer.Ordinal),
+                StringComparer.Ordinal);
+        Assert.All(actionCallsByLesson.Values, actionCalls => Assert.True(
+            actionCalls[AgentPassportV4.FourDirectionBurstActionProfile]
+                <= actionCalls[AgentPassportV4.FourDirectionActionProfile]));
+        Assert.True(actionCallsByLesson.Values.Count(actionCalls =>
+            actionCalls[AgentPassportV4.FourDirectionBurstActionProfile]
+                < actionCalls[AgentPassportV4.FourDirectionActionProfile]) >= 6);
+        Assert.Equal("measured", evidence.GetProperty("status").GetString());
+        var measuredElement = JsonSerializer.SerializeToElement(
+            measured,
+            Program.CreateSerializerOptions());
+        Assert.True(
+            JsonElement.DeepEquals(measuredElement, observations),
+            measuredElement.GetRawText());
+    }
+
+    [Fact]
     public void Host_builder_uses_strict_snake_case_protocol_serialization()
     {
         using var temporary = new AgentHostTemporaryDirectory();
         var options = Program.CreateSerializerOptions();
         var json = JsonSerializer.Serialize(
-            new AgentMatchResultStatusV4(
-                AgentMatchResultStatusV4.Contract,
+            new AgentMatchResultStatusV5(
+                AgentMatchResultStatusV5.Contract,
                 "match_test",
                 IsAvailable: false,
                 Result: null),
@@ -639,6 +856,12 @@ public sealed class AgentHostTests
         Assert.Contains("\"match_handle\"", json, StringComparison.Ordinal);
         Assert.Contains("\"is_available\"", json, StringComparison.Ordinal);
         Assert.False(options.PropertyNameCaseInsensitive);
+        Assert.False(options.AllowDuplicateProperties);
+        Assert.True(options.RespectRequiredConstructorParameters);
+        Assert.Equal(JsonUnmappedMemberHandling.Disallow, options.UnmappedMemberHandling);
+        Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<AgentMatchResultStatusV5>(
+            json[..^1] + ",\"legacy_result\":true}",
+            options));
         var builder = Program.CreateHostApplicationBuilder([], temporary.Path);
         using var host = builder.Build();
         var defaultBuilder = Program.CreateHostApplicationBuilder([]);
@@ -646,7 +869,7 @@ public sealed class AgentHostTests
         Assert.NotNull(host.Services);
         Assert.NotNull(defaultHost.Services);
         Assert.Equal("vibesnake-agent-host", Program.HostName);
-        Assert.Equal("0.6.0", Program.HostVersion);
+        Assert.Equal("0.7.0", Program.HostVersion);
         Assert.Throws<ArgumentNullException>(() =>
             Program.CreateHostApplicationBuilder(null!, temporary.Path));
     }
@@ -670,7 +893,7 @@ public sealed class AgentHostTests
         var result = registry.GetResult(started.MatchHandle).Result!;
         var saved = registry.SaveVerifiedReplay(started.MatchHandle);
 
-        Assert.Equal(AgentMatchSummaryV4.Contract, result.Schema);
+        Assert.Equal(AgentMatchSummaryV5.Contract, result.Schema);
         Assert.Equal(AgentMatchLifecycle.Completed, result.Lifecycle);
         Assert.Equal(AgentMatchEndReason.StepLimit, result.EndReason);
         Assert.Equal(RulesetIdentity.CurrentId, result.RulesetId);
@@ -714,7 +937,7 @@ public sealed class AgentHostTests
         Assert.NotNull(terminalResponse.MatchResult);
         Assert.DoesNotContain(
             terminalResponse.MatchResult!.GetType().GetProperties(),
-            property => property.Name == nameof(AgentMatchResultV4.VerifiedReplay));
+            property => property.Name == nameof(AgentMatchResultV5.VerifiedReplay));
     }
 
     [Fact]
@@ -753,18 +976,18 @@ public sealed class AgentHostTests
                 ["watchEnabled"] = true,
                 ["styleContractId"] = AgentStyleContractCatalog.StillwaterId,
                 ["rivalPersonalityId"] = "optimal",
-                ["actionProfile"] = AgentPassportV3.FourDirectionBurstActionProfile,
+                ["actionProfile"] = AgentPassportV4.FourDirectionBurstActionProfile,
                 ["passport"] = new Dictionary<string, object?>
                 {
-                    ["schema"] = AgentPassportV3.Contract,
+                    ["schema"] = AgentPassportV4.Contract,
                     ["agent_id"] = "golden-agent",
                     ["policy_version"] = "policy-1",
                     ["display_name"] = "Golden Agent",
                     ["avatar_id"] = "redline",
                     ["accent_id"] = "coil-gold",
                     ["station_id"] = "global_coil",
-                    ["observation_profile"] = AgentPassportV3.SymbolicStepObservationProfile,
-                    ["action_profile"] = AgentPassportV3.FourDirectionBurstActionProfile,
+                    ["observation_profile"] = AgentPassportV4.SymbolicStepObservationProfile,
+                    ["action_profile"] = AgentPassportV4.FourDirectionBurstActionProfile,
                 },
             },
             cancellationToken: timeout.Token);
@@ -774,6 +997,7 @@ public sealed class AgentHostTests
         Assert.False(started.IsError ?? false, startDiagnostic);
         Assert.True(started.StructuredContent.HasValue, startDiagnostic);
         var startedJson = Assert.IsType<JsonElement>(started.StructuredContent);
+        Assert.Equal(StartAgentMatchV5.Contract, startedJson.GetProperty("schema").GetString());
         var handle = startedJson.GetProperty("match_handle").GetString()!;
         var observation = startedJson.GetProperty("observation");
         var viewer = startedJson.GetProperty("viewer");
@@ -816,8 +1040,8 @@ public sealed class AgentHostTests
             "start_lesson",
             new Dictionary<string, object?>
             {
-                ["lessonId"] = "first-turn",
-                ["actionProfile"] = AgentPassportV3.FourDirectionBurstActionProfile,
+                ["lessonId"] = AgentSignalSchoolCatalog.FirstTurnId,
+                ["actionProfile"] = AgentPassportV4.FourDirectionActionProfile,
             },
             cancellationToken: timeout.Token);
         var lessonDiagnostic = string.Join(
@@ -825,12 +1049,200 @@ public sealed class AgentHostTests
             lessonStarted.Content.OfType<TextContentBlock>().Select(content => content.Text));
         Assert.False(lessonStarted.IsError ?? false, lessonDiagnostic);
         var lessonJson = Assert.IsType<JsonElement>(lessonStarted.StructuredContent);
+        Assert.Equal(StartAgentMatchV5.Contract, lessonJson.GetProperty("schema").GetString());
+        var lessonHandle = lessonJson.GetProperty("match_handle").GetString()!;
+        var lessonObservation = lessonJson.GetProperty("observation");
         Assert.Equal(
-            "first-turn",
-            lessonJson.GetProperty("observation")
+            AgentObservationV5.Contract,
+            lessonObservation.GetProperty("schema").GetString());
+        var lessonProgress = lessonObservation.GetProperty("lesson_progress");
+        Assert.Equal(
+            AgentSignalSchoolCatalog.FirstTurnId,
+            lessonProgress.GetProperty("lesson_id").GetString());
+        Assert.Equal(AgentLessonProgressV2.Contract, lessonProgress.GetProperty("schema").GetString());
+        Assert.Equal("live", lessonProgress.GetProperty("evidence_state").GetString());
+        Assert.Equal(0, lessonProgress.GetProperty("attempt_evidence_count").GetInt32());
+        Assert.Equal(2, lessonProgress.GetProperty("requirements").GetArrayLength());
+
+        var oppositeAction = lessonObservation.GetProperty("direction").GetString() switch
+        {
+            "up" => "down",
+            "right" => "left",
+            "down" => "up",
+            "left" => "right",
+            var direction => throw new Xunit.Sdk.XunitException(
+                $"Unexpected first-turn direction {direction}."),
+        };
+        var legalAction = lessonObservation.GetProperty("direction").GetString() is "up" or "down"
+            ? "right"
+            : "up";
+        var rejectedArguments = new Dictionary<string, object?>
+        {
+            ["matchHandle"] = lessonHandle,
+            ["idempotencyKey"] = "lesson-reversal",
+            ["expectedTick"] = lessonObservation.GetProperty("tick").GetInt32(),
+            ["expectedStateHash"] = lessonObservation.GetProperty("state_hash").GetString(),
+            ["action"] = oppositeAction,
+        };
+        var rejectedLessonMove = await client.CallToolAsync(
+            "play_move",
+            rejectedArguments,
+            cancellationToken: timeout.Token);
+        var rejectedLessonJson = Assert.IsType<JsonElement>(rejectedLessonMove.StructuredContent);
+        Assert.False(rejectedLessonMove.IsError ?? false);
+        Assert.Equal(AgentActionResponseV5.Contract, rejectedLessonJson.GetProperty("schema").GetString());
+        Assert.False(rejectedLessonJson.GetProperty("accepted").GetBoolean());
+        Assert.False(rejectedLessonJson.GetProperty("rules_advanced").GetBoolean());
+        Assert.Equal("illegal_direction", rejectedLessonJson.GetProperty("rejection").GetString());
+        var rejectionDelta = rejectedLessonJson.GetProperty("lesson_delta");
+        Assert.Equal(AgentLessonProgressDeltaV2.Contract, rejectionDelta.GetProperty("schema").GetString());
+        Assert.Equal(
+            ["opposite_reversal_rejected"],
+            rejectionDelta.GetProperty("newly_satisfied_requirement_ids")
+                .EnumerateArray()
+                .Select(value => value.GetString()!)
+                .ToArray());
+        Assert.Equal(1, rejectionDelta.GetProperty("attempt_evidence_count").GetInt32());
+
+        var exactRetry = await client.CallToolAsync(
+            "play_move",
+            rejectedArguments,
+            cancellationToken: timeout.Token);
+        Assert.False(exactRetry.IsError ?? false);
+        Assert.Equal(
+            rejectedLessonJson.GetRawText(),
+            Assert.IsType<JsonElement>(exactRetry.StructuredContent).GetRawText());
+
+        var afterRejection = rejectedLessonJson.GetProperty("observation");
+        var recoveredLessonMove = await client.CallToolAsync(
+            "play_move",
+            new Dictionary<string, object?>
+            {
+                ["matchHandle"] = lessonHandle,
+                ["idempotencyKey"] = "lesson-recovery",
+                ["expectedTick"] = afterRejection.GetProperty("tick").GetInt32(),
+                ["expectedStateHash"] = afterRejection.GetProperty("state_hash").GetString(),
+                ["action"] = legalAction,
+            },
+            cancellationToken: timeout.Token);
+        Assert.False(recoveredLessonMove.IsError ?? false);
+        var recoveredLessonJson = Assert.IsType<JsonElement>(recoveredLessonMove.StructuredContent);
+        Assert.True(recoveredLessonJson.GetProperty("accepted").GetBoolean());
+        Assert.True(recoveredLessonJson.GetProperty("rules_advanced").GetBoolean());
+        Assert.True(
+            recoveredLessonJson.GetProperty("lesson_delta")
+                .GetProperty("all_requirements_reached_this_mutation")
+                .GetBoolean());
+        Assert.True(
+            recoveredLessonJson.GetProperty("observation")
                 .GetProperty("lesson_progress")
-                .GetProperty("lesson_id")
+                .GetProperty("all_requirements_satisfied")
+                .GetBoolean());
+
+        var completedLesson = await client.CallToolAsync(
+            "finish_match",
+            new Dictionary<string, object?> { ["matchHandle"] = lessonHandle },
+            cancellationToken: timeout.Token);
+        Assert.False(completedLesson.IsError ?? false);
+        var completedLessonJson = Assert.IsType<JsonElement>(completedLesson.StructuredContent);
+        Assert.Equal(AgentMatchSummaryV5.Contract, completedLessonJson.GetProperty("schema").GetString());
+        var completedOutcome = completedLessonJson.GetProperty("lesson_outcome");
+        Assert.Equal(AgentLessonOutcomeV2.Contract, completedOutcome.GetProperty("schema").GetString());
+        Assert.True(completedOutcome.GetProperty("all_requirements_satisfied").GetBoolean());
+        Assert.Equal("target_reached", completedOutcome.GetProperty("review_code").GetString());
+        Assert.Equal(
+            completedLessonJson.GetProperty("replay_payload_hash").GetString(),
+            completedOutcome.GetProperty("replay_payload_hash").GetString());
+        Assert.NotEqual(
+            completedOutcome.GetProperty("replay_payload_hash").GetString(),
+            completedOutcome.GetProperty("attempt_evidence_hash").GetString());
+        Assert.Equal(64, completedOutcome.GetProperty("evidence_hash").GetString()!.Length);
+
+        var incompleteStarted = await client.CallToolAsync(
+            "start_lesson",
+            new Dictionary<string, object?>
+            {
+                ["lessonId"] = AgentSignalSchoolCatalog.FirstTurnId,
+                ["actionProfile"] = AgentPassportV4.FourDirectionActionProfile,
+            },
+            cancellationToken: timeout.Token);
+        Assert.False(incompleteStarted.IsError ?? false);
+        var incompleteStartJson = Assert.IsType<JsonElement>(incompleteStarted.StructuredContent);
+        var incompleteHandle = incompleteStartJson.GetProperty("match_handle").GetString()!;
+        var incompleteFinished = await client.CallToolAsync(
+            "finish_match",
+            new Dictionary<string, object?> { ["matchHandle"] = incompleteHandle },
+            cancellationToken: timeout.Token);
+        Assert.False(incompleteFinished.IsError ?? false);
+        var incompleteOutcome = Assert.IsType<JsonElement>(incompleteFinished.StructuredContent)
+            .GetProperty("lesson_outcome");
+        Assert.False(incompleteOutcome.GetProperty("all_requirements_satisfied").GetBoolean());
+        Assert.Equal(
+            "opposite_reversal_rejected",
+            incompleteOutcome.GetProperty("first_unmet_requirement_id").GetString());
+        Assert.Equal(
+            "insufficient_attempt_evidence",
+            incompleteOutcome.GetProperty("review_code").GetString());
+        var retry = incompleteOutcome.GetProperty("retry_descriptor");
+        Assert.Equal(AgentLessonRetryDescriptorV1.Contract, retry.GetProperty("schema").GetString());
+        Assert.Equal("start_lesson", retry.GetProperty("tool").GetString());
+        Assert.True(retry.GetProperty("fresh_session_required").GetBoolean());
+        var retriedLesson = await client.CallToolAsync(
+            retry.GetProperty("tool").GetString()!,
+            new Dictionary<string, object?>
+            {
+                ["lessonId"] = retry.GetProperty("lesson_id").GetString(),
+                ["actionProfile"] = retry.GetProperty("action_profile").GetString(),
+            },
+            cancellationToken: timeout.Token);
+        Assert.False(retriedLesson.IsError ?? false);
+        Assert.NotEqual(
+            incompleteHandle,
+            Assert.IsType<JsonElement>(retriedLesson.StructuredContent)
+                .GetProperty("match_handle")
                 .GetString());
+
+        var legacyPassport = await client.CallToolAsync(
+            "start_lesson",
+            new Dictionary<string, object?>
+            {
+                ["lessonId"] = AgentSignalSchoolCatalog.FirstTurnId,
+                ["passport"] = new Dictionary<string, object?>
+                {
+                    ["schema"] = "vibesnake-agent-passport-v3",
+                    ["agent_id"] = "legacy-agent",
+                    ["policy_version"] = "v1",
+                    ["display_name"] = "Legacy Agent",
+                    ["avatar_id"] = "redline",
+                    ["accent_id"] = "coil-gold",
+                    ["station_id"] = "global_coil",
+                    ["observation_profile"] = "symbolic-step-v3",
+                    ["action_profile"] = AgentPassportV4.FourDirectionActionProfile,
+                },
+            },
+            cancellationToken: timeout.Token);
+        Assert.True(legacyPassport.IsError ?? false);
+        var mixedPassport = await client.CallToolAsync(
+            "start_lesson",
+            new Dictionary<string, object?>
+            {
+                ["lessonId"] = AgentSignalSchoolCatalog.FirstTurnId,
+                ["passport"] = new Dictionary<string, object?>
+                {
+                    ["schema"] = AgentPassportV4.Contract,
+                    ["agent_id"] = "mixed-agent",
+                    ["policy_version"] = "v1",
+                    ["display_name"] = "Mixed Agent",
+                    ["avatar_id"] = "redline",
+                    ["accent_id"] = "coil-gold",
+                    ["station_id"] = "global_coil",
+                    ["observation_profile"] = AgentPassportV4.SymbolicStepObservationProfile,
+                    ["action_profile"] = AgentPassportV4.FourDirectionActionProfile,
+                    ["legacy_name"] = "not allowed",
+                },
+            },
+            cancellationToken: timeout.Token);
+        Assert.True(mixedPassport.IsError ?? false);
 
         Assert.Equal(Program.McpProtocolVersion, client.NegotiatedProtocolVersion);
         Assert.Null(client.SessionId);
@@ -864,13 +1276,17 @@ public sealed class AgentHostTests
             resource => resource.Uri == "vibesnake://agent/identity");
         var rulesText = Assert.IsType<TextResourceContents>(Assert.Single(rules.Contents));
         Assert.Contains(
-            "vibesnake-agent-rules-resource-v6",
+            "vibesnake-agent-rules-resource-v7",
             rulesText.Text,
             StringComparison.Ordinal);
         Assert.False(moved.IsError ?? false);
+        Assert.Equal(
+            AgentBurstResponseV5.Contract,
+            moved.StructuredContent!.Value.GetProperty("schema").GetString());
         Assert.True(moved.StructuredContent!.Value.GetProperty("accepted").GetBoolean());
         Assert.Equal(2, moved.StructuredContent.Value.GetProperty("steps_advanced").GetInt32());
         Assert.Equal(AgentViewerOperationKind.Burst, terminalViewerFrame.Operation);
+        Assert.Equal(AgentViewerFrameV7.Contract, terminalViewerFrame.Schema);
         Assert.Equal(2, terminalViewerFrame.StepsAdvanced);
         Assert.Equal(AgentBurstStopReason.MatchStepLimit, terminalViewerFrame.BurstStopReason);
         Assert.Equal(AgentMatchEndReason.StepLimit, terminalViewerFrame.EndReason);
@@ -883,6 +1299,9 @@ public sealed class AgentHostTests
                 .GetProperty("declared_intent")
                 .GetString());
         Assert.False(finished.IsError ?? false);
+        Assert.Equal(
+            AgentMatchSummaryV5.Contract,
+            finished.StructuredContent!.Value.GetProperty("schema").GetString());
         Assert.Equal(
             "step_limit",
             finished.StructuredContent!.Value.GetProperty("end_reason").GetString());
@@ -946,12 +1365,12 @@ public sealed class AgentHostTests
         };
     }
 
-    private static async Task<AgentViewerFrameV6> TakeViewerFrameAsync(
+    private static async Task<AgentViewerFrameV7> TakeViewerFrameAsync(
         AgentViewerClient client,
         long minimumSequence) =>
         (await TakeViewerDeliveryAsync(client, minimumSequence)).Frame;
 
-    private static async Task<(AgentViewerFrameV6 Frame, long CoalescedFrames)>
+    private static async Task<(AgentViewerFrameV7 Frame, long CoalescedFrames)>
         TakeViewerDeliveryAsync(
             AgentViewerClient client,
             long minimumSequence)
@@ -1130,8 +1549,8 @@ public sealed class AgentHostTests
             RunModeCatalog.CurrentModeVersion,
             1UL,
             AgentSeedVisibility.Open)).Observe();
-        Assert.True(server.TryPublish(new AgentViewerFrameV6(
-            AgentViewerFrameV6.Contract,
+        Assert.True(server.TryPublish(new AgentViewerFrameV7(
+            AgentViewerFrameV7.Contract,
             0,
             AgentViewerOperationKind.Initial,
             StartTick: initialObservation.Tick,
@@ -1149,8 +1568,8 @@ public sealed class AgentHostTests
             RunModeCatalog.CurrentModeVersion,
             2UL,
             AgentSeedVisibility.Open)).Observe();
-        Assert.False(server.TryPublish(new AgentViewerFrameV6(
-            AgentViewerFrameV6.Contract,
+        Assert.False(server.TryPublish(new AgentViewerFrameV7(
+            AgentViewerFrameV7.Contract,
             1,
             AgentViewerOperationKind.Initial,
             StartTick: secondObservation.Tick,
@@ -1183,12 +1602,138 @@ public sealed class AgentHostTests
             () => handle,
             () => seed);
 
+    private static SignalSchoolQualificationMeasurement MeasureQualificationRoute(
+        AgentSignalLessonDefinitionV2 definition,
+        string actionProfile,
+        string root)
+    {
+        var serializerOptions = Program.CreateSerializerOptions();
+        var handle = $"match_route-{definition.Id}";
+        using var registry = CreateRegistry(root, handle, definition.PracticeSeed);
+        var tools = new McpAgentTools(registry);
+        var requestUtf8Bytes = JsonSerializer.SerializeToUtf8Bytes(
+            new Dictionary<string, object?>(StringComparer.Ordinal)
+            {
+                ["lessonId"] = definition.Id,
+                ["actionProfile"] = actionProfile,
+            },
+            serializerOptions).Length;
+        var started = tools.StartLesson(definition.Id, actionProfile: actionProfile);
+        var responseUtf8Bytes = JsonSerializer.SerializeToUtf8Bytes(
+            started,
+            serializerOptions).Length;
+        var actionCalls = 0;
+        var observation = started.Observation;
+        AgentMatchSummaryV5? result = null;
+
+        AgentMatchSummaryV5? Submit(string key, AgentAction action)
+        {
+            actionCalls++;
+            if (actionProfile == AgentPassportV4.FourDirectionActionProfile)
+            {
+                requestUtf8Bytes += JsonSerializer.SerializeToUtf8Bytes(
+                    new Dictionary<string, object?>(StringComparer.Ordinal)
+                    {
+                        ["matchHandle"] = handle,
+                        ["idempotencyKey"] = key,
+                        ["expectedTick"] = observation.Tick,
+                        ["expectedStateHash"] = observation.StateHash,
+                        ["action"] = action,
+                    },
+                    serializerOptions).Length;
+                var response = tools.PlayMove(
+                    handle,
+                    key,
+                    observation.Tick,
+                    observation.StateHash,
+                    action);
+                responseUtf8Bytes += JsonSerializer.SerializeToUtf8Bytes(
+                    response,
+                    serializerOptions).Length;
+                observation = response.Observation;
+                return response.MatchResult;
+            }
+
+            Assert.Equal(AgentPassportV4.FourDirectionBurstActionProfile, actionProfile);
+            var maximumSteps = AgentLessonRouteDriver.ChooseBurstMaximumSteps(
+                definition.Id,
+                observation,
+                action);
+            requestUtf8Bytes += JsonSerializer.SerializeToUtf8Bytes(
+                new Dictionary<string, object?>(StringComparer.Ordinal)
+                {
+                    ["matchHandle"] = handle,
+                    ["idempotencyKey"] = key,
+                    ["expectedTick"] = observation.Tick,
+                    ["expectedStateHash"] = observation.StateHash,
+                    ["initialAction"] = action,
+                    ["maximumSteps"] = maximumSteps,
+                },
+                serializerOptions).Length;
+            var burst = tools.PlayBurst(
+                handle,
+                key,
+                observation.Tick,
+                observation.StateHash,
+                action,
+                maximumSteps);
+            responseUtf8Bytes += JsonSerializer.SerializeToUtf8Bytes(
+                burst,
+                serializerOptions).Length;
+            observation = burst.Observation;
+            return burst.MatchResult;
+        }
+
+        var keyPrefix = $"route-{definition.Id}";
+        if (definition.Id == AgentSignalSchoolCatalog.FirstTurnId)
+        {
+            result = Submit(
+                $"{keyPrefix}-reversal",
+                AgentLessonRouteDriver.OppositeAction(observation));
+        }
+
+        for (var step = 0; step < definition.MaximumSteps && result is null; step++)
+        {
+            if (observation.LessonProgress!.AllRequirementsSatisfied)
+            {
+                break;
+            }
+
+            result = Submit(
+                $"{keyPrefix}-{step}",
+                AgentLessonRouteDriver.ChooseAction(definition.Id, observation));
+        }
+
+        requestUtf8Bytes += JsonSerializer.SerializeToUtf8Bytes(
+            new Dictionary<string, object?>(StringComparer.Ordinal)
+            {
+                ["matchHandle"] = handle,
+            },
+            serializerOptions).Length;
+        var finished = tools.FinishMatch(handle);
+        responseUtf8Bytes += JsonSerializer.SerializeToUtf8Bytes(
+            finished,
+            serializerOptions).Length;
+        Assert.True(
+            finished.LessonOutcome!.AllRequirementsSatisfied,
+            $"{definition.Id}/{actionProfile}: first unmet "
+            + finished.LessonOutcome.FirstUnmetRequirementId);
+        Assert.Equal(AgentLessonReviewCode.TargetReached, finished.LessonOutcome.ReviewCode);
+        return new SignalSchoolQualificationMeasurement(
+            definition.Id,
+            actionProfile,
+            actionCalls,
+            requestUtf8Bytes,
+            responseUtf8Bytes,
+            checked(requestUtf8Bytes + responseUtf8Bytes));
+    }
+
     private static void AssertSummary(
-        AgentMatchSummaryV4 result,
+        AgentMatchSummaryV5 result,
         string expectedHandle,
         string expectedSeed)
     {
-        Assert.Equal(AgentMatchSummaryV4.Contract, result.Schema);
+        Assert.Equal(AgentMatchSummaryV5.Contract, result.Schema);
         Assert.Equal(expectedHandle, result.MatchHandle);
         Assert.Equal(expectedSeed, result.GameplaySeed);
         Assert.Equal(AgentMatchLifecycle.Completed, result.Lifecycle);
@@ -1217,6 +1762,14 @@ public sealed class AgentHostTests
             }
         }
     }
+
+    private sealed record SignalSchoolQualificationMeasurement(
+        string LessonId,
+        string ActionProfile,
+        int ActionCalls,
+        int RequestUtf8Bytes,
+        int ResponseUtf8Bytes,
+        int TotalUtf8Bytes);
 
     private sealed class ManualTimeProvider : TimeProvider
     {

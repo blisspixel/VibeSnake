@@ -170,7 +170,7 @@ public partial class Main : Node2D
     private bool _spectatorControllerRouteQualified;
 #if AGENT_ARENA_PREVIEW
     private AgentViewerClient? _agentViewer;
-    private AgentViewerFrameV6? _agentViewerFrame;
+    private AgentViewerFrameV7? _agentViewerFrame;
     private long _agentViewerCoalescedFrames;
     private bool _agentViewerSnappedLatestFrame;
     private RunSnapshot? _agentViewerSnapshot;
@@ -9684,19 +9684,43 @@ public partial class Main : Node2D
         _ => throw new ArgumentOutOfRangeException(nameof(intent)),
     };
 
-    private static string AgentLessonMetricCopyId(AgentExperienceMetric metric) => metric switch
+    private static string AgentLessonRequirementStateCopyId(
+        AgentLessonRequirementProgressV2 requirement,
+        bool evidenceVerified,
+        bool verifiedEvidenceUnavailable)
     {
-        AgentExperienceMetric.SurvivalSteps => "agent-arena.lesson.metric.survival-steps",
-        AgentExperienceMetric.FoodEaten => "agent-arena.lesson.metric.food-eaten",
-        AgentExperienceMetric.PeakCombo => "agent-arena.lesson.metric.peak-combo",
-        AgentExperienceMetric.Wraps => "agent-arena.lesson.metric.wraps",
-        AgentExperienceMetric.NearMisses => "agent-arena.lesson.metric.near-misses",
-        AgentExperienceMetric.PowersCollected => "agent-arena.lesson.metric.powers-collected",
-        AgentExperienceMetric.PowersActivated => "agent-arena.lesson.metric.powers-activated",
-        AgentExperienceMetric.Recoveries => "agent-arena.lesson.metric.recoveries",
-        AgentExperienceMetric.DirectionChanges => "agent-arena.lesson.metric.direction-changes",
-        _ => throw new ArgumentOutOfRangeException(nameof(metric)),
-    };
+        if (verifiedEvidenceUnavailable)
+        {
+            return "agent-arena.lesson.requirement.replay-unverified";
+        }
+
+        if (evidenceVerified)
+        {
+            return requirement.Satisfied
+                ? "agent-arena.lesson.requirement.verified-met"
+                : "agent-arena.lesson.requirement.verified-not-met";
+        }
+
+        return requirement.Satisfied
+            ? "agent-arena.lesson.requirement.observed-met"
+            : "agent-arena.lesson.requirement.observed-not-met";
+    }
+
+    private string AgentLessonRequirementCopy(
+        AgentLessonRequirementProgressV2 requirement,
+        bool evidenceVerified,
+        bool verifiedEvidenceUnavailable) =>
+        Localize(
+            "agent-arena.lesson.requirement",
+            ShellTextArgument.From(
+                "state",
+                Localize(AgentLessonRequirementStateCopyId(
+                    requirement,
+                    evidenceVerified,
+                    verifiedEvidenceUnavailable))),
+            ShellTextArgument.From("requirement", requirement.DisplayName.ToUpperInvariant()),
+            ShellTextArgument.From("current", requirement.Current),
+            ShellTextArgument.From("target", requirement.Target));
 
     private static string AgentStyleCriterionStateCopyId(
         AgentStyleCriterionProgressV2 criterion,
@@ -9791,7 +9815,7 @@ public partial class Main : Node2D
         _ => throw new ArgumentOutOfRangeException(nameof(endReason)),
     };
 
-    private string AgentViewerOperationCopy(AgentViewerFrameV6 frame) => frame.Operation switch
+    private string AgentViewerOperationCopy(AgentViewerFrameV7 frame) => frame.Operation switch
     {
         AgentViewerOperationKind.Initial => Localize("agent-arena.operation.initial"),
         AgentViewerOperationKind.Step => Localize(
@@ -9824,7 +9848,7 @@ public partial class Main : Node2D
                 "agent-arena.burst.stop.rules-terminal",
             AgentBurstStopReason.ReplayFailure =>
                 "agent-arena.burst.stop.replay-failure",
-            AgentBurstStopReason.LessonTargetReached =>
+            AgentBurstStopReason.LessonRequirementsReached =>
                 "agent-arena.burst.stop.lesson-target",
             _ => throw new ArgumentOutOfRangeException(nameof(reason)),
         };
@@ -10031,33 +10055,35 @@ public partial class Main : Node2D
         DrawRect(new Rect2(20.0f, 580.0f, 1240.0f, 138.0f), panel);
         var styleProgress = observation.StyleContract;
         var styleOutcome = _agentViewerFrame.StyleOutcome;
+        var lessonProgress = observation.LessonProgress;
+        var lessonOutcome = _agentViewerFrame.LessonOutcome;
         IReadOnlyList<AgentStyleCriterionProgressV2>? styleCriteria =
             styleOutcome?.Criteria ?? styleProgress?.Criteria;
-        var replayVerified = styleOutcome is not null;
-        var replayEvidenceUnavailable = styleProgress is not null
+        IReadOnlyList<AgentLessonRequirementProgressV2>? lessonRequirements =
+            lessonOutcome?.Requirements ?? lessonProgress?.Requirements;
+        var styleReplayVerified = styleOutcome is not null;
+        var styleReplayEvidenceUnavailable = styleProgress is not null
             && observation.Lifecycle == AgentMatchLifecycle.FailedClosed;
-        var style = observation.LessonProgress is not null
-            ? Localize(
-                observation.Lifecycle == AgentMatchLifecycle.FailedClosed
-                    ? "agent-arena.lesson.unverified"
-                    : _agentViewerFrame.VerifiedResultAvailable
-                        ? observation.LessonProgress.TargetReached
-                            ? "agent-arena.lesson.verified"
-                            : "agent-arena.lesson.verified-not-met"
-                        : observation.LessonProgress.TargetReached
-                            ? "agent-arena.lesson.hit"
-                            : "agent-arena.lesson.progress",
-                ShellTextArgument.From(
-                    "lesson",
-                    observation.LessonProgress.Title.ToUpperInvariant()),
-                ShellTextArgument.From(
-                    "metric",
-                    Localize(AgentLessonMetricCopyId(observation.LessonProgress.Metric))),
-                ShellTextArgument.From("current", observation.LessonProgress.Current),
-                ShellTextArgument.From("target", observation.LessonProgress.Target))
+        var lessonEvidenceVerified = lessonOutcome is not null;
+        var lessonVerifiedEvidenceUnavailable = lessonProgress is not null
+            && observation.Lifecycle == AgentMatchLifecycle.FailedClosed;
+        var style = lessonProgress is not null
+            ? lessonVerifiedEvidenceUnavailable
+                ? Localize(
+                    "agent-arena.lesson.replay-unavailable",
+                    ShellTextArgument.From("lesson", lessonProgress.Title.ToUpperInvariant()))
+                : lessonEvidenceVerified
+                    ? Localize(
+                        "agent-arena.lesson.replay-verified",
+                        ShellTextArgument.From("lesson", lessonProgress.Title.ToUpperInvariant()),
+                        ShellTextArgument.From("met", lessonOutcome!.RequirementsSatisfied))
+                    : Localize(
+                        "agent-arena.lesson.live",
+                        ShellTextArgument.From("lesson", lessonProgress.Title.ToUpperInvariant()),
+                        ShellTextArgument.From("met", lessonProgress.RequirementsSatisfied))
             : styleProgress is null
                 ? Localize("agent-arena.style.open")
-                : replayVerified
+                : styleReplayVerified
                     ? Localize(
                         "agent-arena.style.replay-verified",
                         ShellTextArgument.From(
@@ -10066,7 +10092,7 @@ public partial class Main : Node2D
                         ShellTextArgument.From(
                             "met",
                             styleOutcome!.CriteriaSatisfied))
-                    : replayEvidenceUnavailable
+                    : styleReplayEvidenceUnavailable
                         ? Localize(
                             "agent-arena.style.replay-unavailable",
                             ShellTextArgument.From(
@@ -10083,15 +10109,29 @@ public partial class Main : Node2D
         var firstStyleCriterion = styleCriteria is { Count: 2 }
             ? AgentStyleCriterionCopy(
                 styleCriteria[0],
-                replayVerified,
-                replayEvidenceUnavailable)
+                styleReplayVerified,
+                styleReplayEvidenceUnavailable)
             : null;
         var secondStyleCriterion = styleCriteria is { Count: 2 }
             ? AgentStyleCriterionCopy(
                 styleCriteria[1],
-                replayVerified,
-                replayEvidenceUnavailable)
+                styleReplayVerified,
+                styleReplayEvidenceUnavailable)
             : null;
+        var firstLessonRequirement = lessonRequirements is { Count: 2 }
+            ? AgentLessonRequirementCopy(
+                lessonRequirements[0],
+                lessonEvidenceVerified,
+                lessonVerifiedEvidenceUnavailable)
+            : null;
+        var secondLessonRequirement = lessonRequirements is { Count: 2 }
+            ? AgentLessonRequirementCopy(
+                lessonRequirements[1],
+                lessonEvidenceVerified,
+                lessonVerifiedEvidenceUnavailable)
+            : null;
+        var firstEvidence = firstLessonRequirement ?? firstStyleCriterion;
+        var secondEvidence = secondLessonRequirement ?? secondStyleCriterion;
         var rival = observation.Rival is null
             ? Localize("agent-arena.rival.solo")
             : Localize(
@@ -10134,7 +10174,7 @@ public partial class Main : Node2D
             13,
             1208.0f,
             ActiveShellPalette.GoldText);
-        if (firstStyleCriterion is not null && secondStyleCriterion is not null)
+        if (firstEvidence is not null && secondEvidence is not null)
         {
             DrawFittedAgentLabel(
                 style,
@@ -10149,13 +10189,13 @@ public partial class Main : Node2D
                 600.0f,
                 ActiveShellPalette.GoldText);
             DrawFittedAgentLabel(
-                firstStyleCriterion,
+                firstEvidence,
                 new Vector2(38.0f, 653.0f),
                 8,
                 600.0f,
                 ActiveShellPalette.AccentText);
             DrawFittedAgentLabel(
-                secondStyleCriterion,
+                secondEvidence,
                 new Vector2(660.0f, 653.0f),
                 8,
                 600.0f,
@@ -13459,13 +13499,9 @@ public partial class Main : Node2D
                 ShellTextArgument.From(
                     "style",
                     Pseudo(
-                        "agent-arena.lesson.verified-not-met",
+                        "agent-arena.lesson.replay-verified",
                         ShellTextArgument.From("lesson", maximumIdentityToken),
-                        ShellTextArgument.From(
-                            "metric",
-                            Pseudo("agent-arena.lesson.metric.direction-changes")),
-                        ShellTextArgument.From("current", int.MaxValue),
-                        ShellTextArgument.From("target", int.MaxValue))),
+                        ShellTextArgument.From("met", 2))),
                 ShellTextArgument.From(
                     "rival",
                     Pseudo(
@@ -13750,8 +13786,8 @@ public partial class Main : Node2D
 
         const int migratedRequiredFlowCount = 13;
         const double requiredExpansionRatio = 1.30;
-        var passed = ShellLocalization.All.Count == 613
-            && ShellLocalization.All.Count(entry => entry.Parameters.Count > 0) == 91
+        var passed = ShellLocalization.All.Count == 622
+            && ShellLocalization.All.Count(entry => entry.Parameters.Count > 0) == 95
             && migratedRequiredFlowCount == 13
             && minimumExpansionRatio >= requiredExpansionRatio
             && missingGlyphs.Count == 0

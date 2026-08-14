@@ -34,15 +34,15 @@ public static class AgentAccentCatalog
 }
 
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
-public sealed record AgentPassportV3
+public sealed record AgentPassportV4
 {
-    public const string Contract = "vibesnake-agent-passport-v3";
-    public const string SymbolicStepObservationProfile = "symbolic-step-v3";
+    public const string Contract = "vibesnake-agent-passport-v4";
+    public const string SymbolicStepObservationProfile = "symbolic-step-v4";
     public const string FourDirectionActionProfile = "four-direction-step-v1";
     public const string FourDirectionBurstActionProfile = "four-direction-burst-v1";
     public const int MaximumDisplayNameLength = 48;
 
-    public AgentPassportV3(
+    public AgentPassportV4(
         string schema,
         string agentId,
         string policyVersion,
@@ -68,7 +68,7 @@ public sealed record AgentPassportV3
         if (observationProfile != SymbolicStepObservationProfile)
         {
             throw new ArgumentException(
-                "The host supports only symbolic-step-v3 observations.",
+                "The host supports only symbolic-step-v4 observations.",
                 nameof(observationProfile));
         }
 
@@ -108,7 +108,7 @@ public sealed record AgentPassportV3
 
     public string ActionProfile { get; }
 
-    public static AgentPassportV3 Anonymous { get; } = new(
+    public static AgentPassportV4 Anonymous { get; } = new(
         Contract,
         "anonymous-agent",
         "unversioned",
@@ -117,7 +117,7 @@ public sealed record AgentPassportV3
         AgentAccentCatalog.SignalCyanId,
         "global_coil");
 
-    public static AgentPassportV3 CreateAnonymous(string actionProfile)
+    public static AgentPassportV4 CreateAnonymous(string actionProfile)
     {
         if (actionProfile == FourDirectionActionProfile)
         {
@@ -131,7 +131,7 @@ public sealed record AgentPassportV3
                 nameof(actionProfile));
         }
 
-        return new AgentPassportV3(
+        return new AgentPassportV4(
             Contract,
             "anonymous-agent",
             "unversioned",

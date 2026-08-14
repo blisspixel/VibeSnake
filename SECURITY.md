@@ -47,6 +47,19 @@ before a session is created. Unknown identifiers and legacy or mixed passport
 schemas fail closed, and none of these presentation fields may read or mutate
 human progression, cosmetics, scores, or saves.
 
+Signal School lesson definitions, progress, deltas, outcomes, and retries are
+closed versioned contracts. Replay-trace requirements are independently checked
+against the verified replay. Only `first-turn` accepts separate action-attempt
+evidence, capped at 32 first-seen opposite reversals whose tick and state-hash
+anchors were valid before the zero-step rejection. The witness stores a SHA-256
+idempotency-key hash, never the raw key, prompt, intent, credential, or provider
+data. Exact retries, conflicts, stale anchors, wrong profiles, and witnesses after
+the cap do not add evidence. A successful outcome binds both replay and attempt
+evidence hashes. Replay failure remains failed closed, returns no lesson outcome,
+and offers only a fresh `start_lesson` descriptor for the same lesson and action
+profile. Lesson completion is factual practice evidence, not identity, mastery,
+or qualification.
+
 Live Style Contract progress is reconstructed only from typed rules-advanced steps. Only successful finalization independently reconstructs the same facts from a verified replay and produces a replay-bound outcome.
 The terminal style outcome is returned only after independent replay evaluation
 matches the bounded live facts and carries the verified replay payload hash.

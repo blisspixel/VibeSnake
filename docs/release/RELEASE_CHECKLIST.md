@@ -59,7 +59,7 @@ The current development revision does not meet this checklist. See [STATUS.md](S
 - [x] Source policy and dependency-lock freshness checks pass locally.
 - [x] Documentation link check passes locally.
 - [x] Deterministic tests pass locally on Python 3.11, 3.12, 3.13, and 3.14.
-- [x] Project line coverage is at least 80 percent locally.
+- [x] The temporary Python reference suite meets its 80 percent line-coverage floor, and every measured native module meets the separate 90 percent line and 85 percent branch floors.
 - [x] New gameplay behavior has integration tests through public boundaries.
 - [x] Save migration fixtures cover the previous unversioned format.
 - [x] Built-artifact smoke test runs outside the checkout.
@@ -72,7 +72,7 @@ The current development revision does not meet this checklist. See [STATUS.md](S
 - [ ] Balance reports have no unreviewed dominant strategy, useless power, impossible seed, or extreme outlier.
 - [x] AI channel automation proves equal rules, policy separation, no stalls, commentary coverage, repeated switching, deterministic replay, and immediate same-seed challenge behavior.
 - [x] Broadcast Tour validation finds no unreachable event, dependency cycle, impossible goal, duplicate reward, grind outlier, score-category contamination, or save-migration failure.
-- [x] Critical engine and persistence boundaries meet the current 85 percent branch-coverage gate; 0.4 still raises the target to 90 percent.
+- [x] Every measured native module meets the current 90 percent line and 85 percent branch gates; 0.4 still raises the branch target to 90 percent.
 - [ ] Release artifacts include checksums, a dependency inventory or SBOM, and provenance.
 
 ## Input, display, and accessibility

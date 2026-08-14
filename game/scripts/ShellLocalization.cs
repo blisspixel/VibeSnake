@@ -243,6 +243,35 @@ internal static class ShellLocalization
             "agent-arena.style.criterion.replay-unverified",
             "[?] REPLAY UNVERIFIED"),
         Entry(
+            "agent-arena.lesson.live",
+            "SIGNAL SCHOOL {lesson} | LIVE REQUIREMENTS {met}/2"),
+        Entry(
+            "agent-arena.lesson.replay-verified",
+            "SIGNAL SCHOOL {lesson} | VERIFIED EVIDENCE {met}/2"),
+        Entry(
+            "agent-arena.lesson.replay-unavailable",
+            "SIGNAL SCHOOL {lesson} | VERIFIED EVIDENCE UNAVAILABLE"),
+        Entry(
+            "agent-arena.lesson.requirement",
+            "{state} | {requirement} {current}/{target}"),
+        Entry(
+            "agent-arena.lesson.requirement.observed-met",
+            "[+] OBSERVED MET"),
+        Entry(
+            "agent-arena.lesson.requirement.observed-not-met",
+            "[ ] OBSERVED NOT MET"),
+        Entry(
+            "agent-arena.lesson.requirement.verified-met",
+            "[+] VERIFIED MET"),
+        Entry(
+            "agent-arena.lesson.requirement.verified-not-met",
+            "[ ] VERIFIED NOT MET"),
+        Entry(
+            "agent-arena.lesson.requirement.replay-unverified",
+            "[?] EVIDENCE UNVERIFIED"),
+        // Retain the primary-metric preview IDs so recorded UI evidence and
+        // downstream localization catalogs never lose an established key.
+        Entry(
             "agent-arena.lesson.progress",
             "SIGNAL SCHOOL {lesson} | {metric} {current}/{target}"),
         Entry(
@@ -300,7 +329,7 @@ internal static class ShellLocalization
         Entry("agent-arena.burst.stop.match-step-limit", "MATCH LIMIT"),
         Entry("agent-arena.burst.stop.rules-terminal", "RULES TERMINAL"),
         Entry("agent-arena.burst.stop.replay-failure", "REPLAY FAILURE"),
-        Entry("agent-arena.burst.stop.lesson-target", "LESSON TARGET"),
+        Entry("agent-arena.burst.stop.lesson-target", "ALL REQUIREMENTS"),
         Entry("agent-arena.burst.event.none", "NO EVENT"),
         Entry("agent-arena.burst.event.wrapped", "WRAP"),
         Entry("agent-arena.burst.event.ate-food", "FOOD"),

@@ -13,7 +13,7 @@ Treat the MCP tool schemas and returned observations as authoritative. Use this 
 2. Choose `classic` for fixed rules or `vibe` for the declared adaptive policy.
 3. Choose `open` to receive the seed during play or `blind` to receive it only in the result.
 4. Choose one style for the run. Each style publishes exactly two closed, replay-derived criteria. Live values are observations, while only the terminal style outcome is replay verified:
-   - Stillwater: survive at least 200 rules-advanced steps. At least 99 percent of all rules-advanced steps must end Running with at least two structural non-reversing exits; terminal steps stay in the denominator.
+   - Stillwater: survive at least 200 rules-advanced steps. Among accepted steps whose post-step state is Running, at least 99 percent must retain two structural non-reversing exits. Terminal post-step states are not in that rate denominator.
    - Crownchaser: reach a peak combo of at least 4 with a 100 percent uninterrupted food chain through the first combo of 4.
    - Edge Prophet: produce at least 3 positive NearMiss events at the post-step head with at least three occupied non-wrapping adjacent body cells, including at least 1 with Wrapped in the same rules-advanced step. This `vibesnake-core@4` reconstruction does not prove intent.
    - Mutagenist: activate at least 2 distinct power kinds and reach at least 2 concurrently active power kinds.
@@ -21,19 +21,30 @@ Treat the MCP tool schemas and returned observations as authoritative. Use this 
    Rate criteria use floor integer basis points and return the exact numerator and denominator. An empty denominator produces zero basis points. These observations do not prove planning, mastery, personality, or spectator appeal.
 5. Optionally choose one named built-in rival. A rival uses the same gameplay seed and exact configuration in an independent lane.
 6. Choose `four-direction-step-v1` for one tool call per decision or `four-direction-burst-v1` for bounded straight continuations that stop at public decision events.
-7. Optionally provide a public Agent Passport v3 with a caller-declared agent ID and policy version, bounded display name, and `avatar_id`, `accent_id`, and `station_id` selected from `vibesnake://agent/identity`. Its `symbolic-step-v3` observation profile and action profile must match the selected match profile. Unknown catalog IDs reject before a session is created. Never put prompts, reasoning, credentials, or personal data in a passport.
+7. Optionally provide a public Agent Passport v4 with a caller-declared agent ID and policy version, bounded display name, and `avatar_id`, `accent_id`, and `station_id` selected from `vibesnake://agent/identity`. Its `symbolic-step-v4` observation profile and action profile must match the selected match profile. Unknown catalog IDs reject before a session is created. Never put prompts, reasoning, credentials, or personal data in a passport.
 8. When live watching is requested, set `watchEnabled` to true. Give the returned capability only to the local same-user launcher, and do not persist, quote, or repeat its token. Live frames are best effort; explicitly save the verified replay if later viewing is wanted.
 9. For an exhibition, call `start_match` with the action profile, optional passport, `styleContractId`, and `rivalPersonalityId`. For a blind match, omit `gameplaySeed`. Keep `maximumSteps` at or below 2000.
 
 ## Practice in Signal School
 
-Call `start_lesson` with one published lesson ID, an action profile, and an optional passport. Do not send a custom mode, seed, step cap, Style Contract, or rival. Each lesson owns its canonical open practice seed, mode, step cap, and primary public metric target.
+Call `start_lesson` with one published lesson ID, an action profile, and an optional passport. Do not send a custom mode, seed, step cap, Style Contract, or rival. Each lesson owns its canonical open practice seed, mode, step cap, instruction, and ordered requirements under `ordered-replay-attempt-evidence-v2`.
 
-1. Read `lesson_progress` in the initial and refreshed observations.
-2. After each move or burst, read `lesson_delta` for factual progress made by that accepted mutation. Exact retries return the identical cached delta. Rejections have zero progress.
-3. Finish normally or early and read `lesson_outcome` from the verified result. It binds the final primary-metric result to the verified replay payload hash.
-4. Report `target_reached` or the exact `shortfall`. A reached practice target is not mastery, qualification, or completion of the planned eight-behavior curriculum.
-5. Retry by starting the same lesson again. Persistent curriculum history and unseen-seed qualification are not part of this preview contract.
+- `first-turn`: submit the current direction's exact opposite once, confirm the zero-step `illegal_direction` rejection, then make a legal accepted turn. Use a fresh key for the legal turn. An exact retry does not add evidence, and stale, conflicting, capacity, or wrong-profile rejections do not qualify.
+- `wrap-line`: produce a typed `wrapped` event whose same verified post-step state remains `running`.
+- `hunger-route`: produce a verified `ate_food` step that does not end in starvation death.
+- `exit-route`: grow on food and retain at least two structural non-reversing exits in the Running post-step state.
+- `power-route`: collect one named power kind, then observe a verified activation for that same kind later in event order.
+- `recover-route`: produce a typed `collision_prevented` event with its closed cause and protection power, and remain `running` in that verified post-step state.
+- `combo-route`: produce at least three verified `ate_food` steps and reach a verified post-step peak combo of three.
+- `death-read`: reach a verified terminal `dead` state with a non-none cause, then confirm that the terminal `died` event reports that same cause. This is attributable protocol evidence, not proof of private reasoning.
+
+1. Read `lesson_progress.requirements`, `requirements_satisfied`, `first_unmet_requirement_id`, `evidence_state`, and the bounded attempt-evidence count and hash in every observation.
+2. After each move or burst, read `lesson_delta` for newly satisfied requirement IDs. Exact retries return the identical cached delta and evidence hash. A rejection changes progress only when the lesson explicitly requires that exact current-state rejection witness.
+3. A lesson burst stops when all requirements first become satisfied. Read `steps_advanced`, `stop_reason`, `stop_event`, and the refreshed progress before acting again.
+4. Finish normally or early and read `lesson_outcome` only from a verified result. It contains the ordered verified requirements, their replay-trace or attempt-witness evidence source, first unmet requirement, closed review code, replay payload hash, distinct attempt-evidence hash, aggregate evidence hash, and a fresh-session retry descriptor.
+5. On a verified miss, report the exact first unmet requirement and review code. On replay failure, no verified lesson outcome exists; follow the failed-closed retry guidance and call `start_lesson` again for a fresh session. Never resume the old state or reuse its handle or mutation keys.
+6. Read the Signal School resource's measured interaction evidence. Action calls count only `play_move` and `play_burst`. UTF-8 bytes cover each exact camelCase MCP tool arguments object and snake_case structured response, excluding MCP or JSON-RPC framing, logs, viewer traffic, and token estimates. Bounded straight-line bursts use an observation-derived `maximumSteps` from 1 through 16. Every paired burst route must use no more action calls than its step route, and at least six of eight lessons must use fewer. These checked-in measurements are deterministic regression evidence, not token estimates or product-wide limits.
+7. A completed practice is not mastery or qualification. Checked-in non-practice-seed fixtures test evaluator generalization; qualification-time decks and persistent curriculum history remain separate future work.
 
 ## Play one decision at a time
 
@@ -54,7 +65,7 @@ Use `play_burst` only in a `four-direction-burst-v1` match when one initial turn
 
 1. Supply the exact current tick and state hash, a fresh idempotency key, one initial action, one public intent, and a `maximumSteps` value from 1 through 16.
 2. The initial action applies once. Every later accepted step continues the resulting direction. The host does not accept an action array or a caller-defined stop expression.
-3. The host stops at the first fixed public decision event, selected Signal School target transition, rules terminal, match step cap, replay failure, or requested bound. Read `steps_advanced`, `stop_reason`, `stop_event`, `lesson_delta`, final-step ordered events, and the refreshed observation before deciding again.
+3. The host stops at the first fixed public decision event, selected Signal School all-requirements transition, rules terminal, match step cap, replay failure, or requested bound. Read `steps_advanced`, `stop_reason`, `stop_event`, `lesson_delta`, final-step ordered events, and the refreshed observation before deciding again.
 4. Use a short bound near visible food, powers, obstacles, hunger pressure, wraps, or crowded body cells. Use `play_move` in a step-profile match when every step needs deliberation. The live viewer labels a burst, its actual steps advanced, stop reason, stop event, and any coalesced earlier updates, while the verified replay remains the complete canonical history.
 5. Retry uncertain delivery only with the identical complete burst request and identical key. A key is shared across step and burst mutations, so it can never name both.
 
@@ -79,7 +90,7 @@ Call `finish_match` only to stop early. Normal terminal and step-limit endings f
 
 1. Call `get_match_result` if the terminal response did not include a result.
 2. For a styled match, report the two live criterion values as observed until a result exists. Then report the replay-bound `style_outcome`, its exact numerator and denominator for rate criteria, score, final tick, end reason, run status, and replay verification code. Never turn a satisfied criterion into a claim about intent or mastery.
-3. Call `save_verified_replay` only when persistence or human viewing is desired. A rivalry saves both independently verified lane replays.
+3. Call `save_verified_replay` only when persistence or human viewing is desired. A rivalry saves both independently verified lane replays. Replay schema 1 stores accepted rules steps, not Signal School rejection witnesses; the verified lesson outcome remains available only with the retained host result until a future receipt persists both evidence domains.
 4. Treat each replay payload hash and final state hash as lane verification identifiers. The preview does not yet produce the planned hash-linked public exhibition receipt.
 5. For a rematch, start a new open-seed match with the revealed seed. Never treat a previous handle as durable.
 

@@ -24,7 +24,7 @@ public enum AgentViewerOperationKind : byte
     Finish = 3,
 }
 
-public sealed record AgentViewerFrameV6(
+public sealed record AgentViewerFrameV7(
     string Schema,
     long Sequence,
     AgentViewerOperationKind Operation,
@@ -33,15 +33,16 @@ public sealed record AgentViewerFrameV6(
     int StepsAdvanced,
     AgentBurstStopReason? BurstStopReason,
     RunEventKind? BurstStopEvent,
-    AgentObservationV4 Observation,
+    AgentObservationV5 Observation,
     AgentMatchEndReason EndReason,
     bool VerifiedResultAvailable,
-    AgentStyleOutcomeV2? StyleOutcome = null)
+    AgentStyleOutcomeV2? StyleOutcome = null,
+    AgentLessonOutcomeV2? LessonOutcome = null)
 {
-    public const string Contract = "vibesnake-agent-viewer-frame-v6";
+    public const string Contract = "vibesnake-agent-viewer-frame-v7";
 }
 
 public interface IAgentViewerSink
 {
-    bool TryPublish(AgentViewerFrameV6 frame);
+    bool TryPublish(AgentViewerFrameV7 frame);
 }

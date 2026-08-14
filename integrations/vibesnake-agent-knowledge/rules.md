@@ -3,8 +3,8 @@ type: "Game Rules"
 title: "Vibe Snake agent rules and observations"
 description: "The public, deterministic rules boundary available to an external agent."
 tags: [vibesnake, rules, observation, agents]
-generated: { by: process:vibesnake-okf-generator, at: 2026-08-14T06:53:58Z }
-verified: { by: process:vibesnake-quality-gate, at: 2026-08-14T06:53:58Z }
+generated: { by: process:vibesnake-okf-generator, at: 2026-08-14T09:24:52Z }
+verified: { by: process:vibesnake-quality-gate, at: 2026-08-14T09:24:52Z }
 stale_after: "2026-11-13"
 status: draft
 sources:
@@ -26,17 +26,17 @@ sources:
 ---
 # Authority
 
-The rules authority is `vibesnake-core@4`. The public observation schema is `vibesnake-agent-observation-v4`.
+The rules authority is `vibesnake-core@4`. The public observation schema is `vibesnake-agent-observation-v5`.
 This knowledge bundle is descriptive. The rules assembly, tool schemas, and verified replay remain authoritative.
 
 # Actions
 
-An agent may choose `continue`, `up`, `right`, `down`, or `left`. In `four-direction-step-v1`, one accepted action advances exactly one clock-free rules step. In the separate `four-direction-burst-v1` division, one initial action is followed by at most 15 straight continuations and stops under fixed `decision-event-stop-v1` public events, a selected lesson's first target transition, or a closed terminal, cap, replay-failure, or requested-bound reason.
+An agent may choose `continue`, `up`, `right`, `down`, or `left`. In `four-direction-step-v1`, one accepted action advances exactly one clock-free rules step. In the separate `four-direction-burst-v1` division, one initial action is followed by at most 15 straight continuations and stops under fixed `decision-event-stop-v1` public events, a selected lesson's transition to all requirements reached, or a closed terminal, cap, replay-failure, or requested-bound reason.
 Each mutation is bound to the observed tick, state hash, and one shared idempotency-key namespace capped at 4,096 unique records per match. Exact retries return cached typed responses; known keys are never evicted, and changed, cross-operation, or post-cap unseen keys advance no additional state.
 
 # Public observation
 
-The observation includes the catalog-validated public Agent Passport v3, board, ordered body, direction queue, food, visible powers and obstacles, score, combo, hunger, active effects, adaptive policy, previous public events, episode metrics, optional two-criterion live style progress, and optional Signal School progress.
+The observation includes the catalog-validated public Agent Passport v4, board, ordered body, direction queue, food, visible powers and obstacles, score, combo, hunger, active effects, adaptive policy, previous public events, episode metrics, optional two-criterion live style progress, and optional ordered Signal School requirement progress.
 Passport identity is caller-declared and ephemeral. Avatar, accent, and station IDs must resolve through the host's closed identity resource; they affect presentation only and remain independent of human progression and cosmetics.
 It excludes random state, future outcomes, controller internals, profiles, progression, paths, prompts, credentials, diagnostics, and hidden reasoning.
 

@@ -55,6 +55,7 @@ HOST_CONTRACT_PATHS = (
     Path("native/src/VibeSnake.AgentPlay/AgentBurstPolicy.cs"),
     Path("native/src/VibeSnake.AgentPlay/AgentContracts.cs"),
     Path("native/src/VibeSnake.AgentPlay/AgentIdentity.cs"),
+    Path("native/src/VibeSnake.AgentPlay/AgentLessonEvidence.cs"),
     Path("native/src/VibeSnake.AgentPlay/AgentExperience.cs"),
     Path("native/src/VibeSnake.AgentPlay/AgentMatchSession.cs"),
     Path("native/src/VibeSnake.AgentPlay/AgentObservationProjector.cs"),
@@ -171,6 +172,7 @@ def _check_history(
         errors.append(f"public_contract_history.{kind} must be a nonempty array")
         return
     seen: set[str] = set()
+    previous_version: tuple[int, int, int] | None = None
     for index, entry in enumerate(history):
         field = f"public_contract_history.{kind}[{index}]"
         if not isinstance(entry, dict):
@@ -185,6 +187,10 @@ def _check_history(
             errors.append(f"{field}.version must be unique")
         else:
             seen.add(version)
+            parsed_version = tuple(int(part) for part in version.split("."))
+            if previous_version is not None and parsed_version <= previous_version:
+                errors.append(f"{field}.version must be greater than the preceding history version")
+            previous_version = parsed_version
         if not isinstance(digest, str) or SHA256.fullmatch(digest) is None:
             errors.append(f"{field}.sha256 must be a lowercase SHA-256 digest")
     latest = history[-1]

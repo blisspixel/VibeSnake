@@ -58,6 +58,7 @@ def render_bundle(repository_root: Path) -> dict[str, str]:
     rules_identity_path = repository_root / "native/src/VibeSnake.Rules/RulesetIdentity.cs"
     contracts_path = repository_root / "native/src/VibeSnake.AgentPlay/AgentContracts.cs"
     experience_path = repository_root / "native/src/VibeSnake.AgentPlay/AgentExperience.cs"
+    lesson_evidence_path = repository_root / "native/src/VibeSnake.AgentPlay/AgentLessonEvidence.cs"
     tools_path = repository_root / "native/tools/VibeSnake.AgentHost/McpAgentTools.cs"
     resources_path = repository_root / "native/tools/VibeSnake.AgentHost/AgentResources.cs"
     program_path = repository_root / "native/tools/VibeSnake.AgentHost/Program.cs"
@@ -68,6 +69,7 @@ def render_bundle(repository_root: Path) -> dict[str, str]:
     rules_identity = rules_identity_path.read_text(encoding="utf-8")
     contracts = contracts_path.read_text(encoding="utf-8")
     experience = experience_path.read_text(encoding="utf-8")
+    lesson_evidence = lesson_evidence_path.read_text(encoding="utf-8")
     tools = tools_path.read_text(encoding="utf-8")
     resources = resources_path.read_text(encoding="utf-8")
     program = program_path.read_text(encoding="utf-8")
@@ -88,12 +90,12 @@ def render_bundle(repository_root: Path) -> dict[str, str]:
     rules_version = _match(rules_identity, r"CurrentVersion = ([0-9]+)", "rules version")
     observation_schema = _match(
         contracts,
-        r"record AgentObservationV4\(.*?Contract = \"([^\"]+)\"",
+        r"record AgentObservationV5\(.*?Contract = \"([^\"]+)\"",
         "observation schema",
     )
     result_schema = _match(
         contracts,
-        r"record AgentMatchResultV4\(.*?Contract = \"([^\"]+)\"",
+        r"record AgentMatchResultV5\(.*?Contract = \"([^\"]+)\"",
         "result schema",
     )
     host_version = _match(program, r'HostVersion = "([^"]+)"', "host version")
@@ -110,7 +112,18 @@ def render_bundle(repository_root: Path) -> dict[str, str]:
         "style catalog",
     )
     style_ids = re.findall(r'public const string \w+Id = "([a-z-]+)";', style_catalog)
-    lesson_ids = re.findall(r'\n\s+"([a-z-]+)",\n\s+"[^"]+",', experience)
+    lesson_catalog = _match(
+        lesson_evidence,
+        r"public static class AgentSignalSchoolCatalog\s*\{(.*?)\n\}",
+        "Signal School catalog",
+    )
+    lesson_constants = dict(
+        re.findall(
+            r'public const string (\w+Id) = "([a-z-]+)";',
+            lesson_catalog,
+        )
+    )
+    lesson_ids = [lesson_constants[symbol] for symbol in re.findall(r"\bLesson\(\s*(\w+Id)", lesson_catalog)]
     plugin_schema = plugin["$schema"]
     plugin_version = plugin["version"]
 
@@ -156,12 +169,12 @@ def render_bundle(repository_root: Path) -> dict[str, str]:
             "",
             "# Actions",
             "",
-            "An agent may choose `continue`, `up`, `right`, `down`, or `left`. In `four-direction-step-v1`, one accepted action advances exactly one clock-free rules step. In the separate `four-direction-burst-v1` division, one initial action is followed by at most 15 straight continuations and stops under fixed `decision-event-stop-v1` public events, a selected lesson's first target transition, or a closed terminal, cap, replay-failure, or requested-bound reason.",
+            "An agent may choose `continue`, `up`, `right`, `down`, or `left`. In `four-direction-step-v1`, one accepted action advances exactly one clock-free rules step. In the separate `four-direction-burst-v1` division, one initial action is followed by at most 15 straight continuations and stops under fixed `decision-event-stop-v1` public events, a selected lesson's transition to all requirements reached, or a closed terminal, cap, replay-failure, or requested-bound reason.",
             "Each mutation is bound to the observed tick, state hash, and one shared idempotency-key namespace capped at 4,096 unique records per match. Exact retries return cached typed responses; known keys are never evicted, and changed, cross-operation, or post-cap unseen keys advance no additional state.",
             "",
             "# Public observation",
             "",
-            "The observation includes the catalog-validated public Agent Passport v3, board, ordered body, direction queue, food, visible powers and obstacles, score, combo, hunger, active effects, adaptive policy, previous public events, episode metrics, optional two-criterion live style progress, and optional Signal School progress.",
+            "The observation includes the catalog-validated public Agent Passport v4, board, ordered body, direction queue, food, visible powers and obstacles, score, combo, hunger, active effects, adaptive policy, previous public events, episode metrics, optional two-criterion live style progress, and optional ordered Signal School requirement progress.",
             "Passport identity is caller-declared and ephemeral. Avatar, accent, and station IDs must resolve through the host's closed identity resource; they affect presentation only and remain independent of human progression and cosmetics.",
             "It excludes random state, future outcomes, controller internals, profiles, progression, paths, prompts, credentials, diagnostics, and hidden reasoning.",
             "",
@@ -210,8 +223,8 @@ def render_bundle(repository_root: Path) -> dict[str, str]:
             "# Versions",
             "",
             f"The host version is `{host_version}`. The Agent Plugin version is `{plugin_version}` and targets `{plugin_schema}`.",
-            f"The MCP server targets stable protocol `2026-07-28` through the official C# SDK `{sdk_version}`.",
-            "Clients must speak the stateless MCP `2026-07-28` era: every request carries protocol metadata, optional discovery uses `server/discover`, and there is no protocol session. Legacy `initialize` handshakes are rejected and this preview provides no downlevel fallback.",
+            f"The MCP server targets stable protocol `{mcp['protocol_version']}` through the official C# SDK `{sdk_version}`.",
+            f"Clients must speak the stateless MCP `{mcp['protocol_version']}` era: every request carries protocol metadata, optional discovery uses `server/discover`, and there is no protocol session. Legacy `initialize` handshakes are rejected and this preview provides no downlevel fallback.",
             "",
             "# Tools",
             "",
@@ -223,7 +236,7 @@ def render_bundle(repository_root: Path) -> dict[str, str]:
             "",
             "# Live viewer",
             "",
-            "The optional same-user pipe uses `vibesnake-agent-viewer-frame-v6`. Every frame declares initial, step, burst, or finish origin and binds exact steps advanced to the pre-mutation tick and state hash. Burst frames carry closed stop reason and final-step event, while terminal truth, immutable match identity, catalog-bound Passport v3, action facts, contiguous state anchors, two ordered live style criteria, and the optional replay-bound terminal style outcome are cross-validated before presentation. Malformed, oversized, contradictory, unknown-catalog, identity-drifting, or criterion-drifting input clears pending content and rejects the stream. The host keeps only the latest unsent frame, the client reports sequence gaps as coalesced earlier updates, and the exact packaged-host transcript opens the viewer and receives a terminal burst. The verified replay remains the canonical complete history, and viewer timing never advances rules or score.",
+            "The optional same-user pipe uses `vibesnake-agent-viewer-frame-v7`. Every frame declares initial, step, burst, or finish origin and binds exact steps advanced to the pre-mutation tick and state hash. Burst frames carry closed stop reason and final-step event, while terminal truth, immutable match identity, catalog-bound Passport v4, action facts, contiguous state anchors, two ordered live style criteria, ordered lesson progress, optional replay-bound terminal style outcomes, and optional combined-evidence lesson outcomes are cross-validated before presentation. Malformed, oversized, contradictory, unknown-catalog, identity-drifting, criterion-drifting, or mixed-version input clears pending content and rejects the stream. The host keeps only the latest unsent frame, the client reports sequence gaps as coalesced earlier updates, and the packaged-host transcript exercises rejection-aware lesson recovery as well as terminal burst delivery. The verified replay remains the canonical accepted-step history, and viewer timing never advances rules or score.",
             "",
             "# Trust boundary",
             "",
@@ -239,6 +252,11 @@ def render_bundle(repository_root: Path) -> dict[str, str]:
         ["vibesnake", "curriculum", "styles", "evaluation"],
         [
             ("agent-experience", "../../native/src/VibeSnake.AgentPlay/AgentExperience.cs", "Agent experience catalog"),
+            (
+                "lesson-evidence",
+                "../../native/src/VibeSnake.AgentPlay/AgentLessonEvidence.cs",
+                "Signal School requirement and evidence evaluator",
+            ),
             (
                 "style-evidence",
                 "../../native/src/VibeSnake.AgentPlay/AgentStyleEvidence.cs",
@@ -260,8 +278,9 @@ def render_bundle(repository_root: Path) -> dict[str, str]:
             "",
             *(f"* `{lesson_id}`" for lesson_id in lesson_ids),
             "",
-            "Call `start_lesson` with one published lesson ID to create its canonical open-seed practice session. Every observation returns the instruction and primary-metric progress; accepted moves and bursts return exact progress deltas, and verified finalization returns a replay-hash-bound outcome. Reaching a practice target is not mastery or qualification.",
-            "Bounded symbolic bursts reduce routine tool-call cost and stop when the selected lesson target first transitions to reached, while preserving exact replay, metric, and control-division identity. The complete eight-behavior curriculum and qualification-time seed decks remain future work.",
+            "Call `start_lesson` with one of eight published lesson IDs to create its canonical open-seed practice session. Every definition publishes ordered closed requirements under `ordered-replay-attempt-evidence-v2`; observations return live requirement progress and the first unmet requirement, accepted moves and bursts return exact progress deltas, and verified finalization returns a factual outcome. A completed practice is not mastery or qualification.",
+            "Accepted-step facts are independently reconstructed from the verified replay. The rejection-aware first-turn lesson additionally uses a maximum-32 canonical attempt-witness sequence: exact idempotent retries do not add evidence, and stale, conflicting, capacity, or wrong-profile requests cannot qualify. The outcome binds the replay payload hash and distinct attempt-evidence hash into one evidence hash. An ordinary saved replay contains only accepted-step history, so it cannot later prove the rejected reversal without a future receipt that carries the attempt evidence.",
+            "A verified miss names the first unmet requirement and a closed review code. Failed-closed evidence produces no verified lesson outcome and directs the client to a fresh same-lesson `start_lesson` session without inherited rules state, mutation keys, or practice history. The resource also publishes exact action-call and UTF-8 byte measurements from checked-in canonical routes; these are evidence, not product-wide limits. Byte accounting covers each exact camelCase MCP tool arguments object and snake_case structured response only; it excludes MCP framing, logs, viewer traffic, and token estimates. Bounded straight-line burst fixtures choose an observation-derived bound from 1 through 16, never exceed the paired step route's action-call count, and reduce calls for at least six of eight lessons. Checked-in non-practice seeds are deterministic evaluator evidence, not qualification-time decks.",
             "",
         )
     )
@@ -281,11 +300,11 @@ def render_bundle(repository_root: Path) -> dict[str, str]:
         (
             "# Verified result",
             "",
-            f"A successfully finalized completed, capped, or explicitly finished match returns `{result_schema}` with final state hash, replay payload hash, rules and mode identity, outcome, metrics, and verification code. A styled result carries exactly two criterion outcomes independently reconstructed from and bound to that verified replay. A Signal School result also carries its primary-metric outcome reconstructed from the verified replay and bound to the same payload hash. Failed-closed finalization returns neither a verified result, a style or lesson outcome, nor a verified replay.",
+            f"A successfully finalized completed, capped, or explicitly finished match returns `{result_schema}` with final state hash, replay payload hash, rules and mode identity, outcome, metrics, and verification code. A styled result carries exactly two criterion outcomes independently reconstructed from and bound to that verified replay. A Signal School result carries ordered requirement outcomes, a factual review, the replay payload hash, a distinct bounded attempt-evidence hash, and their aggregate evidence hash. Failed-closed finalization returns neither a verified result, a style or lesson outcome, nor a verified replay.",
             "",
             "# Persistence",
             "",
-            "Replay saving is an explicit call into the bounded application-owned replay store. The agent supplies no path. The saved file is reloaded and verified before the existing replay presentation consumes it.",
+            "Replay saving is an explicit call into the bounded application-owned replay store. The agent supplies no path. The saved file is reloaded and verified before the existing replay presentation consumes it. Replay schema 1 stores accepted rules steps only; the bounded Signal School attempt witnesses remain ephemeral host result evidence until a future exhibition receipt explicitly persists both evidence domains.",
             "",
             "# Human viewing",
             "",

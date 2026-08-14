@@ -13,6 +13,43 @@ public sealed class AgentResources
     private static readonly string[] StaleActionGuards =
         ["expected_tick", "expected_state_hash", "idempotency_key"];
     private static readonly string[] SeedDivisions = ["open", "blind"];
+    private static readonly string[] InteractionAccountingExclusions =
+    [
+        "mcp_or_json_rpc_framing",
+        "logs_or_stderr",
+        "viewer_traffic",
+        "token_estimates",
+    ];
+    private static readonly string[] QualificationEvidenceIncludedCalls =
+        ["start_lesson", "play_move", "play_burst", "finish_match"];
+    private static readonly string[] QualificationEvidenceDimensions =
+        ["lesson_id", "action_profile"];
+    private static readonly string[] QualificationEvidenceMeasures =
+    [
+        "action_calls",
+        "request_utf8_bytes",
+        "response_utf8_bytes",
+        "total_utf8_bytes",
+    ];
+    private static readonly QualificationEvidenceObservation[] QualificationEvidenceObservations =
+    [
+        new("first-turn", AgentPassportV4.FourDirectionActionProfile, 2, 411, 12_763, 13_174),
+        new("first-turn", AgentPassportV4.FourDirectionBurstActionProfile, 2, 462, 12_903, 13_365),
+        new("wrap-line", AgentPassportV4.FourDirectionActionProfile, 32, 5_012, 116_977, 121_989),
+        new("wrap-line", AgentPassportV4.FourDirectionBurstActionProfile, 2, 460, 12_755, 13_215),
+        new("hunger-route", AgentPassportV4.FourDirectionActionProfile, 22, 3_600, 83_090, 86_690),
+        new("hunger-route", AgentPassportV4.FourDirectionBurstActionProfile, 3, 649, 16_628, 17_277),
+        new("exit-route", AgentPassportV4.FourDirectionActionProfile, 9, 1_478, 38_012, 39_490),
+        new("exit-route", AgentPassportV4.FourDirectionBurstActionProfile, 9, 1_695, 38_654, 40_349),
+        new("power-route", AgentPassportV4.FourDirectionActionProfile, 316, 50_378, 1_148_678, 1_199_056),
+        new("power-route", AgentPassportV4.FourDirectionBurstActionProfile, 106, 19_440, 402_801, 422_241),
+        new("recover-route", AgentPassportV4.FourDirectionActionProfile, 346, 56_518, 1_300_455, 1_356_973),
+        new("recover-route", AgentPassportV4.FourDirectionBurstActionProfile, 116, 21_685, 452_161, 473_846),
+        new("combo-route", AgentPassportV4.FourDirectionActionProfile, 80, 12_706, 289_592, 302_298),
+        new("combo-route", AgentPassportV4.FourDirectionBurstActionProfile, 40, 7_359, 151_325, 158_684),
+        new("death-read", AgentPassportV4.FourDirectionActionProfile, 139, 21_810, 504_930, 526_740),
+        new("death-read", AgentPassportV4.FourDirectionBurstActionProfile, 89, 16_033, 338_959, 354_992),
+    ];
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
@@ -28,19 +65,19 @@ public sealed class AgentResources
     public static string GetRules() => JsonSerializer.Serialize(
         new
         {
-            contract = "vibesnake-agent-rules-resource-v6",
+            contract = "vibesnake-agent-rules-resource-v7",
             ruleset_id = RulesetIdentity.CurrentId,
             rules_version = RulesetIdentity.CurrentVersion,
-            observation_schema = AgentObservationV4.Contract,
-            result_schema = AgentMatchResultV4.Contract,
-            observation_profile = AgentPassportV3.SymbolicStepObservationProfile,
-            passport_schema = AgentPassportV3.Contract,
+            observation_schema = AgentObservationV5.Contract,
+            result_schema = AgentMatchResultV5.Contract,
+            observation_profile = AgentPassportV4.SymbolicStepObservationProfile,
+            passport_schema = AgentPassportV4.Contract,
             identity_resource = "vibesnake://agent/identity",
             actions = Enum.GetNames<AgentAction>().Select(value => value.ToLowerInvariant()),
             action_profiles = new[]
             {
-                AgentPassportV3.FourDirectionActionProfile,
-                AgentPassportV3.FourDirectionBurstActionProfile,
+                AgentPassportV4.FourDirectionActionProfile,
+                AgentPassportV4.FourDirectionBurstActionProfile,
             },
             public_intents = Enum.GetNames<AgentPublicIntent>()
                 .Select(value => JsonNamingPolicy.SnakeCaseLower.ConvertName(value)),
@@ -56,7 +93,7 @@ public sealed class AgentResources
             },
             viewer = new
             {
-                frame_contract = AgentViewerFrameV6.Contract,
+                frame_contract = AgentViewerFrameV7.Contract,
                 operations = Enum.GetNames<AgentViewerOperationKind>()
                     .Select(JsonNamingPolicy.SnakeCaseLower.ConvertName),
                 pre_mutation_tick_and_state_hash = true,
@@ -74,7 +111,8 @@ public sealed class AgentResources
             maximum_retained_matches = AgentSessionRegistry.MaximumRetainedMatches,
             live_match_idle_lease_minutes = AgentSessionRegistry.LiveMatchIdleLeaseMinutes,
             idle_reclamation = "At capacity, only an inactive live match whose 30-minute valid-handle operation lease expired may be reclaimed. Reclamation creates no result or replay, and viewer activity never refreshes or ends the lease.",
-            replay = "A successfully finalized completed, capped, or explicitly finished match returns a deterministic verified lane result and replay. A styled result adds an exact two-criterion outcome reconstructed from and bound to that replay. Failed-closed finalization returns neither; an exhibition receipt is not part of this contract.",
+            lesson_evidence = "Accepted-step lesson facts are independently reconstructed from replay schema 1. Rejection-aware facts use a separate bounded canonical attempt-witness sequence. A verified lesson outcome binds the replay payload hash and attempt-evidence hash into one evidence hash; the ordinary saved replay does not contain the attempt witnesses.",
+            replay = "A successfully finalized completed, capped, or explicitly finished match returns a deterministic verified lane result and replay. Styled and Signal School results add independently evaluated hash-bound outcomes. Failed-closed finalization returns neither; an exhibition receipt is not part of this contract.",
             rivalry = "An optional built-in rival advances once per accepted agent step on the same seed and exact configuration. Each lane has an independent verified replay.",
             privacy = "Observations exclude random state, future outcomes, controller internals, profiles, progression, paths, prompts, credentials, diagnostics, and hidden reasoning.",
         },
@@ -84,13 +122,13 @@ public sealed class AgentResources
         UriTemplate = "vibesnake://agent/identity",
         Name = "Vibe Snake agent identity catalog",
         MimeType = "application/json")]
-    [Description("Closed presentation identities accepted by Agent Passport v3.")]
+    [Description("Closed presentation identities accepted by Agent Passport v4.")]
     public static string GetIdentity() => JsonSerializer.Serialize(
         new
         {
-            contract = "vibesnake-agent-identity-resource-v2",
-            passport_schema = AgentPassportV3.Contract,
-            observation_profile = AgentPassportV3.SymbolicStepObservationProfile,
+            contract = "vibesnake-agent-identity-resource-v3",
+            passport_schema = AgentPassportV4.Contract,
+            observation_profile = AgentPassportV4.SymbolicStepObservationProfile,
             avatars = CosmeticSetCatalog.Sets.Select(avatar => new
             {
                 id = avatar.Id,
@@ -174,9 +212,44 @@ public sealed class AgentResources
     public static string GetSignalSchool() => JsonSerializer.Serialize(
         new
         {
-            contract = "vibesnake-agent-signal-school-v2",
+            contract = "vibesnake-agent-signal-school-v3",
             start_tool = "start_lesson",
-            practice_semantics = "Each lesson owns its canonical open seed, mode, step cap, and primary public metric target. Target reached is practice evidence, not mastery or qualification.",
+            evaluation_policy = AgentSignalSchoolCatalog.EvaluationPolicyId,
+            maximum_attempt_witnesses = AgentSignalSchoolCatalog.MaximumAttemptWitnesses,
+            progress_schema = AgentLessonProgressV2.Contract,
+            delta_schema = AgentLessonProgressDeltaV2.Contract,
+            outcome_schema = AgentLessonOutcomeV2.Contract,
+            retry_schema = AgentLessonRetryDescriptorV1.Contract,
+            practice_semantics = "Each lesson owns its canonical open seed, mode, step cap, and ordered closed requirements. All requirements satisfied is practice evidence, not mastery or qualification.",
+            evidence_semantics = new
+            {
+                live = "Observation progress is live evidence and names the first unmet ordered requirement.",
+                replay = "Accepted-step requirements are independently reconstructed from the verified replay.",
+                attempts = "Rejection-aware requirements use a bounded canonical attempt-witness sequence distinct from replay schema 1. Exact retries do not add evidence; stale, conflicting, capacity, or wrong-profile requests cannot qualify.",
+                terminal = "A verified outcome binds the replay payload hash and distinct attempt-evidence hash into one evidence hash and reports a closed factual review code.",
+                failed_closed = "Replay failure creates no verified lesson outcome. Retry guidance always starts the same canonical lesson in a fresh session without inherited state, handle, mutation keys, or practice history.",
+            },
+            interaction_accounting = new
+            {
+                policy = "mcp-tool-arguments-and-structured-response-json-v1",
+                action_calls = "Count only play_move and play_burst calls.",
+                request_utf8_bytes = "Compact JSON for each exact MCP tool arguments object, using the discovered camelCase parameter names, encoded as UTF-8.",
+                response_utf8_bytes = "Compact snake_case structured response JSON encoded as UTF-8.",
+                excluded = InteractionAccountingExclusions,
+            },
+            qualification_evidence = new
+            {
+                status = "measured",
+                unit = "one canonical route for one lesson and action profile",
+                included_calls = QualificationEvidenceIncludedCalls,
+                request_policy = "Fields use the actual discovered camelCase MCP tool parameter names and order. start_lesson explicitly supplies lessonId and actionProfile. Play calls supply only required arguments. finish_match is always measured. Optional watch, passport, and declaredIntent arguments are omitted.",
+                fixture_policy = "Each deterministic fixture uses match_route-{lesson_id}; mutation keys are route-{lesson_id}-reversal when required and route-{lesson_id}-{zero_based_step}. Lesson mode, seed, and step cap come from the published definition.",
+                burst_measurement = "four-direction-burst-v1 uses an observation-derived maximumSteps between 1 and 16 for each measured bounded straight-line play_burst call; normal public decision-event stops still apply.",
+                regression_policy = "Each paired burst route must use no more action calls than its step route, at least six of eight lessons must use fewer, and every exact observation change requires review.",
+                dimensions = QualificationEvidenceDimensions,
+                measures = QualificationEvidenceMeasures,
+                observations = QualificationEvidenceObservations,
+            },
             lessons = AgentSignalSchoolCatalog.All,
         },
         JsonOptions);
@@ -210,13 +283,21 @@ public sealed class AgentResources
         # Vibe Snake Agent Playbook
 
         1. Read `vibesnake://agent/rules`, `vibesnake://agent/modes`, and `vibesnake://agent/identity`. Optionally read the style, rival, or Signal School resources.
-        2. Call `start_match` for an exhibition, or `start_lesson` with a closed Signal School lesson ID for canonical open-seed practice. Select either `four-direction-step-v1` or `four-direction-burst-v1`. If supplying Passport v3, use only the closed avatar, accent, and station IDs from the identity resource and declare `symbolic-step-v3`.
+        2. Call `start_match` for an exhibition, or `start_lesson` with a closed Signal School lesson ID for canonical open-seed practice. Select either `four-direction-step-v1` or `four-direction-burst-v1`. If supplying Passport v4, use only the closed avatar, accent, and station IDs from the identity resource and declare `symbolic-step-v4`.
         3. Read the returned observation. Use only visible board state.
         4. Use `play_move` for one exact decision. In a burst-profile match, use `play_burst` for a safe straight continuation of at most 16 steps; it stops on the first fixed public decision event. Supply the exact tick and state hash plus a new idempotency key. Optionally declare one closed public intent so a viewer can follow the plan.
         5. On rejection or burst stop, inspect the reason, actual advancement, final-step public events, and refreshed observation. Preflight and logical rejections do not step the rules. A `replay_failure` can report `rules_advanced=true` after a real step and always fails closed without a verified result.
         6. Continue until the result appears, or call `finish_match` to request early finalization.
-        7. Confirm that finalization returned a verified result. For a styled match, use only its replay-bound style outcome as verified criterion evidence. Call `save_verified_replay` only when persistence for later human viewing is desired.
+        7. Confirm that finalization returned a verified result. For a styled match, use only its replay-bound style outcome as verified criterion evidence. For Signal School, use the verified lesson outcome, which binds replay-trace and any distinct attempt-witness evidence; a failed-closed session has no verified lesson outcome and must be retried through a fresh `start_lesson`. Call `save_verified_replay` only when accepted-step replay persistence for later human viewing is desired.
 
         Public intents are `seek_food`, `seek_power`, `preserve_space`, `take_risk`, and `recover`. They are self-reported presentation only. `continue` preserves the current direction. Never submit the current direction or its opposite as a turn. Response latency has no scoring effect. At capacity, a live handle idle for 30 minutes may be reclaimed without producing a result or replay; viewer activity is never match control.
         """;
+
+    private sealed record QualificationEvidenceObservation(
+        string LessonId,
+        string ActionProfile,
+        int ActionCalls,
+        int RequestUtf8Bytes,
+        int ResponseUtf8Bytes,
+        int TotalUtf8Bytes);
 }

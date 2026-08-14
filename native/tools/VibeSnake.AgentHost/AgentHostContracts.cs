@@ -4,17 +4,17 @@ using VibeSnake.Rules;
 
 namespace VibeSnake.AgentHost;
 
-public sealed record StartAgentMatchV4(
+public sealed record StartAgentMatchV5(
     string Schema,
     string MatchHandle,
     string RetentionPolicy,
-    AgentObservationV4 Observation,
+    AgentObservationV5 Observation,
     AgentViewerConnectionV1? Viewer)
 {
-    public const string Contract = "vibesnake-agent-match-start-v4";
+    public const string Contract = "vibesnake-agent-match-start-v5";
 }
 
-public sealed record AgentMatchSummaryV4(
+public sealed record AgentMatchSummaryV5(
     string Schema,
     string MatchHandle,
     AgentMatchLifecycle Lifecycle,
@@ -27,7 +27,7 @@ public sealed record AgentMatchSummaryV4(
     string ConfigHash,
     AgentSeedVisibility SeedVisibility,
     string GameplaySeed,
-    AgentPassportV3 Passport,
+    AgentPassportV4 Passport,
     int FinalTick,
     RunStatus RunStatus,
     DeathCause DeathCause,
@@ -37,12 +37,12 @@ public sealed record AgentMatchSummaryV4(
     ReplayVerificationCode ReplayVerificationCode,
     AgentEpisodeMetricsV1 EpisodeMetrics,
     AgentStyleOutcomeV2? StyleOutcome,
-    AgentLessonOutcomeV1? LessonOutcome,
+    AgentLessonOutcomeV2? LessonOutcome,
     AgentRivalResultV1? Rival)
 {
-    public const string Contract = "vibesnake-agent-match-summary-v4";
+    public const string Contract = "vibesnake-agent-match-summary-v5";
 
-    internal static AgentMatchSummaryV4 FromResult(AgentMatchResultV4 result) =>
+    internal static AgentMatchSummaryV5 FromResult(AgentMatchResultV5 result) =>
         new(
             Contract,
             result.MatchId,
@@ -70,27 +70,27 @@ public sealed record AgentMatchSummaryV4(
             result.Rival);
 }
 
-public sealed record AgentMatchResultStatusV4(
+public sealed record AgentMatchResultStatusV5(
     string Schema,
     string MatchHandle,
     bool IsAvailable,
-    AgentMatchSummaryV4? Result)
+    AgentMatchSummaryV5? Result)
 {
-    public const string Contract = "vibesnake-agent-match-result-status-v4";
+    public const string Contract = "vibesnake-agent-match-result-status-v5";
 }
 
-public sealed record AgentActionResponseV4(
+public sealed record AgentActionResponseV5(
     string Schema,
     bool Accepted,
     bool RulesAdvanced,
     AgentActionRejection Rejection,
-    AgentLessonProgressDeltaV1? LessonDelta,
-    AgentObservationV4 Observation,
-    AgentMatchSummaryV4? MatchResult)
+    AgentLessonProgressDeltaV2? LessonDelta,
+    AgentObservationV5 Observation,
+    AgentMatchSummaryV5? MatchResult)
 {
-    public const string Contract = "vibesnake-agent-action-response-v4";
+    public const string Contract = "vibesnake-agent-action-response-v5";
 
-    internal static AgentActionResponseV4 FromResponse(AgentActionResponse response) =>
+    internal static AgentActionResponseV5 FromResponse(AgentActionResponse response) =>
         new(
             Contract,
             response.Accepted,
@@ -100,10 +100,10 @@ public sealed record AgentActionResponseV4(
             response.Observation,
             response.MatchResult is null
                 ? null
-                : AgentMatchSummaryV4.FromResult(response.MatchResult));
+                : AgentMatchSummaryV5.FromResult(response.MatchResult));
 }
 
-public sealed record AgentBurstResponseV4(
+public sealed record AgentBurstResponseV5(
     string Schema,
     bool Accepted,
     bool RulesAdvanced,
@@ -111,13 +111,13 @@ public sealed record AgentBurstResponseV4(
     int StepsAdvanced,
     AgentBurstStopReason? StopReason,
     RunEventKind? StopEvent,
-    AgentLessonProgressDeltaV1? LessonDelta,
-    AgentObservationV4 Observation,
-    AgentMatchSummaryV4? MatchResult)
+    AgentLessonProgressDeltaV2? LessonDelta,
+    AgentObservationV5 Observation,
+    AgentMatchSummaryV5? MatchResult)
 {
-    public const string Contract = "vibesnake-agent-burst-response-v4";
+    public const string Contract = "vibesnake-agent-burst-response-v5";
 
-    internal static AgentBurstResponseV4 FromResponse(AgentBurstResponse response) =>
+    internal static AgentBurstResponseV5 FromResponse(AgentBurstResponse response) =>
         new(
             Contract,
             response.Accepted,
@@ -130,7 +130,7 @@ public sealed record AgentBurstResponseV4(
             response.Observation,
             response.MatchResult is null
                 ? null
-                : AgentMatchSummaryV4.FromResult(response.MatchResult));
+                : AgentMatchSummaryV5.FromResult(response.MatchResult));
 }
 
 public sealed record AgentReplaySaveV1(

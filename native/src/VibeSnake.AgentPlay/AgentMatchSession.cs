@@ -13,6 +13,7 @@ public sealed class AgentMatchSession
     private readonly RunReplayRecorder _recorder;
     private readonly AgentEpisodeMetricsTracker _metrics = new();
     private readonly AgentStyleEvidenceTracker? _styleEvidence;
+    private readonly AgentLessonEvidenceTracker? _lessonEvidence;
     private readonly SnakeRun? _rivalRun;
     private readonly AiPersonalityController? _rivalController;
     private readonly RunReplayRecorder? _rivalRecorder;
@@ -24,7 +25,7 @@ public sealed class AgentMatchSession
     private IReadOnlyList<RunEventDetail> _previousEvents =
         Array.Empty<RunEventDetail>();
     private AgentPreviousActionV1? _previousAction;
-    private AgentMatchResultV4? _matchResult;
+    private AgentMatchResultV5? _matchResult;
     private long _viewerSequence;
 
     public AgentMatchSession(
@@ -54,6 +55,9 @@ public sealed class AgentMatchSession
                 options.ModeId,
                 _config,
                 _run.GetSnapshot());
+        _lessonEvidence = options.LessonId is null
+            ? null
+            : new AgentLessonEvidenceTracker(options.LessonId, _config);
         if (options.RivalPersonalityId is { } rivalId)
         {
             _rivalRun = SnakeRun.Create(options.GameplaySeed, _config);
@@ -75,7 +79,7 @@ public sealed class AgentMatchSession
 
     public AgentMatchLifecycle Lifecycle { get; private set; }
 
-    public AgentObservationV4 Observe()
+    public AgentObservationV5 Observe()
     {
         lock (_sync)
         {
@@ -107,7 +111,7 @@ public sealed class AgentMatchSession
                     request.DeclaredIntent);
             }
 
-            if (_options.ActionProfile != AgentPassportV3.FourDirectionActionProfile)
+            if (_options.ActionProfile != AgentPassportV4.FourDirectionActionProfile)
             {
                 return Remember(
                     request.IdempotencyKey,
@@ -163,7 +167,9 @@ public sealed class AgentMatchSession
             var response = ExecuteSingleStep(
                 request.Action,
                 request.DeclaredIntent,
-                publishViewer: true);
+                publishViewer: true,
+                request.IdempotencyKey,
+                AgentLessonAttemptOperation.Step);
             response = response with
             {
                 LessonDelta = CreateLessonDelta(
@@ -202,7 +208,7 @@ public sealed class AgentMatchSession
                     request.DeclaredIntent);
             }
 
-            if (_options.ActionProfile != AgentPassportV3.FourDirectionBurstActionProfile)
+            if (_options.ActionProfile != AgentPassportV4.FourDirectionBurstActionProfile)
             {
                 return Remember(
                     request.IdempotencyKey,
@@ -264,7 +270,9 @@ public sealed class AgentMatchSession
                 lastStep = ExecuteSingleStep(
                     index == 0 ? request.InitialAction : AgentAction.Continue,
                     request.DeclaredIntent,
-                    publishViewer: false);
+                    publishViewer: false,
+                    index == 0 ? request.IdempotencyKey : null,
+                    index == 0 ? AgentLessonAttemptOperation.Burst : null);
                 if (lastStep.RulesAdvanced)
                 {
                     stepsAdvanced++;
@@ -328,10 +336,10 @@ public sealed class AgentMatchSession
                 }
 
                 var lessonAfterStep = lastStep.Observation.LessonProgress;
-                if (lessonBefore is { TargetReached: false }
-                    && lessonAfterStep is { TargetReached: true })
+                if (lessonBefore is { AllRequirementsSatisfied: false }
+                    && lessonAfterStep is { AllRequirementsSatisfied: true })
                 {
-                    stopReason = AgentBurstStopReason.LessonTargetReached;
+                    stopReason = AgentBurstStopReason.LessonRequirementsReached;
                     break;
                 }
 
@@ -379,7 +387,7 @@ public sealed class AgentMatchSession
         }
     }
 
-    public AgentMatchResultV4 Finish()
+    public AgentMatchResultV5 Finish()
     {
         lock (_sync)
         {
@@ -420,7 +428,7 @@ public sealed class AgentMatchSession
         }
     }
 
-    public AgentMatchResultV4? GetResult()
+    public AgentMatchResultV5? GetResult()
     {
         lock (_sync)
         {
@@ -457,7 +465,9 @@ public sealed class AgentMatchSession
     private AgentActionResponse ExecuteSingleStep(
         AgentAction action,
         AgentPublicIntent declaredIntent,
-        bool publishViewer)
+        bool publishViewer,
+        string? idempotencyKey,
+        AgentLessonAttemptOperation? lessonOperation)
     {
         var snapshot = _run.GetSnapshot();
         if (!Enum.IsDefined(action))
@@ -474,6 +484,16 @@ public sealed class AgentMatchSession
                 || direction == effectiveDirection
                 || direction == effectiveDirection.Opposite())
             {
+                if (direction == effectiveDirection.Opposite()
+                    && idempotencyKey is not null
+                    && lessonOperation is { } operation)
+                {
+                    _ = _lessonEvidence?.TryRecordOppositeReversal(
+                        operation,
+                        idempotencyKey,
+                        snapshot,
+                        action);
+                }
                 return Reject(
                     action,
                     AgentActionRejection.IllegalDirection,
@@ -507,6 +527,7 @@ public sealed class AgentMatchSession
         try
         {
             _styleEvidence?.Record(snapshot, result, steppedSnapshot);
+            _lessonEvidence?.RecordStep(snapshot, result, steppedSnapshot);
         }
         catch (Exception exception) when (
             exception is ArgumentException
@@ -641,7 +662,7 @@ public sealed class AgentMatchSession
     private bool TryComplete(
         AgentMatchEndReason endReason,
         AgentMatchLifecycle lifecycle,
-        out AgentMatchResultV4? result)
+        out AgentMatchResultV5? result)
     {
         result = null;
         var agent = _replayFinalizer.Finalize(
@@ -680,6 +701,7 @@ public sealed class AgentMatchSession
         var episodeMetrics = _metrics.Snapshot(snapshot.Tick);
         AgentEpisodeMetricsV1 replayMetrics;
         AgentStyleOutcomeV2? styleOutcome = null;
+        AgentLessonOutcomeV2? lessonOutcome = null;
         try
         {
             replayMetrics = AgentEpisodeMetricsReplayEvaluator.Evaluate(agent.Replay);
@@ -708,6 +730,36 @@ public sealed class AgentMatchSession
                     replayStyleEvidence.Progress,
                     agent.Replay.PayloadHash);
             }
+
+            if (_options.LessonId is { } lessonId)
+            {
+                if (_lessonEvidence is null)
+                {
+                    throw new InvalidOperationException(
+                        "The selected lesson had no live evidence tracker.");
+                }
+
+                var replayLessonProgress = AgentLessonEvidenceReplayEvaluator.Evaluate(
+                    lessonId,
+                    _options.ActionProfile,
+                    agent.Replay,
+                    _lessonEvidence.AttemptWitnesses);
+                var liveLessonProgress = _lessonEvidence.Snapshot(
+                    AgentLessonEvidenceState.Live,
+                    _options.ActionProfile);
+                if (!AgentLessonEvidenceReplayEvaluator.Equivalent(
+                    liveLessonProgress,
+                    replayLessonProgress))
+                {
+                    throw new InvalidOperationException(
+                        "Live lesson evidence diverged from the verified replay and attempt witnesses.");
+                }
+
+                lessonOutcome = AgentLessonEvidenceReplayEvaluator.CreateOutcome(
+                    replayLessonProgress,
+                    endReason,
+                    agent.Replay.PayloadHash);
+            }
         }
         catch (Exception exception) when (
             exception is ArgumentException
@@ -725,8 +777,8 @@ public sealed class AgentMatchSession
 
         Lifecycle = lifecycle;
         var rivalResult = CreateRivalResult(rivalReplay, rivalVerification);
-        _matchResult = new AgentMatchResultV4(
-            AgentMatchResultV4.Contract,
+        _matchResult = new AgentMatchResultV5(
+            AgentMatchResultV5.Contract,
             _options.MatchId,
             Lifecycle,
             endReason,
@@ -748,12 +800,7 @@ public sealed class AgentMatchSession
             agent.Verification.Code,
             replayMetrics,
             styleOutcome,
-            _options.LessonId is null
-                ? null
-                : CreateLessonOutcome(
-                    _options.LessonId,
-                    episodeMetrics,
-                    agent.Replay.PayloadHash),
+            lessonOutcome,
             rivalResult,
             agent.Replay,
             rivalReplay);
@@ -831,7 +878,7 @@ public sealed class AgentMatchSession
         return response;
     }
 
-    private AgentObservationV4 CreateObservation() =>
+    private AgentObservationV5 CreateObservation() =>
         AgentObservationProjector.Project(
             _options,
             _config,
@@ -841,44 +888,30 @@ public sealed class AgentMatchSession
             Lifecycle,
             _metrics.Snapshot(_run.GetSnapshot().Tick),
             CreateRivalObservation(),
-            _styleEvidence?.Snapshot());
+            _styleEvidence?.Snapshot(),
+            CreateLessonProgress());
 
-    private AgentLessonProgressV1? CreateLessonProgress()
+    private AgentLessonProgressV2? CreateLessonProgress()
     {
         if (_options.LessonId is null)
         {
             return null;
         }
 
-        return AgentSignalSchoolCatalog.Evaluate(
-            _options.LessonId,
-            _metrics.Snapshot(_run.GetSnapshot().Tick));
+        var evidenceState = Lifecycle == AgentMatchLifecycle.FailedClosed
+            ? AgentLessonEvidenceState.FailedClosed
+            : _matchResult is null
+                ? AgentLessonEvidenceState.Live
+                : AgentLessonEvidenceState.Verified;
+        return _lessonEvidence?.Snapshot(evidenceState, _options.ActionProfile);
     }
 
-    private static AgentLessonProgressDeltaV1? CreateLessonDelta(
-        AgentLessonProgressV1? previous,
-        AgentLessonProgressV1? current) =>
+    private static AgentLessonProgressDeltaV2? CreateLessonDelta(
+        AgentLessonProgressV2? previous,
+        AgentLessonProgressV2? current) =>
         previous is null || current is null
             ? null
             : AgentSignalSchoolCatalog.Delta(previous, current);
-
-    private static AgentLessonOutcomeV1 CreateLessonOutcome(
-        string lessonId,
-        AgentEpisodeMetricsV1 metrics,
-        string replayPayloadHash)
-    {
-        var progress = AgentSignalSchoolCatalog.Evaluate(lessonId, metrics);
-        return new AgentLessonOutcomeV1(
-            AgentLessonOutcomeV1.Contract,
-            progress.LessonId,
-            progress.EvaluationPolicyId,
-            progress.Metric,
-            progress.Current,
-            progress.Target,
-            progress.Remaining,
-            progress.TargetReached,
-            replayPayloadHash);
-    }
 
     private bool AdvanceRival()
     {
@@ -965,7 +998,7 @@ public sealed class AgentMatchSession
     }
 
     private void PublishViewerFrame(
-        AgentObservationV4 observation,
+        AgentObservationV5 observation,
         AgentViewerOperationKind operation,
         int startTick,
         string startStateHash,
@@ -982,8 +1015,8 @@ public sealed class AgentMatchSession
         {
             var verifiedResultAvailable =
                 _matchResult?.ReplayVerificationCode == ReplayVerificationCode.Verified;
-            _ = _viewerSink.TryPublish(new AgentViewerFrameV6(
-                AgentViewerFrameV6.Contract,
+            _ = _viewerSink.TryPublish(new AgentViewerFrameV7(
+                AgentViewerFrameV7.Contract,
                 _viewerSequence++,
                 operation,
                 startTick,
@@ -997,7 +1030,8 @@ public sealed class AgentMatchSession
                         ? AgentMatchEndReason.ReplayFailure
                         : AgentMatchEndReason.None),
                 verifiedResultAvailable,
-                verifiedResultAvailable ? _matchResult?.StyleOutcome : null));
+                verifiedResultAvailable ? _matchResult?.StyleOutcome : null,
+                verifiedResultAvailable ? _matchResult?.LessonOutcome : null));
         }
         catch (Exception)
         {

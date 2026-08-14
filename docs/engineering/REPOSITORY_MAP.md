@@ -98,8 +98,9 @@ Progression-specific native ownership:
 - [ProgressionCatalog.cs](../../native/src/VibeSnake.Rules/ProgressionCatalog.cs): exact goals, lanes, pacing bands, metric projection, and highlighted-goal rules.
 - [CosmeticSetCatalog.cs](../../native/src/VibeSnake.Rules/CosmeticSetCatalog.cs): eight curated presentation-only sets and exact expression-reward requirements.
 - [StationIdentityCatalog.cs](../../native/src/VibeSnake.Rules/StationIdentityCatalog.cs): eight stable station presentation identities without broadcast approval or scheduling policy.
-- [AgentIdentity.cs](../../native/src/VibeSnake.AgentPlay/AgentIdentity.cs): Passport v3 plus the closed agent accent catalog and catalog-validation boundary.
-- [AgentExperience.cs](../../native/src/VibeSnake.AgentPlay/AgentExperience.cs): Signal School plus the versioned two-criterion Style Contract catalog and public progress and outcome records.
+- [AgentIdentity.cs](../../native/src/VibeSnake.AgentPlay/AgentIdentity.cs): Passport v4 plus the closed agent accent catalog and catalog-validation boundary.
+- [AgentExperience.cs](../../native/src/VibeSnake.AgentPlay/AgentExperience.cs): episode metrics plus the versioned two-criterion Style Contract catalog and public progress and outcome records.
+- [AgentLessonEvidence.cs](../../native/src/VibeSnake.AgentPlay/AgentLessonEvidence.cs): eight two-requirement Signal School practices, bounded opposite-reversal witnesses, independent replay and attempt evaluation, factual outcomes, and fresh-session retry descriptors.
 - [AgentStyleEvidence.cs](../../native/src/VibeSnake.AgentPlay/AgentStyleEvidence.cs): bounded rules-advanced-step style facts, structural-exit geometry, and independent replay reconstruction for factual composite outcomes.
 - [BroadcastTourCatalog.cs](../../native/src/VibeSnake.Rules/BroadcastTourCatalog.cs): four tiers and twelve dependency-gated event contracts.
 - [BroadcastTourSession.cs](../../native/src/VibeSnake.Rules/BroadcastTourSession.cs): fixed-seed practice construction and exact terminal primary/style evaluation.

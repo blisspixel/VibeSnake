@@ -91,7 +91,7 @@ public sealed class AgentObservationProjectorTests
             metrics,
             rival: null);
 
-        Assert.Equal(AgentObservationV4.Contract, observation.Schema);
+        Assert.Equal(AgentObservationV5.Contract, observation.Schema);
         Assert.Equal("projection", observation.MatchId);
         Assert.Equal(RulesetIdentity.CurrentId, observation.RulesetId);
         Assert.Equal(RulesetIdentity.CurrentVersion, observation.RulesVersion);
@@ -101,7 +101,7 @@ public sealed class AgentObservationProjectorTests
         Assert.Equal(RunConfig.ConfigHashAlgorithmId, observation.ConfigHashAlgorithm);
         Assert.Equal(AgentSeedVisibility.Open, observation.SeedVisibility);
         Assert.Equal(77UL, observation.GameplaySeed);
-        Assert.Same(AgentPassportV3.Anonymous, observation.Passport);
+        Assert.Same(AgentPassportV4.Anonymous, observation.Passport);
         Assert.Equal(3, observation.Tick);
         Assert.Equal(10, observation.MaximumSteps);
         Assert.Equal(7, observation.StepsRemaining);
@@ -242,7 +242,7 @@ public sealed class AgentObservationProjectorTests
             "Diagnostic",
             "Future",
         ];
-        var propertyNames = typeof(AgentObservationV4)
+        var propertyNames = typeof(AgentObservationV5)
             .GetProperties()
             .Select(property => property.Name)
             .ToArray();

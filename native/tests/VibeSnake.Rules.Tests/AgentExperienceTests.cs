@@ -191,9 +191,21 @@ public sealed class AgentExperienceTests
     }
 
     [Fact]
-    public void Signal_school_defines_deterministic_evaluable_lessons()
+    public void Signal_school_defines_eight_ordered_two_requirement_lessons()
     {
-        Assert.Equal(6, AgentSignalSchoolCatalog.All.Count);
+        string[] expectedIds =
+        [
+            "first-turn",
+            "wrap-line",
+            "hunger-route",
+            "exit-route",
+            "power-route",
+            "recover-route",
+            "combo-route",
+            "death-read",
+        ];
+
+        Assert.Equal(expectedIds, AgentSignalSchoolCatalog.All.Select(value => value.Id));
         Assert.Equal(
             AgentSignalSchoolCatalog.All.Count,
             AgentSignalSchoolCatalog.All.Select(value => value.Id).Distinct().Count());
@@ -202,35 +214,69 @@ public sealed class AgentExperienceTests
             Assert.Same(lesson, AgentSignalSchoolCatalog.Get(lesson.Id));
             Assert.Contains(lesson.ModeId, new[] { RunModeCatalog.ClassicId, RunModeCatalog.VibeId });
             Assert.InRange(lesson.MaximumSteps, 1, AgentMatchOptions.MaximumAllowedSteps);
-            Assert.True(lesson.Target > 0);
+            Assert.Equal(2, lesson.Requirements.Count);
             Assert.Equal(
-                AgentSignalSchoolCatalog.PrimaryMetricEvaluationPolicy,
+                lesson.Requirements.Count,
+                lesson.Requirements.Select(value => value.Id).Distinct().Count());
+            Assert.All(lesson.Requirements, requirement => Assert.True(requirement.Target > 0));
+            Assert.Equal(
+                AgentSignalSchoolCatalog.EvaluationPolicyId,
                 lesson.EvaluationPolicyId);
         });
+        Assert.Equal(
+            ["First Signal", "Open Circuit", "Feed the Signal", "Keep Two Doors",
+                "Tune the Current", "Return from Static", "Hold the Chorus", "Read the End"],
+            AgentSignalSchoolCatalog.All.Select(value => value.Title));
+        Assert.Equal(
+            [
+                RunModeCatalog.ClassicId,
+                RunModeCatalog.ClassicId,
+                RunModeCatalog.VibeId,
+                RunModeCatalog.VibeId,
+                RunModeCatalog.VibeId,
+                RunModeCatalog.VibeId,
+                RunModeCatalog.VibeId,
+                RunModeCatalog.VibeId,
+            ],
+            AgentSignalSchoolCatalog.All.Select(value => value.ModeId));
+        Assert.Equal(
+            [7UL, 65_535UL, 4_294_967_291UL, 20_260_814UL, 32_452_843UL, 0UL,
+                49_979_687UL, 20_260_815UL],
+            AgentSignalSchoolCatalog.All.Select(value => value.PracticeSeed));
+        Assert.Equal(
+            [16, 160, 180, 240, 320, 600, 480, 600],
+            AgentSignalSchoolCatalog.All.Select(value => value.MaximumSteps));
+        Assert.Equal(
+            [
+                "opposite_reversal_rejected/legal_turn_after_rejection",
+                "wrapped_event/running_after_wrap",
+                "food_eaten/food_before_starvation",
+                "food_growth/two_structural_exits_after_growth",
+                "power_collected/same_power_activated",
+                "collision_prevented/running_after_recovery",
+                "three_food/peak_combo_three",
+                "terminal_death/matching_death_event",
+            ],
+            AgentSignalSchoolCatalog.All.Select(value =>
+                string.Join('/', value.Requirements.Select(requirement => requirement.Id))));
+        Assert.Equal(
+            [
+                "AttemptWitness:1/ReplayTrace:1",
+                "ReplayTrace:1/ReplayTrace:1",
+                "ReplayTrace:1/ReplayTrace:1",
+                "ReplayTrace:1/ReplayTrace:1",
+                "ReplayTrace:1/ReplayTrace:1",
+                "ReplayTrace:1/ReplayTrace:1",
+                "ReplayTrace:3/ReplayTrace:3",
+                "ReplayTrace:1/ReplayTrace:1",
+            ],
+            AgentSignalSchoolCatalog.All.Select(value => string.Join(
+                '/',
+                value.Requirements.Select(requirement =>
+                    $"{requirement.EvidenceSource}:{requirement.Target}"))));
 
-        var first = AgentSignalSchoolCatalog.Get("first-turn");
-        Assert.False(AgentSignalSchoolCatalog.IsCompleted(first.Id, Metrics()));
-        Assert.True(AgentSignalSchoolCatalog.IsCompleted(
-            first.Id,
-            Metrics(directionChanges: first.Target)));
-        var before = AgentSignalSchoolCatalog.Evaluate(first.Id, Metrics());
-        var after = AgentSignalSchoolCatalog.Evaluate(
-            first.Id,
-            Metrics(directionChanges: first.Target));
-        var delta = AgentSignalSchoolCatalog.Delta(before, after);
-        Assert.Equal(AgentLessonProgressV1.Contract, before.Schema);
-        Assert.Equal(first.Id, before.LessonId);
-        Assert.Equal(first.Target, before.Remaining);
-        Assert.Equal(AgentLessonProgressDeltaV1.Contract, delta.Schema);
-        Assert.Equal(first.Target, delta.Delta);
-        Assert.True(delta.TargetReachedThisMutation);
         Assert.Throws<ArgumentException>(() => AgentSignalSchoolCatalog.Get("missing"));
         Assert.Throws<ArgumentException>(() => AgentSignalSchoolCatalog.Get(""));
-        Assert.Throws<ArgumentNullException>(() =>
-            AgentSignalSchoolCatalog.IsCompleted(first.Id, null!));
-        Assert.Throws<ArgumentException>(() => AgentSignalSchoolCatalog.Delta(
-            before,
-            after with { LessonId = "different" }));
     }
 
     [Fact]
@@ -307,7 +353,7 @@ public sealed class AgentExperienceTests
             response.Observation.StyleContract!.Criteria
                 .Single(value => value.CriterionId == "survival_steps")
                 .Current);
-        var result = Assert.IsType<AgentMatchResultV4>(response.MatchResult);
+        var result = Assert.IsType<AgentMatchResultV5>(response.MatchResult);
         Assert.Equal(response.Observation.EpisodeMetrics, result.EpisodeMetrics);
         var outcome = Assert.IsType<AgentStyleOutcomeV2>(result.StyleOutcome);
         Assert.Equal(AgentStyleOutcomeV2.Contract, outcome.Schema);
@@ -390,7 +436,7 @@ public sealed class AgentExperienceTests
     }
 
     [Fact]
-    public void Lesson_session_returns_live_delta_and_replay_bound_outcome()
+    public void Lesson_session_returns_attempt_aware_delta_and_replay_bound_outcome()
     {
         var lesson = AgentSignalSchoolCatalog.Get("first-turn");
         var session = new AgentMatchSession(new AgentMatchOptions(
@@ -402,97 +448,86 @@ public sealed class AgentExperienceTests
             lesson.MaximumSteps,
             lessonId: lesson.Id));
         var initial = session.Observe();
-        var response = session.SubmitAction(new AgentActionRequest(
-            "lesson-turn",
+        var rejection = session.SubmitAction(new AgentActionRequest(
+            "lesson-reversal",
             initial.Tick,
             initial.StateHash,
+            AgentAction.Left));
+        var response = session.SubmitAction(new AgentActionRequest(
+            "lesson-turn",
+            rejection.Observation.Tick,
+            rejection.Observation.StateHash,
             AgentAction.Up));
         var result = session.Finish();
 
         Assert.Equal(lesson.Id, initial.LessonProgress!.LessonId);
-        Assert.Equal(0, initial.LessonProgress.Current);
-        Assert.Equal(1, response.LessonDelta!.Delta);
-        Assert.True(response.LessonDelta.TargetReachedThisMutation);
-        Assert.True(response.Observation.LessonProgress!.TargetReached);
-        Assert.Equal(AgentLessonOutcomeV1.Contract, result.LessonOutcome!.Schema);
-        Assert.True(result.LessonOutcome.TargetReached);
+        Assert.Equal("opposite_reversal_rejected", initial.LessonProgress.FirstUnmetRequirementId);
+        Assert.False(rejection.Accepted);
+        Assert.False(rejection.RulesAdvanced);
+        Assert.Equal(AgentActionRejection.IllegalDirection, rejection.Rejection);
+        Assert.Equal(["opposite_reversal_rejected"], rejection.LessonDelta!.NewlySatisfiedRequirementIds);
+        Assert.Equal(["legal_turn_after_rejection"], response.LessonDelta!.NewlySatisfiedRequirementIds);
+        Assert.True(response.LessonDelta.AllRequirementsReachedThisMutation);
+        Assert.True(response.Observation.LessonProgress!.AllRequirementsSatisfied);
+        Assert.Equal(AgentLessonOutcomeV2.Contract, result.LessonOutcome!.Schema);
+        Assert.True(result.LessonOutcome.AllRequirementsSatisfied);
+        Assert.Equal(AgentLessonReviewCode.TargetReached, result.LessonOutcome.ReviewCode);
         Assert.Equal(result.ReplayPayloadHash, result.LessonOutcome.ReplayPayloadHash);
+        Assert.Equal(
+            AgentLessonEvidenceReplayEvaluator.ComputeEvidenceHash(
+                result.ReplayPayloadHash,
+                result.LessonOutcome.AttemptEvidenceHash),
+            result.LessonOutcome.EvidenceHash);
         Assert.Equal(
             result.EpisodeMetrics,
             AgentEpisodeMetricsReplayEvaluator.Evaluate(result.VerifiedReplay));
     }
 
     [Fact]
-    public void Every_signal_school_practice_has_a_deterministic_verified_route()
+    public void Every_signal_school_lesson_has_a_locked_verified_route()
     {
         var evidence = new List<string>();
         foreach (var lesson in AgentSignalSchoolCatalog.All)
         {
-            var incomplete = new AgentMatchSession(new AgentMatchOptions(
-                $"incomplete-{lesson.Id}",
-                lesson.ModeId,
-                RunModeCatalog.CurrentModeVersion,
-                lesson.PracticeSeed,
-                AgentSeedVisibility.Open,
-                lesson.MaximumSteps,
-                lessonId: lesson.Id)).Finish();
-            Assert.False(incomplete.LessonOutcome!.TargetReached);
-            Assert.Equal(lesson.Target, incomplete.LessonOutcome.Shortfall);
-
-            var session = new AgentMatchSession(new AgentMatchOptions(
-                $"route-{lesson.Id}",
-                lesson.ModeId,
-                RunModeCatalog.CurrentModeVersion,
-                lesson.PracticeSeed,
-                AgentSeedVisibility.Open,
-                lesson.MaximumSteps,
-                lessonId: lesson.Id));
-            AgentMatchResultV4? result = null;
-            for (var step = 0; step < lesson.MaximumSteps && result is null; step++)
-            {
-                var observation = session.Observe();
-                if (observation.LessonProgress!.TargetReached)
-                {
-                    break;
-                }
-
-                var response = session.SubmitAction(new AgentActionRequest(
-                    $"route-{lesson.Id}-{step}",
-                    observation.Tick,
-                    observation.StateHash,
-                    ChooseLessonAction(lesson.Id, observation)));
-                Assert.True(response.Accepted, $"{lesson.Id}: {response.Rejection}");
-                result = response.MatchResult;
-            }
-
-            result ??= session.Finish();
-            var outcome = Assert.IsType<AgentLessonOutcomeV1>(result.LessonOutcome);
+            var route = AgentLessonRouteDriver.DriveSession(lesson);
+            var result = route.Result;
+            var outcome = Assert.IsType<AgentLessonOutcomeV2>(result.LessonOutcome);
             Assert.True(
-                outcome.TargetReached,
-                $"{lesson.Id}: shortfall {outcome.Shortfall}; metrics={result.EpisodeMetrics}");
+                outcome.AllRequirementsSatisfied,
+                $"{lesson.Id}: first unmet {outcome.FirstUnmetRequirementId}; metrics={result.EpisodeMetrics}");
+            Assert.All(route.Calls.Skip(lesson.Id == AgentSignalSchoolCatalog.FirstTurnId ? 1 : 0),
+                call => Assert.True(call.Accepted, $"{lesson.Id}: {call.Rejection}"));
+            if (lesson.Id == AgentSignalSchoolCatalog.FirstTurnId)
+            {
+                Assert.Equal(AgentActionRejection.IllegalDirection, route.Calls[0].Rejection);
+            }
+            Assert.Equal(AgentLessonReviewCode.TargetReached, outcome.ReviewCode);
             Assert.Equal(result.ReplayPayloadHash, outcome.ReplayPayloadHash);
             Assert.Equal(
                 result.EpisodeMetrics,
                 AgentEpisodeMetricsReplayEvaluator.Evaluate(result.VerifiedReplay));
-            evidence.Add($"{lesson.Id}={result.ReplayPayloadHash}");
+            evidence.Add(
+                $"{lesson.Id}={result.ReplayPayloadHash}/{outcome.AttemptEvidenceHash}/{outcome.EvidenceHash}");
         }
 
         Assert.Equal(
             [
-                "first-turn=9cf44d81c732b02d1dfbf63b12a83fa7e7e6fffdd5b2ff58fd16c53ae0a226bc",
-                "wrap-line=1444c8c7fe3776e83e368f3448496f810e618d58756c2fae6e2720e0efeddc86",
-                "hunger-route=d9478460a57181c802fafefc619925b62b25adf0fe22b11315e4007d44bcd02a",
-                "power-route=8740bd9b61f1666701457645caea85f9d68206bbfe214df3e31de6ace721bfab",
-                "combo-route=6ccb498f6b5a824c55bc5f92ad577ea42747c4f2b2b69428ec03d94992daa7b3",
-                "recover-route=2996836bd7db0538aa626f050db64afda925069bab0aa66bea8e85c0c26bf66e",
+                "first-turn=9cf44d81c732b02d1dfbf63b12a83fa7e7e6fffdd5b2ff58fd16c53ae0a226bc/7ae32dae873da1104b366c9d6b7d921ffbbfeb58e5ef8f66b2367ef5a831b35a/15d900a8e54100d2dba7b2d0dd26a242edda6a57198f684d9b94a9191b89c1a6",
+                "wrap-line=1444c8c7fe3776e83e368f3448496f810e618d58756c2fae6e2720e0efeddc86/e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855/17cf001ef78e3039c27b9b56f9ceb0c68b43e21760c9092d9f64d74a192ec21e",
+                "hunger-route=d9478460a57181c802fafefc619925b62b25adf0fe22b11315e4007d44bcd02a/e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855/176adae0c93f05454357d63f7d1b605c4f3593b5f2122b0b7245ec4eecda8581",
+                "exit-route=0aecacfed7c285529584392450e9d7e458234897441eb8532d10920f0a6f49fd/e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855/c1cfbf072d7d828b58955e246f275430d9523b159fe80746a0bbbd23959844c9",
+                "power-route=8740bd9b61f1666701457645caea85f9d68206bbfe214df3e31de6ace721bfab/e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855/d7434d533b99595390e8bc200c812d953f38a59f975ec5b74e1b7ef3b97a9198",
+                "recover-route=2996836bd7db0538aa626f050db64afda925069bab0aa66bea8e85c0c26bf66e/e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855/cb71c4d2fc89c86fd35046bcde78a0e8b444503f8d813160159b1d8c236dc059",
+                "combo-route=6ccb498f6b5a824c55bc5f92ad577ea42747c4f2b2b69428ec03d94992daa7b3/e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855/b42808afb8a7ddff17761c73d3d5146d21bbf3cd02416f0a493ff0e3af17be75",
+                "death-read=65368b64b0e8dd941c578445a1053408c3bc2d34a02ba1d12b5ece0d1e08d061/e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855/e2415ba272f6bac7398d91ae982570c03c3b49568679009c8d6c6d9e5d454e4c",
             ],
             evidence);
-        AssertLessonReplayDivergenceFailsClosed();
     }
 
-    private static void AssertLessonReplayDivergenceFailsClosed()
+    [Fact]
+    public void Lesson_replay_divergence_fails_closed_without_an_outcome()
     {
-        var lesson = AgentSignalSchoolCatalog.Get("first-turn");
+        var lesson = AgentSignalSchoolCatalog.Get(AgentSignalSchoolCatalog.FirstTurnId);
         var session = new AgentMatchSession(
             new AgentMatchOptions(
                 "lesson-divergence",
@@ -500,154 +535,32 @@ public sealed class AgentExperienceTests
                 RunModeCatalog.CurrentModeVersion,
                 lesson.PracticeSeed,
                 AgentSeedVisibility.Open,
-                maximumSteps: 1),
+                lesson.MaximumSteps,
+                lessonId: lesson.Id),
             viewerSink: null,
             new DivergentReplayFinalizer());
         var initial = session.Observe();
-        var request = new AgentActionRequest(
-            "lesson-divergence-step",
+        var rejected = session.SubmitAction(new AgentActionRequest(
+            "lesson-divergence-reversal",
             initial.Tick,
             initial.StateHash,
-            AgentAction.Up);
+            AgentAction.Left));
+        var advanced = session.SubmitAction(new AgentActionRequest(
+            "lesson-divergence-turn",
+            rejected.Observation.Tick,
+            rejected.Observation.StateHash,
+            AgentAction.Up));
 
-        var response = session.SubmitAction(request);
-        var retry = session.SubmitAction(request);
-
-        Assert.Same(response, retry);
-        Assert.False(response.Accepted);
-        Assert.True(response.RulesAdvanced);
-        Assert.Equal(AgentActionRejection.ReplayFailure, response.Rejection);
-        Assert.Equal(AgentMatchLifecycle.FailedClosed, session.Lifecycle);
-        Assert.Null(response.MatchResult);
+        Assert.True(advanced.Accepted);
+        Assert.True(advanced.Observation.LessonProgress!.AllRequirementsSatisfied);
+        Assert.Throws<InvalidOperationException>(() => session.Finish());
+        var failed = session.Observe();
+        Assert.Equal(AgentMatchLifecycle.FailedClosed, failed.Lifecycle);
+        Assert.Equal(AgentLessonEvidenceState.FailedClosed, failed.LessonProgress!.EvidenceState);
+        Assert.True(failed.LessonProgress.AllRequirementsSatisfied);
+        Assert.NotNull(failed.LessonProgress.RetryDescriptor);
         Assert.Null(session.GetResult());
     }
-
-    private static AgentAction ChooseLessonAction(string lessonId, AgentObservationV4 observation)
-    {
-        if (lessonId == "first-turn")
-        {
-            return ToAction(TurnLeft(observation.Direction), observation.Direction);
-        }
-
-        if (lessonId == "wrap-line")
-        {
-            return AgentAction.Continue;
-        }
-
-        if (lessonId == "recover-route"
-            && (observation.ShieldTicksRemaining > 0
-                || observation.PhaseShiftTicksRemaining > 0
-                || observation.LastStandHeld))
-        {
-            return ToAction(TurnLeft(observation.Direction), observation.Direction);
-        }
-
-        var target = lessonId is "power-route" or "recover-route"
-            ? observation.PowerPickup?.Position ?? observation.Food
-            : observation.Food;
-        return target is null
-            ? AgentAction.Continue
-            : FindPathAction(observation, target.Value);
-    }
-
-    private static AgentAction FindPathAction(
-        AgentObservationV4 observation,
-        AgentPointV1 target)
-    {
-        var blocked = observation.Body.Skip(1)
-            .Concat(observation.DetachedObstacles)
-            .ToHashSet();
-        var queue = new Queue<(AgentPointV1 Point, Direction First)>();
-        var visited = new HashSet<AgentPointV1> { observation.Head };
-        foreach (var direction in CandidateDirections(observation.Direction))
-        {
-            var next = Advance(observation, observation.Head, direction);
-            if (next is null || blocked.Contains(next.Value) || !visited.Add(next.Value))
-            {
-                continue;
-            }
-
-            if (next.Value == target)
-            {
-                return ToAction(direction, observation.Direction);
-            }
-            queue.Enqueue((next.Value, direction));
-        }
-
-        while (queue.TryDequeue(out var current))
-        {
-            foreach (var direction in Enum.GetValues<Direction>())
-            {
-                var next = Advance(observation, current.Point, direction);
-                if (next is null || blocked.Contains(next.Value) || !visited.Add(next.Value))
-                {
-                    continue;
-                }
-
-                if (next.Value == target)
-                {
-                    return ToAction(current.First, observation.Direction);
-                }
-                queue.Enqueue((next.Value, current.First));
-            }
-        }
-
-        return AgentAction.Continue;
-    }
-
-    private static Direction[] CandidateDirections(Direction current) =>
-        [current, TurnLeft(current), TurnRight(current)];
-
-    private static AgentPointV1? Advance(
-        AgentObservationV4 observation,
-        AgentPointV1 point,
-        Direction direction)
-    {
-        var offset = direction.Offset();
-        var x = point.X + offset.X;
-        var y = point.Y + offset.Y;
-        if (observation.WrapsAtEdges)
-        {
-            x = (x + observation.BoardWidth) % observation.BoardWidth;
-            y = (y + observation.BoardHeight) % observation.BoardHeight;
-        }
-        else if (x < 0 || x >= observation.BoardWidth || y < 0 || y >= observation.BoardHeight)
-        {
-            return null;
-        }
-
-        return new AgentPointV1(x, y);
-    }
-
-    private static Direction TurnLeft(Direction direction) => direction switch
-    {
-        Direction.Up => Direction.Left,
-        Direction.Right => Direction.Up,
-        Direction.Down => Direction.Right,
-        Direction.Left => Direction.Down,
-        _ => throw new ArgumentOutOfRangeException(nameof(direction)),
-    };
-
-    private static Direction TurnRight(Direction direction) => direction switch
-    {
-        Direction.Up => Direction.Right,
-        Direction.Right => Direction.Down,
-        Direction.Down => Direction.Left,
-        Direction.Left => Direction.Up,
-        _ => throw new ArgumentOutOfRangeException(nameof(direction)),
-    };
-
-    private static AgentAction ToAction(Direction direction, Direction current) =>
-        direction == current
-            ? AgentAction.Continue
-            : direction switch
-            {
-                Direction.Up => AgentAction.Up,
-                Direction.Right => AgentAction.Right,
-                Direction.Down => AgentAction.Down,
-                Direction.Left => AgentAction.Left,
-                _ => throw new ArgumentOutOfRangeException(nameof(direction)),
-            };
 
     private static AgentEpisodeMetricsV1 Metrics(
         int survival = 0,

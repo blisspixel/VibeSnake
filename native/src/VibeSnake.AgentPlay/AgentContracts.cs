@@ -66,7 +66,7 @@ public enum AgentBurstStopReason : byte
     MatchStepLimit = 2,
     RulesTerminal = 3,
     ReplayFailure = 4,
-    LessonTargetReached = 5,
+    LessonRequirementsReached = 5,
 }
 
 public sealed record AgentMatchOptions
@@ -84,8 +84,8 @@ public sealed record AgentMatchOptions
         int maximumSteps = DefaultMaximumSteps,
         string? styleContractId = null,
         string? rivalPersonalityId = null,
-        AgentPassportV3? passport = null,
-        string actionProfile = AgentPassportV3.FourDirectionActionProfile,
+        AgentPassportV4? passport = null,
+        string actionProfile = AgentPassportV4.FourDirectionActionProfile,
         string? lessonId = null)
     {
         ValidateToken(matchId, MaximumMatchIdLength, nameof(matchId));
@@ -108,7 +108,7 @@ public sealed record AgentMatchOptions
                 $"An agent match must contain between 1 and {MaximumAllowedSteps} steps.");
         }
 
-        if (!AgentPassportV3.IsSupportedActionProfile(actionProfile))
+        if (!AgentPassportV4.IsSupportedActionProfile(actionProfile))
         {
             throw new ArgumentException(
                 "The action profile is unsupported.",
@@ -164,7 +164,7 @@ public sealed record AgentMatchOptions
         StyleContractId = styleContractId;
         RivalPersonalityId = rivalPersonalityId;
         ActionProfile = actionProfile;
-        Passport = passport ?? AgentPassportV3.CreateAnonymous(actionProfile);
+        Passport = passport ?? AgentPassportV4.CreateAnonymous(actionProfile);
         LessonId = lessonId;
     }
 
@@ -186,7 +186,7 @@ public sealed record AgentMatchOptions
 
     public string ActionProfile { get; }
 
-    public AgentPassportV3 Passport { get; }
+    public AgentPassportV4 Passport { get; }
 
     public string? LessonId { get; }
 
@@ -362,7 +362,7 @@ public sealed record AgentRivalResultV1(
     ReplayVerificationCode ReplayVerificationCode,
     AgentEpisodeMetricsV1 EpisodeMetrics);
 
-public sealed record AgentObservationV4(
+public sealed record AgentObservationV5(
     string Schema,
     string MatchId,
     string RulesetId,
@@ -373,7 +373,7 @@ public sealed record AgentObservationV4(
     string ConfigHash,
     AgentSeedVisibility SeedVisibility,
     ulong? GameplaySeed,
-    AgentPassportV3 Passport,
+    AgentPassportV4 Passport,
     int Tick,
     int MaximumSteps,
     int StepsRemaining,
@@ -417,19 +417,19 @@ public sealed record AgentObservationV4(
     bool IsActionAwaited,
     AgentEpisodeMetricsV1 EpisodeMetrics,
     AgentStyleProgressV2? StyleContract,
-    AgentLessonProgressV1? LessonProgress,
+    AgentLessonProgressV2? LessonProgress,
     AgentRivalObservationV1? Rival)
 {
-    public const string Contract = "vibesnake-agent-observation-v4";
+    public const string Contract = "vibesnake-agent-observation-v5";
 }
 
 public sealed record AgentActionResponse(
     bool Accepted,
     bool RulesAdvanced,
     AgentActionRejection Rejection,
-    AgentLessonProgressDeltaV1? LessonDelta,
-    AgentObservationV4 Observation,
-    AgentMatchResultV4? MatchResult);
+    AgentLessonProgressDeltaV2? LessonDelta,
+    AgentObservationV5 Observation,
+    AgentMatchResultV5? MatchResult);
 
 public sealed record AgentBurstResponse(
     bool Accepted,
@@ -438,11 +438,11 @@ public sealed record AgentBurstResponse(
     int StepsAdvanced,
     AgentBurstStopReason? StopReason,
     RunEventKind? StopEvent,
-    AgentLessonProgressDeltaV1? LessonDelta,
-    AgentObservationV4 Observation,
-    AgentMatchResultV4? MatchResult);
+    AgentLessonProgressDeltaV2? LessonDelta,
+    AgentObservationV5 Observation,
+    AgentMatchResultV5? MatchResult);
 
-public sealed record AgentMatchResultV4(
+public sealed record AgentMatchResultV5(
     string Schema,
     string MatchId,
     AgentMatchLifecycle Lifecycle,
@@ -455,7 +455,7 @@ public sealed record AgentMatchResultV4(
     string ConfigHash,
     AgentSeedVisibility SeedVisibility,
     ulong GameplaySeed,
-    AgentPassportV3 Passport,
+    AgentPassportV4 Passport,
     int FinalTick,
     RunStatus RunStatus,
     DeathCause DeathCause,
@@ -465,10 +465,10 @@ public sealed record AgentMatchResultV4(
     ReplayVerificationCode ReplayVerificationCode,
     AgentEpisodeMetricsV1 EpisodeMetrics,
     AgentStyleOutcomeV2? StyleOutcome,
-    AgentLessonOutcomeV1? LessonOutcome,
+    AgentLessonOutcomeV2? LessonOutcome,
     AgentRivalResultV1? Rival,
     RunReplay VerifiedReplay,
     RunReplay? VerifiedRivalReplay)
 {
-    public const string Contract = "vibesnake-agent-match-result-v4";
+    public const string Contract = "vibesnake-agent-match-result-v5";
 }
