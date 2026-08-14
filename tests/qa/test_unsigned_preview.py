@@ -110,7 +110,7 @@ def _fixture(root: Path) -> tuple[Path, Path, Path, Path, Path, Path]:
         _write_json(
             manifest_path,
             {
-                "schemaVersion": 2,
+                "schemaVersion": 3,
                 "product": "Vibe Snake",
                 "platform": platform,
                 "buildMode": "Release",

@@ -11,7 +11,7 @@ public sealed class ReleaseArtifactManifestTests
         bool includeAllRequired = true) =>
         $$"""
         {
-          "schemaVersion": 2,
+          "schemaVersion": 3,
           "product": "Vibe Snake",
           "platform": "windows-x64",
           "buildMode": "Debug",
@@ -22,6 +22,7 @@ public sealed class ReleaseArtifactManifestTests
           "godotExecutableSha256": "{{Hex(64)}}",
           "dotnetSdk": "10.0.303",
           "smokeStateHash": "0123456789abcdef",
+          "agentArenaPreviewExcluded": false,
           "fileCount": {{fileCount}},
           "totalBytes": {{totalBytes}},
           "files": [
@@ -42,7 +43,8 @@ public sealed class ReleaseArtifactManifestTests
         var result = ReleaseArtifactManifest.Parse(ValidWindowsJson());
         Assert.True(result.IsSuccess);
         Assert.NotNull(result.Manifest);
-        Assert.Equal(2, result.Manifest.SchemaVersion);
+        Assert.Equal(3, result.Manifest.SchemaVersion);
+        Assert.False(result.Manifest.AgentArenaPreviewExcluded);
         Assert.Equal("windows-x64", result.Manifest.Platform);
         Assert.Equal(5, result.Manifest.FileCount);
         Assert.Equal(15, result.Manifest.TotalBytes);
@@ -73,6 +75,7 @@ public sealed class ReleaseArtifactManifestTests
               "godotExecutableSha256": "bb",
               "dotnetSdk": "10.0.303",
               "smokeStateHash": "0123456789abcdef",
+              "agentArenaPreviewExcluded": false,
               "fileCount": 0,
               "totalBytes": 0,
               "files": [],
@@ -93,7 +96,7 @@ public sealed class ReleaseArtifactManifestTests
         var traversal = ReleaseArtifactManifest.Parse(
             """
             {
-              "schemaVersion": 2,
+              "schemaVersion": 3,
               "product": "Vibe Snake",
               "platform": "windows-x64",
               "buildMode": "Release",
@@ -104,6 +107,7 @@ public sealed class ReleaseArtifactManifestTests
               "godotExecutableSha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
               "dotnetSdk": "10.0.303",
               "smokeStateHash": "0123456789abcdef",
+              "agentArenaPreviewExcluded": true,
               "fileCount": 1,
               "totalBytes": 1,
               "files": [
@@ -121,7 +125,7 @@ public sealed class ReleaseArtifactManifestTests
     {
         var json = """
         {
-          "schemaVersion": 2,
+          "schemaVersion": 3,
           "product": "Vibe Snake",
           "platform": "windows-x64",
           "buildMode": "Debug",
@@ -132,6 +136,7 @@ public sealed class ReleaseArtifactManifestTests
           "godotExecutableSha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
           "dotnetSdk": "10.0.303",
           "smokeStateHash": "0123456789abcdef",
+          "agentArenaPreviewExcluded": false,
           "fileCount": 1,
           "totalBytes": 1,
           "files": [
@@ -145,6 +150,16 @@ public sealed class ReleaseArtifactManifestTests
 
         var structuralOnly = ReleaseArtifactManifest.Parse(json, enforceRequiredPayload: false);
         Assert.True(structuralOnly.IsSuccess);
+
+        var previewPath = ValidDocument();
+        previewPath["buildMode"] = "Release";
+        previewPath["agentArenaPreviewExcluded"] = true;
+        previewPath["files"]!.AsArray()[0]!["path"] = "data/VibeSnake.AgentPlay.dll.backup";
+        var previewResult = ReleaseArtifactManifest.Parse(previewPath.ToJsonString());
+        Assert.Equal(
+            ReleaseArtifactManifestLoadCode.MissingRequiredPayload,
+            previewResult.Code);
+        Assert.Contains("Agent Arena preview path", previewResult.Message, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -152,7 +167,7 @@ public sealed class ReleaseArtifactManifestTests
     {
         var json = $$"""
         {
-          "schemaVersion": 2,
+          "schemaVersion": 3,
           "product": "Vibe Snake",
           "platform": "macos-universal",
           "buildMode": "Release",
@@ -163,6 +178,7 @@ public sealed class ReleaseArtifactManifestTests
           "godotExecutableSha256": "{{Hex(64)}}",
           "dotnetSdk": "10.0.303",
           "smokeStateHash": "0123456789abcdef",
+          "agentArenaPreviewExcluded": true,
           "fileCount": 1,
           "totalBytes": 10,
           "files": [
@@ -258,7 +274,7 @@ public sealed class ReleaseArtifactManifestTests
             "schemaVersion", "product", "platform", "buildMode", "sourceRevision",
             "godotVersion", "godotCommit", "godotArchiveSha512",
             "godotExecutableSha256", "dotnetSdk", "smokeStateHash", "fileCount",
-            "totalBytes", "files",
+            "agentArenaPreviewExcluded", "totalBytes", "files",
         ];
         foreach (var field in requiredFields)
         {
@@ -269,7 +285,7 @@ public sealed class ReleaseArtifactManifestTests
 
         var invalidValues = new Dictionary<string, JsonNode?>
         {
-            ["schemaVersion"] = 2.5,
+            ["schemaVersion"] = 3.5,
             ["product"] = "Another Product",
             ["platform"] = "wasm",
             ["buildMode"] = "Profile",
@@ -280,6 +296,7 @@ public sealed class ReleaseArtifactManifestTests
             ["godotExecutableSha256"] = new string('g', 64),
             ["dotnetSdk"] = " ",
             ["smokeStateHash"] = "too-short",
+            ["agentArenaPreviewExcluded"] = "yes",
             ["fileCount"] = -1,
             ["totalBytes"] = -1,
             ["files"] = new JsonObject(),
@@ -291,6 +308,14 @@ public sealed class ReleaseArtifactManifestTests
             document[field] = value?.DeepClone();
             AssertInvalid(document, field);
         }
+
+        var releaseWithoutExclusion = ValidDocument();
+        releaseWithoutExclusion["buildMode"] = "Release";
+        AssertInvalid(releaseWithoutExclusion, "exactly for Release");
+
+        var debugWithExclusion = ValidDocument();
+        debugWithExclusion["agentArenaPreviewExcluded"] = true;
+        AssertInvalid(debugWithExclusion, "exactly for Release");
 
         var withoutOptionalContainers = ValidDocument();
         Assert.True(withoutOptionalContainers.Remove("containerEntries"));
@@ -308,8 +333,8 @@ public sealed class ReleaseArtifactManifestTests
         AssertInvalid(unknownRoot, "unknown");
 
         var duplicateRoot = ValidWindowsJson().Replace(
-            "\"schemaVersion\": 2,",
-            "\"schemaVersion\": 2, \"schemaVersion\": 2,",
+            "\"schemaVersion\": 3,",
+            "\"schemaVersion\": 3, \"schemaVersion\": 3,",
             StringComparison.Ordinal);
         Assert.Equal(
             ReleaseArtifactManifestLoadCode.InvalidField,
@@ -382,6 +407,7 @@ public sealed class ReleaseArtifactManifestTests
             Hex(64),
             "10.0.303",
             Hex(16),
+            true,
             1,
             1,
             [new ReleaseArtifactFileEntry("VibeSnake.zip", 1, Hex(64))],

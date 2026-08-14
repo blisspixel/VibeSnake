@@ -434,7 +434,7 @@ def assemble_unsigned_preview(
 
         if isinstance(manifest, dict):
             for field, expected in (
-                ("schemaVersion", 2),
+                ("schemaVersion", 3),
                 ("product", "Vibe Snake"),
                 ("platform", platform),
                 ("buildMode", "Release"),

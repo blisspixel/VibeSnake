@@ -364,6 +364,7 @@ public sealed class ReleaseSigningPolicyTests
             GodotExecutableSha256: new string('b', 64),
             DotnetSdk: "10.0.303",
             SmokeStateHash: "0123456789abcdef",
+            AgentArenaPreviewExcluded: string.Equals(buildMode, "Release", StringComparison.Ordinal),
             FileCount: files.Count,
             TotalBytes: files.Sum(file => file.Bytes),
             Files: files,

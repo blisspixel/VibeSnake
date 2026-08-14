@@ -1,7 +1,9 @@
 using Godot;
 using System.Globalization;
+#if AGENT_ARENA_PREVIEW
 using VibeSnake.AgentPlay;
 using VibeSnake.AgentViewer;
+#endif
 using VibeSnake.Persistence;
 using VibeSnake.Rules;
 using RulesDirection = VibeSnake.Rules.Direction;
@@ -166,12 +168,14 @@ public partial class Main : Node2D
     private int _activeSpectatorAiScore;
     private bool _spectatorKeyboardRouteQualified;
     private bool _spectatorControllerRouteQualified;
+#if AGENT_ARENA_PREVIEW
     private AgentViewerClient? _agentViewer;
     private AgentViewerFrameV3? _agentViewerFrame;
     private RunSnapshot? _agentViewerSnapshot;
     private string _agentViewerStatusId = "status.agent-viewer.connecting";
     private bool _agentViewerSmokeEnabled;
     private ulong? _agentViewerSmokeDeadlineMilliseconds;
+#endif
     private int _loreDepthFilterIndex;
     private int _loreBrowseCursor;
     private LoreUnlockContext _loreUnlockContext = LoreUnlockContext.Empty;
@@ -252,7 +256,9 @@ public partial class Main : Node2D
         Spectator,
         Lore,
         Comparisons,
+#if AGENT_ARENA_PREVIEW
         AgentWatch,
+#endif
     }
 
     private enum MainMenuItem
@@ -347,6 +353,7 @@ public partial class Main : Node2D
         var readmeCaptureDirectory = GetArgumentValue(
             userArguments,
             "--readme-capture-dir=");
+#if AGENT_ARENA_PREVIEW
         var agentWatchPipe = GetArgumentValue(userArguments, "--agent-watch-pipe=");
         var agentWatchToken = GetArgumentValue(userArguments, "--agent-watch-token=");
         var agentWatchSmoke = userArguments.Contains(
@@ -362,15 +369,19 @@ public partial class Main : Node2D
             throw new ArgumentException(
                 "Agent watch smoke requires the local viewer capability.");
         }
+#endif
         var automatedModeCount = (smokeTest ? 1 : 0)
             + (launchProbe ? 1 : 0)
-            + (readmeCaptureDirectory is null ? 0 : 1)
-            + (agentWatchSmoke ? 1 : 0);
+            + (readmeCaptureDirectory is null ? 0 : 1);
+#if AGENT_ARENA_PREVIEW
+        automatedModeCount += agentWatchSmoke ? 1 : 0;
+#endif
         if (automatedModeCount > 1)
         {
             throw new ArgumentException(
                 "Smoke, launch-probe, and README-capture modes are mutually exclusive.");
         }
+#if AGENT_ARENA_PREVIEW
         if (automatedModeCount > 0
             && agentWatchPipe is not null
             && !agentWatchSmoke)
@@ -378,15 +389,18 @@ public partial class Main : Node2D
             throw new ArgumentException(
                 "Agent watch mode cannot be combined with an automated launch mode.");
         }
+#endif
 
         var smokeUserDataRoot = GetArgumentValue(
             userArguments,
             "--smoke-user-data-root=");
-        if ((smokeTest
-                || launchProbe
-                || readmeCaptureDirectory is not null
-                || agentWatchSmoke)
-            && smokeUserDataRoot is null)
+        var automatedLaunchRequiresUserData = smokeTest
+            || launchProbe
+            || readmeCaptureDirectory is not null;
+#if AGENT_ARENA_PREVIEW
+        automatedLaunchRequiresUserData |= agentWatchSmoke;
+#endif
+        if (automatedLaunchRequiresUserData && smokeUserDataRoot is null)
         {
             throw new ArgumentException(
                 "Automated launch modes require an explicit --smoke-user-data-root path.");
@@ -455,6 +469,7 @@ public partial class Main : Node2D
         }
 
         ApplyWindowModeFromSettings();
+#if AGENT_ARENA_PREVIEW
         if (agentWatchPipe is not null && agentWatchToken is not null)
         {
             _agentViewer = new AgentViewerClient(agentWatchPipe, agentWatchToken);
@@ -465,6 +480,7 @@ public partial class Main : Node2D
                 ? Time.GetTicksMsec() + 30_000UL
                 : null;
         }
+#endif
         QueueRedraw();
     }
 
@@ -2206,14 +2222,19 @@ public partial class Main : Node2D
     {
         _ = delta;
         var nowMilliseconds = Time.GetTicksMsec();
+#if AGENT_ARENA_PREVIEW
         PollAgentViewer(nowMilliseconds);
         CheckAgentViewerSmokeTimeout(nowMilliseconds);
+#endif
+        var redrawAnimatedScreen = _screenState is ScreenState.Running
+            or ScreenState.Ended
+            or ScreenState.Replays
+            or ScreenState.Spectator;
+#if AGENT_ARENA_PREVIEW
+        redrawAnimatedScreen |= _screenState == ScreenState.AgentWatch;
+#endif
         if (_snakeMotionPresentation.IsAnimating(nowMilliseconds)
-            && _screenState is ScreenState.Running
-                or ScreenState.Ended
-                or ScreenState.Replays
-                or ScreenState.Spectator
-                or ScreenState.AgentWatch)
+            && redrawAnimatedScreen)
         {
             QueueRedraw();
         }
@@ -2271,8 +2292,10 @@ public partial class Main : Node2D
             _window.SizeChanged -= OnWindowSizeChanged;
         }
 
+#if AGENT_ARENA_PREVIEW
         _agentViewer?.Dispose();
         _agentViewer = null;
+#endif
 
         Input.JoyConnectionChanged -= OnJoyConnectionChanged;
         GameActions.ReleaseRuntimeDefaults();
@@ -2408,6 +2431,7 @@ public partial class Main : Node2D
             return;
         }
 
+#if AGENT_ARENA_PREVIEW
         if (_screenState == ScreenState.AgentWatch)
         {
             if (inputEvent.IsActionPressed(GameActions.Back))
@@ -2421,6 +2445,7 @@ public partial class Main : Node2D
 
             return;
         }
+#endif
 
         if (_screenState == ScreenState.Lore)
         {
@@ -3087,9 +3112,11 @@ public partial class Main : Node2D
             case ScreenState.Comparisons:
                 DrawOfflineComparisons();
                 break;
+#if AGENT_ARENA_PREVIEW
             case ScreenState.AgentWatch:
                 DrawAgentWatch();
                 break;
+#endif
             case ScreenState.Menu:
                 DrawMainMenu();
                 break;
@@ -4115,6 +4142,7 @@ public partial class Main : Node2D
         _spectatorMatch = null;
         _spectatorMatchPersisted = false;
         _spectatorStatusCaption = null;
+#if AGENT_ARENA_PREVIEW
         _agentViewer?.Dispose();
         _agentViewer = null;
         _agentViewerFrame = null;
@@ -4122,6 +4150,7 @@ public partial class Main : Node2D
         _agentViewerStatusId = "status.agent-viewer.connecting";
         _agentViewerSmokeEnabled = false;
         _agentViewerSmokeDeadlineMilliseconds = null;
+#endif
         _activeSpectatorChallenge = null;
         _activeSpectatorChallengePersonalityId = null;
         _activeSpectatorAiScore = 0;
@@ -4212,7 +4241,9 @@ public partial class Main : Node2D
             ScreenState.Spectator => ShellScreen.Spectator,
             ScreenState.Lore => ShellScreen.Lore,
             ScreenState.Comparisons => ShellScreen.Comparisons,
+#if AGENT_ARENA_PREVIEW
             ScreenState.AgentWatch => ShellScreen.AgentWatch,
+#endif
             _ => throw new ArgumentOutOfRangeException(nameof(state)),
         };
 
@@ -9479,6 +9510,7 @@ public partial class Main : Node2D
         }
     }
 
+#if AGENT_ARENA_PREVIEW
     private void PollAgentViewer(ulong nowMilliseconds)
     {
         if (_screenState != ScreenState.AgentWatch || _agentViewer is null)
@@ -9819,6 +9851,7 @@ public partial class Main : Node2D
             ScaledFontSize(10),
             SecondaryTextColor());
     }
+#endif
 
     private void DrawSpectatorSelection()
     {
@@ -15849,7 +15882,9 @@ public partial class Main : Node2D
             (ShellScreen.Menu, ShellScreen.Tour),
             (ShellScreen.Menu, ShellScreen.Cosmetics),
             (ShellScreen.Menu, ShellScreen.Spectator),
+#if AGENT_ARENA_PREVIEW
             (ShellScreen.Menu, ShellScreen.AgentWatch),
+#endif
             (ShellScreen.Running, ShellScreen.Paused),
             (ShellScreen.Running, ShellScreen.Ended),
             (ShellScreen.Running, ShellScreen.Menu),
@@ -15905,7 +15940,9 @@ public partial class Main : Node2D
             (ShellScreen.Comparisons, ShellScreen.Replays),
             (ShellScreen.Comparisons, ShellScreen.Comparisons),
             (ShellScreen.Comparisons, ShellScreen.Running),
+#if AGENT_ARENA_PREVIEW
             (ShellScreen.AgentWatch, ShellScreen.Menu),
+#endif
         ];
 
         foreach (var from in Enum.GetValues<ShellScreen>())

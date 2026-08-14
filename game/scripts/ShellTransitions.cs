@@ -22,7 +22,9 @@ internal enum ShellScreen : byte
     Spectator = 13,
     Lore = 14,
     Comparisons = 15,
+#if AGENT_ARENA_PREVIEW
     AgentWatch = 16,
+#endif
 }
 
 internal static class ShellTransitions
@@ -41,7 +43,9 @@ internal static class ShellTransitions
         (ShellScreen.Menu, ShellScreen.Tour) => true,
         (ShellScreen.Menu, ShellScreen.Cosmetics) => true,
         (ShellScreen.Menu, ShellScreen.Spectator) => true,
+#if AGENT_ARENA_PREVIEW
         (ShellScreen.Menu, ShellScreen.AgentWatch) => true,
+#endif
         (ShellScreen.Running, ShellScreen.Paused) => true,
         (ShellScreen.Running, ShellScreen.Ended) => true,
         (ShellScreen.Running, ShellScreen.Menu) => true,
@@ -97,7 +101,9 @@ internal static class ShellTransitions
         (ShellScreen.Comparisons, ShellScreen.Replays) => true,
         (ShellScreen.Comparisons, ShellScreen.Comparisons) => true,
         (ShellScreen.Comparisons, ShellScreen.Running) => true,
+#if AGENT_ARENA_PREVIEW
         (ShellScreen.AgentWatch, ShellScreen.Menu) => true,
+#endif
         _ => false,
     };
 

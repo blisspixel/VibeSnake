@@ -38,8 +38,9 @@ public sealed record ReleaseArtifactFileEntry(
     long? CompressedBytes = null);
 
 /// <summary>
-/// Schema 2 release artifact manifest: platform identity, toolchain provenance,
-/// smoke hash, and per-file SHA-256 inventory. Matches the document written by
+/// Schema 3 release artifact manifest: platform identity, toolchain provenance,
+/// supported-product preview exclusion, smoke hash, and per-file SHA-256 inventory.
+/// Matches the document written by
 /// <c>scripts/inspect_native_artifact.ps1</c> so packaging gates can validate
 /// without PowerShell. Does not claim signing or store-channel approval.
 /// </summary>
@@ -55,12 +56,13 @@ public sealed record ReleaseArtifactManifest(
     string GodotExecutableSha256,
     string DotnetSdk,
     string SmokeStateHash,
+    bool AgentArenaPreviewExcluded,
     int FileCount,
     long TotalBytes,
     IReadOnlyList<ReleaseArtifactFileEntry> Files,
     IReadOnlyList<ReleaseArtifactFileEntry> ContainerEntries)
 {
-    public const int CurrentSchemaVersion = 2;
+    public const int CurrentSchemaVersion = 3;
     public const string FileName = "artifact-manifest.json";
     public const string ProductName = "Vibe Snake";
 
@@ -86,6 +88,7 @@ public sealed record ReleaseArtifactManifest(
         "godotExecutableSha256",
         "dotnetSdk",
         "smokeStateHash",
+        "agentArenaPreviewExcluded",
         "fileCount",
         "totalBytes",
         "files",
@@ -253,6 +256,19 @@ public sealed record ReleaseArtifactManifest(
                 return FailField("smokeStateHash must be 16 lowercase hex characters.");
             }
 
+            if (!TryGetBool(root, "agentArenaPreviewExcluded", out var previewExcluded))
+            {
+                return FailField("agentArenaPreviewExcluded must be a boolean.");
+            }
+
+            var requiresPreviewExclusion =
+                string.Equals(buildMode, "Release", StringComparison.Ordinal);
+            if (previewExcluded != requiresPreviewExclusion)
+            {
+                return FailField(
+                    "agentArenaPreviewExcluded must be true exactly for Release artifacts.");
+            }
+
             if (!TryGetInt(root, "fileCount", out var fileCount) || fileCount < 0)
             {
                 return FailField("fileCount must be a non-negative integer.");
@@ -311,6 +327,7 @@ public sealed record ReleaseArtifactManifest(
                 GodotExecutableSha256: exeSha,
                 DotnetSdk: dotnetSdk,
                 SmokeStateHash: smokeHash,
+                AgentArenaPreviewExcluded: previewExcluded,
                 FileCount: fileCount,
                 TotalBytes: totalBytes,
                 Files: files,
@@ -341,6 +358,20 @@ public sealed record ReleaseArtifactManifest(
     {
         ArgumentNullException.ThrowIfNull(manifest);
         var paths = manifest.Files.Select(entry => entry.Path.Replace('\\', '/')).ToArray();
+        var containerPaths = manifest.ContainerEntries
+            .Select(entry => entry.Path.Replace('\\', '/'))
+            .ToArray();
+        if (manifest.AgentArenaPreviewExcluded)
+        {
+            var previewPath = paths.Concat(containerPaths).FirstOrDefault(IsAgentArenaPreviewPath);
+            if (previewPath is not null)
+            {
+                return "Release artifact contains an Agent Arena preview path: "
+                    + previewPath
+                    + ".";
+            }
+        }
+
         var patterns = RequiredPathPatterns(manifest.Platform);
         foreach (var pattern in patterns)
         {
@@ -356,9 +387,6 @@ public sealed record ReleaseArtifactManifest(
 
         if (string.Equals(manifest.Platform, "macos-universal", StringComparison.Ordinal))
         {
-            var containerPaths = manifest.ContainerEntries
-                .Select(entry => entry.Path.Replace('\\', '/'))
-                .ToArray();
             foreach (var pattern in RequiredMacContainerPatterns)
             {
                 if (!containerPaths.Any(path =>
@@ -371,6 +399,13 @@ public sealed record ReleaseArtifactManifest(
 
         return null;
     }
+
+    private static bool IsAgentArenaPreviewPath(string path) =>
+        AgentArenaPreviewPathPatterns.Any(pattern =>
+            Regex.IsMatch(
+                path,
+                pattern,
+                RegexOptions.CultureInvariant | RegexOptions.IgnoreCase));
 
     /// <summary>
     /// Declared release packaging shape for a platform (folder, app, zip).
@@ -391,6 +426,15 @@ public sealed record ReleaseArtifactManifest(
         @"VibeSnake\.Game\.dll$",
         @"VibeSnake\.Persistence\.dll$",
         @"VibeSnake\.Rules\.dll$",
+    ];
+
+    private static readonly string[] AgentArenaPreviewPathPatterns =
+    [
+        @"(^|/)VibeSnake\.Agent(?:Play|Viewer|Host)(?:[._/-]|$)",
+        @"(^|/)(?:integrations/)?vibesnake-agent-(?:plugin|knowledge)(?:/|$)",
+        @"(^|/)integrations/agent-interop-baseline\.json$",
+        @"(^|/)skills/play-vibesnake(?:/|$)",
+        @"(^|/)mcp\.json$",
     ];
 
     private static string[] RequiredPathPatterns(string platform) =>
@@ -481,6 +525,19 @@ public sealed record ReleaseArtifactManifest(
         }
 
         value = element.GetString() ?? string.Empty;
+        return true;
+    }
+
+    private static bool TryGetBool(JsonElement root, string name, out bool value)
+    {
+        value = false;
+        if (!root.TryGetProperty(name, out var element)
+            || element.ValueKind is not (JsonValueKind.True or JsonValueKind.False))
+        {
+            return false;
+        }
+
+        value = element.GetBoolean();
         return true;
     }
 

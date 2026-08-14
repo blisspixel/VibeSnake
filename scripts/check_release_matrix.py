@@ -162,11 +162,18 @@ def validate_release_matrix(
         lifecycle = documents.get("lifecycle")
         manifest_sha = _sha256(manifest_path)
 
-        _expect(manifest, "schemaVersion", 2, f"{platform} manifest", errors)
+        _expect(manifest, "schemaVersion", 3, f"{platform} manifest", errors)
         _expect(manifest, "product", "Vibe Snake", f"{platform} manifest", errors)
         _expect(manifest, "platform", platform, f"{platform} manifest", errors)
         _expect(manifest, "buildMode", expected_build_mode, f"{platform} manifest", errors)
         _expect(manifest, "sourceRevision", expected_revision, f"{platform} manifest", errors)
+        _expect(
+            manifest,
+            "agentArenaPreviewExcluded",
+            expected_build_mode == "Release",
+            f"{platform} manifest",
+            errors,
+        )
         smoke_hash = manifest.get("smokeStateHash")
         if not STATE_HASH_PATTERN.fullmatch(str(smoke_hash)):
             errors.append(f"{platform} manifest.smokeStateHash must be 16 lowercase hex characters")

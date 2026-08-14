@@ -24,12 +24,13 @@ def _write_platform(root: Path, platform: str, build_mode: str = "Release") -> N
     evidence_root = root / f"vibesnake-{platform}-qualification-evidence"
     manifest_path = root / f"vibesnake-{platform}-manifest" / "artifact-manifest.json"
     manifest = {
-        "schemaVersion": 2,
+        "schemaVersion": 3,
         "product": "Vibe Snake",
         "platform": platform,
         "buildMode": build_mode,
         "sourceRevision": REVISION,
         "smokeStateHash": SMOKE_HASH,
+        "agentArenaPreviewExcluded": build_mode == "Release",
         "fileCount": 1,
         "totalBytes": 10,
         "files": [{"path": "player", "bytes": 10, "sha256": "d" * 64}],
@@ -695,6 +696,19 @@ def test_release_matrix_rejects_booleans_substituted_for_integer_evidence(tmp_pa
     assert any("output.schemaVersion must be 1" in error for error in errors)
     assert any("output.packageBytes must be a positive integer" in error for error in errors)
     assert any("runCount must be a positive integer" in error for error in errors)
+
+
+def test_release_matrix_rejects_missing_supported_preview_exclusion(tmp_path: Path) -> None:
+    _write_matrix(tmp_path)
+    manifest_path = tmp_path / "vibesnake-linux-x64-manifest" / "artifact-manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest["agentArenaPreviewExcluded"] = False
+    _write_json(manifest_path, manifest)
+
+    errors, evidence = validate_release_matrix(tmp_path, REVISION, "Release")
+
+    assert evidence["passed"] is False
+    assert any("manifest.agentArenaPreviewExcluded must be True" in error for error in errors)
 
 
 def test_release_matrix_rejects_duplicate_fields_and_nonfinite_numbers(tmp_path: Path) -> None:

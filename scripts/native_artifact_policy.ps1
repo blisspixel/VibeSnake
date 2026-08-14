@@ -96,3 +96,47 @@ function Assert-ArtifactRespectsContentInventory {
         }
     }
 }
+
+function Assert-NativeArtifactExcludesAgentArenaPreview {
+    param([Parameter(Mandatory)][string[]]$ArtifactRelativePaths)
+
+    $prohibitedPreviewPatterns = @(
+        "(^|/)VibeSnake\.Agent(?:Play|Viewer|Host)(?:[._/-]|$)",
+        "(^|/)(?:integrations/)?vibesnake-agent-(?:plugin|knowledge)(?:/|$)",
+        "(^|/)integrations/agent-interop-baseline\.json$",
+        "(^|/)skills/play-vibesnake(?:/|$)",
+        "(^|/)mcp\.json$"
+    )
+
+    foreach ($artifactPath in $ArtifactRelativePaths) {
+        $normalized = ([string]$artifactPath).Replace("\", "/")
+        foreach ($pattern in $prohibitedPreviewPatterns) {
+            if ($normalized -match $pattern) {
+                throw "Supported artifact contains Agent Arena preview content: $normalized"
+            }
+        }
+    }
+}
+
+function Assert-NativeArtifactPayloadExcludesAgentArenaPreview {
+    param(
+        [Parameter(Mandatory)][byte[]]$Bytes,
+        [Parameter(Mandatory)][string]$RelativePath
+    )
+
+    $text = [Text.Encoding]::UTF8.GetString($Bytes)
+    $previewNeedles = @(
+        "VibeSnake.AgentPlay",
+        "VibeSnake.AgentViewer",
+        "VibeSnake.AgentHost",
+        "--agent-watch-",
+        "vibesnake-agent-plugin",
+        "vibesnake-agent-knowledge",
+        "integrations/agent-interop-baseline.json"
+    )
+    foreach ($needle in $previewNeedles) {
+        if ($text.Contains($needle, [StringComparison]::OrdinalIgnoreCase)) {
+            throw "Supported artifact payload contains Agent Arena preview content in $RelativePath."
+        }
+    }
+}

@@ -48,7 +48,7 @@ The approved radio pack is a separate release download, never part of a base pla
 | Output | Purpose |
 | --- | --- |
 | `VibeSnake-<version>-<platform>-qualification.<archive>` | Exact qualified player payload |
-| `artifact-manifest.json` | Source, toolchain, smoke identity, sizes, and per-file SHA-256 |
+| `artifact-manifest.json` | Schema-3 source, toolchain, smoke identity, Release preview-exclusion state, sizes, and per-file SHA-256 |
 | `release_output_plan.json` | Channel shape, separation guarantees, package size/hash, deterministic repeat result, and publication blockers |
 | `SHA256SUMS` | Package, artifact-manifest, and output-plan SHA-256 values |
 

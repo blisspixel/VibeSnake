@@ -113,11 +113,20 @@ foreach ($file in $files) {
     }
 
     if ($relativePath -match "(?:^|/)(?:VibeSnake(?:\.Game|\.Persistence|\.Rules)?\.(?:dll|pdb)|VibeSnake\.pck)$") {
-        Assert-ProjectPayloadIsPortable -Bytes ([System.IO.File]::ReadAllBytes($file.FullName)) -RelativePath $relativePath
+        $projectBytes = [System.IO.File]::ReadAllBytes($file.FullName)
+        Assert-ProjectPayloadIsPortable -Bytes $projectBytes -RelativePath $relativePath
+        if ($BuildMode -eq "Release") {
+            Assert-NativeArtifactPayloadExcludesAgentArenaPreview `
+                -Bytes $projectBytes `
+                -RelativePath $relativePath
+        }
     }
 }
 
 $relativePaths = @($fileEntries | ForEach-Object { [string]$_.path })
+if ($BuildMode -eq "Release") {
+    Assert-NativeArtifactExcludesAgentArenaPreview -ArtifactRelativePaths $relativePaths
+}
 Assert-ArtifactRespectsContentInventory `
     -InventoryPath (Join-Path $repositoryRoot "config/content_inventory.json") `
     -ArtifactRelativePaths $relativePaths
@@ -167,6 +176,11 @@ if ($PlatformId -eq "macos-universal") {
                         $entryStream.CopyTo($memory)
                         $entryBytes = $memory.ToArray()
                         Assert-ProjectPayloadIsPortable -Bytes $entryBytes -RelativePath $entryPath
+                        if ($BuildMode -eq "Release") {
+                            Assert-NativeArtifactPayloadExcludesAgentArenaPreview `
+                                -Bytes $entryBytes `
+                                -RelativePath $entryPath
+                        }
                         $entryHash = [Convert]::ToHexString([System.Security.Cryptography.SHA256]::HashData($entryBytes)).ToLowerInvariant()
                     } finally {
                         $memory.Dispose()
@@ -190,6 +204,9 @@ if ($PlatformId -eq "macos-universal") {
     }
 
     $macPaths = @($containerEntries | ForEach-Object { [string]$_.path })
+    if ($BuildMode -eq "Release") {
+        Assert-NativeArtifactExcludesAgentArenaPreview -ArtifactRelativePaths $macPaths
+    }
     # Godot names the .app from config/name ("Vibe Snake"), while assemblies keep
     # the VibeSnake.* project identifiers.
     $requiredMacPatterns = @(
@@ -209,7 +226,7 @@ if ($PlatformId -eq "macos-universal") {
 
 $sourceRevision = if ($env:GITHUB_SHA) { $env:GITHUB_SHA } else { "unavailable" }
 $manifest = [ordered]@{
-    schemaVersion = 2
+    schemaVersion = 3
     product = "Vibe Snake"
     platform = $PlatformId
     buildMode = $BuildMode
@@ -220,6 +237,7 @@ $manifest = [ordered]@{
     godotExecutableSha256 = $verifiedExecutableHash
     dotnetSdk = $selectedDotnetSdk
     smokeStateHash = $SmokeStateHash
+    agentArenaPreviewExcluded = $BuildMode -eq "Release"
     fileCount = $fileEntries.Count
     totalBytes = ($files | Measure-Object Length -Sum).Sum
     files = $fileEntries
@@ -230,7 +248,7 @@ $json = $manifest | ConvertTo-Json -Depth 8
 [System.IO.File]::WriteAllText($manifestPath, $json + [Environment]::NewLine, [Text.UTF8Encoding]::new($false))
 $manifestHash = (Get-FileHash -LiteralPath $manifestPath -Algorithm SHA256).Hash.ToLowerInvariant()
 
-# Pure C# schema-2 validator (ReleaseArtifactManifest) must accept the written document.
+# Pure C# schema-3 validator (ReleaseArtifactManifest) must accept the written document.
 $localDotnetCandidates = @(
     (Join-Path $repositoryRoot ".dotnet/dotnet.exe"),
     (Join-Path $repositoryRoot ".dotnet/dotnet")

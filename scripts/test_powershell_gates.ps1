@@ -93,6 +93,58 @@ try {
         }
     }
 
+    Assert-NativeArtifactExcludesAgentArenaPreview `
+        -ArtifactRelativePaths @(
+            "VibeSnake.exe",
+            "VibeSnake.pck",
+            "data_VibeSnake.Game_windows_x86_64/VibeSnake.Game.dll"
+        )
+    $agentPreviewPaths = @(
+        "data/VibeSnake.AgentPlay.dll",
+        "Frameworks/VibeSnake.AgentViewer.DLL",
+        "tools/VibeSnake.AgentHost.runtimeconfig.json",
+        "integrations/vibesnake-agent-plugin/plugin.json",
+        "INTEGRATIONS/VIBESNAKE-AGENT-KNOWLEDGE/rules.md",
+        "skills/play-vibesnake/SKILL.md",
+        "mcp.json",
+        "data/VibeSnake.AgentPlay.dll.backup"
+    )
+    foreach ($agentPreviewPath in $agentPreviewPaths) {
+        try {
+            Assert-NativeArtifactExcludesAgentArenaPreview `
+                -ArtifactRelativePaths @($agentPreviewPath)
+            throw "Supported artifact policy accepted Agent Arena preview content: $agentPreviewPath"
+        } catch {
+            if ($_.Exception.Message -notlike "Supported artifact contains Agent Arena preview content:*") {
+                throw
+            }
+        }
+    }
+
+    $cleanPayload = [Text.Encoding]::UTF8.GetBytes("VibeSnake.Game VibeSnake.Rules")
+    Assert-NativeArtifactPayloadExcludesAgentArenaPreview `
+        -Bytes $cleanPayload `
+        -RelativePath "VibeSnake.Game.dll"
+    foreach ($needle in @(
+        "VibeSnake.AgentPlay",
+        "VibeSnake.AgentViewer",
+        "VibeSnake.AgentHost",
+        "--agent-watch-pipe=",
+        "vibesnake-agent-plugin",
+        "vibesnake-agent-knowledge"
+    )) {
+        try {
+            Assert-NativeArtifactPayloadExcludesAgentArenaPreview `
+                -Bytes ([Text.Encoding]::UTF8.GetBytes("prefix $needle suffix")) `
+                -RelativePath "VibeSnake.Game.dll"
+            throw "Supported artifact payload policy accepted Agent Arena marker: $needle"
+        } catch {
+            if ($_.Exception.Message -notlike "Supported artifact payload contains Agent Arena preview content in*") {
+                throw
+            }
+        }
+    }
+
     $invalidPaths = @(
         "/etc/passwd",
         "C:\secrets.txt",
@@ -144,6 +196,16 @@ try {
     $nativeCoverageScript = Get-Content -LiteralPath (Join-Path $repositoryRoot "scripts/test_native_coverage.ps1") -Raw
     $nativeExportScript = Get-Content -LiteralPath (Join-Path $repositoryRoot "scripts/test_native_export.ps1") -Raw
     $gameMainScript = Get-Content -LiteralPath (Join-Path $repositoryRoot "game/scripts/Main.cs") -Raw
+    $gameProject = Get-Content -LiteralPath (Join-Path $repositoryRoot "game/VibeSnake.Game.csproj") -Raw
+    if (
+        -not $gameProject.Contains("'`$(Configuration)' == 'ExportRelease'") -or
+        -not $gameProject.Contains("<AgentArenaPreview") -or
+        -not $gameProject.Contains("AGENT_ARENA_PREVIEW") -or
+        -not $gameMainScript.Contains("#if AGENT_ARENA_PREVIEW") -or
+        -not $nativeExportScript.Contains("inspect_native_artifact.ps1")
+    ) {
+        throw "Supported Release artifacts must compile out and inspect the Agent Arena preview."
+    }
     foreach ($coverageConsumer in @($ciWorkflow, $nativeTestScript)) {
         if (-not $coverageConsumer.Contains("test_native_coverage.ps1", [StringComparison]::Ordinal)) {
             throw "Native coverage consumer does not invoke the shared coverage gate."

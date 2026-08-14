@@ -4,13 +4,19 @@
     <EnableDynamicLoading>true</EnableDynamicLoading>
     <RootNamespace>VibeSnake.Game</RootNamespace>
     <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+    <AgentArenaPreview Condition="'$(AgentArenaPreview)' == '' and '$(Configuration)' == 'ExportRelease'">false</AgentArenaPreview>
+    <AgentArenaPreview Condition="'$(AgentArenaPreview)' == ''">true</AgentArenaPreview>
+    <DefineConstants Condition="'$(AgentArenaPreview)' == 'true'">$(DefineConstants);AGENT_ARENA_PREVIEW</DefineConstants>
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\native\src\VibeSnake.AgentPlay\VibeSnake.AgentPlay.csproj" />
-    <ProjectReference Include="..\native\src\VibeSnake.AgentViewer\VibeSnake.AgentViewer.csproj" />
     <ProjectReference Include="..\native\src\VibeSnake.Persistence\VibeSnake.Persistence.csproj" />
     <ProjectReference Include="..\native\src\VibeSnake.Rules\VibeSnake.Rules.csproj" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(AgentArenaPreview)' == 'true'">
+    <ProjectReference Include="..\native\src\VibeSnake.AgentPlay\VibeSnake.AgentPlay.csproj" />
+    <ProjectReference Include="..\native\src\VibeSnake.AgentViewer\VibeSnake.AgentViewer.csproj" />
   </ItemGroup>
 
   <ItemGroup>

@@ -114,6 +114,7 @@ public sealed class ReleaseOutputPlanTests
         GodotExecutableSha256: new string('b', 64),
         DotnetSdk: "10.0.303",
         SmokeStateHash: "0123456789abcdef",
+        AgentArenaPreviewExcluded: string.Equals(buildMode, "Release", StringComparison.Ordinal),
         FileCount: 0,
         TotalBytes: 0,
         Files: [],

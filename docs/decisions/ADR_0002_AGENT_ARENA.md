@@ -4,7 +4,7 @@ Status: Accepted for post-1.0 development
 
 Decision date: 2026-08-12
 
-Implementation note: the development tree now exercises this post-1.0 boundary through a Rules-only session assembly, local stdio MCP host, six selectable canonical Signal School practices, explicit replay save, and read-only same-user pipe viewer. Practice observations expose exact instructions and progress, mutations expose deltas, and successful finalization exposes replay-derived hash-bound outcomes. The preview is not part of the supported 1.0 release contract. A 1.0 candidate must exclude every preview assembly and entry point and pass the dedicated artifact assertion before artifact qualification. The complete eight-behavior curriculum and human experience acceptance remain open.
+Implementation note: the development tree now exercises this post-1.0 boundary through a Rules-only session assembly, local stdio MCP host, six selectable canonical Signal School practices, explicit replay save, and read-only same-user pipe viewer. Practice observations expose exact instructions and progress, mutations expose deltas, and successful finalization exposes replay-derived hash-bound outcomes. The preview is not part of the supported 1.0 release contract. `ExportRelease` omits its project references and compiles out the watch route, while schema-3 inspection rejects preview payloads and compiled command-line markers. The exact three-platform 1.0 candidate must retain passing evidence before promotion. Representing all eight observable behaviors with eight rejection-aware canonical lessons and completing human experience acceptance remain open.
 
 ## Context
 
@@ -29,6 +29,7 @@ External agent play introduces different trust, pacing, privacy, and compatibili
 - Reuse the existing Godot replay browser and provide a read-only live viewer over a local pipe rather than TCP. The viewer cannot influence rules, pacing, or replay integrity.
 - Keep external-agent results separate from human scores, achievements, progression, ordinary challenges, and the built-in AI league.
 - Store only bounded public agent identity and verified results in a later Agent Passport. Do not persist prompts, chain of thought, credentials, provider responses, or executable policy code.
+- When exhibition receipts become persistent, keep transport-neutral receipt creation and verification in `VibeSnake.AgentPlay`. Add a separate optional `VibeSnake.AgentPersistence` adapter that may depend on AgentPlay, Persistence, and Rules; do not make the supported `VibeSnake.Persistence` assembly depend on post-1.0 preview code. Store both verified lanes and their canonical receipt transactionally as one bounded bundle.
 
 ## Interoperability posture
 
@@ -65,7 +66,7 @@ The project may claim meaningful agency, compounding competence, fair verificati
 - Remote HTTP, OAuth, accounts, matchmaking, uploads, and hosted tournaments are separate future decisions.
 - Plugin containment is not treated as process sandboxing. Manifests contain no secrets and the game does not load plugin code.
 - Viewer loss, pause, speed, or dropped frames never affect canonical match state.
-- Withheld qualification seeds and immutable evaluators measure generalization separately from public practice.
+- Qualification-time seed decks and immutable evaluators measure generalization separately from public practice and checked-in non-practice fixtures.
 
 ## Consequences
 
@@ -80,7 +81,7 @@ Costs and constraints:
 
 - Agent matches need their own lifecycle, qualification, persistence, and accessibility evidence.
 - Live spectating requires a separate read-only local channel because MCP stdio output must remain protocol-clean.
-- Agent Plugin and OKF formats are still evolving, so their artifacts stay generated, version-pinned, and optional.
+- Agent Plugins 1.0.0 has conflicting status surfaces: its normative versioned repository says Published while the public website says Working Draft. OKF remains at 0.2. Both integrations therefore stay generated, version-pinned, optional, and outside gameplay authority.
 - Human review remains necessary to prove that broadcasts, pacing, rivalry, and rematches are entertaining.
 
 ## Reconsideration triggers
