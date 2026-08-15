@@ -300,13 +300,15 @@ internal static class ShellLocalization
             "VS {rival} {agent_score}-{rival_score}"),
         Entry(
             "agent-arena.identity",
-            "{agent}  AVATAR {avatar}  STATION {station}"),
+            "{agent}  AVATAR {avatar}  STATION {station}  {seed}"),
+        Entry("agent-arena.seed.open", "SEED {seed}"),
+        Entry("agent-arena.seed.blind", "SEED BLIND"),
         Entry(
             "agent-arena.matchup",
             "{style}  {rival}"),
         Entry(
             "agent-arena.status",
-            "{status}  {outcome}  STEP {step}/{maximum}  FRAME {frame}"),
+            "{status}  {outcome}  STEP {step}/{maximum}  FRAME {frame}  STATE {state}"),
         Entry(
             "agent-arena.intent-status",
             "{intent}  {action}"),

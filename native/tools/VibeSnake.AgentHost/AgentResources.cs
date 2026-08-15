@@ -65,7 +65,7 @@ public sealed class AgentResources
     public static string GetRules() => JsonSerializer.Serialize(
         new
         {
-            contract = "vibesnake-agent-rules-resource-v8",
+            contract = "vibesnake-agent-rules-resource-v9",
             ruleset_id = RulesetIdentity.CurrentId,
             rules_version = RulesetIdentity.CurrentVersion,
             observation_schema = AgentObservationV5.Contract,
@@ -104,6 +104,16 @@ public sealed class AgentResources
                 awaiting_agent = "Awaiting an agent action pauses rules and score while the viewer remains presentation-only.",
             },
             intent_semantics = "A public intent is an optional self-declared presentation label. It never changes rules, score, rewards, replay verification, or qualification.",
+            lifecycle_semantics = new
+            {
+                lifecycle = "lifecycle describes the agent session: awaiting_action, completed, aborted, or failed_closed. It never describes the snake.",
+                run_status = "run_status describes the snake inside the rules: running, dead, or won. A completed lesson can report run_status running because the agent deliberately stopped a living run.",
+                pairing = "lifecycle completed with run_status running is the normal, correct result of finishing a satisfied lesson early. lifecycle and run_status answer different questions and are never merged.",
+                is_action_awaited = "is_action_awaited stays true while the host would still accept a mutation, including after every lesson requirement is satisfied. Satisfying requirements never ends a match; only finish_match, a rules terminal, or the step cap does.",
+                requirement_satisfied = "A lesson requirement's satisfied flag reports that its closed evidence exists. It is a factual observation, not a grade, score, or claim about mastery.",
+                recommended_next_tool = "recommended_next_tool is factual guidance derived from live progress. The caller keeps explicit control and may keep playing instead.",
+            },
+            argument_binding = "Tool arguments use the exact discovered camelCase names and JSON types. Missing, unexpected, and wrong-typed argument names are named before the tool runs, list the required and optional fields, and change no match state. gameplaySeed is a quoted decimal string, never a JSON number. A rejected request carries no observation because it never entered match code; observe_match separately proves the unchanged tick and state hash.",
             stale_action_guard = StaleActionGuards,
             seed_divisions = SeedDivisions,
             maximum_steps = AgentMatchOptions.MaximumAllowedSteps,

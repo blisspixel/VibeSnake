@@ -173,6 +173,10 @@ public partial class Main : Node2D
     private int _activeSpectatorAiScore;
     private bool _spectatorKeyboardRouteQualified;
     private bool _spectatorControllerRouteQualified;
+    // The bounded spectator evidence band and the localization geometry gate share
+    // this width, so it stays available even when the preview route is compiled out.
+    private const int AgentViewerStateHashPrefixLength = 8;
+
 #if AGENT_ARENA_PREVIEW
     private AgentViewerClient? _agentViewer;
     private AgentViewerFrameV7? _agentViewerFrame;
@@ -9972,6 +9976,28 @@ public partial class Main : Node2D
         ? value.ToUpperInvariant()
         : value[..16].ToUpperInvariant() + "..";
 
+    // The host publishes 16-character lowercase state hashes. The overlay prints a
+    // fixed uppercase prefix so a spectator can compare the same match identity the
+    // host already reported without widening the bounded evidence band.
+    private static string AgentViewerStateHashPrefix(string stateHash)
+    {
+        ArgumentNullException.ThrowIfNull(stateHash);
+        var prefix = stateHash.Length <= AgentViewerStateHashPrefixLength
+            ? stateHash
+            : stateHash[..AgentViewerStateHashPrefixLength];
+        return prefix.ToUpperInvariant();
+    }
+
+    private string AgentViewerSeedCopy(AgentObservationV5 observation)
+    {
+        ArgumentNullException.ThrowIfNull(observation);
+        return observation.GameplaySeed is { } seed
+            ? Localize(
+                "agent-arena.seed.open",
+                ShellTextArgument.From("seed", seed))
+            : Localize("agent-arena.seed.blind");
+    }
+
     private void DrawFittedAgentLabel(
         string text,
         Vector2 position,
@@ -10260,7 +10286,8 @@ public partial class Main : Node2D
                     CompactAgentPassportToken(agentCosmetic.Name)),
                 ShellTextArgument.From(
                     "station",
-                    CompactAgentPassportToken(agentStation.DisplayName))),
+                    CompactAgentPassportToken(agentStation.DisplayName)),
+                ShellTextArgument.From("seed", AgentViewerSeedCopy(observation))),
             new Vector2(52.0f, 602.0f),
             13,
             1208.0f,
@@ -10307,7 +10334,10 @@ public partial class Main : Node2D
                     ShellTextArgument.From("outcome", outcome),
                     ShellTextArgument.From("step", observation.Tick),
                     ShellTextArgument.From("maximum", observation.MaximumSteps),
-                    ShellTextArgument.From("frame", _agentViewerFrame.Sequence)),
+                    ShellTextArgument.From("frame", _agentViewerFrame.Sequence),
+                    ShellTextArgument.From(
+                        "state",
+                        AgentViewerStateHashPrefix(observation.StateHash))),
                 new Vector2(660.0f, 680.0f),
                 8,
                 600.0f,
@@ -10340,7 +10370,10 @@ public partial class Main : Node2D
                     ShellTextArgument.From("outcome", outcome),
                     ShellTextArgument.From("step", observation.Tick),
                     ShellTextArgument.From("maximum", observation.MaximumSteps),
-                    ShellTextArgument.From("frame", _agentViewerFrame.Sequence)),
+                    ShellTextArgument.From("frame", _agentViewerFrame.Sequence),
+                    ShellTextArgument.From(
+                        "state",
+                        AgentViewerStateHashPrefix(observation.StateHash))),
                 new Vector2(38.0f, 680.0f),
                 9,
                 1222.0f,
@@ -13575,6 +13608,10 @@ public partial class Main : Node2D
             "agent-arena.delivery.coalesced",
             ShellTextArgument.From("count", long.MaxValue));
         var maximumIdentityToken = new string('W', 48);
+        var longestSeed = Pseudo(
+            "agent-arena.seed.open",
+            ShellTextArgument.From("seed", ulong.MaxValue));
+        var longestStateHash = new string('W', AgentViewerStateHashPrefixLength);
         var overlayRows = new (
             string Id,
             string Text,
@@ -13587,7 +13624,8 @@ public partial class Main : Node2D
                 "agent-arena.identity",
                 ShellTextArgument.From("agent", maximumIdentityToken),
                 ShellTextArgument.From("avatar", "MAXIMUM-AVATAR.."),
-                ShellTextArgument.From("station", "MAXIMUM-STATION..")),
+                ShellTextArgument.From("station", "MAXIMUM-STATION.."),
+                ShellTextArgument.From("seed", longestSeed)),
                 13,
                 602.0f,
                 1208.0f),
@@ -13629,7 +13667,8 @@ public partial class Main : Node2D
                     Pseudo("agent-arena.outcome.agent-finished")),
                 ShellTextArgument.From("step", int.MaxValue),
                 ShellTextArgument.From("maximum", int.MaxValue),
-                ShellTextArgument.From("frame", long.MaxValue)),
+                ShellTextArgument.From("frame", long.MaxValue),
+                ShellTextArgument.From("state", longestStateHash)),
                 9,
                 680.0f,
                 1222.0f),
@@ -13737,7 +13776,8 @@ public partial class Main : Node2D
                         Pseudo("agent-arena.outcome.agent-finished")),
                     ShellTextArgument.From("step", int.MaxValue),
                     ShellTextArgument.From("maximum", int.MaxValue),
-                    ShellTextArgument.From("frame", long.MaxValue)),
+                    ShellTextArgument.From("frame", long.MaxValue),
+                    ShellTextArgument.From("state", longestStateHash)),
                 8,
                 660.0f,
                 600.0f),
@@ -13884,8 +13924,8 @@ public partial class Main : Node2D
 
         const int migratedRequiredFlowCount = 13;
         const double requiredExpansionRatio = 1.30;
-        var passed = ShellLocalization.All.Count == 622
-            && ShellLocalization.All.Count(entry => entry.Parameters.Count > 0) == 95
+        var passed = ShellLocalization.All.Count == 624
+            && ShellLocalization.All.Count(entry => entry.Parameters.Count > 0) == 96
             && migratedRequiredFlowCount == 13
             && minimumExpansionRatio >= requiredExpansionRatio
             && missingGlyphs.Count == 0

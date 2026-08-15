@@ -24,11 +24,11 @@ public sealed class McpAgentTools
         Destructive = false,
         Idempotent = false,
         OpenWorld = false)]
-    [Description("Starts one isolated, clock-free Vibe Snake agent match and returns its explicit opaque handle plus initial public observation. Use only classic or vibe. Blind matches reject caller-selected seeds.")]
+    [Description("Starts one isolated, clock-free Vibe Snake agent match and returns its explicit opaque handle plus initial public observation. Use only classic or vibe. Blind matches reject caller-selected seeds. Use the exact discovered camelCase arguments and JSON types; gameplaySeed is a quoted decimal string such as \"42\", never a JSON number. Missing, unexpected, or wrong-typed argument names are rejected before this tool runs with the exact mismatch and no state change.")]
     public StartAgentMatchV5 StartMatch(
         [Description("Official mode ID: classic or vibe.")] string modeId,
         [Description("Seed division: open or blind.")] AgentSeedVisibility seedVisibility,
-        [Description("Optional unsigned 64-bit decimal seed for open matches. Use null to let the host generate one. Must be null for blind matches.")] string? gameplaySeed = null,
+        [Description("Optional unsigned 64-bit seed for open matches, supplied as a quoted decimal string such as \"42\". Use null to let the host generate one. Must be null for blind matches.")] string? gameplaySeed = null,
         [Description("Optional rules-step cap from 1 through 2000. Use null for 2000.")] int? maximumSteps = null,
         [Description("Optional style contract: stillwater, crownchaser, edge-prophet, mutagenist, or redline. Mode restrictions are enforced.")] string? styleContractId = null,
         [Description("Optional built-in rival personality ID. Both lanes use the same seed and exact rules configuration.")] string? rivalPersonalityId = null,
@@ -54,7 +54,7 @@ public sealed class McpAgentTools
         Destructive = false,
         Idempotent = false,
         OpenWorld = false)]
-    [Description("Starts one canonical open-seed Signal School practice. The lesson owns its fixed mode, seed, step cap, instruction, and ordered replay/attempt-evidence requirements. Lessons accept no style contract or rival.")]
+    [Description("Starts one canonical open-seed Signal School practice. The lesson owns its fixed mode, seed, step cap, instruction, and ordered replay/attempt-evidence requirements. Lessons accept no style contract or rival. Missing, unexpected, or wrong-typed argument names are rejected before this tool runs with the exact mismatch and no state change.")]
     public StartAgentMatchV5 StartLesson(
         [Description("Closed lesson ID from vibesnake://agent/signal-school.")] string lessonId,
         [Description("Set true to mint a one-time same-user named-pipe capability for a read-only local viewer.")] bool watchEnabled = false,
@@ -87,7 +87,7 @@ public sealed class McpAgentTools
         Destructive = false,
         Idempotent = true,
         OpenWorld = false)]
-    [Description("Submits one four-direction-step-v1 action. Use the exact discovered camelCase arguments, including action. An accepted request advances exactly one rules step. Stale or illegal requests advance none. Missing or unexpected argument names are rejected before this tool runs with the exact field mismatch and no state change. Reusing the same idempotency key with the same input returns the original response. When lesson_progress.recommended_next_tool is finish_match, finalize the completed lesson instead of padding steps.")]
+    [Description("Submits one four-direction-step-v1 action. Use the exact discovered camelCase arguments, including action. An accepted request advances exactly one rules step. Stale or illegal requests advance none. Missing, unexpected, or wrong-typed argument names are rejected before this tool runs with the exact field mismatch and no state change. Reusing the same idempotency key with the same input returns the original response. When lesson_progress.recommended_next_tool is finish_match, finalize the completed lesson instead of padding steps.")]
     public AgentActionResponseV5 PlayMove(
         [Description("Opaque handle returned by start_match.")] string matchHandle,
         [Description("Unique ASCII token for this intended action, at most 128 characters.")] string idempotencyKey,
@@ -111,7 +111,7 @@ public sealed class McpAgentTools
         Destructive = false,
         Idempotent = true,
         OpenWorld = false)]
-    [Description("Advances a four-direction-burst-v1 match by at most 16 clock-free steps. Use the exact discovered camelCase arguments, including initialAction and maximumSteps. Missing or unexpected argument names are rejected before this tool runs with the exact field mismatch and no state change. The initial action applies once, later steps continue, and execution stops at the first fixed public decision event, selected lesson all-requirements transition, terminal state, match cap, replay failure, or requested bound. When lesson_progress.recommended_next_tool is finish_match, finalize the completed lesson instead of padding steps.")]
+    [Description("Advances a four-direction-burst-v1 match by at most 16 clock-free steps. Use the exact discovered camelCase arguments, including initialAction and maximumSteps. Missing, unexpected, or wrong-typed argument names are rejected before this tool runs with the exact field mismatch and no state change. The initial action applies once, later steps continue, and execution stops at the first fixed public decision event, selected lesson all-requirements transition, terminal state, match cap, replay failure, or requested bound. When lesson_progress.recommended_next_tool is finish_match, finalize the completed lesson instead of padding steps.")]
     public AgentBurstResponseV5 PlayBurst(
         [Description("Opaque handle returned by start_match.")] string matchHandle,
         [Description("Unique ASCII token for this intended burst, at most 128 characters.")] string idempotencyKey,

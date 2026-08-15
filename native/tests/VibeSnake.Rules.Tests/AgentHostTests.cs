@@ -461,7 +461,7 @@ public sealed class AgentHostTests
         Assert.Throws<ArgumentNullException>(() => AgentToolArgumentFilter.Validate(null!));
         Assert.Null(AgentToolArgumentFilter.Validate(new CallToolRequestParams
         {
-            Name = "start_match",
+            Name = "list_leaderboards",
         }));
         Assert.Null(AgentToolArgumentFilter.Validate(new CallToolRequestParams
         {
@@ -526,6 +526,222 @@ public sealed class AgentHostTests
     }
 
     [Fact]
+    public void Tool_argument_filter_names_wrong_json_types_for_every_tool()
+    {
+        static JsonElement JsonValue(object? value) => JsonSerializer.SerializeToElement(value);
+
+        Assert.Null(AgentToolArgumentFilter.Validate(new CallToolRequestParams
+        {
+            Name = "start_match",
+            Arguments = new Dictionary<string, JsonElement>
+            {
+                ["modeId"] = JsonValue("classic"),
+                ["seedVisibility"] = JsonValue("open"),
+                ["gameplaySeed"] = JsonValue("42"),
+                ["maximumSteps"] = JsonValue(120),
+                ["styleContractId"] = JsonValue(null),
+                ["rivalPersonalityId"] = JsonValue(null),
+                ["watchEnabled"] = JsonValue(true),
+                ["passport"] = JsonValue(null),
+                ["actionProfile"] = JsonValue(AgentPassportV4.FourDirectionActionProfile),
+            },
+        }));
+
+        var numericSeed = Assert.IsType<CallToolResult>(
+            AgentToolArgumentFilter.Validate(new CallToolRequestParams
+            {
+                Name = "start_match",
+                Arguments = new Dictionary<string, JsonElement>
+                {
+                    ["modeId"] = JsonValue("classic"),
+                    ["seedVisibility"] = JsonValue("open"),
+                    ["gameplaySeed"] = JsonValue(42),
+                },
+            }));
+        var numericSeedText = Assert.Single(numericSeed.Content.OfType<TextContentBlock>()).Text;
+        Assert.True(numericSeed.IsError);
+        Assert.Contains(
+            "wrong argument type(s): \"gameplaySeed\" must be a JSON string or null "
+                + "but received a number",
+            numericSeedText,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "Quote a decimal text value, for example \"42\".",
+            numericSeedText,
+            StringComparison.Ordinal);
+        Assert.Contains("No match state changed", numericSeedText, StringComparison.Ordinal);
+        Assert.DoesNotContain("missing required", numericSeedText, StringComparison.Ordinal);
+        Assert.DoesNotContain("unexpected argument", numericSeedText, StringComparison.Ordinal);
+
+        var missingLesson = Assert.IsType<CallToolResult>(
+            AgentToolArgumentFilter.Validate(new CallToolRequestParams
+            {
+                Name = "start_lesson",
+                Arguments = new Dictionary<string, JsonElement>
+                {
+                    ["lesson"] = JsonValue("first-turn"),
+                },
+            }));
+        var missingLessonText = Assert.Single(missingLesson.Content.OfType<TextContentBlock>()).Text;
+        Assert.Contains(
+            "unexpected argument name(s): \"lesson\"",
+            missingLessonText,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "missing required argument(s): \"lessonId\"",
+            missingLessonText,
+            StringComparison.Ordinal);
+
+        var fractionalTick = Assert.IsType<CallToolResult>(
+            AgentToolArgumentFilter.Validate(new CallToolRequestParams
+            {
+                Name = "play_move",
+                Arguments = new Dictionary<string, JsonElement>
+                {
+                    ["matchHandle"] = JsonValue("match"),
+                    ["idempotencyKey"] = JsonValue("key"),
+                    ["expectedTick"] = JsonValue(1.5),
+                    ["expectedStateHash"] = JsonValue("hash"),
+                    ["action"] = JsonValue("continue"),
+                },
+            }));
+        Assert.Contains(
+            "\"expectedTick\" must be a JSON integer but received a number",
+            Assert.Single(fractionalTick.Content.OfType<TextContentBlock>()).Text,
+            StringComparison.Ordinal);
+
+        foreach (var readOnlyTool in new[]
+        {
+            "observe_match",
+            "finish_match",
+            "get_match_result",
+            "save_verified_replay",
+        })
+        {
+            Assert.Null(AgentToolArgumentFilter.Validate(new CallToolRequestParams
+            {
+                Name = readOnlyTool,
+                Arguments = new Dictionary<string, JsonElement>
+                {
+                    ["matchHandle"] = JsonValue("match"),
+                },
+            }));
+            var wrongHandle = Assert.IsType<CallToolResult>(
+                AgentToolArgumentFilter.Validate(new CallToolRequestParams
+                {
+                    Name = readOnlyTool,
+                    Arguments = new Dictionary<string, JsonElement>
+                    {
+                        ["handle"] = JsonValue("match"),
+                    },
+                }));
+            var wrongHandleText = Assert.Single(
+                wrongHandle.Content.OfType<TextContentBlock>()).Text;
+            Assert.Contains(
+                $"Invalid arguments for '{readOnlyTool}'",
+                wrongHandleText,
+                StringComparison.Ordinal);
+            Assert.Contains(
+                "unexpected argument name(s): \"handle\"",
+                wrongHandleText,
+                StringComparison.Ordinal);
+            Assert.Contains(
+                "missing required argument(s): \"matchHandle\"",
+                wrongHandleText,
+                StringComparison.Ordinal);
+            Assert.Contains("No match state changed", wrongHandleText, StringComparison.Ordinal);
+        }
+
+        Assert.Null(AgentToolArgumentFilter.Validate(new CallToolRequestParams
+        {
+            Name = "unknown_tool",
+            Arguments = new Dictionary<string, JsonElement>
+            {
+                ["anything"] = JsonValue(1),
+            },
+        }));
+    }
+
+    [Fact]
+    public void Tool_argument_filter_describes_every_rejected_json_value_kind()
+    {
+        static JsonElement JsonValue(object? value) => JsonSerializer.SerializeToElement(value);
+
+        static Dictionary<string, JsonElement> StartArguments(
+            string name,
+            JsonElement value)
+        {
+            var arguments = new Dictionary<string, JsonElement>(StringComparer.Ordinal)
+            {
+                ["modeId"] = JsonValue("classic"),
+                ["seedVisibility"] = JsonValue("open"),
+            };
+            arguments[name] = value;
+            return arguments;
+        }
+
+        static string Reject(Dictionary<string, JsonElement> arguments)
+        {
+            var result = Assert.IsType<CallToolResult>(
+                AgentToolArgumentFilter.Validate(new CallToolRequestParams
+                {
+                    Name = "start_match",
+                    Arguments = arguments,
+                }));
+            Assert.True(result.IsError);
+            var text = Assert.Single(result.Content.OfType<TextContentBlock>()).Text;
+            Assert.Contains("No match state changed", text, StringComparison.Ordinal);
+            return text;
+        }
+
+        Assert.Contains(
+            "\"watchEnabled\" must be a JSON boolean but received a string",
+            Reject(StartArguments("watchEnabled", JsonValue("true"))),
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "\"passport\" must be a JSON object or null but received an array",
+            Reject(StartArguments("passport", JsonValue(Enumerable.Range(1, 1)))),
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "\"actionProfile\" must be a JSON string but received null",
+            Reject(StartArguments("actionProfile", JsonValue(null))),
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "\"maximumSteps\" must be a JSON integer or null but received a string",
+            Reject(StartArguments("maximumSteps", JsonValue("12"))),
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "\"modeId\" must be a JSON string but received a boolean",
+            Reject(StartArguments("modeId", JsonValue(true))),
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "\"modeId\" must be a JSON string but received an object",
+            Reject(StartArguments("modeId", JsonValue(new { unexpected = 1 }))),
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "\"modeId\" must be a JSON string but received an undefined value",
+            Reject(StartArguments("modeId", default)),
+            StringComparison.Ordinal);
+        Assert.DoesNotContain(
+            "Quote a decimal text value",
+            Reject(StartArguments("modeId", JsonValue(true))),
+            StringComparison.Ordinal);
+
+        Assert.Null(AgentToolArgumentFilter.Validate(new CallToolRequestParams
+        {
+            Name = "start_match",
+            Arguments = StartArguments("watchEnabled", JsonValue(false)),
+        }));
+        Assert.Null(AgentToolArgumentFilter.Validate(new CallToolRequestParams
+        {
+            Name = "start_match",
+            Arguments = StartArguments(
+                "passport",
+                JsonValue(new { schema = AgentPassportV4.Contract })),
+        }));
+    }
+
+    [Fact]
     public void Resources_publish_closed_rules_official_modes_and_playbook()
     {
         using var rules = JsonDocument.Parse(AgentResources.GetRules());
@@ -534,8 +750,37 @@ public sealed class AgentHostTests
         var playbook = AgentResources.GetPlaybook();
 
         Assert.Equal(
-            "vibesnake-agent-rules-resource-v8",
+            "vibesnake-agent-rules-resource-v9",
             rules.RootElement.GetProperty("contract").GetString());
+        var lifecycleSemantics = rules.RootElement.GetProperty("lifecycle_semantics");
+        Assert.Contains(
+            "never describes the snake",
+            lifecycleSemantics.GetProperty("lifecycle").GetString(),
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "run_status running",
+            lifecycleSemantics.GetProperty("run_status").GetString(),
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "never merged",
+            lifecycleSemantics.GetProperty("pairing").GetString(),
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "Satisfying requirements never ends a match",
+            lifecycleSemantics.GetProperty("is_action_awaited").GetString(),
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "not a grade",
+            lifecycleSemantics.GetProperty("requirement_satisfied").GetString(),
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "may keep playing instead",
+            lifecycleSemantics.GetProperty("recommended_next_tool").GetString(),
+            StringComparison.Ordinal);
+        var argumentBinding = rules.RootElement.GetProperty("argument_binding").GetString();
+        Assert.Contains("wrong-typed", argumentBinding, StringComparison.Ordinal);
+        Assert.Contains("quoted decimal string", argumentBinding, StringComparison.Ordinal);
+        Assert.Contains("change no match state", argumentBinding, StringComparison.Ordinal);
         Assert.Equal(
             AgentObservationV5.Contract,
             rules.RootElement.GetProperty("observation_schema").GetString());
@@ -997,7 +1242,7 @@ public sealed class AgentHostTests
         Assert.NotNull(host.Services);
         Assert.NotNull(defaultHost.Services);
         Assert.Equal("vibesnake-agent-host", Program.HostName);
-        Assert.Equal("0.8.1", Program.HostVersion);
+        Assert.Equal("0.8.2", Program.HostVersion);
         Assert.Throws<ArgumentNullException>(() =>
             Program.CreateHostApplicationBuilder(null!, temporary.Path));
     }
@@ -1403,6 +1648,44 @@ public sealed class AgentHostTests
                 .GetProperty("match_handle")
                 .GetString());
 
+        var numericSeedMatch = await client.CallToolAsync(
+            "start_match",
+            new Dictionary<string, object?>
+            {
+                ["modeId"] = RunModeCatalog.ClassicId,
+                ["seedVisibility"] = "open",
+                ["gameplaySeed"] = 42,
+            },
+            cancellationToken: timeout.Token);
+        var numericSeedText = Assert.Single(
+            numericSeedMatch.Content.OfType<TextContentBlock>()).Text;
+        Assert.True(numericSeedMatch.IsError);
+        Assert.Contains(
+            "\"gameplaySeed\" must be a JSON string or null but received a number",
+            numericSeedText,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "Quote a decimal text value, for example \"42\".",
+            numericSeedText,
+            StringComparison.Ordinal);
+        Assert.Contains("No match state changed", numericSeedText, StringComparison.Ordinal);
+        var quotedSeedMatch = await client.CallToolAsync(
+            "start_match",
+            new Dictionary<string, object?>
+            {
+                ["modeId"] = RunModeCatalog.ClassicId,
+                ["seedVisibility"] = "open",
+                ["gameplaySeed"] = "42",
+            },
+            cancellationToken: timeout.Token);
+        Assert.False(quotedSeedMatch.IsError ?? false);
+        Assert.Equal(
+            42UL,
+            Assert.IsType<JsonElement>(quotedSeedMatch.StructuredContent)
+                .GetProperty("observation")
+                .GetProperty("gameplay_seed")
+                .GetUInt64());
+
         var legacyPassport = await client.CallToolAsync(
             "start_lesson",
             new Dictionary<string, object?>
@@ -1477,7 +1760,7 @@ public sealed class AgentHostTests
             resource => resource.Uri == "vibesnake://agent/identity");
         var rulesText = Assert.IsType<TextResourceContents>(Assert.Single(rules.Contents));
         Assert.Contains(
-            "vibesnake-agent-rules-resource-v8",
+            "vibesnake-agent-rules-resource-v9",
             rulesText.Text,
             StringComparison.Ordinal);
         Assert.False(moved.IsError ?? false);

@@ -23,7 +23,7 @@ Treat the MCP tool schemas and returned observations as authoritative. Use this 
 6. Choose `four-direction-step-v1` for one tool call per decision or `four-direction-burst-v1` for bounded straight continuations that stop at public decision events.
 7. Optionally provide a public Agent Passport v4 with a caller-declared agent ID and policy version, bounded display name, and `avatar_id`, `accent_id`, and `station_id` selected from `vibesnake://agent/identity`. Its `symbolic-step-v4` observation profile and action profile must match the selected match profile. Unknown catalog IDs reject before a session is created. Never put prompts, reasoning, credentials, or personal data in a passport.
 8. When live watching is requested, set `watchEnabled` to true. Give the returned capability only to the local same-user launcher, and do not persist, quote, or repeat its token. Live frames are best effort; explicitly save the verified replay if later viewing is wanted.
-9. For an exhibition, call `start_match` with the action profile, optional passport, `styleContractId`, and `rivalPersonalityId`. For a blind match, omit `gameplaySeed`. Keep `maximumSteps` at or below 2000.
+9. For an exhibition, call `start_match` with the action profile, optional passport, `styleContractId`, and `rivalPersonalityId`. Supply `gameplaySeed` as a quoted decimal string such as `"42"`; a JSON number is rejected before the tool runs. For a blind match, omit `gameplaySeed`. Keep `maximumSteps` at or below 2000.
 
 ## Practice in Signal School
 
@@ -86,9 +86,11 @@ The rival advances once for each accepted agent step while its lane is running. 
 
 ## Finish and hand off
 
-Use the exact camelCase argument names from the discovered tool schema. `play_move` requires `action`; `play_burst` requires `initialAction` and `maximumSteps`. The host rejects missing or unexpected argument names before game code runs, identifies the exact field mismatch, and confirms that no match state changed. Correct the argument object instead of retrying the same payload.
+Use the exact camelCase argument names and JSON types from the discovered tool schema. `play_move` requires `action`; `play_burst` requires `initialAction` and `maximumSteps`; `start_match` takes `gameplaySeed` as a quoted decimal string. The host rejects missing, unexpected, and wrong-typed argument names on every tool before game code runs, identifies the exact mismatch, lists the required and optional fields, and confirms that no match state changed. Correct the argument object instead of retrying the same payload. The rejection carries no observation because it never entered match code; call `observe_match` if separate proof of the unchanged tick and state hash is wanted.
 
-Call `finish_match` after a Signal School observation reports that all requirements are satisfied. That produces a completed lesson result. In any other running match, call it only to stop early, which produces an aborted result. Normal terminal and step-limit endings finalize automatically. Then:
+Call `finish_match` after a Signal School observation reports that all requirements are satisfied. That produces a completed lesson result. In any other running match, call it only to stop early, which produces an aborted result. Normal terminal and step-limit endings finalize automatically.
+
+Read `lifecycle` and `run_status` as answers to different questions. `lifecycle` describes the agent session as `awaiting_action`, `completed`, `aborted`, or `failed_closed`. `run_status` describes the snake as `running`, `dead`, or `won`. A `completed` lesson with `run_status: running` is the normal result of finishing a satisfied practice on a living snake. `is_action_awaited` stays true until you finish, because satisfying every requirement never ends a match. A requirement's `satisfied` flag reports that its closed evidence exists; it is not a grade. Then:
 
 1. Call `get_match_result` if the terminal response did not include a result.
 2. For a styled match, report the two live criterion values as observed until a result exists. Then report the replay-bound `style_outcome`, its exact numerator and denominator for rate criteria, score, final tick, end reason, run status, and replay verification code. `threshold_reached`, `thresholds_reached`, and `all_thresholds_reached` are measurements against optional style targets, not pass/fail match grades. Never turn a threshold crossing into a claim about intent or mastery.
