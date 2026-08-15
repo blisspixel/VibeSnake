@@ -19,9 +19,9 @@ public sealed class AgentStyleContractValidationTests
             valid with { EvaluationPolicyId = "wrong" }));
         Assert.False(AgentStyleContractCatalog.IsValidProgress(valid with { Criteria = [] }));
         Assert.False(AgentStyleContractCatalog.IsValidProgress(
-            valid with { CriteriaSatisfied = 1 }));
+            valid with { ThresholdsReached = 1 }));
         Assert.False(AgentStyleContractCatalog.IsValidProgress(
-            valid with { AllCriteriaSatisfied = false }));
+            valid with { AllThresholdsReached = false }));
     }
 
     [Fact]
@@ -38,8 +38,8 @@ public sealed class AgentStyleContractValidationTests
             first with { Comparator = (AgentStyleCriterionComparator)byte.MaxValue });
         AssertInvalidFirstCriterion(valid, first with { Unit = AgentStyleCriterionUnit.BasisPoints });
         AssertInvalidFirstCriterion(valid, first with { Target = first.Target + 1 });
-        AssertInvalidFirstCriterion(valid, first with { Current = -1, Satisfied = false });
-        AssertInvalidFirstCriterion(valid, first with { Satisfied = false });
+        AssertInvalidFirstCriterion(valid, first with { Current = -1, ThresholdReached = false });
+        AssertInvalidFirstCriterion(valid, first with { ThresholdReached = false });
         AssertInvalidFirstCriterion(valid, first with { Numerator = 1 });
     }
 
@@ -70,13 +70,13 @@ public sealed class AgentStyleContractValidationTests
             Current = 0,
             Numerator = 0,
             Denominator = 0,
-            Satisfied = false,
+            ThresholdReached = false,
         };
         var zeroProgress = valid with
         {
             Criteria = Array.AsReadOnly([valid.Criteria[0], zeroRate]),
-            CriteriaSatisfied = 1,
-            AllCriteriaSatisfied = false,
+            ThresholdsReached = 1,
+            AllThresholdsReached = false,
         };
         Assert.True(AgentStyleContractCatalog.IsValidProgress(zeroProgress));
     }
@@ -110,8 +110,8 @@ public sealed class AgentStyleContractValidationTests
         Assert.False(progress.Equals(progress with { DisplayName = "Wrong" }));
         Assert.False(progress.Equals(progress with { EvaluationPolicyId = "wrong" }));
         Assert.False(progress.Equals(progress with { Criteria = [] }));
-        Assert.False(progress.Equals(progress with { CriteriaSatisfied = 1 }));
-        Assert.False(progress.Equals(progress with { AllCriteriaSatisfied = false }));
+        Assert.False(progress.Equals(progress with { ThresholdsReached = 1 }));
+        Assert.False(progress.Equals(progress with { AllThresholdsReached = false }));
         Assert.Equal(progress.GetHashCode(), (progress with { }).GetHashCode());
 
         var outcome = Outcome(progress, new string('a', 64));
@@ -122,8 +122,8 @@ public sealed class AgentStyleContractValidationTests
         Assert.False(outcome.Equals(outcome with { DisplayName = "Wrong" }));
         Assert.False(outcome.Equals(outcome with { EvaluationPolicyId = "wrong" }));
         Assert.False(outcome.Equals(outcome with { Criteria = [] }));
-        Assert.False(outcome.Equals(outcome with { CriteriaSatisfied = 1 }));
-        Assert.False(outcome.Equals(outcome with { AllCriteriaSatisfied = false }));
+        Assert.False(outcome.Equals(outcome with { ThresholdsReached = 1 }));
+        Assert.False(outcome.Equals(outcome with { AllThresholdsReached = false }));
         Assert.False(outcome.Equals(outcome with { ReplayPayloadHash = new string('b', 64) }));
         Assert.Equal(outcome.GetHashCode(), (outcome with { }).GetHashCode());
     }
@@ -148,10 +148,10 @@ public sealed class AgentStyleContractValidationTests
             progress with { EvaluationPolicyId = "wrong" }));
         Assert.False(AgentStyleEvidenceReplayEvaluator.Equivalent(
             progress,
-            progress with { CriteriaSatisfied = 1 }));
+            progress with { ThresholdsReached = 1 }));
         Assert.False(AgentStyleEvidenceReplayEvaluator.Equivalent(
             progress,
-            progress with { AllCriteriaSatisfied = false }));
+            progress with { AllThresholdsReached = false }));
         Assert.False(AgentStyleEvidenceReplayEvaluator.Equivalent(
             progress,
             progress with { Criteria = [] }));
@@ -249,8 +249,8 @@ public sealed class AgentStyleContractValidationTests
     }
 
     private static void AssertInvalidFirstCriterion(
-        AgentStyleProgressV2 valid,
-        AgentStyleCriterionProgressV2 criterion)
+        AgentStyleProgressV3 valid,
+        AgentStyleCriterionProgressV3 criterion)
     {
         Assert.False(AgentStyleContractCatalog.IsValidProgress(
             valid with
@@ -260,8 +260,8 @@ public sealed class AgentStyleContractValidationTests
     }
 
     private static void AssertInvalidSecondCriterion(
-        AgentStyleProgressV2 valid,
-        AgentStyleCriterionProgressV2 criterion)
+        AgentStyleProgressV3 valid,
+        AgentStyleCriterionProgressV3 criterion)
     {
         Assert.False(AgentStyleContractCatalog.IsValidProgress(
             valid with
@@ -270,21 +270,21 @@ public sealed class AgentStyleContractValidationTests
             }));
     }
 
-    private static AgentStyleProgressV2 ValidProgress(string contractId)
+    private static AgentStyleProgressV3 ValidProgress(string contractId)
     {
         var definition = AgentStyleContractCatalog.Get(contractId);
         var criteria = definition.Criteria.Select(ValidCriterion).ToArray();
-        return new AgentStyleProgressV2(
-            AgentStyleProgressV2.Contract,
+        return new AgentStyleProgressV3(
+            AgentStyleProgressV3.Contract,
             definition.Id,
             definition.DisplayName,
             definition.EvaluationPolicyId,
             Array.AsReadOnly(criteria),
             criteria.Length,
-            AllCriteriaSatisfied: true);
+            AllThresholdsReached: true);
     }
 
-    private static AgentStyleCriterionProgressV2 ValidCriterion(
+    private static AgentStyleCriterionProgressV3 ValidCriterion(
         AgentStyleCriterionDefinitionV2 definition)
     {
         var (numerator, denominator) = definition.Target switch
@@ -294,7 +294,7 @@ public sealed class AgentStyleContractValidationTests
             6_500 => (13L, 20L),
             _ => ((long?)null, (long?)null),
         };
-        return new AgentStyleCriterionProgressV2(
+        return new AgentStyleCriterionProgressV3(
             definition.Id,
             definition.DisplayName,
             definition.Comparator,
@@ -303,19 +303,19 @@ public sealed class AgentStyleContractValidationTests
             definition.Target,
             numerator,
             denominator,
-            Satisfied: true);
+            ThresholdReached: true);
     }
 
-    private static AgentStyleOutcomeV2 Outcome(
-        AgentStyleProgressV2 progress,
+    private static AgentStyleOutcomeV3 Outcome(
+        AgentStyleProgressV3 progress,
         string replayPayloadHash) =>
         new(
-            AgentStyleOutcomeV2.Contract,
+            AgentStyleOutcomeV3.Contract,
             progress.ContractId,
             progress.DisplayName,
             progress.EvaluationPolicyId,
             progress.Criteria,
-            progress.CriteriaSatisfied,
-            progress.AllCriteriaSatisfied,
+            progress.ThresholdsReached,
+            progress.AllThresholdsReached,
             replayPayloadHash);
 }

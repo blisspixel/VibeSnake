@@ -61,8 +61,8 @@ public sealed class AgentViewerClientTests
         Assert.Equal(1, completedSnapshot.Tick);
         Assert.Equal(AgentMatchEndReason.StepLimit, completed.EndReason);
         Assert.True(completed.VerifiedResultAvailable);
-        var outcome = Assert.IsType<AgentStyleOutcomeV2>(completed.StyleOutcome);
-        Assert.Equal(AgentStyleOutcomeV2.Contract, outcome.Schema);
+        var outcome = Assert.IsType<AgentStyleOutcomeV3>(completed.StyleOutcome);
+        Assert.Equal(AgentStyleOutcomeV3.Contract, outcome.Schema);
         Assert.Equal(completed.Observation.StyleContract!.Criteria, outcome.Criteria);
         Assert.Equal(
             registry.GetResult(started.MatchHandle).Result!.ReplayPayloadHash,
@@ -733,7 +733,7 @@ public sealed class AgentViewerClientTests
             9UL,
             AgentSeedVisibility.Open,
             styleContractId: AgentStyleContractCatalog.StillwaterId)).Observe();
-        var progress = Assert.IsType<AgentStyleProgressV2>(observation.StyleContract);
+        var progress = Assert.IsType<AgentStyleProgressV3>(observation.StyleContract);
         var count = progress.Criteria[0];
         var rate = progress.Criteria[1];
         var vibeConfig = RunModeCatalog.CreateConfig(RunModeCatalog.Vibe);
@@ -742,7 +742,7 @@ public sealed class AgentViewerClientTests
             RunModeCatalog.VibeId,
             vibeConfig,
             SnakeRun.Create(10UL, vibeConfig).GetSnapshot()).Snapshot();
-        AgentStyleProgressV2[] invalidProgress =
+        AgentStyleProgressV3[] invalidProgress =
         [
             progress with { Schema = "vibesnake-agent-style-progress-v1" },
             progress with { ContractId = "unknown" },
@@ -769,7 +769,7 @@ public sealed class AgentViewerClientTests
             progress with { Criteria = [count with { Target = count.Target + 1 }, rate] },
             progress with { Criteria = [count with { Current = -1 }, rate] },
             progress with { Criteria = [count with { Numerator = 0 }, rate] },
-            progress with { Criteria = [count with { Satisfied = true }, rate] },
+            progress with { Criteria = [count with { ThresholdReached = true }, rate] },
             progress with { Criteria = [count, rate with { Numerator = -1 }] },
             progress with { Criteria = [count, rate with { Numerator = 1, Denominator = 0 }] },
             progress with { Criteria = [count, rate with { Numerator = 2, Denominator = 1 }] },
@@ -777,8 +777,8 @@ public sealed class AgentViewerClientTests
             {
                 Criteria = [count, rate with { Numerator = 1, Denominator = 2, Current = 4_999 }],
             },
-            progress with { CriteriaSatisfied = 1 },
-            progress with { AllCriteriaSatisfied = true },
+            progress with { ThresholdsReached = 1 },
+            progress with { AllThresholdsReached = true },
             crownProgress,
         ];
         var validFrame = new AgentViewerFrameV7(
@@ -917,7 +917,7 @@ public sealed class AgentViewerClientTests
                 "vibesnake-agent-passport-v2",
                 StringComparison.Ordinal),
             validPayload.Replace(
-                AgentStyleProgressV2.Contract,
+                AgentStyleProgressV3.Contract,
                 "vibesnake-agent-style-progress-v1",
                 StringComparison.Ordinal),
         ];
@@ -1487,18 +1487,18 @@ public sealed class AgentViewerClientTests
                 AgentSeedVisibility.Open,
                 styleContractId: styleId)).Observe();
 
-        AgentStyleProgressV2 ReplaceCriterion(
-            AgentStyleProgressV2 progress,
+        AgentStyleProgressV3 ReplaceCriterion(
+            AgentStyleProgressV3 progress,
             int index,
-            AgentStyleCriterionProgressV2 criterion,
+            AgentStyleCriterionProgressV3 criterion,
             int criteriaSatisfied = 0) =>
             progress with
             {
                 Criteria = index == 0
                     ? [criterion, progress.Criteria[1]]
                     : [progress.Criteria[0], criterion],
-                CriteriaSatisfied = criteriaSatisfied,
-                AllCriteriaSatisfied = false,
+                ThresholdsReached = criteriaSatisfied,
+                AllThresholdsReached = false,
             };
 
         var stillwater = StyleObservation(
@@ -1552,11 +1552,11 @@ public sealed class AgentViewerClientTests
                         Current = 10_000,
                         Numerator = 1,
                         Denominator = 1,
-                        Satisfied = true,
+                        ThresholdReached = true,
                     },
                 ],
-                CriteriaSatisfied = 1,
-                AllCriteriaSatisfied = false,
+                ThresholdsReached = 1,
+                AllThresholdsReached = false,
             },
         };
         var impossibleTerminalRedline = redline with
@@ -1576,11 +1576,11 @@ public sealed class AgentViewerClientTests
                         Current = 10_000,
                         Numerator = 1,
                         Denominator = 1,
-                        Satisfied = true,
+                        ThresholdReached = true,
                     },
                 ],
-                CriteriaSatisfied = 1,
-                AllCriteriaSatisfied = false,
+                ThresholdsReached = 1,
+                AllThresholdsReached = false,
             },
         };
 
@@ -1622,7 +1622,7 @@ public sealed class AgentViewerClientTests
                         Current = 10_000,
                         Numerator = 1,
                         Denominator = 1,
-                        Satisfied = true,
+                        ThresholdReached = true,
                     },
                     criteriaSatisfied: 1),
             },
@@ -1692,7 +1692,7 @@ public sealed class AgentViewerClientTests
             AgentSeedVisibility.Open,
             definition.MaximumSteps,
             lessonId: "first-turn")).Observe();
-        var progress = Assert.IsType<AgentLessonProgressV2>(observation.LessonProgress);
+        var progress = Assert.IsType<AgentLessonProgressV3>(observation.LessonProgress);
         var first = progress.Requirements[0];
         var second = progress.Requirements[1];
         var rival = new AgentRivalObservationV1(
@@ -1796,7 +1796,7 @@ public sealed class AgentViewerClientTests
             initial.StateHash,
             AgentAction.Continue));
         var terminal = response.Observation;
-        var outcome = Assert.IsType<AgentStyleOutcomeV2>(response.MatchResult!.StyleOutcome);
+        var outcome = Assert.IsType<AgentStyleOutcomeV3>(response.MatchResult!.StyleOutcome);
         var validFrame = new AgentViewerFrameV7(
             AgentViewerFrameV7.Contract,
             Sequence: 1,
@@ -1817,7 +1817,7 @@ public sealed class AgentViewerClientTests
             Current = 0,
             Numerator = 0,
             Denominator = 1,
-            Satisfied = false,
+            ThresholdReached = false,
         };
         AgentViewerFrameV7[] invalidFrames =
         [
@@ -1836,7 +1836,7 @@ public sealed class AgentViewerClientTests
                 StyleOutcome = outcome with
                 {
                     Criteria = [first, differingRate],
-                    CriteriaSatisfied = 0,
+                    ThresholdsReached = 0,
                 },
             },
             CreateInitialFrame(initial) with { StyleOutcome = outcome },
@@ -1896,7 +1896,7 @@ public sealed class AgentViewerClientTests
             AgentAction.Up));
         var result = session.Finish();
         var terminal = session.Observe();
-        var outcome = Assert.IsType<AgentLessonOutcomeV2>(result.LessonOutcome);
+        var outcome = Assert.IsType<AgentLessonOutcomeV3>(result.LessonOutcome);
         var validFrame = new AgentViewerFrameV7(
             AgentViewerFrameV7.Contract,
             Sequence: 3,
@@ -1915,6 +1915,10 @@ public sealed class AgentViewerClientTests
         var second = outcome.Requirements[1];
         AgentViewerFrameV7[] invalidFrames =
         [
+            validFrame with
+            {
+                Observation = terminal with { Lifecycle = AgentMatchLifecycle.Aborted },
+            },
             validFrame with { LessonOutcome = null },
             validFrame with { LessonOutcome = outcome with { Schema = "wrong" } },
             validFrame with
@@ -1944,10 +1948,9 @@ public sealed class AgentViewerClientTests
             {
                 LessonOutcome = outcome with
                 {
-                    RetryDescriptor = outcome.RetryDescriptor with
-                    {
-                        ActionProfile = AgentPassportV4.FourDirectionBurstActionProfile,
-                    },
+                    RetryDescriptor = AgentSignalSchoolCatalog.CreateRetryDescriptor(
+                        outcome.LessonId,
+                        AgentPassportV4.FourDirectionBurstActionProfile),
                 },
             },
             CreateInitialFrame(initial) with { LessonOutcome = outcome },
@@ -2256,8 +2259,8 @@ public sealed class AgentViewerClientTests
             Operation = AgentViewerOperationKind.Step,
             Observation = progressed,
         };
-        var initialProgress = Assert.IsType<AgentLessonProgressV2>(initial.LessonProgress);
-        var progressedProgress = Assert.IsType<AgentLessonProgressV2>(progressed.LessonProgress);
+        var initialProgress = Assert.IsType<AgentLessonProgressV3>(initial.LessonProgress);
+        var progressedProgress = Assert.IsType<AgentLessonProgressV3>(progressed.LessonProgress);
         AgentObservationV5[] regressions =
         [
             progressed with { LessonProgress = null },
@@ -2405,8 +2408,8 @@ public sealed class AgentViewerClientTests
         var completed = Assert.IsType<AgentActionResponse>(response);
         var result = Assert.IsType<AgentMatchResultV5>(completed.MatchResult);
         var terminal = completed.Observation;
-        var progress = Assert.IsType<AgentLessonProgressV2>(terminal.LessonProgress);
-        var outcome = Assert.IsType<AgentLessonOutcomeV2>(result.LessonOutcome);
+        var progress = Assert.IsType<AgentLessonProgressV3>(terminal.LessonProgress);
+        var outcome = Assert.IsType<AgentLessonOutcomeV3>(result.LessonOutcome);
         var valid = new AgentViewerFrameV7(
             AgentViewerFrameV7.Contract,
             Sequence: terminal.Tick,
@@ -2470,12 +2473,16 @@ public sealed class AgentViewerClientTests
         var unmetRequirements = progress.Requirements
             .Select(item => item with { Current = 0, Satisfied = false })
             .ToArray();
+        var retry = AgentSignalSchoolCatalog.CreateRetryDescriptor(
+            progress.LessonId,
+            terminal.Passport.ActionProfile);
         var unmetProgress = progress with
         {
             Requirements = unmetRequirements,
             RequirementsSatisfied = 0,
             AllRequirementsSatisfied = false,
             FirstUnmetRequirementId = unmetRequirements[0].RequirementId,
+            RetryDescriptor = retry,
         };
         var unmetOutcome = outcome with
         {
@@ -2484,6 +2491,7 @@ public sealed class AgentViewerClientTests
             AllRequirementsSatisfied = false,
             FirstUnmetRequirementId = unmetRequirements[0].RequirementId,
             ReviewCode = AgentLessonReviewCode.ReplayRequirementUnmet,
+            RetryDescriptor = retry,
         };
         Assert.True(AgentSignalSchoolCatalog.IsValidProgress(unmetProgress));
         Assert.True(AgentSignalSchoolCatalog.IsValidOutcome(unmetOutcome));
@@ -2506,8 +2514,8 @@ public sealed class AgentViewerClientTests
             AgentSeedVisibility.Open,
             wrap.MaximumSteps,
             lessonId: wrap.Id)).Observe();
-        var wrapProgress = Assert.IsType<AgentLessonProgressV2>(wrapObservation.LessonProgress);
-        AgentLessonProgressV2[] invalidAttemptProgress =
+        var wrapProgress = Assert.IsType<AgentLessonProgressV3>(wrapObservation.LessonProgress);
+        AgentLessonProgressV3[] invalidAttemptProgress =
         [
             wrapProgress with
             {
@@ -2535,7 +2543,7 @@ public sealed class AgentViewerClientTests
             lessonId: firstTurn.Id));
         _ = terminalSession.Finish();
         var terminal = terminalSession.Observe();
-        var terminalProgress = Assert.IsType<AgentLessonProgressV2>(terminal.LessonProgress);
+        var terminalProgress = Assert.IsType<AgentLessonProgressV3>(terminal.LessonProgress);
         await AssertViewerRejectsAsync(CreateInitialFrame(terminal with
         {
             LessonProgress = terminalProgress with

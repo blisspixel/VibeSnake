@@ -33,22 +33,22 @@ public sealed class AgentResources
     ];
     private static readonly QualificationEvidenceObservation[] QualificationEvidenceObservations =
     [
-        new("first-turn", AgentPassportV4.FourDirectionActionProfile, 2, 411, 12_763, 13_174),
-        new("first-turn", AgentPassportV4.FourDirectionBurstActionProfile, 2, 462, 12_903, 13_365),
-        new("wrap-line", AgentPassportV4.FourDirectionActionProfile, 32, 5_012, 116_977, 121_989),
-        new("wrap-line", AgentPassportV4.FourDirectionBurstActionProfile, 2, 460, 12_755, 13_215),
-        new("hunger-route", AgentPassportV4.FourDirectionActionProfile, 22, 3_600, 83_090, 86_690),
-        new("hunger-route", AgentPassportV4.FourDirectionBurstActionProfile, 3, 649, 16_628, 17_277),
-        new("exit-route", AgentPassportV4.FourDirectionActionProfile, 9, 1_478, 38_012, 39_490),
-        new("exit-route", AgentPassportV4.FourDirectionBurstActionProfile, 9, 1_695, 38_654, 40_349),
-        new("power-route", AgentPassportV4.FourDirectionActionProfile, 316, 50_378, 1_148_678, 1_199_056),
-        new("power-route", AgentPassportV4.FourDirectionBurstActionProfile, 106, 19_440, 402_801, 422_241),
-        new("recover-route", AgentPassportV4.FourDirectionActionProfile, 346, 56_518, 1_300_455, 1_356_973),
-        new("recover-route", AgentPassportV4.FourDirectionBurstActionProfile, 116, 21_685, 452_161, 473_846),
-        new("combo-route", AgentPassportV4.FourDirectionActionProfile, 80, 12_706, 289_592, 302_298),
-        new("combo-route", AgentPassportV4.FourDirectionBurstActionProfile, 40, 7_359, 151_325, 158_684),
-        new("death-read", AgentPassportV4.FourDirectionActionProfile, 139, 21_810, 504_930, 526_740),
-        new("death-read", AgentPassportV4.FourDirectionBurstActionProfile, 89, 16_033, 338_959, 354_992),
+        new("first-turn", AgentPassportV4.FourDirectionActionProfile, 2, 411, 12_549, 12_960),
+        new("first-turn", AgentPassportV4.FourDirectionBurstActionProfile, 2, 462, 12_688, 13_150),
+        new("wrap-line", AgentPassportV4.FourDirectionActionProfile, 32, 5_012, 116_044, 121_056),
+        new("wrap-line", AgentPassportV4.FourDirectionBurstActionProfile, 2, 460, 12_541, 13_001),
+        new("hunger-route", AgentPassportV4.FourDirectionActionProfile, 22, 3_600, 82_394, 85_994),
+        new("hunger-route", AgentPassportV4.FourDirectionBurstActionProfile, 3, 649, 16_387, 17_036),
+        new("exit-route", AgentPassportV4.FourDirectionActionProfile, 9, 1_478, 37_630, 39_108),
+        new("exit-route", AgentPassportV4.FourDirectionBurstActionProfile, 9, 1_695, 38_271, 39_966),
+        new("power-route", AgentPassportV4.FourDirectionActionProfile, 316, 50_378, 1_140_927, 1_191_305),
+        new("power-route", AgentPassportV4.FourDirectionBurstActionProfile, 106, 19_440, 400_089, 419_529),
+        new("recover-route", AgentPassportV4.FourDirectionActionProfile, 346, 56_518, 1_291_982, 1_348_500),
+        new("recover-route", AgentPassportV4.FourDirectionBurstActionProfile, 116, 21_685, 449_207, 470_892),
+        new("combo-route", AgentPassportV4.FourDirectionActionProfile, 80, 12_706, 287_505, 300_211),
+        new("combo-route", AgentPassportV4.FourDirectionBurstActionProfile, 40, 7_359, 150_197, 157_556),
+        new("death-read", AgentPassportV4.FourDirectionActionProfile, 139, 21_810, 520_505, 542_315),
+        new("death-read", AgentPassportV4.FourDirectionBurstActionProfile, 89, 16_033, 348_781, 364_814),
     ];
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -65,7 +65,7 @@ public sealed class AgentResources
     public static string GetRules() => JsonSerializer.Serialize(
         new
         {
-            contract = "vibesnake-agent-rules-resource-v7",
+            contract = "vibesnake-agent-rules-resource-v8",
             ruleset_id = RulesetIdentity.CurrentId,
             rules_version = RulesetIdentity.CurrentVersion,
             observation_schema = AgentObservationV5.Contract,
@@ -112,7 +112,7 @@ public sealed class AgentResources
             live_match_idle_lease_minutes = AgentSessionRegistry.LiveMatchIdleLeaseMinutes,
             idle_reclamation = "At capacity, only an inactive live match whose 30-minute valid-handle operation lease expired may be reclaimed. Reclamation creates no result or replay, and viewer activity never refreshes or ends the lease.",
             lesson_evidence = "Accepted-step lesson facts are independently reconstructed from replay schema 1. Rejection-aware facts use a separate bounded canonical attempt-witness sequence. A verified lesson outcome binds the replay payload hash and attempt-evidence hash into one evidence hash; the ordinary saved replay does not contain the attempt witnesses.",
-            replay = "A successfully finalized completed, capped, or explicitly finished match returns a deterministic verified lane result and replay. Styled and Signal School results add independently evaluated hash-bound outcomes. Failed-closed finalization returns neither; an exhibition receipt is not part of this contract.",
+            replay = "A successfully finalized rules-terminal, capped, lesson-complete, or explicitly finished match returns a deterministic verified lane result and replay. finish_match reports completed only after all lesson requirements are satisfied; other nonterminal early finishes report aborted. Style criteria are measurements against optional targets, not match grades. Failed-closed finalization returns no verified result; an exhibition receipt is not part of this contract.",
             rivalry = "An optional built-in rival advances once per accepted agent step on the same seed and exact configuration. Each lane has an independent verified replay.",
             privacy = "Observations exclude random state, future outcomes, controller internals, profiles, progression, paths, prompts, credentials, diagnostics, and hidden reasoning.",
         },
@@ -191,14 +191,14 @@ public sealed class AgentResources
     public static string GetStyles() => JsonSerializer.Serialize(
         new
         {
-            contract = "vibesnake-agent-style-catalog-v2",
-            progress_schema = AgentStyleProgressV2.Contract,
-            outcome_schema = AgentStyleOutcomeV2.Contract,
+            contract = "vibesnake-agent-style-catalog-v3",
+            progress_schema = AgentStyleProgressV3.Contract,
+            outcome_schema = AgentStyleOutcomeV3.Contract,
             semantics = new
             {
                 live = "Observation values are rules-advanced-step facts and may rise or fall. They are not replay-verified outcomes.",
                 terminal = "A successfully finalized styled result contains a style outcome reconstructed from the verified replay and bound to its payload hash.",
-                interpretation = "Criteria describe observed behavior only. They do not prove intent, planning, mastery, personality, or spectator appeal.",
+                interpretation = "ThresholdReached, ThresholdsReached, and AllThresholdsReached report measurement threshold crossings only. They are not pass/fail grades for the match and do not prove intent, planning, mastery, personality, or spectator appeal.",
             },
             styles = AgentStyleContractCatalog.All,
         },
@@ -212,22 +212,22 @@ public sealed class AgentResources
     public static string GetSignalSchool() => JsonSerializer.Serialize(
         new
         {
-            contract = "vibesnake-agent-signal-school-v3",
+            contract = "vibesnake-agent-signal-school-v4",
             start_tool = "start_lesson",
             evaluation_policy = AgentSignalSchoolCatalog.EvaluationPolicyId,
             maximum_attempt_witnesses = AgentSignalSchoolCatalog.MaximumAttemptWitnesses,
-            progress_schema = AgentLessonProgressV2.Contract,
+            progress_schema = AgentLessonProgressV3.Contract,
             delta_schema = AgentLessonProgressDeltaV2.Contract,
-            outcome_schema = AgentLessonOutcomeV2.Contract,
+            outcome_schema = AgentLessonOutcomeV3.Contract,
             retry_schema = AgentLessonRetryDescriptorV1.Contract,
-            practice_semantics = "Each lesson owns its canonical open seed, mode, step cap, and ordered closed requirements. All requirements satisfied is practice evidence, not mastery or qualification.",
+            practice_semantics = "Each lesson owns its canonical open seed, mode, step cap, and ordered closed requirements. requirements_satisfied is the integer count of satisfied entries in requirements. All requirements satisfied is practice evidence, not mastery or qualification. A live completed lesson reports recommended_next_tool as finish_match.",
             evidence_semantics = new
             {
                 live = "Observation progress is live evidence and names the first unmet ordered requirement.",
                 replay = "Accepted-step requirements are independently reconstructed from the verified replay.",
                 attempts = "Rejection-aware requirements use a bounded canonical attempt-witness sequence distinct from replay schema 1. Exact retries do not add evidence; stale, conflicting, capacity, or wrong-profile requests cannot qualify.",
-                terminal = "A verified outcome binds the replay payload hash and distinct attempt-evidence hash into one evidence hash and reports a closed factual review code.",
-                failed_closed = "Replay failure creates no verified lesson outcome. Retry guidance always starts the same canonical lesson in a fresh session without inherited state, handle, mutation keys, or practice history.",
+                terminal = "A verified outcome binds the replay payload hash and distinct attempt-evidence hash into one evidence hash and reports a closed factual review code. A reached target omits retry guidance; an unmet outcome includes it.",
+                failed_closed = "Replay failure creates no verified lesson outcome. Retry guidance starts the same canonical lesson in a fresh session without inherited state, handle, mutation keys, or practice history.",
             },
             interaction_accounting = new
             {
@@ -287,8 +287,8 @@ public sealed class AgentResources
         3. Read the returned observation. Use only visible board state.
         4. Use `play_move` for one exact decision. In a burst-profile match, use `play_burst` for a safe straight continuation of at most 16 steps; it stops on the first fixed public decision event. Supply the exact tick and state hash plus a new idempotency key. Optionally declare one closed public intent so a viewer can follow the plan.
         5. On rejection or burst stop, inspect the reason, actual advancement, final-step public events, and refreshed observation. Preflight and logical rejections do not step the rules. A `replay_failure` can report `rules_advanced=true` after a real step and always fails closed without a verified result.
-        6. Continue until the result appears, or call `finish_match` to request early finalization.
-        7. Confirm that finalization returned a verified result. For a styled match, use only its replay-bound style outcome as verified criterion evidence. For Signal School, use the verified lesson outcome, which binds replay-trace and any distinct attempt-witness evidence; a failed-closed session has no verified lesson outcome and must be retried through a fresh `start_lesson`. Call `save_verified_replay` only when accepted-step replay persistence for later human viewing is desired.
+        6. Continue until the result appears. When Signal School reports `recommended_next_tool: finish_match`, call it to finalize a completed lesson without padding steps. In any other running match, `finish_match` requests an aborted early finish.
+        7. Confirm that finalization returned a verified result. A reached lesson target omits retry guidance; only an unmet outcome or failed-closed progress provides a fresh `start_lesson` descriptor. For a styled match, threshold flags are measurement crossings, not grades, and only its replay-bound style outcome is verified criterion evidence. Call `save_verified_replay` only when accepted-step replay persistence for later human viewing is desired.
 
         Public intents are `seek_food`, `seek_power`, `preserve_space`, `take_risk`, and `recover`. They are self-reported presentation only. `continue` preserves the current direction. Never submit the current direction or its opposite as a turn. Response latency has no scoring effect. At capacity, a live handle idle for 30 minutes may be reclaimed without producing a result or replay; viewer activity is never match control.
         """;

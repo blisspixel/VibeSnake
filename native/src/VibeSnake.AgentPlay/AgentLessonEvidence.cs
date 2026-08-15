@@ -72,7 +72,7 @@ public sealed record AgentLessonRetryDescriptorV1(
 }
 
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
-public sealed record AgentLessonProgressV2(
+public sealed record AgentLessonProgressV3(
     string Schema,
     string LessonId,
     string Title,
@@ -85,9 +85,12 @@ public sealed record AgentLessonProgressV2(
     AgentLessonEvidenceState EvidenceState,
     int AttemptEvidenceCount,
     string AttemptEvidenceHash,
-    AgentLessonRetryDescriptorV1? RetryDescriptor)
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    string? RecommendedNextTool = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    AgentLessonRetryDescriptorV1? RetryDescriptor = null)
 {
-    public const string Contract = "vibesnake-agent-lesson-progress-v2";
+    public const string Contract = "vibesnake-agent-lesson-progress-v3";
 }
 
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
@@ -105,7 +108,7 @@ public sealed record AgentLessonProgressDeltaV2(
 }
 
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
-public sealed record AgentLessonOutcomeV2(
+public sealed record AgentLessonOutcomeV3(
     string Schema,
     string LessonId,
     string EvaluationPolicyId,
@@ -119,9 +122,10 @@ public sealed record AgentLessonOutcomeV2(
     string ReplayPayloadHash,
     string AttemptEvidenceHash,
     string EvidenceHash,
-    AgentLessonRetryDescriptorV1 RetryDescriptor)
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    AgentLessonRetryDescriptorV1? RetryDescriptor = null)
 {
-    public const string Contract = "vibesnake-agent-lesson-outcome-v2";
+    public const string Contract = "vibesnake-agent-lesson-outcome-v3";
 }
 
 public static class AgentSignalSchoolCatalog
@@ -267,7 +271,7 @@ public static class AgentSignalSchoolCatalog
             Lesson(
                 DeathReadId,
                 "Read the End",
-                "Reach a typed death whose event cause matches the terminal state.",
+                "Collect food until length five, then make consecutive left turns into the occupied body. Confirm that the typed self-collision death event matches the terminal state; starvation exceeds this practice cap.",
                 RunModeCatalog.VibeId,
                 20_260_815UL,
                 600,
@@ -291,8 +295,8 @@ public static class AgentSignalSchoolCatalog
     }
 
     public static AgentLessonProgressDeltaV2 Delta(
-        AgentLessonProgressV2 previous,
-        AgentLessonProgressV2 current)
+        AgentLessonProgressV3 previous,
+        AgentLessonProgressV3 current)
     {
         ArgumentNullException.ThrowIfNull(previous);
         ArgumentNullException.ThrowIfNull(current);
@@ -334,10 +338,10 @@ public static class AgentSignalSchoolCatalog
             current.AttemptEvidenceHash);
     }
 
-    public static bool IsValidProgress(AgentLessonProgressV2? progress)
+    public static bool IsValidProgress(AgentLessonProgressV3? progress)
     {
         if (progress is null
-            || !string.Equals(progress.Schema, AgentLessonProgressV2.Contract, StringComparison.Ordinal)
+            || !string.Equals(progress.Schema, AgentLessonProgressV3.Contract, StringComparison.Ordinal)
             || !Enum.IsDefined(progress.EvidenceState)
             || progress.AttemptEvidenceCount is < 0 or > AgentLessonEvidenceTracker.MaximumAttemptWitnesses
             || !IsLowerHex(progress.AttemptEvidenceHash, 64))
@@ -376,15 +380,34 @@ public static class AgentSignalSchoolCatalog
             return false;
         }
 
-        return progress.EvidenceState == AgentLessonEvidenceState.Live
-            ? progress.RetryDescriptor is null
-            : IsValidRetryDescriptor(progress.RetryDescriptor, progress.LessonId);
+        var expectedNextTool = progress.EvidenceState == AgentLessonEvidenceState.Live
+            && progress.AllRequirementsSatisfied
+                ? "finish_match"
+                : null;
+        if (!string.Equals(
+                progress.RecommendedNextTool,
+                expectedNextTool,
+                StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        return progress.EvidenceState switch
+        {
+            AgentLessonEvidenceState.Live => progress.RetryDescriptor is null,
+            AgentLessonEvidenceState.Verified => progress.AllRequirementsSatisfied
+                ? progress.RetryDescriptor is null
+                : IsValidRetryDescriptor(progress.RetryDescriptor, progress.LessonId),
+            AgentLessonEvidenceState.FailedClosed =>
+                IsValidRetryDescriptor(progress.RetryDescriptor, progress.LessonId),
+            _ => false,
+        };
     }
 
-    public static bool IsValidOutcome(AgentLessonOutcomeV2? outcome)
+    public static bool IsValidOutcome(AgentLessonOutcomeV3? outcome)
     {
         if (outcome is null
-            || !string.Equals(outcome.Schema, AgentLessonOutcomeV2.Contract, StringComparison.Ordinal)
+            || !string.Equals(outcome.Schema, AgentLessonOutcomeV3.Contract, StringComparison.Ordinal)
             || !Enum.IsDefined(outcome.ReviewCode)
             || !Enum.IsDefined(outcome.EndReason)
             || outcome.EndReason is AgentMatchEndReason.None or AgentMatchEndReason.ReplayFailure
@@ -427,7 +450,9 @@ public static class AgentSignalSchoolCatalog
                 outcome.AttemptEvidenceCount,
                 outcome.AttemptEvidenceHash,
                 outcome.Requirements)
-            || !IsValidRetryDescriptor(outcome.RetryDescriptor, outcome.LessonId))
+            || (outcome.AllRequirementsSatisfied
+                ? outcome.RetryDescriptor is not null
+                : !IsValidRetryDescriptor(outcome.RetryDescriptor, outcome.LessonId)))
         {
             return false;
         }
@@ -731,7 +756,7 @@ internal sealed class AgentLessonEvidenceTracker
         }
     }
 
-    public AgentLessonProgressV2 Snapshot(
+    public AgentLessonProgressV3 Snapshot(
         AgentLessonEvidenceState evidenceState,
         string actionProfile)
     {
@@ -749,24 +774,34 @@ internal sealed class AgentLessonEvidenceTracker
             })
             .ToArray();
         var satisfied = requirements.Count(item => item.Satisfied);
-        return new AgentLessonProgressV2(
-            AgentLessonProgressV2.Contract,
+        var allRequirementsSatisfied = satisfied == requirements.Length;
+        var recommendedNextTool = evidenceState == AgentLessonEvidenceState.Live
+            && allRequirementsSatisfied
+                ? "finish_match"
+                : null;
+        var retryDescriptor = evidenceState switch
+        {
+            AgentLessonEvidenceState.Verified when !allRequirementsSatisfied =>
+                AgentSignalSchoolCatalog.CreateRetryDescriptor(_definition.Id, actionProfile),
+            AgentLessonEvidenceState.FailedClosed =>
+                AgentSignalSchoolCatalog.CreateRetryDescriptor(_definition.Id, actionProfile),
+            _ => null,
+        };
+        return new AgentLessonProgressV3(
+            AgentLessonProgressV3.Contract,
             _definition.Id,
             _definition.Title,
             _definition.Instruction,
             _definition.EvaluationPolicyId,
             Array.AsReadOnly(requirements),
             satisfied,
-            satisfied == requirements.Length,
+            allRequirementsSatisfied,
             requirements.FirstOrDefault(item => !item.Satisfied)?.RequirementId,
             evidenceState,
             _attemptWitnesses.Count,
             ComputeAttemptEvidenceHash(_attemptWitnesses),
-            evidenceState == AgentLessonEvidenceState.Live
-                ? null
-                : AgentSignalSchoolCatalog.CreateRetryDescriptor(
-                    _definition.Id,
-                    actionProfile));
+            recommendedNextTool,
+            retryDescriptor);
     }
 
     internal static string ComputeAttemptEvidenceHash(
@@ -839,7 +874,7 @@ internal static class AgentLessonEvidenceReplayEvaluator
 {
     private const string EvidenceDomain = "vibesnake-agent-lesson-evidence-v2";
 
-    public static AgentLessonProgressV2 Evaluate(
+    public static AgentLessonProgressV3 Evaluate(
         string lessonId,
         string actionProfile,
         RunReplay replay,
@@ -888,8 +923,8 @@ internal static class AgentLessonEvidenceReplayEvaluator
         return tracker.Snapshot(AgentLessonEvidenceState.Verified, actionProfile);
     }
 
-    public static AgentLessonOutcomeV2 CreateOutcome(
-        AgentLessonProgressV2 progress,
+    public static AgentLessonOutcomeV3 CreateOutcome(
+        AgentLessonProgressV3 progress,
         AgentMatchEndReason endReason,
         string replayPayloadHash)
     {
@@ -901,10 +936,13 @@ internal static class AgentLessonEvidenceReplayEvaluator
                 .EvidenceSource == AgentLessonEvidenceSource.AttemptWitness
                 ? AgentLessonReviewCode.InsufficientAttemptEvidence
                 : AgentLessonReviewCode.ReplayRequirementUnmet;
-        var retry = progress.RetryDescriptor
-            ?? throw new InvalidOperationException("Verified lesson progress requires fresh retry guidance.");
-        return new AgentLessonOutcomeV2(
-            AgentLessonOutcomeV2.Contract,
+        var retry = progress.AllRequirementsSatisfied
+            ? null
+            : progress.RetryDescriptor
+                ?? throw new InvalidOperationException(
+                    "An unmet verified lesson requires fresh retry guidance.");
+        return new AgentLessonOutcomeV3(
+            AgentLessonOutcomeV3.Contract,
             progress.LessonId,
             progress.EvaluationPolicyId,
             progress.Requirements,
@@ -920,7 +958,7 @@ internal static class AgentLessonEvidenceReplayEvaluator
             retry);
     }
 
-    public static bool Equivalent(AgentLessonProgressV2 left, AgentLessonProgressV2 right) =>
+    public static bool Equivalent(AgentLessonProgressV3 left, AgentLessonProgressV3 right) =>
         string.Equals(left.LessonId, right.LessonId, StringComparison.Ordinal)
         && left.Requirements.SequenceEqual(right.Requirements)
         && left.RequirementsSatisfied == right.RequirementsSatisfied

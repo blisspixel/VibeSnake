@@ -466,7 +466,7 @@ public sealed class AgentViewerClient : IDisposable
     }
 
     private static bool HasValidCrownchaserContinuity(
-        AgentStyleCriterionProgressV2 continuity,
+        AgentStyleCriterionProgressV3 continuity,
         AgentObservationV5 observation)
     {
         var metrics = observation.EpisodeMetrics;
@@ -620,8 +620,8 @@ public sealed class AgentViewerClient : IDisposable
         };
 
     private static bool HasValidStyleOutcome(
-        AgentStyleOutcomeV2 outcome,
-        AgentStyleProgressV2 progress,
+        AgentStyleOutcomeV3 outcome,
+        AgentStyleProgressV3 progress,
         string modeId) =>
         AgentStyleContractCatalog.IsValidOutcome(outcome)
         && SupportsStyleMode(outcome.ContractId, modeId)
@@ -633,8 +633,8 @@ public sealed class AgentViewerClient : IDisposable
             && definition.SupportedModeIds.Contains(modeId, StringComparer.Ordinal));
 
     private static bool HasSameStyleIdentity(
-        AgentStyleProgressV2? expected,
-        AgentStyleProgressV2? actual)
+        AgentStyleProgressV3? expected,
+        AgentStyleProgressV3? actual)
     {
         if (expected is null || actual is null)
         {
@@ -652,8 +652,8 @@ public sealed class AgentViewerClient : IDisposable
     }
 
     private static bool HasSameCriterionIdentity(
-        IReadOnlyList<AgentStyleCriterionProgressV2> expected,
-        IReadOnlyList<AgentStyleCriterionProgressV2> actual)
+        IReadOnlyList<AgentStyleCriterionProgressV3> expected,
+        IReadOnlyList<AgentStyleCriterionProgressV3> actual)
     {
         if (expected.Count != 2 || actual.Count != 2)
         {
@@ -682,8 +682,8 @@ public sealed class AgentViewerClient : IDisposable
     }
 
     private static bool HasSameStyleProgress(
-        AgentStyleProgressV2 progress,
-        AgentStyleOutcomeV2 outcome)
+        AgentStyleProgressV3 progress,
+        AgentStyleOutcomeV3 outcome)
     {
         if (!string.Equals(progress.ContractId, outcome.ContractId, StringComparison.Ordinal)
             || !string.Equals(progress.DisplayName, outcome.DisplayName, StringComparison.Ordinal)
@@ -691,8 +691,8 @@ public sealed class AgentViewerClient : IDisposable
                 progress.EvaluationPolicyId,
                 outcome.EvaluationPolicyId,
                 StringComparison.Ordinal)
-            || progress.CriteriaSatisfied != outcome.CriteriaSatisfied
-            || progress.AllCriteriaSatisfied != outcome.AllCriteriaSatisfied
+            || progress.ThresholdsReached != outcome.ThresholdsReached
+            || progress.AllThresholdsReached != outcome.AllThresholdsReached
             || progress.Criteria.Count != 2
             || outcome.Criteria.Count != 2)
         {
@@ -711,7 +711,7 @@ public sealed class AgentViewerClient : IDisposable
                 || expected.Target != actual.Target
                 || expected.Numerator != actual.Numerator
                 || expected.Denominator != actual.Denominator
-                || expected.Satisfied != actual.Satisfied)
+                || expected.ThresholdReached != actual.ThresholdReached)
             {
                 return false;
             }
@@ -769,8 +769,8 @@ public sealed class AgentViewerClient : IDisposable
         && HasSameRivalIdentity(expected.Rival, actual.Rival);
 
     private static bool HasSameLessonIdentity(
-        AgentLessonProgressV2? expected,
-        AgentLessonProgressV2? actual)
+        AgentLessonProgressV3? expected,
+        AgentLessonProgressV3? actual)
     {
         if (expected is null || actual is null)
         {
@@ -844,12 +844,17 @@ public sealed class AgentViewerClient : IDisposable
                 && frame.LessonOutcome is null;
         }
 
+        var lessonRequirementsSatisfied =
+            observation.LessonProgress?.AllRequirementsSatisfied == true;
         var successfulTerminal = frame.VerifiedResultAvailable
             && (observation.Lifecycle == AgentMatchLifecycle.Completed
-                && frame.EndReason is AgentMatchEndReason.RulesTerminal
+                && (frame.EndReason is AgentMatchEndReason.RulesTerminal
                     or AgentMatchEndReason.StepLimit
+                    || frame.EndReason == AgentMatchEndReason.AgentFinished
+                    && lessonRequirementsSatisfied)
                 || observation.Lifecycle == AgentMatchLifecycle.Aborted
-                && frame.EndReason == AgentMatchEndReason.AgentFinished);
+                && frame.EndReason == AgentMatchEndReason.AgentFinished
+                && !lessonRequirementsSatisfied);
         if (!successfulTerminal)
         {
             return false;
@@ -871,8 +876,8 @@ public sealed class AgentViewerClient : IDisposable
     }
 
     private static bool HasValidLessonOutcome(
-        AgentLessonOutcomeV2 outcome,
-        AgentLessonProgressV2 progress,
+        AgentLessonOutcomeV3 outcome,
+        AgentLessonProgressV3 progress,
         string actionProfile,
         AgentMatchEndReason endReason) =>
         AgentSignalSchoolCatalog.IsValidOutcome(outcome)
@@ -894,10 +899,13 @@ public sealed class AgentViewerClient : IDisposable
             outcome.AttemptEvidenceHash,
             progress.AttemptEvidenceHash,
             StringComparison.Ordinal)
-        && string.Equals(
-            outcome.RetryDescriptor.ActionProfile,
-            actionProfile,
-            StringComparison.Ordinal);
+        && (outcome.AllRequirementsSatisfied
+            ? outcome.RetryDescriptor is null
+            : outcome.RetryDescriptor is { } retry
+                && string.Equals(
+                    retry.ActionProfile,
+                    actionProfile,
+                    StringComparison.Ordinal));
 
     private static bool HasConsistentRunEnd(AgentViewerFrameV7 frame) =>
         frame.EndReason switch

@@ -36,8 +36,8 @@ public sealed record AgentViewerFrameV7(
     AgentObservationV5 Observation,
     AgentMatchEndReason EndReason,
     bool VerifiedResultAvailable,
-    AgentStyleOutcomeV2? StyleOutcome = null,
-    AgentLessonOutcomeV2? LessonOutcome = null)
+    AgentStyleOutcomeV3? StyleOutcome = null,
+    AgentLessonOutcomeV3? LessonOutcome = null)
 {
     public const string Contract = "vibesnake-agent-viewer-frame-v7";
 }

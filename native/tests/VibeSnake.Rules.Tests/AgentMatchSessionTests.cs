@@ -712,7 +712,7 @@ public sealed class AgentMatchSessionTests
         Assert.Equal(AgentActionRejection.ReplayFailure, response.Rejection);
         Assert.Equal(2, response.Observation.Tick);
         Assert.Equal(AgentMatchLifecycle.FailedClosed, response.Observation.Lifecycle);
-        var progress = Assert.IsType<AgentLessonProgressV2>(response.Observation.LessonProgress);
+        var progress = Assert.IsType<AgentLessonProgressV3>(response.Observation.LessonProgress);
         Assert.Equal(AgentLessonEvidenceState.FailedClosed, progress.EvidenceState);
         Assert.True(progress.AllRequirementsSatisfied);
         Assert.Equal(2, progress.RequirementsSatisfied);
@@ -753,7 +753,7 @@ public sealed class AgentMatchSessionTests
         Assert.Equal(AgentMatchLifecycle.FailedClosed, response.Observation.Lifecycle);
         Assert.Equal(1, response.Observation.Tick);
         Assert.Equal(1, response.Observation.EpisodeMetrics.SurvivalSteps);
-        var progress = Assert.IsType<AgentStyleProgressV2>(response.Observation.StyleContract);
+        var progress = Assert.IsType<AgentStyleProgressV3>(response.Observation.StyleContract);
         Assert.Equal(1, progress.Criteria[0].Current);
         Assert.Equal(1, progress.Criteria[1].Denominator);
         Assert.Null(session.GetResult());

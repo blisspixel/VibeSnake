@@ -277,6 +277,12 @@ public sealed class AgentExperienceTests
 
         Assert.Throws<ArgumentException>(() => AgentSignalSchoolCatalog.Get("missing"));
         Assert.Throws<ArgumentException>(() => AgentSignalSchoolCatalog.Get(""));
+
+        var deathRead = AgentSignalSchoolCatalog.Get(AgentSignalSchoolCatalog.DeathReadId);
+        Assert.Contains("length five", deathRead.Instruction, StringComparison.Ordinal);
+        Assert.Contains("left turns", deathRead.Instruction, StringComparison.Ordinal);
+        Assert.Contains("self-collision", deathRead.Instruction, StringComparison.Ordinal);
+        Assert.Contains("starvation exceeds", deathRead.Instruction, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -355,11 +361,11 @@ public sealed class AgentExperienceTests
                 .Current);
         var result = Assert.IsType<AgentMatchResultV5>(response.MatchResult);
         Assert.Equal(response.Observation.EpisodeMetrics, result.EpisodeMetrics);
-        var outcome = Assert.IsType<AgentStyleOutcomeV2>(result.StyleOutcome);
-        Assert.Equal(AgentStyleOutcomeV2.Contract, outcome.Schema);
+        var outcome = Assert.IsType<AgentStyleOutcomeV3>(result.StyleOutcome);
+        Assert.Equal(AgentStyleOutcomeV3.Contract, outcome.Schema);
         Assert.Equal(response.Observation.StyleContract.ContractId, outcome.ContractId);
         Assert.Equal(response.Observation.StyleContract.Criteria, outcome.Criteria);
-        Assert.False(outcome.AllCriteriaSatisfied);
+        Assert.False(outcome.AllThresholdsReached);
         Assert.Equal(result.ReplayPayloadHash, outcome.ReplayPayloadHash);
         Assert.Equal(
             response.Observation.StyleContract,
@@ -469,7 +475,9 @@ public sealed class AgentExperienceTests
         Assert.Equal(["legal_turn_after_rejection"], response.LessonDelta!.NewlySatisfiedRequirementIds);
         Assert.True(response.LessonDelta.AllRequirementsReachedThisMutation);
         Assert.True(response.Observation.LessonProgress!.AllRequirementsSatisfied);
-        Assert.Equal(AgentLessonOutcomeV2.Contract, result.LessonOutcome!.Schema);
+        Assert.Equal(AgentMatchLifecycle.Completed, result.Lifecycle);
+        Assert.Equal(AgentMatchEndReason.AgentFinished, result.EndReason);
+        Assert.Equal(AgentLessonOutcomeV3.Contract, result.LessonOutcome!.Schema);
         Assert.True(result.LessonOutcome.AllRequirementsSatisfied);
         Assert.Equal(AgentLessonReviewCode.TargetReached, result.LessonOutcome.ReviewCode);
         Assert.Equal(result.ReplayPayloadHash, result.LessonOutcome.ReplayPayloadHash);
@@ -491,7 +499,7 @@ public sealed class AgentExperienceTests
         {
             var route = AgentLessonRouteDriver.DriveSession(lesson);
             var result = route.Result;
-            var outcome = Assert.IsType<AgentLessonOutcomeV2>(result.LessonOutcome);
+            var outcome = Assert.IsType<AgentLessonOutcomeV3>(result.LessonOutcome);
             Assert.True(
                 outcome.AllRequirementsSatisfied,
                 $"{lesson.Id}: first unmet {outcome.FirstUnmetRequirementId}; metrics={result.EpisodeMetrics}");
@@ -502,6 +510,7 @@ public sealed class AgentExperienceTests
                 Assert.Equal(AgentActionRejection.IllegalDirection, route.Calls[0].Rejection);
             }
             Assert.Equal(AgentLessonReviewCode.TargetReached, outcome.ReviewCode);
+            Assert.Null(outcome.RetryDescriptor);
             Assert.Equal(result.ReplayPayloadHash, outcome.ReplayPayloadHash);
             Assert.Equal(
                 result.EpisodeMetrics,

@@ -8,14 +8,42 @@ namespace VibeSnake.Rules.Tests;
 public sealed class AgentLessonEvidenceTests
 {
     [Fact]
+    public void Completed_lesson_recommends_finish_and_omits_retry_guidance()
+    {
+        var definition = AgentSignalSchoolCatalog.Get(AgentSignalSchoolCatalog.FirstTurnId);
+        var session = CreateSession(definition);
+        var initial = session.Observe();
+
+        Assert.Null(initial.LessonProgress!.RecommendedNextTool);
+        var rejected = session.SubmitAction(Request("complete-reversal", initial, AgentAction.Left));
+        var completed = session.SubmitAction(Request(
+            "complete-turn",
+            rejected.Observation,
+            AgentAction.Up));
+
+        Assert.True(completed.Observation.LessonProgress!.AllRequirementsSatisfied);
+        Assert.Equal("finish_match", completed.Observation.LessonProgress.RecommendedNextTool);
+        Assert.Null(completed.Observation.LessonProgress.RetryDescriptor);
+
+        var result = session.Finish();
+        var outcome = Assert.IsType<AgentLessonOutcomeV3>(result.LessonOutcome);
+        var terminalProgress = Assert.IsType<AgentLessonProgressV3>(session.Observe().LessonProgress);
+        Assert.Equal(AgentLessonReviewCode.TargetReached, outcome.ReviewCode);
+        Assert.Null(outcome.RetryDescriptor);
+        Assert.Null(terminalProgress.RecommendedNextTool);
+        Assert.Null(terminalProgress.RetryDescriptor);
+    }
+
+    [Fact]
     public void Empty_and_partial_outcomes_name_the_first_unmet_requirement_and_fresh_retry()
     {
         foreach (var definition in AgentSignalSchoolCatalog.All)
         {
             var result = CreateSession(definition).Finish();
-            var outcome = Assert.IsType<AgentLessonOutcomeV2>(result.LessonOutcome);
+            var outcome = Assert.IsType<AgentLessonOutcomeV3>(result.LessonOutcome);
 
             Assert.False(outcome.AllRequirementsSatisfied);
+            Assert.Equal(AgentMatchLifecycle.Aborted, result.Lifecycle);
             Assert.Equal(0, outcome.RequirementsSatisfied);
             Assert.Equal(definition.Requirements[0].Id, outcome.FirstUnmetRequirementId);
             Assert.Equal(
@@ -25,14 +53,17 @@ public sealed class AgentLessonEvidenceTests
                 outcome.ReviewCode);
             Assert.Equal(AgentMatchEndReason.AgentFinished, outcome.EndReason);
             Assert.True(AgentSignalSchoolCatalog.IsValidOutcome(outcome));
-            AssertRetry(outcome.RetryDescriptor, definition.Id, AgentPassportV4.FourDirectionActionProfile);
+            AssertRetry(
+                outcome.RetryDescriptor!,
+                definition.Id,
+                AgentPassportV4.FourDirectionActionProfile);
         }
 
         var firstTurn = AgentSignalSchoolCatalog.Get(AgentSignalSchoolCatalog.FirstTurnId);
         var partial = CreateSession(firstTurn);
         var initial = partial.Observe();
         var rejected = partial.SubmitAction(Request("partial-reversal", initial, AgentAction.Left));
-        var partialOutcome = Assert.IsType<AgentLessonOutcomeV2>(partial.Finish().LessonOutcome);
+        var partialOutcome = Assert.IsType<AgentLessonOutcomeV3>(partial.Finish().LessonOutcome);
 
         Assert.Equal(AgentActionRejection.IllegalDirection, rejected.Rejection);
         Assert.Equal(1, partialOutcome.RequirementsSatisfied);
@@ -270,7 +301,7 @@ public sealed class AgentLessonEvidenceTests
             after with { Requirements = before.Requirements }));
 
         Assert.True(AgentSignalSchoolCatalog.IsValidProgress(before));
-        AgentLessonProgressV2?[] invalidProgress =
+        AgentLessonProgressV3?[] invalidProgress =
         [
             null,
             before with { Schema = "wrong" },
@@ -301,6 +332,7 @@ public sealed class AgentLessonEvidenceTests
             before with { RequirementsSatisfied = 1 },
             before with { AllRequirementsSatisfied = true },
             before with { FirstUnmetRequirementId = "legal_turn_after_rejection" },
+            before with { RecommendedNextTool = "finish_match" },
             before with { EvidenceState = AgentLessonEvidenceState.Verified },
             before with { RetryDescriptor = AgentSignalSchoolCatalog.CreateRetryDescriptor(
                 definition.Id,
@@ -315,9 +347,9 @@ public sealed class AgentLessonEvidenceTests
             AttemptEvidenceHash = AlternateHash(wrapProgress.AttemptEvidenceHash),
         }));
 
-        var outcome = Assert.IsType<AgentLessonOutcomeV2>(session.Finish().LessonOutcome);
+        var outcome = Assert.IsType<AgentLessonOutcomeV3>(session.Finish().LessonOutcome);
         Assert.True(AgentSignalSchoolCatalog.IsValidOutcome(outcome));
-        AgentLessonOutcomeV2?[] invalidOutcomes =
+        AgentLessonOutcomeV3?[] invalidOutcomes =
         [
             null,
             outcome with { Schema = "wrong" },
@@ -357,11 +389,11 @@ public sealed class AgentLessonEvidenceTests
             outcome with { RequirementsSatisfied = 2 },
             outcome with { AllRequirementsSatisfied = true },
             outcome with { FirstUnmetRequirementId = "opposite_reversal_rejected" },
-            outcome with { RetryDescriptor = outcome.RetryDescriptor with { Tool = "get_match" } },
-            outcome with { RetryDescriptor = outcome.RetryDescriptor with { FreshSessionRequired = false } },
+            outcome with { RetryDescriptor = outcome.RetryDescriptor! with { Tool = "get_match" } },
+            outcome with { RetryDescriptor = outcome.RetryDescriptor! with { FreshSessionRequired = false } },
         ];
         Assert.All(invalidOutcomes, value => Assert.False(AgentSignalSchoolCatalog.IsValidOutcome(value)));
-        var wrapOutcome = Assert.IsType<AgentLessonOutcomeV2>(CreateSession(
+        var wrapOutcome = Assert.IsType<AgentLessonOutcomeV3>(CreateSession(
             AgentSignalSchoolCatalog.Get(AgentSignalSchoolCatalog.WrapLineId)).Finish().LessonOutcome);
         var nonEmptyAttemptHash = AlternateHash(wrapOutcome.AttemptEvidenceHash);
         Assert.False(AgentSignalSchoolCatalog.IsValidOutcome(wrapOutcome with
@@ -776,7 +808,7 @@ public sealed class AgentLessonEvidenceTests
         AgentAction action) =>
         new(key, observation.Tick, observation.StateHash, action);
 
-    private static void AssertNoAttemptEvidence(AgentLessonProgressV2? progress)
+    private static void AssertNoAttemptEvidence(AgentLessonProgressV3? progress)
     {
         Assert.NotNull(progress);
         Assert.Equal(0, progress.AttemptEvidenceCount);

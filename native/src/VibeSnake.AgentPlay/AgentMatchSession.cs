@@ -403,10 +403,13 @@ public sealed class AgentMatchSession
             }
 
             var start = _run.GetSnapshot();
+            var lifecycle = CreateLessonProgress()?.AllRequirementsSatisfied == true
+                ? AgentMatchLifecycle.Completed
+                : AgentMatchLifecycle.Aborted;
 
             if (!TryComplete(
                 AgentMatchEndReason.AgentFinished,
-                AgentMatchLifecycle.Aborted,
+                lifecycle,
                 out var result))
             {
                 PublishViewerFrame(
@@ -700,8 +703,8 @@ public sealed class AgentMatchSession
         var snapshot = _run.GetSnapshot();
         var episodeMetrics = _metrics.Snapshot(snapshot.Tick);
         AgentEpisodeMetricsV1 replayMetrics;
-        AgentStyleOutcomeV2? styleOutcome = null;
-        AgentLessonOutcomeV2? lessonOutcome = null;
+        AgentStyleOutcomeV3? styleOutcome = null;
+        AgentLessonOutcomeV3? lessonOutcome = null;
         try
         {
             replayMetrics = AgentEpisodeMetricsReplayEvaluator.Evaluate(agent.Replay);
@@ -891,7 +894,7 @@ public sealed class AgentMatchSession
             _styleEvidence?.Snapshot(),
             CreateLessonProgress());
 
-    private AgentLessonProgressV2? CreateLessonProgress()
+    private AgentLessonProgressV3? CreateLessonProgress()
     {
         if (_options.LessonId is null)
         {
@@ -907,8 +910,8 @@ public sealed class AgentMatchSession
     }
 
     private static AgentLessonProgressDeltaV2? CreateLessonDelta(
-        AgentLessonProgressV2? previous,
-        AgentLessonProgressV2? current) =>
+        AgentLessonProgressV3? previous,
+        AgentLessonProgressV3? current) =>
         previous is null || current is null
             ? null
             : AgentSignalSchoolCatalog.Delta(previous, current);

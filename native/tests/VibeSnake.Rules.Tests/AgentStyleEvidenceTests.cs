@@ -422,17 +422,19 @@ public sealed class AgentStyleEvidenceTests
             after.DeathCause,
             after.StateHash);
 
-    private static AgentStyleCriterionProgressV2 AssertCriterion(
-        AgentStyleProgressV2 progress,
+    private static AgentStyleCriterionProgressV3 AssertCriterion(
+        AgentStyleProgressV3 progress,
         string criterionId,
         int expectedCurrent,
         bool expectedSatisfied)
     {
         var criterion = progress.Criteria.Single(value => value.CriterionId == criterionId);
         Assert.Equal(expectedCurrent, criterion.Current);
-        Assert.Equal(expectedSatisfied, criterion.Satisfied);
-        Assert.Equal(progress.Criteria.Count(value => value.Satisfied), progress.CriteriaSatisfied);
-        Assert.Equal(progress.CriteriaSatisfied == 2, progress.AllCriteriaSatisfied);
+        Assert.Equal(expectedSatisfied, criterion.ThresholdReached);
+        Assert.Equal(
+            progress.Criteria.Count(value => value.ThresholdReached),
+            progress.ThresholdsReached);
+        Assert.Equal(progress.ThresholdsReached == 2, progress.AllThresholdsReached);
         return criterion;
     }
 }

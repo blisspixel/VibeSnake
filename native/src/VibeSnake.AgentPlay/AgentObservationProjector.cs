@@ -13,8 +13,8 @@ internal static class AgentObservationProjector
         AgentMatchLifecycle lifecycle,
         AgentEpisodeMetricsV1 metrics,
         AgentRivalObservationV1? rival,
-        AgentStyleProgressV2? styleProgress = null,
-        AgentLessonProgressV2? lessonProgress = null)
+        AgentStyleProgressV3? styleProgress = null,
+        AgentLessonProgressV3? lessonProgress = null)
     {
         ArgumentNullException.ThrowIfNull(options);
         ArgumentNullException.ThrowIfNull(config);

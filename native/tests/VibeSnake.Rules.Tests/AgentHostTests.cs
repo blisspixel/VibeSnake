@@ -424,6 +424,33 @@ public sealed class AgentHostTests
         Assert.False(methods.Single(value => value.Tool!.Name == "start_lesson").Tool!.Idempotent);
         Assert.True(methods.Single(value => value.Tool!.Name == "play_move").Tool!.Idempotent);
         Assert.True(methods.Single(value => value.Tool!.Name == "play_burst").Tool!.Idempotent);
+        var moveDescription = methods.Single(value => value.Tool!.Name == "play_move")
+            .Method
+            .GetCustomAttributes(typeof(System.ComponentModel.DescriptionAttribute), inherit: false)
+            .Cast<System.ComponentModel.DescriptionAttribute>()
+            .Single()
+            .Description;
+        Assert.Contains("including action", moveDescription, StringComparison.Ordinal);
+        Assert.Contains("before this tool runs", moveDescription, StringComparison.Ordinal);
+        Assert.Contains("recommended_next_tool", moveDescription, StringComparison.Ordinal);
+        var burstDescription = methods.Single(value => value.Tool!.Name == "play_burst")
+            .Method
+            .GetCustomAttributes(typeof(System.ComponentModel.DescriptionAttribute), inherit: false)
+            .Cast<System.ComponentModel.DescriptionAttribute>()
+            .Single()
+            .Description;
+        Assert.Contains("initialAction", burstDescription, StringComparison.Ordinal);
+        Assert.Contains("maximumSteps", burstDescription, StringComparison.Ordinal);
+        Assert.Contains("before this tool runs", burstDescription, StringComparison.Ordinal);
+        Assert.Contains("recommended_next_tool", burstDescription, StringComparison.Ordinal);
+        var finishDescription = methods.Single(value => value.Tool!.Name == "finish_match")
+            .Method
+            .GetCustomAttributes(typeof(System.ComponentModel.DescriptionAttribute), inherit: false)
+            .Cast<System.ComponentModel.DescriptionAttribute>()
+            .Single()
+            .Description;
+        Assert.Contains("requirements satisfied", finishDescription, StringComparison.Ordinal);
+        Assert.Contains("not pass/fail grades", finishDescription, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -435,7 +462,7 @@ public sealed class AgentHostTests
         var playbook = AgentResources.GetPlaybook();
 
         Assert.Equal(
-            "vibesnake-agent-rules-resource-v7",
+            "vibesnake-agent-rules-resource-v8",
             rules.RootElement.GetProperty("contract").GetString());
         Assert.Equal(
             AgentObservationV5.Contract,
@@ -504,13 +531,13 @@ public sealed class AgentHostTests
             AgentStyleContractCatalog.All.Count,
             styles.RootElement.GetProperty("styles").GetArrayLength());
         Assert.Equal(
-            "vibesnake-agent-style-catalog-v2",
+            "vibesnake-agent-style-catalog-v3",
             styles.RootElement.GetProperty("contract").GetString());
         Assert.Equal(
-            AgentStyleProgressV2.Contract,
+            AgentStyleProgressV3.Contract,
             styles.RootElement.GetProperty("progress_schema").GetString());
         Assert.Equal(
-            AgentStyleOutcomeV2.Contract,
+            AgentStyleOutcomeV3.Contract,
             styles.RootElement.GetProperty("outcome_schema").GetString());
         var publishedStyles = styles.RootElement.GetProperty("styles").EnumerateArray().ToArray();
         Assert.Equal(
@@ -536,12 +563,16 @@ public sealed class AgentHostTests
             "verified replay",
             styles.RootElement.GetProperty("semantics").GetProperty("terminal").GetString(),
             StringComparison.Ordinal);
+        Assert.Contains(
+            "ThresholdReached",
+            styles.RootElement.GetProperty("semantics").GetProperty("interpretation").GetString(),
+            StringComparison.Ordinal);
         Assert.Equal(
             AgentSignalSchoolCatalog.All.Count,
             school.RootElement.GetProperty("lessons").GetArrayLength());
         Assert.Equal(8, AgentSignalSchoolCatalog.All.Count);
         Assert.Equal(
-            "vibesnake-agent-signal-school-v3",
+            "vibesnake-agent-signal-school-v4",
             school.RootElement.GetProperty("contract").GetString());
         Assert.Equal(
             AgentSignalSchoolCatalog.EvaluationPolicyId,
@@ -550,13 +581,13 @@ public sealed class AgentHostTests
             AgentSignalSchoolCatalog.MaximumAttemptWitnesses,
             school.RootElement.GetProperty("maximum_attempt_witnesses").GetInt32());
         Assert.Equal(
-            AgentLessonProgressV2.Contract,
+            AgentLessonProgressV3.Contract,
             school.RootElement.GetProperty("progress_schema").GetString());
         Assert.Equal(
             AgentLessonProgressDeltaV2.Contract,
             school.RootElement.GetProperty("delta_schema").GetString());
         Assert.Equal(
-            AgentLessonOutcomeV2.Contract,
+            AgentLessonOutcomeV3.Contract,
             school.RootElement.GetProperty("outcome_schema").GetString());
         Assert.Equal(
             AgentLessonRetryDescriptorV1.Contract,
@@ -643,6 +674,7 @@ public sealed class AgentHostTests
         Assert.Contains("start_match", playbook, StringComparison.Ordinal);
         Assert.Contains("start_lesson", playbook, StringComparison.Ordinal);
         Assert.Contains("play_burst", playbook, StringComparison.Ordinal);
+        Assert.Contains("recommended_next_tool", playbook, StringComparison.Ordinal);
         Assert.Contains("save_verified_replay", playbook, StringComparison.Ordinal);
         Assert.Contains("vibesnake://agent/identity", playbook, StringComparison.Ordinal);
         var lessonSemantics = school.RootElement.GetProperty("evidence_semantics");
@@ -657,6 +689,14 @@ public sealed class AgentHostTests
         Assert.Contains(
             "fresh session",
             lessonSemantics.GetProperty("failed_closed").GetString(),
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "reached target omits retry guidance",
+            lessonSemantics.GetProperty("terminal").GetString(),
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "integer count",
+            school.RootElement.GetProperty("practice_semantics").GetString(),
             StringComparison.Ordinal);
         var interactionAccounting = school.RootElement.GetProperty("interaction_accounting");
         Assert.Equal(
@@ -738,9 +778,12 @@ public sealed class AgentHostTests
             value.GetProperty("total_utf8_bytes").GetInt32()));
         var replayContract = rules.RootElement.GetProperty("replay").GetString();
         Assert.Contains("verified lane result", replayContract, StringComparison.Ordinal);
+        Assert.Contains("other nonterminal early finishes report aborted", replayContract, StringComparison.Ordinal);
+        Assert.Contains("not match grades", replayContract, StringComparison.Ordinal);
         Assert.Contains("Failed-closed", replayContract, StringComparison.Ordinal);
         Assert.DoesNotContain("replay receipt", replayContract, StringComparison.Ordinal);
-        Assert.Contains("request early finalization", playbook, StringComparison.Ordinal);
+        Assert.Contains("finalize a completed lesson", playbook, StringComparison.Ordinal);
+        Assert.Contains("aborted early finish", playbook, StringComparison.Ordinal);
         Assert.Contains("Confirm that finalization returned a verified result", playbook, StringComparison.Ordinal);
         Assert.Contains("canonical accepted-step history", AgentViewerServer.ViewerRetentionPolicy, StringComparison.Ordinal);
         Assert.Contains("bounded attempt evidence", AgentViewerServer.ViewerRetentionPolicy, StringComparison.Ordinal);
@@ -855,6 +898,19 @@ public sealed class AgentHostTests
 
         Assert.Contains("\"match_handle\"", json, StringComparison.Ordinal);
         Assert.Contains("\"is_available\"", json, StringComparison.Ordinal);
+        var styleSession = new AgentMatchSession(new AgentMatchOptions(
+            "style-wire",
+            RunModeCatalog.ClassicId,
+            RunModeCatalog.CurrentModeVersion,
+            1UL,
+            AgentSeedVisibility.Open,
+            maximumSteps: 1,
+            styleContractId: AgentStyleContractCatalog.StillwaterId));
+        var styleJson = JsonSerializer.Serialize(styleSession.Observe().StyleContract, options);
+        Assert.Contains("\"threshold_reached\"", styleJson, StringComparison.Ordinal);
+        Assert.Contains("\"thresholds_reached\"", styleJson, StringComparison.Ordinal);
+        Assert.Contains("\"all_thresholds_reached\"", styleJson, StringComparison.Ordinal);
+        Assert.DoesNotContain("\"satisfied\"", styleJson, StringComparison.Ordinal);
         Assert.False(options.PropertyNameCaseInsensitive);
         Assert.False(options.AllowDuplicateProperties);
         Assert.True(options.RespectRequiredConstructorParameters);
@@ -869,7 +925,7 @@ public sealed class AgentHostTests
         Assert.NotNull(host.Services);
         Assert.NotNull(defaultHost.Services);
         Assert.Equal("vibesnake-agent-host", Program.HostName);
-        Assert.Equal("0.7.0", Program.HostVersion);
+        Assert.Equal("0.8.0", Program.HostVersion);
         Assert.Throws<ArgumentNullException>(() =>
             Program.CreateHostApplicationBuilder(null!, temporary.Path));
     }
@@ -1059,7 +1115,7 @@ public sealed class AgentHostTests
         Assert.Equal(
             AgentSignalSchoolCatalog.FirstTurnId,
             lessonProgress.GetProperty("lesson_id").GetString());
-        Assert.Equal(AgentLessonProgressV2.Contract, lessonProgress.GetProperty("schema").GetString());
+        Assert.Equal(AgentLessonProgressV3.Contract, lessonProgress.GetProperty("schema").GetString());
         Assert.Equal("live", lessonProgress.GetProperty("evidence_state").GetString());
         Assert.Equal(0, lessonProgress.GetProperty("attempt_evidence_count").GetInt32());
         Assert.Equal(2, lessonProgress.GetProperty("requirements").GetArrayLength());
@@ -1138,6 +1194,12 @@ public sealed class AgentHostTests
                 .GetProperty("lesson_progress")
                 .GetProperty("all_requirements_satisfied")
                 .GetBoolean());
+        Assert.Equal(
+            "finish_match",
+            recoveredLessonJson.GetProperty("observation")
+                .GetProperty("lesson_progress")
+                .GetProperty("recommended_next_tool")
+                .GetString());
 
         var completedLesson = await client.CallToolAsync(
             "finish_match",
@@ -1147,9 +1209,10 @@ public sealed class AgentHostTests
         var completedLessonJson = Assert.IsType<JsonElement>(completedLesson.StructuredContent);
         Assert.Equal(AgentMatchSummaryV5.Contract, completedLessonJson.GetProperty("schema").GetString());
         var completedOutcome = completedLessonJson.GetProperty("lesson_outcome");
-        Assert.Equal(AgentLessonOutcomeV2.Contract, completedOutcome.GetProperty("schema").GetString());
+        Assert.Equal(AgentLessonOutcomeV3.Contract, completedOutcome.GetProperty("schema").GetString());
         Assert.True(completedOutcome.GetProperty("all_requirements_satisfied").GetBoolean());
         Assert.Equal("target_reached", completedOutcome.GetProperty("review_code").GetString());
+        Assert.False(completedOutcome.TryGetProperty("retry_descriptor", out _));
         Assert.Equal(
             completedLessonJson.GetProperty("replay_payload_hash").GetString(),
             completedOutcome.GetProperty("replay_payload_hash").GetString());
@@ -1276,7 +1339,7 @@ public sealed class AgentHostTests
             resource => resource.Uri == "vibesnake://agent/identity");
         var rulesText = Assert.IsType<TextResourceContents>(Assert.Single(rules.Contents));
         Assert.Contains(
-            "vibesnake-agent-rules-resource-v7",
+            "vibesnake-agent-rules-resource-v8",
             rulesText.Text,
             StringComparison.Ordinal);
         Assert.False(moved.IsError ?? false);
