@@ -1064,6 +1064,252 @@ public sealed class AgentMatchSessionTests
         Assert.Single(result.VerifiedReplay.Steps);
     }
 
+    [Fact]
+    public void Exhibition_receipt_hash_links_verified_identity_and_excludes_display_time()
+    {
+        var session = CreateSession(AgentSeedVisibility.Open, matchId: "receipt-match");
+        Assert.Null(session.TryCreateExhibitionReceipt());
+
+        var initial = session.Observe();
+        var first = session.SubmitAction(Request(
+            "receipt-1",
+            initial,
+            AgentAction.Up,
+            AgentPublicIntent.PreserveSpace));
+        Assert.True(first.Accepted);
+        var second = session.SubmitAction(Request(
+            "receipt-2",
+            first.Observation,
+            AgentAction.Continue,
+            AgentPublicIntent.SeekFood));
+        Assert.True(second.Accepted);
+
+        // A live match has a verified identity only after it is finalized.
+        Assert.Null(session.TryCreateExhibitionReceipt());
+        var result = session.Finish();
+        var receipt = Assert.IsType<AgentExhibitionReceiptV1>(session.TryCreateExhibitionReceipt());
+
+        Assert.Equal(AgentExhibitionReceiptV1.Contract, receipt.Schema);
+        Assert.Equal("receipt-match", receipt.MatchId);
+        Assert.True(AgentExhibitionReceipt.HasCanonicalHash(receipt));
+        Assert.Equal(64, receipt.ReceiptHash.Length);
+        Assert.Equal(result.ReplayPayloadHash, receipt.AgentReplayPayloadHash);
+        Assert.Equal(result.FinalStateHash, receipt.FinalStateHash);
+        Assert.Equal(ReplayVerificationCode.Verified, receipt.AgentReplayVerificationCode);
+        Assert.Equal("123", receipt.GameplaySeed);
+        Assert.Null(receipt.RivalPersonalityId);
+        Assert.Null(receipt.DisplayTimeUtc);
+
+        Assert.Equal(
+            AgentDivisionIdentityV1.Contract,
+            receipt.Division.Schema);
+        Assert.Equal(
+            $"{RunModeCatalog.VibeId}@{RunModeCatalog.CurrentModeVersion}|open|"
+                + $"{AgentPassportV4.SymbolicStepObservationProfile}|"
+                + AgentPassportV4.FourDirectionActionProfile,
+            receipt.Division.DivisionId);
+
+        // Accepted presentation events keep their order, tick, action, and label.
+        Assert.Collection(
+            receipt.AcceptedPresentationEvents,
+            item =>
+            {
+                Assert.Equal(1, item.Ordinal);
+                Assert.Equal(1, item.Tick);
+                Assert.Equal(AgentAction.Up, item.Action);
+                Assert.Equal(AgentPublicIntent.PreserveSpace, item.DeclaredIntent);
+            },
+            item =>
+            {
+                Assert.Equal(2, item.Ordinal);
+                Assert.Equal(2, item.Tick);
+                Assert.Equal(AgentAction.Continue, item.Action);
+                Assert.Equal(AgentPublicIntent.SeekFood, item.DeclaredIntent);
+            });
+
+        // Display time rides beside the canonical hash and never inside it.
+        var shown = receipt.WithDisplayTime("2026-08-15T00:00:00Z");
+        var shownLater = receipt.WithDisplayTime("2031-01-02T03:04:05Z");
+        Assert.Equal("2026-08-15T00:00:00Z", shown.DisplayTimeUtc);
+        Assert.Equal(receipt.ReceiptHash, shown.ReceiptHash);
+        Assert.Equal(receipt.ReceiptHash, shownLater.ReceiptHash);
+        Assert.True(AgentExhibitionReceipt.HasCanonicalHash(shownLater));
+
+        // Repeating the identical exhibition reproduces the identical identity.
+        var replayed = CreateSession(AgentSeedVisibility.Open, matchId: "receipt-match");
+        var replayedInitial = replayed.Observe();
+        var replayedFirst = replayed.SubmitAction(Request(
+            "receipt-1",
+            replayedInitial,
+            AgentAction.Up,
+            AgentPublicIntent.PreserveSpace));
+        _ = replayed.SubmitAction(Request(
+            "receipt-2",
+            replayedFirst.Observation,
+            AgentAction.Continue,
+            AgentPublicIntent.SeekFood));
+        _ = replayed.Finish();
+        Assert.Equal(
+            receipt.ReceiptHash,
+            replayed.TryCreateExhibitionReceipt()!.ReceiptHash);
+
+        // Any tampered fact breaks the canonical hash.
+        Assert.False(AgentExhibitionReceipt.HasCanonicalHash(receipt with { Score = 9_999 }));
+        Assert.False(AgentExhibitionReceipt.HasCanonicalHash(
+            receipt with { AgentReplayPayloadHash = new string('a', 64) }));
+        Assert.False(AgentExhibitionReceipt.HasCanonicalHash(
+            receipt with { AcceptedPresentationEvents = [] }));
+    }
+
+    [Fact]
+    public void Exhibition_receipt_records_blind_styled_rival_and_lesson_divisions()
+    {
+        // A blind exhibition keeps its own division and reveals the seed only here.
+        var blind = CreateSession(AgentSeedVisibility.Blind, maximumSteps: 1, matchId: "blind-receipt");
+        _ = blind.SubmitAction(Request("blind-1", blind.Observe(), AgentAction.Continue));
+        var blindReceipt = Assert.IsType<AgentExhibitionReceiptV1>(
+            blind.TryCreateExhibitionReceipt());
+        Assert.True(AgentExhibitionReceipt.HasCanonicalHash(blindReceipt));
+        Assert.Equal(AgentSeedVisibility.Blind, blindReceipt.Division.SeedVisibility);
+        Assert.Contains("|blind|", blindReceipt.Division.DivisionId, StringComparison.Ordinal);
+        Assert.Equal("123", blindReceipt.GameplaySeed);
+        Assert.Null(blindReceipt.StyleOutcome);
+        Assert.Null(blindReceipt.LessonOutcome);
+        Assert.Null(blindReceipt.RivalPersonalityId);
+
+        // A styled rivalry links both verified lanes and the replay-bound style facts.
+        var styled = new AgentMatchSession(new AgentMatchOptions(
+            "styled-rival-receipt",
+            RunModeCatalog.ClassicId,
+            RunModeCatalog.CurrentModeVersion,
+            123UL,
+            AgentSeedVisibility.Open,
+            maximumSteps: 2,
+            styleContractId: AgentStyleContractCatalog.StillwaterId,
+            rivalPersonalityId: "optimal"));
+        var styledFirst = styled.SubmitAction(Request(
+            "styled-1",
+            styled.Observe(),
+            AgentAction.Up,
+            AgentPublicIntent.TakeRisk));
+        var styledResult = styled.SubmitAction(Request(
+            "styled-2",
+            styledFirst.Observation,
+            AgentAction.Continue)).MatchResult;
+        Assert.NotNull(styledResult);
+        var styledReceipt = Assert.IsType<AgentExhibitionReceiptV1>(
+            styled.TryCreateExhibitionReceipt());
+        Assert.True(AgentExhibitionReceipt.HasCanonicalHash(styledReceipt));
+        Assert.Equal("optimal", styledReceipt.RivalPersonalityId);
+        Assert.Equal(styledResult.Rival!.ReplayPayloadHash, styledReceipt.RivalReplayPayloadHash);
+        Assert.Equal(
+            ReplayVerificationCode.Verified,
+            styledReceipt.RivalReplayVerificationCode);
+        Assert.Equal(styledResult.Rival.Score, styledReceipt.RivalScore);
+        Assert.Equal(styledResult.StyleOutcome, styledReceipt.StyleOutcome);
+        Assert.False(styledReceipt.StyleOutcome!.AllThresholdsReached);
+        Assert.Equal(2, styledReceipt.AcceptedPresentationEvents.Count);
+
+        // A satisfied lesson links its combined evidence hash into the receipt.
+        var lesson = AgentSignalSchoolCatalog.Get(AgentSignalSchoolCatalog.WrapLineId);
+        var practice = new AgentMatchSession(new AgentMatchOptions(
+            "lesson-receipt",
+            lesson.ModeId,
+            RunModeCatalog.CurrentModeVersion,
+            lesson.PracticeSeed,
+            AgentSeedVisibility.Open,
+            lesson.MaximumSteps,
+            lessonId: lesson.Id));
+        var observation = practice.Observe();
+        for (var step = 0; step < lesson.MaximumSteps; step++)
+        {
+            var response = practice.SubmitAction(Request(
+                $"lesson-{step}",
+                observation,
+                AgentAction.Continue));
+            observation = response.Observation;
+            if (observation.LessonProgress?.AllRequirementsSatisfied == true)
+            {
+                break;
+            }
+        }
+
+        Assert.True(observation.LessonProgress!.AllRequirementsSatisfied);
+        var practiceResult = practice.Finish();
+        var lessonReceipt = Assert.IsType<AgentExhibitionReceiptV1>(
+            practice.TryCreateExhibitionReceipt());
+        Assert.True(AgentExhibitionReceipt.HasCanonicalHash(lessonReceipt));
+        Assert.Equal(practiceResult.LessonOutcome, lessonReceipt.LessonOutcome);
+        Assert.True(lessonReceipt.LessonOutcome!.AllRequirementsSatisfied);
+        Assert.Equal(AgentMatchLifecycle.Completed, lessonReceipt.Lifecycle);
+        Assert.Equal(RunStatus.Running, lessonReceipt.RunStatus);
+    }
+
+    [Fact]
+    public void Exhibition_receipt_fails_closed_for_unverified_lifecycles_and_lanes()
+    {
+        var session = new AgentMatchSession(new AgentMatchOptions(
+            "receipt-guard",
+            RunModeCatalog.ClassicId,
+            RunModeCatalog.CurrentModeVersion,
+            123UL,
+            AgentSeedVisibility.Open,
+            maximumSteps: 1,
+            rivalPersonalityId: "optimal"));
+        var result = session.SubmitAction(Request(
+            "guard-1",
+            session.Observe(),
+            AgentAction.Continue)).MatchResult;
+        Assert.NotNull(result);
+        Assert.NotNull(AgentExhibitionReceipt.TryCreate(result, []));
+
+        // Only a verified agent lane and a settled lifecycle earn an identity.
+        Assert.Null(AgentExhibitionReceipt.TryCreate(
+            result with { ReplayVerificationCode = ReplayVerificationCode.CheckpointDiverged },
+            []));
+        Assert.Null(AgentExhibitionReceipt.TryCreate(
+            result with { Lifecycle = AgentMatchLifecycle.AwaitingAction },
+            []));
+        Assert.Null(AgentExhibitionReceipt.TryCreate(
+            result with { Lifecycle = AgentMatchLifecycle.FailedClosed },
+            []));
+
+        // A rivalry is receipted only when both lanes verified independently.
+        Assert.Null(AgentExhibitionReceipt.TryCreate(
+            result with
+            {
+                Rival = result.Rival! with
+                {
+                    ReplayVerificationCode = ReplayVerificationCode.CheckpointDiverged,
+                },
+            },
+            []));
+    }
+
+    [Fact]
+    public void Exhibition_receipt_is_unavailable_for_a_failed_closed_match()
+    {
+        var session = new AgentMatchSession(
+            new AgentMatchOptions(
+                "failed-receipt",
+                RunModeCatalog.ClassicId,
+                RunModeCatalog.CurrentModeVersion,
+                42UL,
+                AgentSeedVisibility.Open,
+                maximumSteps: 1),
+            viewerSink: null,
+            new FaultingReplayFinalizer(
+                AgentReplayLane.Agent,
+                AgentReplayFinalizationFailure.Verification));
+        var initial = session.Observe();
+
+        var response = session.SubmitAction(Request("failed-1", initial, AgentAction.Up));
+
+        Assert.Equal(AgentActionRejection.ReplayFailure, response.Rejection);
+        Assert.Equal(AgentMatchLifecycle.FailedClosed, session.Lifecycle);
+        Assert.Null(session.TryCreateExhibitionReceipt());
+    }
+
     private static AgentMatchSession CreateSession(
         AgentSeedVisibility visibility = AgentSeedVisibility.Open,
         int maximumSteps = AgentMatchOptions.DefaultMaximumSteps,
@@ -1180,13 +1426,13 @@ public sealed class AgentMatchSessionTests
 
     private sealed class RecordingViewerSink : IAgentViewerSink
     {
-        public List<AgentViewerFrameV7> Frames { get; } = [];
+        public List<AgentViewerFrameV8> Frames { get; } = [];
 
         public int Attempts { get; private set; }
 
         public bool Throw { get; set; }
 
-        public bool TryPublish(AgentViewerFrameV7 frame)
+        public bool TryPublish(AgentViewerFrameV8 frame)
         {
             Attempts++;
             if (Throw)
@@ -1201,9 +1447,9 @@ public sealed class AgentMatchSessionTests
 
     private sealed class LatestViewerSink : IAgentViewerSink
     {
-        public AgentViewerFrameV7? Latest { get; private set; }
+        public AgentViewerFrameV8? Latest { get; private set; }
 
-        public bool TryPublish(AgentViewerFrameV7 frame)
+        public bool TryPublish(AgentViewerFrameV8 frame)
         {
             Latest = frame;
             return true;

@@ -28,7 +28,7 @@ public sealed class AgentViewerClient : IDisposable
     private readonly string _accessToken;
     private readonly CancellationTokenSource _shutdown = new();
     private readonly Task _readerTask;
-    private AgentViewerFrameV7? _latestFrame;
+    private AgentViewerFrameV8? _latestFrame;
     private long _lastPresentedSequence = -1;
     private AgentViewerClientState _state = AgentViewerClientState.Connecting;
     private string _status = "CONNECTING TO AGENT MATCH";
@@ -71,7 +71,7 @@ public sealed class AgentViewerClient : IDisposable
     }
 
     public bool TryTakeLatest(
-        out AgentViewerFrameV7? frame,
+        out AgentViewerFrameV8? frame,
         out long coalescedFrames)
     {
         lock (_sync)
@@ -143,7 +143,7 @@ public sealed class AgentViewerClient : IDisposable
             await pipe.FlushAsync(cancellationToken).ConfigureAwait(false);
 
             long lastSequence = -1;
-            AgentViewerFrameV7? lastFrame = null;
+            AgentViewerFrameV8? lastFrame = null;
             while (!cancellationToken.IsCancellationRequested)
             {
                 var line = await ReadLineBoundedAsync(pipe, cancellationToken).ConfigureAwait(false);
@@ -159,9 +159,9 @@ public sealed class AgentViewerClient : IDisposable
                     return;
                 }
 
-                var frame = JsonSerializer.Deserialize<AgentViewerFrameV7>(line, SerializerOptions);
+                var frame = JsonSerializer.Deserialize<AgentViewerFrameV8>(line, SerializerOptions);
                 if (frame is null
-                    || frame.Schema != AgentViewerFrameV7.Contract
+                    || frame.Schema != AgentViewerFrameV8.Contract
                     || frame.Observation is null
                     || frame.Observation.Schema != AgentObservationV5.Contract
                     || !HasValidObservationShape(frame.Observation)
@@ -169,6 +169,8 @@ public sealed class AgentViewerClient : IDisposable
                     || !HasConsistentOperation(frame, lastFrame)
                     || lastFrame is not null
                         && !HasConsistentIdentity(lastFrame.Observation, frame.Observation)
+                    || lastFrame is not null
+                        && !HasStableReplayIdentity(lastFrame, frame)
                     || !HasConsistentOutcome(frame))
                 {
                     SetTerminalState(
@@ -212,8 +214,8 @@ public sealed class AgentViewerClient : IDisposable
     }
 
     private static bool HasConsistentOperation(
-        AgentViewerFrameV7 frame,
-        AgentViewerFrameV7? previousFrame)
+        AgentViewerFrameV8 frame,
+        AgentViewerFrameV8? previousFrame)
     {
         if (frame.Sequence < 0
             || frame.StartTick < 0
@@ -274,7 +276,7 @@ public sealed class AgentViewerClient : IDisposable
         };
     }
 
-    private static bool HasConsistentBurst(AgentViewerFrameV7 frame)
+    private static bool HasConsistentBurst(AgentViewerFrameV8 frame)
     {
         if (frame.Sequence <= 0
             || frame.StepsAdvanced > AgentBurstRequest.MaximumBurstSteps
@@ -819,11 +821,12 @@ public sealed class AgentViewerClient : IDisposable
                 StringComparison.Ordinal)
             && string.Equals(expected.DisplayName, actual.DisplayName, StringComparison.Ordinal);
 
-    private static bool HasConsistentOutcome(AgentViewerFrameV7 frame)
+    private static bool HasConsistentOutcome(AgentViewerFrameV8 frame)
     {
         var observation = frame.Observation;
         if (!HasConsistentEndReason(frame)
-            || !HasConsistentRunEnd(frame))
+            || !HasConsistentRunEnd(frame)
+            || !HasConsistentReplayIdentity(frame))
         {
             return false;
         }
@@ -907,7 +910,44 @@ public sealed class AgentViewerClient : IDisposable
                     actionProfile,
                     StringComparison.Ordinal));
 
-    private static bool HasConsistentRunEnd(AgentViewerFrameV7 frame) =>
+    // A match finalizes once, so a published replay identity can appear but never
+    // change or disappear on a later frame.
+    private static bool HasStableReplayIdentity(
+        AgentViewerFrameV8 previousFrame,
+        AgentViewerFrameV8 frame) =>
+        previousFrame.VerifiedReplayPayloadHash is not { } published
+        || string.Equals(
+            published,
+            frame.VerifiedReplayPayloadHash,
+            StringComparison.Ordinal);
+
+    // A replay payload hash exists only alongside a verified result, and a verified
+    // lesson or style outcome must name the same replay the frame advertises.
+    private static bool HasConsistentReplayIdentity(AgentViewerFrameV8 frame)
+    {
+        if (!frame.VerifiedResultAvailable)
+        {
+            return frame.VerifiedReplayPayloadHash is null;
+        }
+
+        if (!IsLowerHex(frame.VerifiedReplayPayloadHash, 64))
+        {
+            return false;
+        }
+
+        return (frame.LessonOutcome is not { } lesson
+                || string.Equals(
+                    lesson.ReplayPayloadHash,
+                    frame.VerifiedReplayPayloadHash,
+                    StringComparison.Ordinal))
+            && (frame.StyleOutcome is not { } style
+                || string.Equals(
+                    style.ReplayPayloadHash,
+                    frame.VerifiedReplayPayloadHash,
+                    StringComparison.Ordinal));
+    }
+
+    private static bool HasConsistentRunEnd(AgentViewerFrameV8 frame) =>
         frame.EndReason switch
         {
             AgentMatchEndReason.None => frame.Observation.Status == RunStatus.Running,
@@ -921,7 +961,7 @@ public sealed class AgentViewerClient : IDisposable
             _ => false,
         };
 
-    private static bool HasConsistentEndReason(AgentViewerFrameV7 frame)
+    private static bool HasConsistentEndReason(AgentViewerFrameV8 frame)
     {
         if (frame.Operation == AgentViewerOperationKind.Finish)
         {
@@ -973,7 +1013,7 @@ public sealed class AgentViewerClient : IDisposable
     }
 
     private static (AgentViewerClientState State, string Status) DescribeFrame(
-        AgentViewerFrameV7 frame) => frame.EndReason switch
+        AgentViewerFrameV8 frame) => frame.EndReason switch
         {
             AgentMatchEndReason.None => (
                 AgentViewerClientState.Watching,

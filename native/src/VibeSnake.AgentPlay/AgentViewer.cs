@@ -24,7 +24,7 @@ public enum AgentViewerOperationKind : byte
     Finish = 3,
 }
 
-public sealed record AgentViewerFrameV7(
+public sealed record AgentViewerFrameV8(
     string Schema,
     long Sequence,
     AgentViewerOperationKind Operation,
@@ -36,13 +36,16 @@ public sealed record AgentViewerFrameV7(
     AgentObservationV5 Observation,
     AgentMatchEndReason EndReason,
     bool VerifiedResultAvailable,
+    // Present only with a verified result. The spectator overlay shows a bounded
+    // prefix so a human can match the window against the host's replay identity.
+    string? VerifiedReplayPayloadHash = null,
     AgentStyleOutcomeV3? StyleOutcome = null,
     AgentLessonOutcomeV3? LessonOutcome = null)
 {
-    public const string Contract = "vibesnake-agent-viewer-frame-v7";
+    public const string Contract = "vibesnake-agent-viewer-frame-v8";
 }
 
 public interface IAgentViewerSink
 {
-    bool TryPublish(AgentViewerFrameV7 frame);
+    bool TryPublish(AgentViewerFrameV8 frame);
 }

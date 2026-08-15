@@ -32,5 +32,9 @@ if ($LASTEXITCODE -ne 0) {
     throw "The native game build failed."
 }
 
+# A fresh clone or extracted source archive has no generated import cache, and Godot
+# cannot write one while running the game. Import first so the first launch renders.
+& (Join-Path $repositoryRoot "scripts/assert_godot_import.ps1") -GodotExecutable $godotExecutable
+
 & $godotExecutable --path (Join-Path $repositoryRoot "game") -- @args
 exit $LASTEXITCODE

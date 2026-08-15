@@ -1,6 +1,6 @@
 ---
 name: play-vibesnake
-description: Play deterministic Vibe Snake matches and canonical Signal School practice through the local MCP host, pursue a declared Style Contract, challenge a seed, and save a verified replay for a human to watch. Use when asked to play, practice, evaluate, or spectate Vibe Snake through the start_match, start_lesson, observe_match, play_move, play_burst, finish_match, get_match_result, or save_verified_replay tools.
+description: Play deterministic Vibe Snake matches and canonical Signal School practice through the local MCP host, pursue a declared Style Contract, challenge a seed, and save a verified replay for a human to watch. Use when asked to play, practice, evaluate, or spectate Vibe Snake through the start_match, start_lesson, observe_match, play_move, play_burst, finish_match, get_match_result, get_exhibition_receipt, or save_verified_replay tools.
 ---
 
 # Play Vibe Snake
@@ -94,9 +94,10 @@ Read `lifecycle` and `run_status` as answers to different questions. `lifecycle`
 
 1. Call `get_match_result` if the terminal response did not include a result.
 2. For a styled match, report the two live criterion values as observed until a result exists. Then report the replay-bound `style_outcome`, its exact numerator and denominator for rate criteria, score, final tick, end reason, run status, and replay verification code. `threshold_reached`, `thresholds_reached`, and `all_thresholds_reached` are measurements against optional style targets, not pass/fail match grades. Never turn a threshold crossing into a claim about intent or mastery.
-3. Call `save_verified_replay` only when persistence or human viewing is desired. A rivalry saves both independently verified lane replays. Replay schema 1 stores accepted rules steps, not Signal School rejection witnesses; the verified lesson outcome remains available only with the retained host result until a future receipt persists both evidence domains.
-4. Treat each replay payload hash and final state hash as lane verification identifiers. The preview does not yet produce the planned hash-linked public exhibition receipt.
-5. For a rematch, start a new open-seed match with the revealed seed. Never treat a previous handle as durable.
+3. Call `get_exhibition_receipt` for the canonical receipt of a successfully finalized, verified match. Its `receipt_hash` binds the match identity, division, passport, both verified lane replay hashes, the replay-derived style and lesson evidence hashes, and every accepted presentation event. `display_time_utc` is presentation-only and never part of that hash, so the same exhibition keeps one identity whenever it is shown. A live, unverified, or failed-closed match reports `is_available: false`. Report the receipt hash rather than inventing a summary of the match.
+4. Call `save_verified_replay` only when persistence or human viewing is desired. A rivalry saves both independently verified lane replays. Replay schema 1 stores accepted rules steps, not Signal School rejection witnesses; the verified lesson outcome remains available only with the retained host result until a future receipt persists both evidence domains.
+5. Treat each replay payload hash and final state hash as lane verification identifiers. The exhibition receipt hash-links them; a persisted passport and league standings remain future work.
+6. For a rematch, start a new open-seed match with the revealed seed. Never treat a previous handle as durable.
 
 Agent matches are exhibitions. Do not claim that they update human scores, progression, achievements, or the built-in spectator league.
 

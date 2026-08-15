@@ -25,7 +25,7 @@ internal sealed class AgentViewerServer : IAgentViewerSink, IDisposable
         "One local same-user viewer may attach with the one-time capability while this host retains the match. Only the newest unsent frame is retained; sequence gaps expose coalesced earlier updates. The verified replay remains canonical accepted-step history, while a verified Signal School outcome separately binds bounded attempt evidence.";
 
     private static readonly JsonSerializerOptions SerializerOptions = CreateSerializerOptions();
-    private readonly Channel<AgentViewerFrameV7> _frames = Channel.CreateBounded<AgentViewerFrameV7>(
+    private readonly Channel<AgentViewerFrameV8> _frames = Channel.CreateBounded<AgentViewerFrameV8>(
         new BoundedChannelOptions(1)
         {
             FullMode = BoundedChannelFullMode.DropOldest,
@@ -72,7 +72,7 @@ internal sealed class AgentViewerServer : IAgentViewerSink, IDisposable
 
     public AgentViewerConnectionV1 Connection { get; }
 
-    public bool TryPublish(AgentViewerFrameV7 frame)
+    public bool TryPublish(AgentViewerFrameV8 frame)
     {
         ArgumentNullException.ThrowIfNull(frame);
         return !_disposed && _frames.Writer.TryWrite(frame);

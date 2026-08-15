@@ -133,6 +133,15 @@ public sealed record AgentBurstResponseV5(
                 : AgentMatchSummaryV5.FromResult(response.MatchResult));
 }
 
+public sealed record AgentExhibitionReceiptStatusV1(
+    string Schema,
+    string MatchHandle,
+    bool IsAvailable,
+    AgentExhibitionReceiptV1? Receipt)
+{
+    public const string Contract = "vibesnake-agent-exhibition-receipt-status-v1";
+}
+
 public sealed record AgentReplaySaveV1(
     string Schema,
     string MatchHandle,

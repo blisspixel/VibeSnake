@@ -197,6 +197,38 @@ try {
     $nativeExportScript = Get-Content -LiteralPath (Join-Path $repositoryRoot "scripts/test_native_export.ps1") -Raw
     $gameMainScript = Get-Content -LiteralPath (Join-Path $repositoryRoot "game/scripts/Main.cs") -Raw
     $gameProject = Get-Content -LiteralPath (Join-Path $repositoryRoot "game/VibeSnake.Game.csproj") -Raw
+
+    # A fresh clone and the published source archive ship committed *.import
+    # descriptors without their generated payloads, so the documented launcher must
+    # guarantee the import cache before the first launch renders a resource.
+    $playLauncher = Get-Content -LiteralPath (Join-Path $repositoryRoot "play.ps1") -Raw
+    $importGuard = Get-Content -LiteralPath (
+        Join-Path $repositoryRoot "scripts/assert_godot_import.ps1") -Raw
+    if (-not $playLauncher.Contains("scripts/assert_godot_import.ps1", [StringComparison]::Ordinal)) {
+        throw "play.ps1 must guarantee the Godot import cache before launching the game."
+    }
+    foreach ($requiredImportFragment in @(
+        "dest_files=",
+        "--headless --editor",
+        "GodotImportCache=Ready",
+        "GodotImportCache=Rebuilt",
+        "did not produce"
+    )) {
+        if (-not $importGuard.Contains($requiredImportFragment, [StringComparison]::Ordinal)) {
+            throw "Godot import guard is missing: $requiredImportFragment"
+        }
+    }
+    $importGuardOutput = & (Join-Path $repositoryRoot "scripts/assert_godot_import.ps1") `
+        -GodotExecutable $GodotExecutable
+    if ($LASTEXITCODE -ne 0) {
+        throw "The Godot import guard failed against the repository game project."
+    }
+    if (-not ($importGuardOutput | Where-Object { $_ -like "GodotImportDeclaredCount=*" })) {
+        throw "The Godot import guard did not report its declared destination count."
+    }
+    if (-not ($importGuardOutput | Where-Object { $_ -like "GodotImportCache=*" })) {
+        throw "The Godot import guard did not report a cache state."
+    }
     if (
         -not $gameProject.Contains("'`$(Configuration)' == 'ExportRelease'") -or
         -not $gameProject.Contains("<AgentArenaPreview") -or
@@ -225,8 +257,8 @@ try {
         }
     }
     foreach ($requiredLocalizationFragment in @(
-        "ShellLocalization.All.Count == 624",
-        "entry.Parameters.Count > 0) == 96",
+        "ShellLocalization.All.Count == 626",
+        "entry.Parameters.Count > 0) == 97",
         'AgentActionRejection.WrongActionProfile =>',
         '"agent-arena.action.rejected-wrong-profile"',
         'AgentActionRejection.MutationCapacityExceeded =>',
@@ -241,8 +273,8 @@ try {
         }
     }
     foreach ($requiredLocalizationFragment in @(
-        '($localizationEvidence.stringCount -ne 624)',
-        '($localizationEvidence.parameterizedStringCount -ne 96)'
+        '($localizationEvidence.stringCount -ne 626)',
+        '($localizationEvidence.parameterizedStringCount -ne 97)'
     )) {
         if (-not $nativeTestScript.Contains($requiredLocalizationFragment, [StringComparison]::Ordinal)) {
             throw "Native localization gate is missing catalog count: $requiredLocalizationFragment"

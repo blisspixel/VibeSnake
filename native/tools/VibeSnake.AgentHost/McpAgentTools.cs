@@ -156,6 +156,19 @@ public sealed class McpAgentTools
         Execute(() => _registry.GetResult(matchHandle));
 
     [McpServerTool(
+        Name = "get_exhibition_receipt",
+        Title = "Get Vibe Snake exhibition receipt",
+        UseStructuredContent = true,
+        OutputSchemaType = typeof(AgentExhibitionReceiptStatusV1),
+        ReadOnly = true,
+        Idempotent = true,
+        OpenWorld = false)]
+    [Description("Returns the canonical exhibition receipt for a successfully finalized, verified match. The receipt hash-links both verified lane replays, the division identity, the public passport, the replay-derived style and lesson outcomes, and the accepted presentation events into one receipt_hash. Presentation display time sits beside that hash and is never part of it. A live, unverified, or failed-closed match has no receipt. It never advances or finishes a match.")]
+    public AgentExhibitionReceiptStatusV1 GetExhibitionReceipt(
+        [Description("Opaque handle returned by start_match.")] string matchHandle) =>
+        Execute(() => _registry.GetExhibitionReceipt(matchHandle));
+
+    [McpServerTool(
         Name = "save_verified_replay",
         Title = "Save verified Vibe Snake replay",
         UseStructuredContent = true,

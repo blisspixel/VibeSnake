@@ -22,6 +22,9 @@ public sealed class AgentMatchSession
     private readonly IAgentReplayFinalizer _replayFinalizer;
     private readonly Dictionary<string, ProcessedMutation> _processedMutations =
         new(StringComparer.Ordinal);
+    // Ordered public presentation facts for accepted rules steps. They feed the
+    // AA-06 exhibition receipt and never influence rules, score, or verification.
+    private readonly List<AgentAcceptedPresentationEventV1> _acceptedPresentationEvents = [];
     private IReadOnlyList<RunEventDetail> _previousEvents =
         Array.Empty<RunEventDetail>();
     private AgentPreviousActionV1? _previousAction;
@@ -439,6 +442,23 @@ public sealed class AgentMatchSession
         }
     }
 
+    /// <summary>
+    /// Returns the canonical exhibition receipt for a successfully finalized,
+    /// verified match. A live, aborted-without-verification, or failed-closed match
+    /// has no exhibition identity and returns null.
+    /// </summary>
+    public AgentExhibitionReceiptV1? TryCreateExhibitionReceipt()
+    {
+        lock (_sync)
+        {
+            return _matchResult is null
+                ? null
+                : AgentExhibitionReceipt.TryCreate(
+                    _matchResult,
+                    Array.AsReadOnly(_acceptedPresentationEvents.ToArray()));
+        }
+    }
+
     private AgentActionResponse FailClosedAfterRecorderError(
         AgentAction action,
         AgentPublicIntent declaredIntent,
@@ -595,6 +615,11 @@ public sealed class AgentMatchSession
             AgentActionRejection.None,
             RulesAdvanced: true,
             declaredIntent);
+        _acceptedPresentationEvents.Add(new AgentAcceptedPresentationEventV1(
+            _acceptedPresentationEvents.Count + 1,
+            steppedSnapshot.Tick,
+            action,
+            declaredIntent));
 
         if (result.Status != RunStatus.Running)
         {
@@ -1018,8 +1043,8 @@ public sealed class AgentMatchSession
         {
             var verifiedResultAvailable =
                 _matchResult?.ReplayVerificationCode == ReplayVerificationCode.Verified;
-            _ = _viewerSink.TryPublish(new AgentViewerFrameV7(
-                AgentViewerFrameV7.Contract,
+            _ = _viewerSink.TryPublish(new AgentViewerFrameV8(
+                AgentViewerFrameV8.Contract,
                 _viewerSequence++,
                 operation,
                 startTick,
@@ -1033,6 +1058,7 @@ public sealed class AgentMatchSession
                         ? AgentMatchEndReason.ReplayFailure
                         : AgentMatchEndReason.None),
                 verifiedResultAvailable,
+                verifiedResultAvailable ? _matchResult?.ReplayPayloadHash : null,
                 verifiedResultAvailable ? _matchResult?.StyleOutcome : null,
                 verifiedResultAvailable ? _matchResult?.LessonOutcome : null));
         }

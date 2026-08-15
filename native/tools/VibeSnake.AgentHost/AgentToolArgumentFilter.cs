@@ -52,6 +52,7 @@ internal static class AgentToolArgumentFilter
                 [Text("declaredIntent")]),
             ["finish_match"] = new([Text("matchHandle")], []),
             ["get_match_result"] = new([Text("matchHandle")], []),
+            ["get_exhibition_receipt"] = new([Text("matchHandle")], []),
             ["save_verified_replay"] = new([Text("matchHandle")], []),
         };
 

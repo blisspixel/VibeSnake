@@ -389,6 +389,7 @@ public sealed class AgentHostTests
         Assert.Equal(
             [
                 "finish_match",
+                "get_exhibition_receipt",
                 "get_match_result",
                 "observe_match",
                 "play_burst",
@@ -407,6 +408,7 @@ public sealed class AgentHostTests
                 {
                     "start_match" or "start_lesson" => typeof(StartAgentMatchV5),
                     "observe_match" => typeof(AgentObservationV5),
+                    "get_exhibition_receipt" => typeof(AgentExhibitionReceiptStatusV1),
                     "play_move" => typeof(AgentActionResponseV5),
                     "play_burst" => typeof(AgentBurstResponseV5),
                     "finish_match" => typeof(AgentMatchSummaryV5),
@@ -419,6 +421,8 @@ public sealed class AgentHostTests
         });
         Assert.True(methods.Single(value => value.Tool!.Name == "observe_match").Tool!.ReadOnly);
         Assert.True(methods.Single(value => value.Tool!.Name == "get_match_result").Tool!.ReadOnly);
+        Assert.True(
+            methods.Single(value => value.Tool!.Name == "get_exhibition_receipt").Tool!.ReadOnly);
         Assert.False(methods.Single(value => value.Tool!.Name == "save_verified_replay").Tool!.Destructive);
         Assert.False(methods.Single(value => value.Tool!.Name == "start_match").Tool!.Idempotent);
         Assert.False(methods.Single(value => value.Tool!.Name == "start_lesson").Tool!.Idempotent);
@@ -615,6 +619,7 @@ public sealed class AgentHostTests
             "observe_match",
             "finish_match",
             "get_match_result",
+            "get_exhibition_receipt",
             "save_verified_replay",
         })
         {
@@ -750,7 +755,7 @@ public sealed class AgentHostTests
         var playbook = AgentResources.GetPlaybook();
 
         Assert.Equal(
-            "vibesnake-agent-rules-resource-v9",
+            "vibesnake-agent-rules-resource-v10",
             rules.RootElement.GetProperty("contract").GetString());
         var lifecycleSemantics = rules.RootElement.GetProperty("lifecycle_semantics");
         Assert.Contains(
@@ -819,7 +824,7 @@ public sealed class AgentHostTests
             rules.RootElement.GetProperty("burst").GetProperty("maximum_steps").GetInt32());
         var viewer = rules.RootElement.GetProperty("viewer");
         Assert.Equal(
-            AgentViewerFrameV7.Contract,
+            AgentViewerFrameV8.Contract,
             viewer.GetProperty("frame_contract").GetString());
         Assert.Equal(
             ["initial", "step", "burst", "finish"],
@@ -1242,7 +1247,7 @@ public sealed class AgentHostTests
         Assert.NotNull(host.Services);
         Assert.NotNull(defaultHost.Services);
         Assert.Equal("vibesnake-agent-host", Program.HostName);
-        Assert.Equal("0.8.2", Program.HostVersion);
+        Assert.Equal("0.9.0", Program.HostVersion);
         Assert.Throws<ArgumentNullException>(() =>
             Program.CreateHostApplicationBuilder(null!, temporary.Path));
     }
@@ -1648,6 +1653,36 @@ public sealed class AgentHostTests
                 .GetProperty("match_handle")
                 .GetString());
 
+        var liveReceipt = await client.CallToolAsync(
+            "get_exhibition_receipt",
+            new Dictionary<string, object?> { ["matchHandle"] = incompleteHandle },
+            cancellationToken: timeout.Token);
+        Assert.False(liveReceipt.IsError ?? false);
+        var liveReceiptJson = Assert.IsType<JsonElement>(liveReceipt.StructuredContent);
+        Assert.Equal(
+            AgentExhibitionReceiptStatusV1.Contract,
+            liveReceiptJson.GetProperty("schema").GetString());
+
+        var finishedReceipt = await client.CallToolAsync(
+            "get_exhibition_receipt",
+            new Dictionary<string, object?> { ["matchHandle"] = handle },
+            cancellationToken: timeout.Token);
+        Assert.False(finishedReceipt.IsError ?? false);
+        var receiptJson = Assert.IsType<JsonElement>(finishedReceipt.StructuredContent);
+        Assert.True(receiptJson.GetProperty("is_available").GetBoolean());
+        var receiptBody = receiptJson.GetProperty("receipt");
+        Assert.Equal(
+            AgentExhibitionReceiptV1.Contract,
+            receiptBody.GetProperty("schema").GetString());
+        Assert.Equal(
+            finished.StructuredContent!.Value.GetProperty("replay_payload_hash").GetString(),
+            receiptBody.GetProperty("agent_replay_payload_hash").GetString());
+        Assert.Equal(64, receiptBody.GetProperty("receipt_hash").GetString()!.Length);
+        Assert.Equal(
+            AgentDivisionIdentityV1.Contract,
+            receiptBody.GetProperty("division").GetProperty("schema").GetString());
+        Assert.False(receiptBody.TryGetProperty("display_time_utc", out _));
+
         var numericSeedMatch = await client.CallToolAsync(
             "start_match",
             new Dictionary<string, object?>
@@ -1733,6 +1768,7 @@ public sealed class AgentHostTests
         Assert.Equal(
             [
                 "finish_match",
+                "get_exhibition_receipt",
                 "get_match_result",
                 "observe_match",
                 "play_burst",
@@ -1760,7 +1796,7 @@ public sealed class AgentHostTests
             resource => resource.Uri == "vibesnake://agent/identity");
         var rulesText = Assert.IsType<TextResourceContents>(Assert.Single(rules.Contents));
         Assert.Contains(
-            "vibesnake-agent-rules-resource-v9",
+            "vibesnake-agent-rules-resource-v10",
             rulesText.Text,
             StringComparison.Ordinal);
         Assert.False(moved.IsError ?? false);
@@ -1770,7 +1806,7 @@ public sealed class AgentHostTests
         Assert.True(moved.StructuredContent!.Value.GetProperty("accepted").GetBoolean());
         Assert.Equal(2, moved.StructuredContent.Value.GetProperty("steps_advanced").GetInt32());
         Assert.Equal(AgentViewerOperationKind.Burst, terminalViewerFrame.Operation);
-        Assert.Equal(AgentViewerFrameV7.Contract, terminalViewerFrame.Schema);
+        Assert.Equal(AgentViewerFrameV8.Contract, terminalViewerFrame.Schema);
         Assert.Equal(2, terminalViewerFrame.StepsAdvanced);
         Assert.Equal(AgentBurstStopReason.MatchStepLimit, terminalViewerFrame.BurstStopReason);
         Assert.Equal(AgentMatchEndReason.StepLimit, terminalViewerFrame.EndReason);
@@ -1849,12 +1885,12 @@ public sealed class AgentHostTests
         };
     }
 
-    private static async Task<AgentViewerFrameV7> TakeViewerFrameAsync(
+    private static async Task<AgentViewerFrameV8> TakeViewerFrameAsync(
         AgentViewerClient client,
         long minimumSequence) =>
         (await TakeViewerDeliveryAsync(client, minimumSequence)).Frame;
 
-    private static async Task<(AgentViewerFrameV7 Frame, long CoalescedFrames)>
+    private static async Task<(AgentViewerFrameV8 Frame, long CoalescedFrames)>
         TakeViewerDeliveryAsync(
             AgentViewerClient client,
             long minimumSequence)
@@ -2033,8 +2069,8 @@ public sealed class AgentHostTests
             RunModeCatalog.CurrentModeVersion,
             1UL,
             AgentSeedVisibility.Open)).Observe();
-        Assert.True(server.TryPublish(new AgentViewerFrameV7(
-            AgentViewerFrameV7.Contract,
+        Assert.True(server.TryPublish(new AgentViewerFrameV8(
+            AgentViewerFrameV8.Contract,
             0,
             AgentViewerOperationKind.Initial,
             StartTick: initialObservation.Tick,
@@ -2052,8 +2088,8 @@ public sealed class AgentHostTests
             RunModeCatalog.CurrentModeVersion,
             2UL,
             AgentSeedVisibility.Open)).Observe();
-        Assert.False(server.TryPublish(new AgentViewerFrameV7(
-            AgentViewerFrameV7.Contract,
+        Assert.False(server.TryPublish(new AgentViewerFrameV8(
+            AgentViewerFrameV8.Contract,
             1,
             AgentViewerOperationKind.Initial,
             StartTick: secondObservation.Tick,

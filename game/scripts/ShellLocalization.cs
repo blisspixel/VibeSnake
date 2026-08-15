@@ -303,12 +303,14 @@ internal static class ShellLocalization
             "{agent}  AVATAR {avatar}  STATION {station}  {seed}"),
         Entry("agent-arena.seed.open", "SEED {seed}"),
         Entry("agent-arena.seed.blind", "SEED BLIND"),
+        Entry("agent-arena.replay.verified", "REPLAY {replay}"),
+        Entry("agent-arena.replay.pending", "REPLAY PENDING"),
         Entry(
             "agent-arena.matchup",
             "{style}  {rival}"),
         Entry(
             "agent-arena.status",
-            "{status}  {outcome}  STEP {step}/{maximum}  FRAME {frame}  STATE {state}"),
+            "{status}  {outcome}  STEP {step}/{maximum}  FRAME {frame}  STATE {state}  {replay}"),
         Entry(
             "agent-arena.intent-status",
             "{intent}  {action}"),

@@ -65,7 +65,7 @@ public sealed class AgentResources
     public static string GetRules() => JsonSerializer.Serialize(
         new
         {
-            contract = "vibesnake-agent-rules-resource-v9",
+            contract = "vibesnake-agent-rules-resource-v10",
             ruleset_id = RulesetIdentity.CurrentId,
             rules_version = RulesetIdentity.CurrentVersion,
             observation_schema = AgentObservationV5.Contract,
@@ -93,7 +93,7 @@ public sealed class AgentResources
             },
             viewer = new
             {
-                frame_contract = AgentViewerFrameV7.Contract,
+                frame_contract = AgentViewerFrameV8.Contract,
                 operations = Enum.GetNames<AgentViewerOperationKind>()
                     .Select(JsonNamingPolicy.SnakeCaseLower.ConvertName),
                 pre_mutation_tick_and_state_hash = true,
@@ -124,6 +124,17 @@ public sealed class AgentResources
             lesson_evidence = "Accepted-step lesson facts are independently reconstructed from replay schema 1. Rejection-aware facts use a separate bounded canonical attempt-witness sequence. A verified lesson outcome binds the replay payload hash and attempt-evidence hash into one evidence hash; the ordinary saved replay does not contain the attempt witnesses.",
             replay = "A successfully finalized rules-terminal, capped, lesson-complete, or explicitly finished match returns a deterministic verified lane result and replay. finish_match reports completed only after all lesson requirements are satisfied; other nonterminal early finishes report aborted. Style criteria are measurements against optional targets, not match grades. Failed-closed finalization returns no verified result; an exhibition receipt is not part of this contract.",
             rivalry = "An optional built-in rival advances once per accepted agent step on the same seed and exact configuration. Each lane has an independent verified replay.",
+            receipt = new
+            {
+                contract = AgentExhibitionReceiptV1.Contract,
+                division_contract = AgentDivisionIdentityV1.Contract,
+                tool = "get_exhibition_receipt",
+                availability = "A receipt exists only for a successfully finalized, verified match. A live, unverified, or failed-closed match returns is_available false. A rivalry is receipted only when both lanes verified independently.",
+                canonical_hash = "receipt_hash covers the match identity, division, passport, lifecycle, end reason, seed, terminal facts, both verified lane replay hashes, the replay-derived style and lesson evidence hashes, and every accepted presentation event.",
+                display_time = "display_time_utc is presentation-only, may be absent, and is deliberately excluded from receipt_hash so the same exhibition keeps one identity whenever it is shown.",
+                presentation_events = "accepted_presentation_events record the ordered tick, action, and self-declared public intent of each accepted rules step. They are spectator labels and never changed rules, score, or verification.",
+                boundary = "The receipt is transport-neutral and local. Persisted passports, archives, and league standings remain separate future work.",
+            },
             privacy = "Observations exclude random state, future outcomes, controller internals, profiles, progression, paths, prompts, credentials, diagnostics, and hidden reasoning.",
         },
         JsonOptions);

@@ -179,7 +179,7 @@ public partial class Main : Node2D
 
 #if AGENT_ARENA_PREVIEW
     private AgentViewerClient? _agentViewer;
-    private AgentViewerFrameV7? _agentViewerFrame;
+    private AgentViewerFrameV8? _agentViewerFrame;
     private long _agentViewerCoalescedFrames;
     private bool _agentViewerSnappedLatestFrame;
     private RunSnapshot? _agentViewerSnapshot;
@@ -9910,7 +9910,7 @@ public partial class Main : Node2D
         _ => throw new ArgumentOutOfRangeException(nameof(endReason)),
     };
 
-    private string AgentViewerOperationCopy(AgentViewerFrameV7 frame) => frame.Operation switch
+    private string AgentViewerOperationCopy(AgentViewerFrameV8 frame) => frame.Operation switch
     {
         AgentViewerOperationKind.Initial => Localize("agent-arena.operation.initial"),
         AgentViewerOperationKind.Step => Localize(
@@ -9986,6 +9986,20 @@ public partial class Main : Node2D
             ? stateHash
             : stateHash[..AgentViewerStateHashPrefixLength];
         return prefix.ToUpperInvariant();
+    }
+
+    // The verified replay payload hash is the last host identity the window withheld.
+    // It exists only with a verified result, so a live match reads REPLAY PENDING.
+    private string AgentViewerReplayCopy(AgentViewerFrameV8 frame)
+    {
+        ArgumentNullException.ThrowIfNull(frame);
+        return frame.VerifiedReplayPayloadHash is { } replayPayloadHash
+            ? Localize(
+                "agent-arena.replay.verified",
+                ShellTextArgument.From(
+                    "replay",
+                    AgentViewerStateHashPrefix(replayPayloadHash)))
+            : Localize("agent-arena.replay.pending");
     }
 
     private string AgentViewerSeedCopy(AgentObservationV5 observation)
@@ -10337,7 +10351,10 @@ public partial class Main : Node2D
                     ShellTextArgument.From("frame", _agentViewerFrame.Sequence),
                     ShellTextArgument.From(
                         "state",
-                        AgentViewerStateHashPrefix(observation.StateHash))),
+                        AgentViewerStateHashPrefix(observation.StateHash)),
+                    ShellTextArgument.From(
+                        "replay",
+                        AgentViewerReplayCopy(_agentViewerFrame))),
                 new Vector2(660.0f, 680.0f),
                 8,
                 600.0f,
@@ -10373,7 +10390,10 @@ public partial class Main : Node2D
                     ShellTextArgument.From("frame", _agentViewerFrame.Sequence),
                     ShellTextArgument.From(
                         "state",
-                        AgentViewerStateHashPrefix(observation.StateHash))),
+                        AgentViewerStateHashPrefix(observation.StateHash)),
+                    ShellTextArgument.From(
+                        "replay",
+                        AgentViewerReplayCopy(_agentViewerFrame))),
                 new Vector2(38.0f, 680.0f),
                 9,
                 1222.0f,
@@ -13612,6 +13632,9 @@ public partial class Main : Node2D
             "agent-arena.seed.open",
             ShellTextArgument.From("seed", ulong.MaxValue));
         var longestStateHash = new string('W', AgentViewerStateHashPrefixLength);
+        var longestReplay = Pseudo(
+            "agent-arena.replay.verified",
+            ShellTextArgument.From("replay", longestStateHash));
         var overlayRows = new (
             string Id,
             string Text,
@@ -13668,7 +13691,8 @@ public partial class Main : Node2D
                 ShellTextArgument.From("step", int.MaxValue),
                 ShellTextArgument.From("maximum", int.MaxValue),
                 ShellTextArgument.From("frame", long.MaxValue),
-                ShellTextArgument.From("state", longestStateHash)),
+                ShellTextArgument.From("state", longestStateHash),
+                ShellTextArgument.From("replay", longestReplay)),
                 9,
                 680.0f,
                 1222.0f),
@@ -13777,7 +13801,8 @@ public partial class Main : Node2D
                     ShellTextArgument.From("step", int.MaxValue),
                     ShellTextArgument.From("maximum", int.MaxValue),
                     ShellTextArgument.From("frame", long.MaxValue),
-                    ShellTextArgument.From("state", longestStateHash)),
+                    ShellTextArgument.From("state", longestStateHash),
+                    ShellTextArgument.From("replay", longestReplay)),
                 8,
                 660.0f,
                 600.0f),
@@ -13924,8 +13949,8 @@ public partial class Main : Node2D
 
         const int migratedRequiredFlowCount = 13;
         const double requiredExpansionRatio = 1.30;
-        var passed = ShellLocalization.All.Count == 624
-            && ShellLocalization.All.Count(entry => entry.Parameters.Count > 0) == 96
+        var passed = ShellLocalization.All.Count == 626
+            && ShellLocalization.All.Count(entry => entry.Parameters.Count > 0) == 97
             && migratedRequiredFlowCount == 13
             && minimumExpansionRatio >= requiredExpansionRatio
             && missingGlyphs.Count == 0

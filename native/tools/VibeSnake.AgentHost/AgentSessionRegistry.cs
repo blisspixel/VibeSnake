@@ -209,6 +209,16 @@ public sealed class AgentSessionRegistry : IDisposable
             result is null ? null : AgentMatchSummaryV5.FromResult(result));
     }
 
+    public AgentExhibitionReceiptStatusV1 GetExhibitionReceipt(string matchHandle)
+    {
+        var receipt = GetSession(matchHandle).TryCreateExhibitionReceipt();
+        return new AgentExhibitionReceiptStatusV1(
+            AgentExhibitionReceiptStatusV1.Contract,
+            matchHandle,
+            receipt is not null,
+            receipt);
+    }
+
     public AgentReplaySaveV1 SaveVerifiedReplay(string matchHandle)
     {
         var result = GetSession(matchHandle).GetResult()
