@@ -424,6 +424,22 @@ public sealed class AgentHostTests
         Assert.False(methods.Single(value => value.Tool!.Name == "start_lesson").Tool!.Idempotent);
         Assert.True(methods.Single(value => value.Tool!.Name == "play_move").Tool!.Idempotent);
         Assert.True(methods.Single(value => value.Tool!.Name == "play_burst").Tool!.Idempotent);
+        var burstDescription = methods.Single(value => value.Tool!.Name == "play_burst")
+            .Method
+            .GetCustomAttributes(typeof(System.ComponentModel.DescriptionAttribute), inherit: false)
+            .Cast<System.ComponentModel.DescriptionAttribute>()
+            .Single()
+            .Description;
+        Assert.Contains("initialAction", burstDescription, StringComparison.Ordinal);
+        Assert.Contains("maximumSteps", burstDescription, StringComparison.Ordinal);
+        var finishDescription = methods.Single(value => value.Tool!.Name == "finish_match")
+            .Method
+            .GetCustomAttributes(typeof(System.ComponentModel.DescriptionAttribute), inherit: false)
+            .Cast<System.ComponentModel.DescriptionAttribute>()
+            .Single()
+            .Description;
+        Assert.Contains("requirements satisfied", finishDescription, StringComparison.Ordinal);
+        Assert.Contains("not pass/fail grades", finishDescription, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -738,9 +754,12 @@ public sealed class AgentHostTests
             value.GetProperty("total_utf8_bytes").GetInt32()));
         var replayContract = rules.RootElement.GetProperty("replay").GetString();
         Assert.Contains("verified lane result", replayContract, StringComparison.Ordinal);
+        Assert.Contains("other nonterminal early finishes report aborted", replayContract, StringComparison.Ordinal);
+        Assert.Contains("not match grades", replayContract, StringComparison.Ordinal);
         Assert.Contains("Failed-closed", replayContract, StringComparison.Ordinal);
         Assert.DoesNotContain("replay receipt", replayContract, StringComparison.Ordinal);
-        Assert.Contains("request early finalization", playbook, StringComparison.Ordinal);
+        Assert.Contains("finalize a completed lesson", playbook, StringComparison.Ordinal);
+        Assert.Contains("aborted early finish", playbook, StringComparison.Ordinal);
         Assert.Contains("Confirm that finalization returned a verified result", playbook, StringComparison.Ordinal);
         Assert.Contains("canonical accepted-step history", AgentViewerServer.ViewerRetentionPolicy, StringComparison.Ordinal);
         Assert.Contains("bounded attempt evidence", AgentViewerServer.ViewerRetentionPolicy, StringComparison.Ordinal);
@@ -869,7 +888,7 @@ public sealed class AgentHostTests
         Assert.NotNull(host.Services);
         Assert.NotNull(defaultHost.Services);
         Assert.Equal("vibesnake-agent-host", Program.HostName);
-        Assert.Equal("0.7.0", Program.HostVersion);
+        Assert.Equal("0.7.1", Program.HostVersion);
         Assert.Throws<ArgumentNullException>(() =>
             Program.CreateHostApplicationBuilder(null!, temporary.Path));
     }

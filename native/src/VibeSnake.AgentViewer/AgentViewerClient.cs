@@ -844,12 +844,17 @@ public sealed class AgentViewerClient : IDisposable
                 && frame.LessonOutcome is null;
         }
 
+        var lessonRequirementsSatisfied =
+            observation.LessonProgress?.AllRequirementsSatisfied == true;
         var successfulTerminal = frame.VerifiedResultAvailable
             && (observation.Lifecycle == AgentMatchLifecycle.Completed
-                && frame.EndReason is AgentMatchEndReason.RulesTerminal
+                && (frame.EndReason is AgentMatchEndReason.RulesTerminal
                     or AgentMatchEndReason.StepLimit
+                    || frame.EndReason == AgentMatchEndReason.AgentFinished
+                    && lessonRequirementsSatisfied)
                 || observation.Lifecycle == AgentMatchLifecycle.Aborted
-                && frame.EndReason == AgentMatchEndReason.AgentFinished);
+                && frame.EndReason == AgentMatchEndReason.AgentFinished
+                && !lessonRequirementsSatisfied);
         if (!successfulTerminal)
         {
             return false;

@@ -111,7 +111,7 @@ public sealed class McpAgentTools
         Destructive = false,
         Idempotent = true,
         OpenWorld = false)]
-    [Description("Advances a four-direction-burst-v1 match by at most 16 clock-free steps. The initial action applies once, later steps continue, and execution stops at the first fixed public decision event, selected lesson all-requirements transition, terminal state, match cap, replay failure, or requested bound.")]
+    [Description("Advances a four-direction-burst-v1 match by at most 16 clock-free steps. Use the exact discovered camelCase arguments, including initialAction and maximumSteps. The initial action applies once, later steps continue, and execution stops at the first fixed public decision event, selected lesson all-requirements transition, terminal state, match cap, replay failure, or requested bound.")]
     public AgentBurstResponseV5 PlayBurst(
         [Description("Opaque handle returned by start_match.")] string matchHandle,
         [Description("Unique ASCII token for this intended burst, at most 128 characters.")] string idempotencyKey,
@@ -137,7 +137,7 @@ public sealed class McpAgentTools
         Destructive = false,
         Idempotent = true,
         OpenWorld = false)]
-    [Description("Explicitly ends a running match, finalizes a nonterminal verified replay, and returns the result. Calling it again returns the same result.")]
+    [Description("Explicitly finalizes a running match and returns its verified result. A lesson with all requirements satisfied receives lifecycle completed; any other nonterminal early finish receives lifecycle aborted. Terminal and step-limit runs finalize automatically. Style criteria are factual measurements against optional targets, not pass/fail grades for the match. Calling finish_match again returns the same result.")]
     public AgentMatchSummaryV5 FinishMatch(
         [Description("Opaque handle returned by start_match.")] string matchHandle) =>
         Execute(() => _registry.Finish(matchHandle));

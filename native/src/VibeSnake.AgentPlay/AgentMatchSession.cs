@@ -403,10 +403,13 @@ public sealed class AgentMatchSession
             }
 
             var start = _run.GetSnapshot();
+            var lifecycle = CreateLessonProgress()?.AllRequirementsSatisfied == true
+                ? AgentMatchLifecycle.Completed
+                : AgentMatchLifecycle.Aborted;
 
             if (!TryComplete(
                 AgentMatchEndReason.AgentFinished,
-                AgentMatchLifecycle.Aborted,
+                lifecycle,
                 out var result))
             {
                 PublishViewerFrame(

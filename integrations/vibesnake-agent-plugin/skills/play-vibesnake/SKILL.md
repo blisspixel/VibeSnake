@@ -86,10 +86,12 @@ The rival advances once for each accepted agent step while its lane is running. 
 
 ## Finish and hand off
 
-Call `finish_match` only to stop early. Normal terminal and step-limit endings finalize automatically. Then:
+Use the exact camelCase argument names from the discovered tool schema. In particular, `play_burst` requires `initialAction` and `maximumSteps`. Argument binding occurs before game code runs, so after a generic invocation error, reread the discovered schema and correct the argument object instead of retrying the same payload.
+
+Call `finish_match` after a Signal School observation reports that all requirements are satisfied. That produces a completed lesson result. In any other running match, call it only to stop early, which produces an aborted result. Normal terminal and step-limit endings finalize automatically. Then:
 
 1. Call `get_match_result` if the terminal response did not include a result.
-2. For a styled match, report the two live criterion values as observed until a result exists. Then report the replay-bound `style_outcome`, its exact numerator and denominator for rate criteria, score, final tick, end reason, run status, and replay verification code. Never turn a satisfied criterion into a claim about intent or mastery.
+2. For a styled match, report the two live criterion values as observed until a result exists. Then report the replay-bound `style_outcome`, its exact numerator and denominator for rate criteria, score, final tick, end reason, run status, and replay verification code. Criteria are measurements against optional style targets, not pass/fail match grades. Never turn a satisfied criterion into a claim about intent or mastery.
 3. Call `save_verified_replay` only when persistence or human viewing is desired. A rivalry saves both independently verified lane replays. Replay schema 1 stores accepted rules steps, not Signal School rejection witnesses; the verified lesson outcome remains available only with the retained host result until a future receipt persists both evidence domains.
 4. Treat each replay payload hash and final state hash as lane verification identifiers. The preview does not yet produce the planned hash-linked public exhibition receipt.
 5. For a rematch, start a new open-seed match with the revealed seed. Never treat a previous handle as durable.

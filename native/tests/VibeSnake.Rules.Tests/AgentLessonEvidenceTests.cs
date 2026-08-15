@@ -16,6 +16,7 @@ public sealed class AgentLessonEvidenceTests
             var outcome = Assert.IsType<AgentLessonOutcomeV2>(result.LessonOutcome);
 
             Assert.False(outcome.AllRequirementsSatisfied);
+            Assert.Equal(AgentMatchLifecycle.Aborted, result.Lifecycle);
             Assert.Equal(0, outcome.RequirementsSatisfied);
             Assert.Equal(definition.Requirements[0].Id, outcome.FirstUnmetRequirementId);
             Assert.Equal(

@@ -469,6 +469,8 @@ public sealed class AgentExperienceTests
         Assert.Equal(["legal_turn_after_rejection"], response.LessonDelta!.NewlySatisfiedRequirementIds);
         Assert.True(response.LessonDelta.AllRequirementsReachedThisMutation);
         Assert.True(response.Observation.LessonProgress!.AllRequirementsSatisfied);
+        Assert.Equal(AgentMatchLifecycle.Completed, result.Lifecycle);
+        Assert.Equal(AgentMatchEndReason.AgentFinished, result.EndReason);
         Assert.Equal(AgentLessonOutcomeV2.Contract, result.LessonOutcome!.Schema);
         Assert.True(result.LessonOutcome.AllRequirementsSatisfied);
         Assert.Equal(AgentLessonReviewCode.TargetReached, result.LessonOutcome.ReviewCode);

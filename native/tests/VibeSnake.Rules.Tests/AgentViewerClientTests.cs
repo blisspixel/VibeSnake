@@ -1915,6 +1915,10 @@ public sealed class AgentViewerClientTests
         var second = outcome.Requirements[1];
         AgentViewerFrameV7[] invalidFrames =
         [
+            validFrame with
+            {
+                Observation = terminal with { Lifecycle = AgentMatchLifecycle.Aborted },
+            },
             validFrame with { LessonOutcome = null },
             validFrame with { LessonOutcome = outcome with { Schema = "wrong" } },
             validFrame with
