@@ -416,8 +416,8 @@ public sealed record AgentObservationV5(
     AgentMatchLifecycle Lifecycle,
     bool IsActionAwaited,
     AgentEpisodeMetricsV1 EpisodeMetrics,
-    AgentStyleProgressV2? StyleContract,
-    AgentLessonProgressV2? LessonProgress,
+    AgentStyleProgressV3? StyleContract,
+    AgentLessonProgressV3? LessonProgress,
     AgentRivalObservationV1? Rival)
 {
     public const string Contract = "vibesnake-agent-observation-v5";
@@ -464,8 +464,8 @@ public sealed record AgentMatchResultV5(
     string ReplayPayloadHash,
     ReplayVerificationCode ReplayVerificationCode,
     AgentEpisodeMetricsV1 EpisodeMetrics,
-    AgentStyleOutcomeV2? StyleOutcome,
-    AgentLessonOutcomeV2? LessonOutcome,
+    AgentStyleOutcomeV3? StyleOutcome,
+    AgentLessonOutcomeV3? LessonOutcome,
     AgentRivalResultV1? Rival,
     RunReplay VerifiedReplay,
     RunReplay? VerifiedRivalReplay)

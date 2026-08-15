@@ -87,7 +87,7 @@ public sealed class McpAgentTools
         Destructive = false,
         Idempotent = true,
         OpenWorld = false)]
-    [Description("Submits up, right, down, left, or continue with an optional closed public intent. An accepted request advances exactly one rules step. Stale or illegal requests advance none. Reusing the same idempotency key with the same input returns the original response.")]
+    [Description("Submits one four-direction-step-v1 action. Use the exact discovered camelCase arguments, including action. An accepted request advances exactly one rules step. Stale or illegal requests advance none. SDK argument-binding failures occur before this tool runs, so reread the discovered schema after a generic invocation error. Reusing the same idempotency key with the same input returns the original response. When lesson_progress.recommended_next_tool is finish_match, finalize the completed lesson instead of padding steps.")]
     public AgentActionResponseV5 PlayMove(
         [Description("Opaque handle returned by start_match.")] string matchHandle,
         [Description("Unique ASCII token for this intended action, at most 128 characters.")] string idempotencyKey,
@@ -111,7 +111,7 @@ public sealed class McpAgentTools
         Destructive = false,
         Idempotent = true,
         OpenWorld = false)]
-    [Description("Advances a four-direction-burst-v1 match by at most 16 clock-free steps. Use the exact discovered camelCase arguments, including initialAction and maximumSteps. The initial action applies once, later steps continue, and execution stops at the first fixed public decision event, selected lesson all-requirements transition, terminal state, match cap, replay failure, or requested bound.")]
+    [Description("Advances a four-direction-burst-v1 match by at most 16 clock-free steps. Use the exact discovered camelCase arguments, including initialAction and maximumSteps. SDK argument-binding failures occur before this tool runs, so reread the discovered schema after a generic invocation error. The initial action applies once, later steps continue, and execution stops at the first fixed public decision event, selected lesson all-requirements transition, terminal state, match cap, replay failure, or requested bound. When lesson_progress.recommended_next_tool is finish_match, finalize the completed lesson instead of padding steps.")]
     public AgentBurstResponseV5 PlayBurst(
         [Description("Opaque handle returned by start_match.")] string matchHandle,
         [Description("Unique ASCII token for this intended burst, at most 128 characters.")] string idempotencyKey,

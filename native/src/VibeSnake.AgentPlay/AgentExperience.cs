@@ -77,7 +77,7 @@ public sealed record AgentStyleContractDefinitionV2(
     IReadOnlyList<string> SupportedModeIds);
 
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
-public sealed record AgentStyleCriterionProgressV2(
+public sealed record AgentStyleCriterionProgressV3(
     string CriterionId,
     string DisplayName,
     AgentStyleCriterionComparator Comparator,
@@ -86,29 +86,29 @@ public sealed record AgentStyleCriterionProgressV2(
     int Target,
     long? Numerator,
     long? Denominator,
-    bool Satisfied);
+    bool ThresholdReached);
 
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
-public sealed record AgentStyleProgressV2(
+public sealed record AgentStyleProgressV3(
     string Schema,
     string ContractId,
     string DisplayName,
     string EvaluationPolicyId,
-    IReadOnlyList<AgentStyleCriterionProgressV2> Criteria,
-    int CriteriaSatisfied,
-    bool AllCriteriaSatisfied)
+    IReadOnlyList<AgentStyleCriterionProgressV3> Criteria,
+    int ThresholdsReached,
+    bool AllThresholdsReached)
 {
-    public const string Contract = "vibesnake-agent-style-progress-v2";
+    public const string Contract = "vibesnake-agent-style-progress-v3";
 
-    public bool Equals(AgentStyleProgressV2? other) =>
+    public bool Equals(AgentStyleProgressV3? other) =>
         other is not null
         && string.Equals(Schema, other.Schema, StringComparison.Ordinal)
         && string.Equals(ContractId, other.ContractId, StringComparison.Ordinal)
         && string.Equals(DisplayName, other.DisplayName, StringComparison.Ordinal)
         && string.Equals(EvaluationPolicyId, other.EvaluationPolicyId, StringComparison.Ordinal)
         && Criteria.SequenceEqual(other.Criteria)
-        && CriteriaSatisfied == other.CriteriaSatisfied
-        && AllCriteriaSatisfied == other.AllCriteriaSatisfied;
+        && ThresholdsReached == other.ThresholdsReached
+        && AllThresholdsReached == other.AllThresholdsReached;
 
     public override int GetHashCode()
     {
@@ -122,34 +122,34 @@ public sealed record AgentStyleProgressV2(
             hash.Add(criterion);
         }
 
-        hash.Add(CriteriaSatisfied);
-        hash.Add(AllCriteriaSatisfied);
+        hash.Add(ThresholdsReached);
+        hash.Add(AllThresholdsReached);
         return hash.ToHashCode();
     }
 }
 
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
-public sealed record AgentStyleOutcomeV2(
+public sealed record AgentStyleOutcomeV3(
     string Schema,
     string ContractId,
     string DisplayName,
     string EvaluationPolicyId,
-    IReadOnlyList<AgentStyleCriterionProgressV2> Criteria,
-    int CriteriaSatisfied,
-    bool AllCriteriaSatisfied,
+    IReadOnlyList<AgentStyleCriterionProgressV3> Criteria,
+    int ThresholdsReached,
+    bool AllThresholdsReached,
     string ReplayPayloadHash)
 {
-    public const string Contract = "vibesnake-agent-style-outcome-v2";
+    public const string Contract = "vibesnake-agent-style-outcome-v3";
 
-    public bool Equals(AgentStyleOutcomeV2? other) =>
+    public bool Equals(AgentStyleOutcomeV3? other) =>
         other is not null
         && string.Equals(Schema, other.Schema, StringComparison.Ordinal)
         && string.Equals(ContractId, other.ContractId, StringComparison.Ordinal)
         && string.Equals(DisplayName, other.DisplayName, StringComparison.Ordinal)
         && string.Equals(EvaluationPolicyId, other.EvaluationPolicyId, StringComparison.Ordinal)
         && Criteria.SequenceEqual(other.Criteria)
-        && CriteriaSatisfied == other.CriteriaSatisfied
-        && AllCriteriaSatisfied == other.AllCriteriaSatisfied
+        && ThresholdsReached == other.ThresholdsReached
+        && AllThresholdsReached == other.AllThresholdsReached
         && string.Equals(ReplayPayloadHash, other.ReplayPayloadHash, StringComparison.Ordinal);
 
     public override int GetHashCode()
@@ -164,8 +164,8 @@ public sealed record AgentStyleOutcomeV2(
             hash.Add(criterion);
         }
 
-        hash.Add(CriteriaSatisfied);
-        hash.Add(AllCriteriaSatisfied);
+        hash.Add(ThresholdsReached);
+        hash.Add(AllThresholdsReached);
         hash.Add(ReplayPayloadHash, StringComparer.Ordinal);
         return hash.ToHashCode();
     }
@@ -233,12 +233,12 @@ public static class AgentStyleContractCatalog
         }
     }
 
-    public static bool IsValidProgress(AgentStyleProgressV2? progress)
+    public static bool IsValidProgress(AgentStyleProgressV3? progress)
     {
         if (progress is null
             || !string.Equals(
                 progress.Schema,
-                AgentStyleProgressV2.Contract,
+                AgentStyleProgressV3.Contract,
                 StringComparison.Ordinal))
         {
             return false;
@@ -249,16 +249,16 @@ public static class AgentStyleContractCatalog
             progress.DisplayName,
             progress.EvaluationPolicyId,
             progress.Criteria,
-            progress.CriteriaSatisfied,
-            progress.AllCriteriaSatisfied);
+            progress.ThresholdsReached,
+            progress.AllThresholdsReached);
     }
 
-    public static bool IsValidOutcome(AgentStyleOutcomeV2? outcome)
+    public static bool IsValidOutcome(AgentStyleOutcomeV3? outcome)
     {
         if (outcome is null
             || !string.Equals(
                 outcome.Schema,
-                AgentStyleOutcomeV2.Contract,
+                AgentStyleOutcomeV3.Contract,
                 StringComparison.Ordinal)
             || !IsLowerHex(outcome.ReplayPayloadHash, 64))
         {
@@ -270,8 +270,8 @@ public static class AgentStyleContractCatalog
             outcome.DisplayName,
             outcome.EvaluationPolicyId,
             outcome.Criteria,
-            outcome.CriteriaSatisfied,
-            outcome.AllCriteriaSatisfied);
+            outcome.ThresholdsReached,
+            outcome.AllThresholdsReached);
     }
 
     private static AgentStyleContractDefinitionV2 Style(
@@ -380,7 +380,7 @@ public static class AgentStyleContractCatalog
         string contractId,
         string displayName,
         string evaluationPolicyId,
-        IReadOnlyList<AgentStyleCriterionProgressV2>? criteria,
+        IReadOnlyList<AgentStyleCriterionProgressV3>? criteria,
         int criteriaSatisfied,
         bool allCriteriaSatisfied)
     {
@@ -417,20 +417,20 @@ public static class AgentStyleContractCatalog
                 || actual.Unit != expected.Unit
                 || actual.Target != expected.Target
                 || actual.Current < 0
-                || actual.Satisfied != (actual.Current >= actual.Target)
+                || actual.ThresholdReached != (actual.Current >= actual.Target)
                 || !HasValidEvidenceNumbers(actual))
             {
                 return false;
             }
 
-            satisfied += actual.Satisfied ? 1 : 0;
+            satisfied += actual.ThresholdReached ? 1 : 0;
         }
 
         return criteriaSatisfied == satisfied
             && allCriteriaSatisfied == (satisfied == definition.Criteria.Count);
     }
 
-    private static bool HasValidEvidenceNumbers(AgentStyleCriterionProgressV2 criterion)
+    private static bool HasValidEvidenceNumbers(AgentStyleCriterionProgressV3 criterion)
     {
         if (criterion.Unit == AgentStyleCriterionUnit.Count)
         {

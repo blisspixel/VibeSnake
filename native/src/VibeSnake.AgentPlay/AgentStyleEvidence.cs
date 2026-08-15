@@ -105,7 +105,7 @@ internal readonly record struct AgentStyleEvidenceFacts(
 
 internal readonly record struct AgentStyleReplayEvidence(
     AgentStyleEvidenceFacts Facts,
-    AgentStyleProgressV2 Progress);
+    AgentStyleProgressV3 Progress);
 
 internal sealed class AgentStyleEvidenceTracker
 {
@@ -293,17 +293,17 @@ internal sealed class AgentStyleEvidenceTracker
         _lastStateHash = after.StateHash;
     }
 
-    public AgentStyleProgressV2 Snapshot()
+    public AgentStyleProgressV3 Snapshot()
     {
         var criteria = BuildCriteria();
-        var progress = new AgentStyleProgressV2(
-            AgentStyleProgressV2.Contract,
+        var progress = new AgentStyleProgressV3(
+            AgentStyleProgressV3.Contract,
             _definition.Id,
             _definition.DisplayName,
             _definition.EvaluationPolicyId,
             criteria,
-            criteria.Count(value => value.Satisfied),
-            criteria.All(value => value.Satisfied));
+            criteria.Count(value => value.ThresholdReached),
+            criteria.All(value => value.ThresholdReached));
         return AgentStyleContractCatalog.IsValidProgress(progress)
             ? progress
             : throw new InvalidOperationException(
@@ -328,14 +328,14 @@ internal sealed class AgentStyleEvidenceTracker
         _foodProgressSteps,
         _safeFoodProgressSteps);
 
-    public AgentStyleOutcomeV2 CreateOutcome(string replayPayloadHash)
+    public AgentStyleOutcomeV3 CreateOutcome(string replayPayloadHash)
     {
         return AgentStyleEvidenceReplayEvaluator.CreateOutcome(
             Snapshot(),
             replayPayloadHash);
     }
 
-    private ReadOnlyCollection<AgentStyleCriterionProgressV2> BuildCriteria()
+    private ReadOnlyCollection<AgentStyleCriterionProgressV3> BuildCriteria()
     {
         var definitions = _definition.Criteria;
         if (definitions.Count != 2)
@@ -344,7 +344,7 @@ internal sealed class AgentStyleEvidenceTracker
                 "A style contract must contain exactly two ordered criteria.");
         }
 
-        AgentStyleCriterionProgressV2[] criteria = _definition.Id switch
+        AgentStyleCriterionProgressV3[] criteria = _definition.Id switch
         {
             AgentStyleContractCatalog.StillwaterId =>
             [
@@ -384,12 +384,12 @@ internal sealed class AgentStyleEvidenceTracker
         return Array.AsReadOnly(criteria);
     }
 
-    private static AgentStyleCriterionProgressV2 Count(
+    private static AgentStyleCriterionProgressV3 Count(
         AgentStyleCriterionDefinitionV2 definition,
         int current) =>
         Progress(definition, current, numerator: null, denominator: null);
 
-    private static AgentStyleCriterionProgressV2 Rate(
+    private static AgentStyleCriterionProgressV3 Rate(
         AgentStyleCriterionDefinitionV2 definition,
         long numerator,
         long denominator) =>
@@ -399,7 +399,7 @@ internal sealed class AgentStyleEvidenceTracker
             numerator,
             denominator);
 
-    private static AgentStyleCriterionProgressV2 Progress(
+    private static AgentStyleCriterionProgressV3 Progress(
         AgentStyleCriterionDefinitionV2 definition,
         int current,
         long? numerator,
@@ -415,7 +415,7 @@ internal sealed class AgentStyleEvidenceTracker
                 "Style criterion progress did not match its closed definition.");
         }
 
-        return new AgentStyleCriterionProgressV2(
+        return new AgentStyleCriterionProgressV3(
             definition.Id,
             definition.DisplayName,
             definition.Comparator,
@@ -499,7 +499,7 @@ internal static class AgentStyleEvidenceReplayEvaluator
         return new AgentStyleReplayEvidence(tracker.Facts, tracker.Snapshot());
     }
 
-    public static AgentStyleProgressV2 EvaluateProgress(
+    public static AgentStyleProgressV3 EvaluateProgress(
         string styleContractId,
         string modeId,
         RunReplay replay)
@@ -507,7 +507,7 @@ internal static class AgentStyleEvidenceReplayEvaluator
         return Evaluate(styleContractId, modeId, replay).Progress;
     }
 
-    public static AgentStyleOutcomeV2 EvaluateOutcome(
+    public static AgentStyleOutcomeV3 EvaluateOutcome(
         string styleContractId,
         string modeId,
         RunReplay replay)
@@ -516,8 +516,8 @@ internal static class AgentStyleEvidenceReplayEvaluator
         return CreateOutcome(progress, replay.PayloadHash);
     }
 
-    public static AgentStyleOutcomeV2 CreateOutcome(
-        AgentStyleProgressV2 progress,
+    public static AgentStyleOutcomeV3 CreateOutcome(
+        AgentStyleProgressV3 progress,
         string replayPayloadHash)
     {
         ArgumentNullException.ThrowIfNull(progress);
@@ -532,14 +532,14 @@ internal static class AgentStyleEvidenceReplayEvaluator
                 nameof(replayPayloadHash));
         }
 
-        var outcome = new AgentStyleOutcomeV2(
-            AgentStyleOutcomeV2.Contract,
+        var outcome = new AgentStyleOutcomeV3(
+            AgentStyleOutcomeV3.Contract,
             progress.ContractId,
             progress.DisplayName,
             progress.EvaluationPolicyId,
             progress.Criteria,
-            progress.CriteriaSatisfied,
-            progress.AllCriteriaSatisfied,
+            progress.ThresholdsReached,
+            progress.AllThresholdsReached,
             replayPayloadHash);
         return AgentStyleContractCatalog.IsValidOutcome(outcome)
             ? outcome
@@ -548,8 +548,8 @@ internal static class AgentStyleEvidenceReplayEvaluator
     }
 
     public static bool Equivalent(
-        AgentStyleProgressV2 expected,
-        AgentStyleProgressV2 actual)
+        AgentStyleProgressV3 expected,
+        AgentStyleProgressV3 actual)
     {
         ArgumentNullException.ThrowIfNull(expected);
         ArgumentNullException.ThrowIfNull(actual);
@@ -560,8 +560,8 @@ internal static class AgentStyleEvidenceReplayEvaluator
                 expected.EvaluationPolicyId,
                 actual.EvaluationPolicyId,
                 StringComparison.Ordinal)
-            && expected.CriteriaSatisfied == actual.CriteriaSatisfied
-            && expected.AllCriteriaSatisfied == actual.AllCriteriaSatisfied
+            && expected.ThresholdsReached == actual.ThresholdsReached
+            && expected.AllThresholdsReached == actual.AllThresholdsReached
             && expected.Criteria.SequenceEqual(actual.Criteria);
     }
 }

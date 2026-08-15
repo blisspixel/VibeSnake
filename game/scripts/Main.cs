@@ -9814,7 +9814,7 @@ public partial class Main : Node2D
             ShellTextArgument.From("target", requirement.Target));
 
     private static string AgentStyleCriterionStateCopyId(
-        AgentStyleCriterionProgressV2 criterion,
+        AgentStyleCriterionProgressV3 criterion,
         bool replayVerified,
         bool replayEvidenceUnavailable)
     {
@@ -9825,12 +9825,12 @@ public partial class Main : Node2D
 
         if (replayVerified)
         {
-            return criterion.Satisfied
+            return criterion.ThresholdReached
                 ? "agent-arena.style.criterion.verified-met"
                 : "agent-arena.style.criterion.verified-not-met";
         }
 
-        return criterion.Satisfied
+        return criterion.ThresholdReached
             ? "agent-arena.style.criterion.observed-met"
             : "agent-arena.style.criterion.observed-not-met";
     }
@@ -9846,7 +9846,7 @@ public partial class Main : Node2D
         };
 
     private string AgentStyleCriterionCopy(
-        AgentStyleCriterionProgressV2 criterion,
+        AgentStyleCriterionProgressV3 criterion,
         bool replayVerified,
         bool replayEvidenceUnavailable) =>
         Localize(
@@ -10148,7 +10148,7 @@ public partial class Main : Node2D
         var styleOutcome = _agentViewerFrame.StyleOutcome;
         var lessonProgress = observation.LessonProgress;
         var lessonOutcome = _agentViewerFrame.LessonOutcome;
-        IReadOnlyList<AgentStyleCriterionProgressV2>? styleCriteria =
+        IReadOnlyList<AgentStyleCriterionProgressV3>? styleCriteria =
             styleOutcome?.Criteria ?? styleProgress?.Criteria;
         IReadOnlyList<AgentLessonRequirementProgressV2>? lessonRequirements =
             lessonOutcome?.Requirements ?? lessonProgress?.Requirements;
@@ -10182,7 +10182,7 @@ public partial class Main : Node2D
                             styleProgress.DisplayName.ToUpperInvariant()),
                         ShellTextArgument.From(
                             "met",
-                            styleOutcome!.CriteriaSatisfied))
+                            styleOutcome!.ThresholdsReached))
                     : styleReplayEvidenceUnavailable
                         ? Localize(
                             "agent-arena.style.replay-unavailable",
@@ -10196,7 +10196,7 @@ public partial class Main : Node2D
                                 styleProgress.DisplayName.ToUpperInvariant()),
                             ShellTextArgument.From(
                                 "met",
-                                styleProgress.CriteriaSatisfied));
+                                styleProgress.ThresholdsReached));
         var firstStyleCriterion = styleCriteria is { Count: 2 }
             ? AgentStyleCriterionCopy(
                 styleCriteria[0],

@@ -36,8 +36,8 @@ public sealed record AgentMatchSummaryV5(
     string ReplayPayloadHash,
     ReplayVerificationCode ReplayVerificationCode,
     AgentEpisodeMetricsV1 EpisodeMetrics,
-    AgentStyleOutcomeV2? StyleOutcome,
-    AgentLessonOutcomeV2? LessonOutcome,
+    AgentStyleOutcomeV3? StyleOutcome,
+    AgentLessonOutcomeV3? LessonOutcome,
     AgentRivalResultV1? Rival)
 {
     public const string Contract = "vibesnake-agent-match-summary-v5";
