@@ -35,6 +35,7 @@ REQUIRED_FILES = (
     Path("native/tools/VibeSnake.AgentHost/AgentHostContracts.cs"),
     Path("native/tools/VibeSnake.AgentHost/AgentResources.cs"),
     Path("native/tools/VibeSnake.AgentHost/AgentSessionRegistry.cs"),
+    Path("native/tools/VibeSnake.AgentHost/AgentToolArgumentFilter.cs"),
     Path("native/tools/VibeSnake.AgentHost/AgentViewerServer.cs"),
     Path("native/tools/VibeSnake.AgentHost/McpAgentTools.cs"),
     Path("integrations/vibesnake-agent-plugin/skills/play-vibesnake/SKILL.md"),
@@ -49,21 +50,21 @@ def copy_contract_fixture(target: Path) -> None:
 
 
 def test_checked_in_interoperability_baseline_is_aligned_and_fresh() -> None:
-    assert check_baseline(REPOSITORY_ROOT, date(2026, 8, 13)) == ()
+    assert check_baseline(REPOSITORY_ROOT, date(2026, 8, 15)) == ()
     baseline = load_baseline(REPOSITORY_ROOT / BASELINE_RELATIVE_PATH)
     assert baseline["mcp"] == {
         "protocol_version": "2026-07-28",
         "sdk_package": "ModelContextProtocol",
         "sdk_version": "2.2.0",
-        "host_version": "0.8.0",
+        "host_version": "0.8.1",
         "transport": "stdio",
         "session_model": "stateless",
     }
     assert baseline["agent_plugins"]["spec_version"] == "1.0.0"
-    assert baseline["agent_plugins"]["plugin_version"] == "0.8.0"
+    assert baseline["agent_plugins"]["plugin_version"] == "0.8.1"
     assert baseline["okf"]["spec_version"] == "0.2"
-    assert baseline["public_contract_history"]["host"][-1]["version"] == "0.8.0"
-    assert baseline["public_contract_history"]["plugin"][-1]["version"] == "0.8.0"
+    assert baseline["public_contract_history"]["host"][-1]["version"] == "0.8.1"
+    assert baseline["public_contract_history"]["plugin"][-1]["version"] == "0.8.1"
 
 
 def test_interoperability_baseline_rejects_staleness_and_source_drift(tmp_path: Path) -> None:
@@ -74,7 +75,7 @@ def test_interoperability_baseline_rejects_staleness_and_source_drift(tmp_path: 
     baseline["okf"]["stale_after"] = "2026-11-14T00:00:00Z"
     baseline_path.write_text(json.dumps(baseline, indent=2) + "\n", encoding="utf-8")
 
-    errors = check_baseline(tmp_path, date(2026, 11, 13))
+    errors = check_baseline(tmp_path, date(2026, 11, 14))
 
     assert any("interoperability baseline is stale" in error for error in errors)
     assert "okf.stale_after must be an absolute YYYY-MM-DD date" in errors

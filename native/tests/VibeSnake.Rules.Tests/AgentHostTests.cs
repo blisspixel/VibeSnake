@@ -454,6 +454,78 @@ public sealed class AgentHostTests
     }
 
     [Fact]
+    public void Tool_argument_filter_names_missing_and_unexpected_move_fields()
+    {
+        static JsonElement JsonValue(object value) => JsonSerializer.SerializeToElement(value);
+
+        Assert.Throws<ArgumentNullException>(() => AgentToolArgumentFilter.Validate(null!));
+        Assert.Null(AgentToolArgumentFilter.Validate(new CallToolRequestParams
+        {
+            Name = "start_match",
+        }));
+        Assert.Null(AgentToolArgumentFilter.Validate(new CallToolRequestParams
+        {
+            Name = "play_move",
+            Arguments = new Dictionary<string, JsonElement>
+            {
+                ["matchHandle"] = JsonValue("match"),
+                ["idempotencyKey"] = JsonValue("key"),
+                ["expectedTick"] = JsonValue(0),
+                ["expectedStateHash"] = JsonValue("hash"),
+                ["action"] = JsonValue("continue"),
+                ["declaredIntent"] = JsonValue("undeclared"),
+            },
+        }));
+
+        var missingAll = Assert.IsType<CallToolResult>(
+            AgentToolArgumentFilter.Validate(new CallToolRequestParams
+            {
+                Name = "play_move",
+            }));
+        var missingAllText = Assert.Single(missingAll.Content.OfType<TextContentBlock>()).Text;
+        Assert.True(missingAll.IsError);
+        Assert.Contains("missing required argument(s)", missingAllText, StringComparison.Ordinal);
+        Assert.Contains("\"action\"", missingAllText, StringComparison.Ordinal);
+        Assert.Contains("No match state changed", missingAllText, StringComparison.Ordinal);
+
+        var wrongMove = Assert.IsType<CallToolResult>(
+            AgentToolArgumentFilter.Validate(new CallToolRequestParams
+            {
+                Name = "play_move",
+                Arguments = new Dictionary<string, JsonElement>
+                {
+                    ["matchHandle"] = JsonValue("match"),
+                    ["idempotencyKey"] = JsonValue("key"),
+                    ["expectedTick"] = JsonValue(0),
+                    ["expectedStateHash"] = JsonValue("hash"),
+                    ["direction"] = JsonValue("up"),
+                },
+            }));
+        var wrongMoveText = Assert.Single(wrongMove.Content.OfType<TextContentBlock>()).Text;
+        Assert.Contains("unexpected argument name(s): \"direction\"", wrongMoveText, StringComparison.Ordinal);
+        Assert.Contains("missing required argument(s): \"action\"", wrongMoveText, StringComparison.Ordinal);
+
+        var extraBurst = Assert.IsType<CallToolResult>(
+            AgentToolArgumentFilter.Validate(new CallToolRequestParams
+            {
+                Name = "play_burst",
+                Arguments = new Dictionary<string, JsonElement>
+                {
+                    ["matchHandle"] = JsonValue("match"),
+                    ["idempotencyKey"] = JsonValue("key"),
+                    ["expectedTick"] = JsonValue(0),
+                    ["expectedStateHash"] = JsonValue("hash"),
+                    ["initialAction"] = JsonValue("continue"),
+                    ["maximumSteps"] = JsonValue(4),
+                    ["action"] = JsonValue("continue"),
+                },
+            }));
+        var extraBurstText = Assert.Single(extraBurst.Content.OfType<TextContentBlock>()).Text;
+        Assert.Contains("unexpected argument name(s): \"action\"", extraBurstText, StringComparison.Ordinal);
+        Assert.DoesNotContain("missing required argument(s)", extraBurstText, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Resources_publish_closed_rules_official_modes_and_playbook()
     {
         using var rules = JsonDocument.Parse(AgentResources.GetRules());
@@ -925,7 +997,7 @@ public sealed class AgentHostTests
         Assert.NotNull(host.Services);
         Assert.NotNull(defaultHost.Services);
         Assert.Equal("vibesnake-agent-host", Program.HostName);
-        Assert.Equal("0.8.0", Program.HostVersion);
+        Assert.Equal("0.8.1", Program.HostVersion);
         Assert.Throws<ArgumentNullException>(() =>
             Program.CreateHostApplicationBuilder(null!, temporary.Path));
     }
@@ -1072,6 +1144,38 @@ public sealed class AgentHostTests
         Assert.Equal(
             "optimal",
             observation.GetProperty("rival").GetProperty("personality_id").GetString());
+        var wrongBurst = await client.CallToolAsync(
+            "play_burst",
+            new Dictionary<string, object?>
+            {
+                ["matchHandle"] = handle,
+                ["idempotencyKey"] = "wrong-burst-field",
+                ["expectedTick"] = observation.GetProperty("tick").GetInt32(),
+                ["expectedStateHash"] = observation.GetProperty("state_hash").GetString(),
+                ["action"] = "up",
+                ["maximumSteps"] = 2,
+            },
+            cancellationToken: timeout.Token);
+        var wrongBurstText = Assert.Single(wrongBurst.Content.OfType<TextContentBlock>()).Text;
+        Assert.True(wrongBurst.IsError);
+        Assert.Contains("unexpected argument name(s): \"action\"", wrongBurstText, StringComparison.Ordinal);
+        Assert.Contains(
+            "missing required argument(s): \"initialAction\"",
+            wrongBurstText,
+            StringComparison.Ordinal);
+        Assert.Contains("No match state changed", wrongBurstText, StringComparison.Ordinal);
+        var observedAfterWrongBurst = await client.CallToolAsync(
+            "observe_match",
+            new Dictionary<string, object?> { ["matchHandle"] = handle },
+            cancellationToken: timeout.Token);
+        var observationAfterWrongBurst = Assert.IsType<JsonElement>(
+            observedAfterWrongBurst.StructuredContent);
+        Assert.Equal(
+            observation.GetProperty("tick").GetInt32(),
+            observationAfterWrongBurst.GetProperty("tick").GetInt32());
+        Assert.Equal(
+            observation.GetProperty("state_hash").GetString(),
+            observationAfterWrongBurst.GetProperty("state_hash").GetString());
         var moved = await client.CallToolAsync(
             "play_burst",
             new Dictionary<string, object?>
@@ -1140,6 +1244,40 @@ public sealed class AgentHostTests
             ["expectedStateHash"] = lessonObservation.GetProperty("state_hash").GetString(),
             ["action"] = oppositeAction,
         };
+        var wrongLessonMove = await client.CallToolAsync(
+            "play_move",
+            new Dictionary<string, object?>
+            {
+                ["matchHandle"] = lessonHandle,
+                ["idempotencyKey"] = "wrong-move-field",
+                ["expectedTick"] = lessonObservation.GetProperty("tick").GetInt32(),
+                ["expectedStateHash"] = lessonObservation.GetProperty("state_hash").GetString(),
+                ["direction"] = legalAction,
+            },
+            cancellationToken: timeout.Token);
+        var wrongLessonMoveText = Assert.Single(
+            wrongLessonMove.Content.OfType<TextContentBlock>()).Text;
+        Assert.True(wrongLessonMove.IsError);
+        Assert.Contains(
+            "unexpected argument name(s): \"direction\"",
+            wrongLessonMoveText,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "missing required argument(s): \"action\"",
+            wrongLessonMoveText,
+            StringComparison.Ordinal);
+        var observedAfterWrongMove = await client.CallToolAsync(
+            "observe_match",
+            new Dictionary<string, object?> { ["matchHandle"] = lessonHandle },
+            cancellationToken: timeout.Token);
+        var observationAfterWrongMove = Assert.IsType<JsonElement>(
+            observedAfterWrongMove.StructuredContent);
+        Assert.Equal(
+            lessonObservation.GetProperty("tick").GetInt32(),
+            observationAfterWrongMove.GetProperty("tick").GetInt32());
+        Assert.Equal(
+            lessonObservation.GetProperty("state_hash").GetString(),
+            observationAfterWrongMove.GetProperty("state_hash").GetString());
         var rejectedLessonMove = await client.CallToolAsync(
             "play_move",
             rejectedArguments,

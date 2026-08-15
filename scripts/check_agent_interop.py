@@ -64,6 +64,7 @@ HOST_CONTRACT_PATHS = (
     Path("native/src/VibeSnake.Rules/CosmeticSetCatalog.cs"),
     Path("native/src/VibeSnake.Rules/StationIdentityCatalog.cs"),
     Path("native/tools/VibeSnake.AgentHost/AgentViewerServer.cs"),
+    Path("native/tools/VibeSnake.AgentHost/AgentToolArgumentFilter.cs"),
     Path("native/tools/VibeSnake.AgentHost/AgentHostContracts.cs"),
     Path("native/tools/VibeSnake.AgentHost/AgentResources.cs"),
     Path("native/tools/VibeSnake.AgentHost/AgentSessionRegistry.cs"),
