@@ -755,7 +755,7 @@ public sealed class AgentHostTests
         var playbook = AgentResources.GetPlaybook();
 
         Assert.Equal(
-            "vibesnake-agent-rules-resource-v10",
+            "vibesnake-agent-rules-resource-v11",
             rules.RootElement.GetProperty("contract").GetString());
         var lifecycleSemantics = rules.RootElement.GetProperty("lifecycle_semantics");
         Assert.Contains(
@@ -1247,7 +1247,7 @@ public sealed class AgentHostTests
         Assert.NotNull(host.Services);
         Assert.NotNull(defaultHost.Services);
         Assert.Equal("vibesnake-agent-host", Program.HostName);
-        Assert.Equal("0.9.0", Program.HostVersion);
+        Assert.Equal("0.10.0", Program.HostVersion);
         Assert.Throws<ArgumentNullException>(() =>
             Program.CreateHostApplicationBuilder(null!, temporary.Path));
     }
@@ -1672,7 +1672,7 @@ public sealed class AgentHostTests
         Assert.True(receiptJson.GetProperty("is_available").GetBoolean());
         var receiptBody = receiptJson.GetProperty("receipt");
         Assert.Equal(
-            AgentExhibitionReceiptV1.Contract,
+            AgentExhibitionReceiptV2.Contract,
             receiptBody.GetProperty("schema").GetString());
         Assert.Equal(
             finished.StructuredContent!.Value.GetProperty("replay_payload_hash").GetString(),
@@ -1796,7 +1796,7 @@ public sealed class AgentHostTests
             resource => resource.Uri == "vibesnake://agent/identity");
         var rulesText = Assert.IsType<TextResourceContents>(Assert.Single(rules.Contents));
         Assert.Contains(
-            "vibesnake-agent-rules-resource-v10",
+            "vibesnake-agent-rules-resource-v11",
             rulesText.Text,
             StringComparison.Ordinal);
         Assert.False(moved.IsError ?? false);

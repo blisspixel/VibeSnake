@@ -447,7 +447,7 @@ public sealed class AgentMatchSession
     /// verified match. A live, aborted-without-verification, or failed-closed match
     /// has no exhibition identity and returns null.
     /// </summary>
-    public AgentExhibitionReceiptV1? TryCreateExhibitionReceipt()
+    public AgentExhibitionReceiptV2? TryCreateExhibitionReceipt()
     {
         lock (_sync)
         {

@@ -1087,9 +1087,9 @@ public sealed class AgentMatchSessionTests
         // A live match has a verified identity only after it is finalized.
         Assert.Null(session.TryCreateExhibitionReceipt());
         var result = session.Finish();
-        var receipt = Assert.IsType<AgentExhibitionReceiptV1>(session.TryCreateExhibitionReceipt());
+        var receipt = Assert.IsType<AgentExhibitionReceiptV2>(session.TryCreateExhibitionReceipt());
 
-        Assert.Equal(AgentExhibitionReceiptV1.Contract, receipt.Schema);
+        Assert.Equal(AgentExhibitionReceiptV2.Contract, receipt.Schema);
         Assert.Equal("receipt-match", receipt.MatchId);
         Assert.True(AgentExhibitionReceipt.HasCanonicalHash(receipt));
         Assert.Equal(64, receipt.ReceiptHash.Length);
@@ -1153,6 +1153,27 @@ public sealed class AgentMatchSessionTests
             receipt.ReceiptHash,
             replayed.TryCreateExhibitionReceipt()!.ReceiptHash);
 
+        // A rematch under a new handle is a new visit but the same line. The
+        // instance identity changes; the route identity does not.
+        var rematch = CreateSession(AgentSeedVisibility.Open, matchId: "receipt-rematch");
+        var rematchFirst = rematch.SubmitAction(Request(
+            "rematch-1",
+            rematch.Observe(),
+            AgentAction.Up,
+            AgentPublicIntent.TakeRisk));
+        _ = rematch.SubmitAction(Request(
+            "rematch-2",
+            rematchFirst.Observation,
+            AgentAction.Continue,
+            AgentPublicIntent.Recover));
+        _ = rematch.Finish();
+        var rematchReceipt = Assert.IsType<AgentExhibitionReceiptV2>(
+            rematch.TryCreateExhibitionReceipt());
+        Assert.True(AgentExhibitionReceipt.HasCanonicalHash(rematchReceipt));
+        Assert.NotEqual(receipt.ReceiptHash, rematchReceipt.ReceiptHash);
+        Assert.Equal(receipt.RouteIdentityHash, rematchReceipt.RouteIdentityHash);
+        Assert.Equal(receipt.AgentReplayPayloadHash, rematchReceipt.AgentReplayPayloadHash);
+
         // Any tampered fact breaks the canonical hash.
         Assert.False(AgentExhibitionReceipt.HasCanonicalHash(receipt with { Score = 9_999 }));
         Assert.False(AgentExhibitionReceipt.HasCanonicalHash(
@@ -1167,7 +1188,7 @@ public sealed class AgentMatchSessionTests
         // A blind exhibition keeps its own division and reveals the seed only here.
         var blind = CreateSession(AgentSeedVisibility.Blind, maximumSteps: 1, matchId: "blind-receipt");
         _ = blind.SubmitAction(Request("blind-1", blind.Observe(), AgentAction.Continue));
-        var blindReceipt = Assert.IsType<AgentExhibitionReceiptV1>(
+        var blindReceipt = Assert.IsType<AgentExhibitionReceiptV2>(
             blind.TryCreateExhibitionReceipt());
         Assert.True(AgentExhibitionReceipt.HasCanonicalHash(blindReceipt));
         Assert.Equal(AgentSeedVisibility.Blind, blindReceipt.Division.SeedVisibility);
@@ -1197,7 +1218,7 @@ public sealed class AgentMatchSessionTests
             styledFirst.Observation,
             AgentAction.Continue)).MatchResult;
         Assert.NotNull(styledResult);
-        var styledReceipt = Assert.IsType<AgentExhibitionReceiptV1>(
+        var styledReceipt = Assert.IsType<AgentExhibitionReceiptV2>(
             styled.TryCreateExhibitionReceipt());
         Assert.True(AgentExhibitionReceipt.HasCanonicalHash(styledReceipt));
         Assert.Equal("optimal", styledReceipt.RivalPersonalityId);
@@ -1236,7 +1257,7 @@ public sealed class AgentMatchSessionTests
 
         Assert.True(observation.LessonProgress!.AllRequirementsSatisfied);
         var practiceResult = practice.Finish();
-        var lessonReceipt = Assert.IsType<AgentExhibitionReceiptV1>(
+        var lessonReceipt = Assert.IsType<AgentExhibitionReceiptV2>(
             practice.TryCreateExhibitionReceipt());
         Assert.True(AgentExhibitionReceipt.HasCanonicalHash(lessonReceipt));
         Assert.Equal(practiceResult.LessonOutcome, lessonReceipt.LessonOutcome);
@@ -1244,6 +1265,68 @@ public sealed class AgentMatchSessionTests
         Assert.Equal(AgentMatchLifecycle.Completed, lessonReceipt.Lifecycle);
         Assert.Equal(RunStatus.Running, lessonReceipt.RunStatus);
     }
+
+    [Fact]
+    public void Exhibition_route_identity_survives_a_first_turn_rematch_with_new_keys()
+    {
+        // first-turn folds a hash of the idempotency key into its attempt evidence,
+        // so two legal runs of the same lesson differ in evidence and in receipt
+        // identity. The route identity must still recognise the same walked line.
+        static AgentExhibitionReceiptV2 RunFirstTurn(string matchId, string keyPrefix)
+        {
+            var lesson = AgentSignalSchoolCatalog.Get(AgentSignalSchoolCatalog.FirstTurnId);
+            var session = new AgentMatchSession(new AgentMatchOptions(
+                matchId,
+                lesson.ModeId,
+                RunModeCatalog.CurrentModeVersion,
+                lesson.PracticeSeed,
+                AgentSeedVisibility.Open,
+                lesson.MaximumSteps,
+                lessonId: lesson.Id));
+            var initial = session.Observe();
+            var reversed = session.SubmitAction(new AgentActionRequest(
+                $"{keyPrefix}-reversal",
+                initial.Tick,
+                initial.StateHash,
+                OppositeAction(initial.Direction)));
+            Assert.Equal(AgentActionRejection.IllegalDirection, reversed.Rejection);
+            var turned = session.SubmitAction(new AgentActionRequest(
+                $"{keyPrefix}-turn",
+                reversed.Observation.Tick,
+                reversed.Observation.StateHash,
+                LegalTurnAction(initial.Direction)));
+            Assert.True(turned.Accepted);
+            Assert.True(turned.Observation.LessonProgress!.AllRequirementsSatisfied);
+            _ = session.Finish();
+            return Assert.IsType<AgentExhibitionReceiptV2>(
+                session.TryCreateExhibitionReceipt());
+        }
+
+        var first = RunFirstTurn("first-turn-a", "alpha");
+        var second = RunFirstTurn("first-turn-b", "bravo");
+
+        Assert.True(AgentExhibitionReceipt.HasCanonicalHash(first));
+        Assert.True(AgentExhibitionReceipt.HasCanonicalHash(second));
+        Assert.NotEqual(
+            first.LessonOutcome!.AttemptEvidenceHash,
+            second.LessonOutcome!.AttemptEvidenceHash);
+        Assert.NotEqual(first.ReceiptHash, second.ReceiptHash);
+        Assert.Equal(first.RouteIdentityHash, second.RouteIdentityHash);
+    }
+
+    private static AgentAction OppositeAction(Direction direction) => direction switch
+    {
+        Direction.Up => AgentAction.Down,
+        Direction.Down => AgentAction.Up,
+        Direction.Left => AgentAction.Right,
+        _ => AgentAction.Left,
+    };
+
+    private static AgentAction LegalTurnAction(Direction direction) => direction switch
+    {
+        Direction.Up or Direction.Down => AgentAction.Left,
+        _ => AgentAction.Up,
+    };
 
     [Fact]
     public void Exhibition_receipt_fails_closed_for_unverified_lifecycles_and_lanes()

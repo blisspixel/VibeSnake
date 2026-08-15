@@ -1,11 +1,25 @@
 # Build and launch the native Godot game from a cloned checkout.
-# Usage: ./play.ps1
+# Usage: ./play.ps1 [-- ] [<godot user arguments>]
+# Example: ./play.ps1 --agent-watch-pipe=<pipe_name> --agent-watch-token=<access_token>
 
-[CmdletBinding()]
 param()
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
+
+# Capture forwarded arguments before any other work. This script is deliberately a
+# simple script rather than an advanced one: [CmdletBinding()] would leave $args
+# undefined under StrictMode and would try to bind tokens such as
+# --agent-watch-pipe=<name> as PowerShell parameters instead of forwarding them.
+$forwardedArguments = @()
+if ($null -ne $args) {
+    $forwardedArguments = @($args)
+}
+# Accept the POSIX separator so `./play.sh -- --agent-watch-pipe=<name>` and
+# `./play.sh --agent-watch-pipe=<name>` forward the same Godot user arguments.
+if ($forwardedArguments.Count -gt 0 -and $forwardedArguments[0] -eq "--") {
+    $forwardedArguments = @($forwardedArguments | Select-Object -Skip 1)
+}
 
 $repositoryRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 Set-Location -LiteralPath $repositoryRoot
@@ -36,5 +50,10 @@ if ($LASTEXITCODE -ne 0) {
 # cannot write one while running the game. Import first so the first launch renders.
 & (Join-Path $repositoryRoot "scripts/assert_godot_import.ps1") -GodotExecutable $godotExecutable
 
-& $godotExecutable --path (Join-Path $repositoryRoot "game") -- @args
+$gamePath = Join-Path $repositoryRoot "game"
+if ($forwardedArguments.Count -eq 0) {
+    & $godotExecutable --path $gamePath
+} else {
+    & $godotExecutable --path $gamePath -- @forwardedArguments
+}
 exit $LASTEXITCODE

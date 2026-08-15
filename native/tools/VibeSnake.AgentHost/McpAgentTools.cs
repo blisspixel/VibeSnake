@@ -163,7 +163,7 @@ public sealed class McpAgentTools
         ReadOnly = true,
         Idempotent = true,
         OpenWorld = false)]
-    [Description("Returns the canonical exhibition receipt for a successfully finalized, verified match. The receipt hash-links both verified lane replays, the division identity, the public passport, the replay-derived style and lesson outcomes, and the accepted presentation events into one receipt_hash. Presentation display time sits beside that hash and is never part of it. A live, unverified, or failed-closed match has no receipt. It never advances or finishes a match.")]
+    [Description("Returns the canonical exhibition receipt for a successfully finalized, verified match. receipt_hash names this exhibition instance and binds the match handle, so a rematch always mints a new one. route_identity_hash names the walked line and reproduces across separate matches and host processes for the same division, seed, and verified replays, so use it to compare same-seed rematches. Presentation display time sits beside both hashes and is never part of either. A live, unverified, or failed-closed match has no receipt. It never advances or finishes a match.")]
     public AgentExhibitionReceiptStatusV1 GetExhibitionReceipt(
         [Description("Opaque handle returned by start_match.")] string matchHandle) =>
         Execute(() => _registry.GetExhibitionReceipt(matchHandle));

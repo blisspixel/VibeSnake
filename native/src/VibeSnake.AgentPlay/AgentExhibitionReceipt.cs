@@ -77,8 +77,15 @@ public sealed record AgentDivisionIdentityV1(
 /// <see cref="ReceiptHash"/>. Presentation display time is carried beside that hash
 /// and is deliberately excluded from it, so the same exhibition always produces the
 /// same identity no matter when it is shown.
+///
+/// Two identities are published because they answer different questions.
+/// <see cref="ReceiptHash"/> names this exhibition instance and includes the match
+/// handle, so a rematch of the same line always mints a new one.
+/// <see cref="RouteIdentityHash"/> names the line itself: the same division, seed,
+/// verified replays, and evidence outcome reproduce it across separate matches and
+/// separate host processes. Use it to recognise "I already walked this line".
 /// </summary>
-public sealed record AgentExhibitionReceiptV1(
+public sealed record AgentExhibitionReceiptV2(
     string Schema,
     string MatchId,
     AgentDivisionIdentityV1 Division,
@@ -101,28 +108,31 @@ public sealed record AgentExhibitionReceiptV1(
     AgentLessonOutcomeV3? LessonOutcome,
     IReadOnlyList<AgentAcceptedPresentationEventV1> AcceptedPresentationEvents,
     string ReceiptHash,
+    string RouteIdentityHash,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     string? DisplayTimeUtc = null)
 {
-    public const string Contract = "vibesnake-agent-exhibition-receipt-v1";
+    public const string Contract = "vibesnake-agent-exhibition-receipt-v2";
 
     /// <summary>
-    /// Attaches a presentation-only display time. The canonical receipt hash is
+    /// Attaches a presentation-only display time. Both canonical hashes are
     /// unchanged because display time is never part of exhibition identity.
     /// </summary>
-    public AgentExhibitionReceiptV1 WithDisplayTime(string? displayTimeUtc) =>
+    public AgentExhibitionReceiptV2 WithDisplayTime(string? displayTimeUtc) =>
         this with { DisplayTimeUtc = displayTimeUtc };
 }
 
 public static class AgentExhibitionReceipt
 {
-    private const string ReceiptDomain = "vibesnake-agent-exhibition-receipt-v1";
+    private const string ReceiptDomain = "vibesnake-agent-exhibition-receipt-v2";
+    private const string RouteDomain = "vibesnake-agent-exhibition-route-v1";
+    private const string LineSeparator = "\n";
 
     /// <summary>
     /// Builds the canonical receipt for one successfully finalized, verified result.
     /// A failed-closed or unverified result has no exhibition identity and returns null.
     /// </summary>
-    public static AgentExhibitionReceiptV1? TryCreate(
+    public static AgentExhibitionReceiptV2? TryCreate(
         AgentMatchResultV5 result,
         IReadOnlyList<AgentAcceptedPresentationEventV1> acceptedPresentationEvents)
     {
@@ -143,8 +153,8 @@ public static class AgentExhibitionReceipt
         }
 
         var events = Array.AsReadOnly(acceptedPresentationEvents.ToArray());
-        var receipt = new AgentExhibitionReceiptV1(
-            AgentExhibitionReceiptV1.Contract,
+        var receipt = new AgentExhibitionReceiptV2(
+            AgentExhibitionReceiptV2.Contract,
             result.MatchId,
             AgentDivisionIdentityV1.FromResult(result),
             result.Passport,
@@ -168,21 +178,134 @@ public static class AgentExhibitionReceipt
             ComputeReceiptHash(
                 result,
                 AgentDivisionIdentityV1.FromResult(result),
-                events));
+                events),
+            ComputeRouteIdentityHash(
+                result,
+                AgentDivisionIdentityV1.FromResult(result)));
         return receipt;
     }
 
     /// <summary>
-    /// Recomputes the canonical hash and confirms that the receipt still describes
-    /// itself. Display time is intentionally excluded from the comparison.
+    /// Recomputes both canonical hashes and confirms that the receipt still
+    /// describes itself. Display time is intentionally excluded from both.
     /// </summary>
-    public static bool HasCanonicalHash(AgentExhibitionReceiptV1 receipt)
+    public static bool HasCanonicalHash(AgentExhibitionReceiptV2 receipt)
     {
         ArgumentNullException.ThrowIfNull(receipt);
         return string.Equals(
             receipt.ReceiptHash,
             ComputeReceiptHash(receipt),
-            StringComparison.Ordinal);
+            StringComparison.Ordinal)
+            && string.Equals(
+                receipt.RouteIdentityHash,
+                ComputeRouteIdentityHash(receipt),
+                StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// Hashes the line rather than the visit. This deliberately omits the match
+    /// handle, the caller-declared passport, presentation events, and any
+    /// attempt-evidence value derived from idempotency keys, so replaying the same
+    /// seed and route in a new match or a new host process reproduces it exactly.
+    /// </summary>
+    private static string ComputeRouteIdentityHash(
+        AgentMatchResultV5 result,
+        AgentDivisionIdentityV1 division) =>
+        ComputeRouteIdentityHash(
+            division,
+            result.GameplaySeed.ToString(CultureInfo.InvariantCulture),
+            result.EndReason,
+            result.RunStatus,
+            result.DeathCause,
+            result.Score,
+            result.FinalTick,
+            result.FinalStateHash,
+            result.ReplayPayloadHash,
+            result.Rival?.PersonalityId,
+            result.Rival?.ReplayPayloadHash,
+            result.Rival?.Score,
+            result.StyleOutcome?.ContractId,
+            result.StyleOutcome?.AllThresholdsReached,
+            result.StyleOutcome?.ThresholdsReached,
+            result.LessonOutcome?.LessonId,
+            result.LessonOutcome?.AllRequirementsSatisfied,
+            result.LessonOutcome?.RequirementsSatisfied);
+
+    private static string ComputeRouteIdentityHash(AgentExhibitionReceiptV2 receipt) =>
+        ComputeRouteIdentityHash(
+            receipt.Division,
+            receipt.GameplaySeed,
+            receipt.EndReason,
+            receipt.RunStatus,
+            receipt.DeathCause,
+            receipt.Score,
+            receipt.FinalTick,
+            receipt.FinalStateHash,
+            receipt.AgentReplayPayloadHash,
+            receipt.RivalPersonalityId,
+            receipt.RivalReplayPayloadHash,
+            receipt.RivalScore,
+            receipt.StyleOutcome?.ContractId,
+            receipt.StyleOutcome?.AllThresholdsReached,
+            receipt.StyleOutcome?.ThresholdsReached,
+            receipt.LessonOutcome?.LessonId,
+            receipt.LessonOutcome?.AllRequirementsSatisfied,
+            receipt.LessonOutcome?.RequirementsSatisfied);
+
+    private static string ComputeRouteIdentityHash(
+        AgentDivisionIdentityV1 division,
+        string gameplaySeed,
+        AgentMatchEndReason endReason,
+        RunStatus runStatus,
+        DeathCause deathCause,
+        int score,
+        int finalTick,
+        string finalStateHash,
+        string agentReplayPayloadHash,
+        string? rivalPersonalityId,
+        string? rivalReplayPayloadHash,
+        int? rivalScore,
+        string? styleContractId,
+        bool? styleAllThresholdsReached,
+        int? styleThresholdsReached,
+        string? lessonId,
+        bool? lessonAllRequirementsSatisfied,
+        int? lessonRequirementsSatisfied)
+    {
+        // A fixed newline separator keeps the payload identical on every platform.
+        var payload = string.Join(
+            LineSeparator,
+            RouteDomain,
+            division.DivisionId,
+            $"{division.RulesetId}@{Number(division.RulesVersion)}",
+            $"{division.ConfigHashAlgorithm}:{division.ConfigHash}",
+            gameplaySeed,
+            string.Join(
+                '|',
+                Number((byte)endReason),
+                Number((byte)runStatus),
+                Number((byte)deathCause),
+                Number(score),
+                Number(finalTick)),
+            finalStateHash,
+            agentReplayPayloadHash,
+            string.Join(
+                '|',
+                Optional(rivalPersonalityId),
+                Optional(rivalReplayPayloadHash),
+                rivalScore is { } rivalPoints ? Number(rivalPoints) : "-"),
+            string.Join(
+                '|',
+                Optional(styleContractId),
+                Flag(styleAllThresholdsReached),
+                styleThresholdsReached is { } styleCount ? Number(styleCount) : "-"),
+            string.Join(
+                '|',
+                Optional(lessonId),
+                Flag(lessonAllRequirementsSatisfied),
+                lessonRequirementsSatisfied is { } lessonCount ? Number(lessonCount) : "-"))
+            + LineSeparator;
+        return Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(payload)));
     }
 
     private static string ComputeReceiptHash(
@@ -215,7 +338,7 @@ public static class AgentExhibitionReceipt
             result.LessonOutcome?.RequirementsSatisfied,
             events);
 
-    private static string ComputeReceiptHash(AgentExhibitionReceiptV1 receipt) =>
+    private static string ComputeReceiptHash(AgentExhibitionReceiptV2 receipt) =>
         ComputeReceiptHash(
             receipt.MatchId,
             receipt.Division,

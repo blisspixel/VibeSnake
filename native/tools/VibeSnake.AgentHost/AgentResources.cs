@@ -65,7 +65,7 @@ public sealed class AgentResources
     public static string GetRules() => JsonSerializer.Serialize(
         new
         {
-            contract = "vibesnake-agent-rules-resource-v10",
+            contract = "vibesnake-agent-rules-resource-v11",
             ruleset_id = RulesetIdentity.CurrentId,
             rules_version = RulesetIdentity.CurrentVersion,
             observation_schema = AgentObservationV5.Contract,
@@ -126,11 +126,13 @@ public sealed class AgentResources
             rivalry = "An optional built-in rival advances once per accepted agent step on the same seed and exact configuration. Each lane has an independent verified replay.",
             receipt = new
             {
-                contract = AgentExhibitionReceiptV1.Contract,
+                contract = AgentExhibitionReceiptV2.Contract,
+                status_contract = AgentExhibitionReceiptStatusV1.Contract,
                 division_contract = AgentDivisionIdentityV1.Contract,
                 tool = "get_exhibition_receipt",
                 availability = "A receipt exists only for a successfully finalized, verified match. A live, unverified, or failed-closed match returns is_available false. A rivalry is receipted only when both lanes verified independently.",
-                canonical_hash = "receipt_hash covers the match identity, division, passport, lifecycle, end reason, seed, terminal facts, both verified lane replay hashes, the replay-derived style and lesson evidence hashes, and every accepted presentation event.",
+                canonical_hash = "receipt_hash names this exhibition instance. It covers the match identity, division, passport, lifecycle, end reason, seed, terminal facts, both verified lane replay hashes, the replay-derived style and lesson evidence hashes, and every accepted presentation event. Because it binds the match handle, a rematch of the same line always mints a new receipt_hash.",
+                route_identity_hash = "route_identity_hash names the line rather than the visit. It covers the division, seed, terminal facts, both verified lane replay hashes, and the style and lesson satisfaction outcome, and it deliberately omits the match handle, the caller-declared passport, presentation events, and any attempt evidence derived from idempotency keys. The same seed and route reproduce it across separate matches and separate host processes, so use it to recognise an already-walked line and to compare same-seed rematches.",
                 display_time = "display_time_utc is presentation-only, may be absent, and is deliberately excluded from receipt_hash so the same exhibition keeps one identity whenever it is shown.",
                 presentation_events = "accepted_presentation_events record the ordered tick, action, and self-declared public intent of each accepted rules step. They are spectator labels and never changed rules, score, or verification.",
                 boundary = "The receipt is transport-neutral and local. Persisted passports, archives, and league standings remain separate future work.",

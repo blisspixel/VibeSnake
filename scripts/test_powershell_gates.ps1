@@ -218,6 +218,45 @@ try {
             throw "Godot import guard is missing: $requiredImportFragment"
         }
     }
+    # Execute the documented launcher rather than only reading it. A playtester
+    # reached exit 1 on both the no-argument and --agent-watch-* forms because an
+    # advanced script leaves $args undefined and binds Godot switches as PowerShell
+    # parameters. Both failures occur before the SDK probe, so hiding dotnet proves
+    # argument handling survived that far without ever launching a window.
+    $launcherProbeRoot = Join-Path $temporaryRoot "launcher-probe"
+    New-Item -ItemType Directory -Path $launcherProbeRoot | Out-Null
+    $launcherPath = Join-Path $repositoryRoot "play.ps1"
+    # Resolve the interpreter before hiding PATH so the probe can still start.
+    $powershellPath = (Get-Process -Id $PID).Path
+    $originalPath = $env:PATH
+    try {
+        $env:PATH = $launcherProbeRoot
+        foreach ($launcherArguments in @(
+            @(),
+            @("--agent-watch-pipe=vs_gate", "--agent-watch-token=gate-token"),
+            @("--", "--agent-watch-pipe=vs_gate")
+        )) {
+            $launcherProbeText = (
+                & $powershellPath -NoProfile -File $launcherPath @launcherArguments 2>&1 |
+                    Out-String)
+            $label = if ($launcherArguments.Count -eq 0) {
+                "<none>"
+            } else {
+                $launcherArguments -join " "
+            }
+            if ($launcherProbeText -match "cannot be retrieved because it has not been set" -or
+                $launcherProbeText -match "A parameter cannot be found") {
+                throw "play.ps1 failed argument binding for [$label]: $launcherProbeText"
+            }
+            if ($launcherProbeText -notmatch "SDK is required") {
+                throw "play.ps1 did not reach its SDK probe for [$label]: $launcherProbeText"
+            }
+        }
+    }
+    finally {
+        $env:PATH = $originalPath
+    }
+
     $importGuardOutput = & (Join-Path $repositoryRoot "scripts/assert_godot_import.ps1") `
         -GodotExecutable $GodotExecutable
     if ($LASTEXITCODE -ne 0) {
