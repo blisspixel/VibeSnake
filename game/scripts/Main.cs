@@ -374,6 +374,17 @@ public partial class Main : Node2D
         var agentWatchSmoke = userArguments.Contains(
             "--agent-watch-smoke",
             StringComparer.Ordinal);
+        // A spectator QA aid. The accessibility profile is otherwise only reachable
+        // through F6 and F9, which an automated watcher cannot press, so overlay
+        // legibility at maximum text scale could never be observed from outside.
+        var agentWatchAccessibility = userArguments.Contains(
+            "--agent-watch-accessibility",
+            StringComparer.Ordinal);
+        if (agentWatchAccessibility && agentWatchPipe is null)
+        {
+            throw new ArgumentException(
+                "Agent watch accessibility requires the local viewer capability.");
+        }
         if ((agentWatchPipe is null) != (agentWatchToken is null))
         {
             throw new ArgumentException(
@@ -440,7 +451,7 @@ public partial class Main : Node2D
         _optionalPackStore = new OptionalPackStore(userDataRoot);
         LoadShellSettings();
 #if AGENT_ARENA_PREVIEW
-        if (agentWatchSmoke)
+        if (agentWatchSmoke || agentWatchAccessibility)
         {
             _shellSettings.MasterMuted = true;
             _shellSettings.HighContrast = true;
@@ -10183,7 +10194,7 @@ public partial class Main : Node2D
 
         var panel = ActiveShellPalette.CanvasBackground;
         panel.A = 0.90f;
-        DrawRect(new Rect2(20.0f, 580.0f, 1240.0f, 138.0f), panel);
+        DrawRect(new Rect2(20.0f, 546.0f, 1240.0f, 172.0f), panel);
         var styleProgress = observation.StyleContract;
         var styleOutcome = _agentViewerFrame.StyleOutcome;
         var lessonProgress = observation.LessonProgress;
@@ -10287,8 +10298,22 @@ public partial class Main : Node2D
                 "agent-arena.delivery.coalesced",
                 ShellTextArgument.From("count", _agentViewerCoalescedFrames));
         DrawRect(
-            new Rect2(38.0f, 588.0f, 9.0f, 9.0f),
+            new Rect2(38.0f, 554.0f, 9.0f, 9.0f),
             CosmeticColor(agentAccent.Color));
+        DrawFittedAgentLabel(
+            Localize(
+                "agent-arena.verification",
+                ShellTextArgument.From("seed", AgentViewerSeedCopy(observation)),
+                ShellTextArgument.From(
+                    "state",
+                    AgentViewerStateHashPrefix(observation.StateHash)),
+                ShellTextArgument.From(
+                    "replay",
+                    AgentViewerReplayCopy(_agentViewerFrame))),
+            new Vector2(52.0f, 572.0f),
+            12,
+            1208.0f,
+            ActiveShellPalette.AccentText);
         DrawFittedAgentLabel(
             Localize(
                 "agent-arena.identity",
@@ -10300,8 +10325,7 @@ public partial class Main : Node2D
                     CompactAgentPassportToken(agentCosmetic.Name)),
                 ShellTextArgument.From(
                     "station",
-                    CompactAgentPassportToken(agentStation.DisplayName)),
-                ShellTextArgument.From("seed", AgentViewerSeedCopy(observation))),
+                    CompactAgentPassportToken(agentStation.DisplayName))),
             new Vector2(52.0f, 602.0f),
             13,
             1208.0f,
@@ -10348,13 +10372,7 @@ public partial class Main : Node2D
                     ShellTextArgument.From("outcome", outcome),
                     ShellTextArgument.From("step", observation.Tick),
                     ShellTextArgument.From("maximum", observation.MaximumSteps),
-                    ShellTextArgument.From("frame", _agentViewerFrame.Sequence),
-                    ShellTextArgument.From(
-                        "state",
-                        AgentViewerStateHashPrefix(observation.StateHash)),
-                    ShellTextArgument.From(
-                        "replay",
-                        AgentViewerReplayCopy(_agentViewerFrame))),
+                    ShellTextArgument.From("frame", _agentViewerFrame.Sequence)),
                 new Vector2(660.0f, 680.0f),
                 8,
                 600.0f,
@@ -10387,13 +10405,7 @@ public partial class Main : Node2D
                     ShellTextArgument.From("outcome", outcome),
                     ShellTextArgument.From("step", observation.Tick),
                     ShellTextArgument.From("maximum", observation.MaximumSteps),
-                    ShellTextArgument.From("frame", _agentViewerFrame.Sequence),
-                    ShellTextArgument.From(
-                        "state",
-                        AgentViewerStateHashPrefix(observation.StateHash)),
-                    ShellTextArgument.From(
-                        "replay",
-                        AgentViewerReplayCopy(_agentViewerFrame))),
+                    ShellTextArgument.From("frame", _agentViewerFrame.Sequence)),
                 new Vector2(38.0f, 680.0f),
                 9,
                 1222.0f,
@@ -13642,13 +13654,21 @@ public partial class Main : Node2D
             float Baseline,
             float MaximumWidth)[]
         {
+            ("verification",
+                Pseudo(
+                "agent-arena.verification",
+                ShellTextArgument.From("seed", longestSeed),
+                ShellTextArgument.From("state", longestStateHash),
+                ShellTextArgument.From("replay", longestReplay)),
+                12,
+                572.0f,
+                1208.0f),
             ("identity",
                 Pseudo(
                 "agent-arena.identity",
                 ShellTextArgument.From("agent", maximumIdentityToken),
                 ShellTextArgument.From("avatar", "MAXIMUM-AVATAR.."),
-                ShellTextArgument.From("station", "MAXIMUM-STATION.."),
-                ShellTextArgument.From("seed", longestSeed)),
+                ShellTextArgument.From("station", "MAXIMUM-STATION..")),
                 13,
                 602.0f,
                 1208.0f),
@@ -13690,9 +13710,7 @@ public partial class Main : Node2D
                     Pseudo("agent-arena.outcome.agent-finished")),
                 ShellTextArgument.From("step", int.MaxValue),
                 ShellTextArgument.From("maximum", int.MaxValue),
-                ShellTextArgument.From("frame", long.MaxValue),
-                ShellTextArgument.From("state", longestStateHash),
-                ShellTextArgument.From("replay", longestReplay)),
+                ShellTextArgument.From("frame", long.MaxValue)),
                 9,
                 680.0f,
                 1222.0f),
@@ -13711,7 +13729,7 @@ public partial class Main : Node2D
         };
         var agentViewerOverlayLayoutPassed = true;
         var agentViewerOverlayFailures = new List<string>();
-        var priorBottom = 580.0f;
+        var priorBottom = 546.0f;
         foreach (var row in overlayRows)
         {
             var fontSize = Math.Max(
@@ -13800,9 +13818,7 @@ public partial class Main : Node2D
                         Pseudo("agent-arena.outcome.agent-finished")),
                     ShellTextArgument.From("step", int.MaxValue),
                     ShellTextArgument.From("maximum", int.MaxValue),
-                    ShellTextArgument.From("frame", long.MaxValue),
-                    ShellTextArgument.From("state", longestStateHash),
-                    ShellTextArgument.From("replay", longestReplay)),
+                    ShellTextArgument.From("frame", long.MaxValue)),
                 8,
                 660.0f,
                 600.0f),
@@ -13949,8 +13965,8 @@ public partial class Main : Node2D
 
         const int migratedRequiredFlowCount = 13;
         const double requiredExpansionRatio = 1.30;
-        var passed = ShellLocalization.All.Count == 626
-            && ShellLocalization.All.Count(entry => entry.Parameters.Count > 0) == 97
+        var passed = ShellLocalization.All.Count == 627
+            && ShellLocalization.All.Count(entry => entry.Parameters.Count > 0) == 98
             && migratedRequiredFlowCount == 13
             && minimumExpansionRatio >= requiredExpansionRatio
             && missingGlyphs.Count == 0

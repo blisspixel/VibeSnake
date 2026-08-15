@@ -300,7 +300,12 @@ internal static class ShellLocalization
             "VS {rival} {agent_score}-{rival_score}"),
         Entry(
             "agent-arena.identity",
-            "{agent}  AVATAR {avatar}  STATION {station}  {seed}"),
+            "{agent}  AVATAR {avatar}  STATION {station}"),
+        // A dedicated verification row. A spectator reads these three facts against
+        // a host dump, so they never share an elision budget with outcome copy.
+        Entry(
+            "agent-arena.verification",
+            "{seed}  STATE {state}  {replay}"),
         Entry("agent-arena.seed.open", "SEED {seed}"),
         Entry("agent-arena.seed.blind", "SEED BLIND"),
         Entry("agent-arena.replay.verified", "REPLAY {replay}"),
@@ -310,7 +315,7 @@ internal static class ShellLocalization
             "{style}  {rival}"),
         Entry(
             "agent-arena.status",
-            "{status}  {outcome}  STEP {step}/{maximum}  FRAME {frame}  STATE {state}  {replay}"),
+            "{status}  {outcome}  STEP {step}/{maximum}  FRAME {frame}"),
         Entry(
             "agent-arena.intent-status",
             "{intent}  {action}"),
