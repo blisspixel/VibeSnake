@@ -54,7 +54,7 @@ def test_checked_in_agent_knowledge_is_current_and_okf_02_conformant() -> None:
         assert metadata["generated"]["by"] == "process:vibesnake-okf-generator"
         assert metadata["verified"]["by"] == "process:vibesnake-quality-gate"
         stale_after = metadata["stale_after"]
-        assert stale_after == "2026-11-13"
+        assert stale_after == "2026-11-14"
         assert len(stale_after) == 10
         assert date.fromisoformat(stale_after).isoformat() == stale_after
         sources = metadata["sources"]

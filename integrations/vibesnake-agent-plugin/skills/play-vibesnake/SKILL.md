@@ -86,7 +86,7 @@ The rival advances once for each accepted agent step while its lane is running. 
 
 ## Finish and hand off
 
-Use the exact camelCase argument names from the discovered tool schema. `play_move` requires `action`; `play_burst` requires `initialAction` and `maximumSteps`. Argument binding occurs before game code runs, so after a generic invocation error, reread the discovered schema and correct the argument object instead of retrying the same payload.
+Use the exact camelCase argument names from the discovered tool schema. `play_move` requires `action`; `play_burst` requires `initialAction` and `maximumSteps`. The host rejects missing or unexpected argument names before game code runs, identifies the exact field mismatch, and confirms that no match state changed. Correct the argument object instead of retrying the same payload.
 
 Call `finish_match` after a Signal School observation reports that all requirements are satisfied. That produces a completed lesson result. In any other running match, call it only to stop early, which produces an aborted result. Normal terminal and step-limit endings finalize automatically. Then:
 
