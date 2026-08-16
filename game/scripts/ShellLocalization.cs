@@ -310,6 +310,7 @@ internal static class ShellLocalization
         Entry("agent-arena.seed.blind", "SEED BLIND"),
         Entry("agent-arena.replay.verified", "REPLAY {replay}"),
         Entry("agent-arena.replay.pending", "REPLAY PENDING"),
+        Entry("agent-arena.replay.unavailable", "REPLAY UNAVAILABLE"),
         Entry(
             "agent-arena.matchup",
             "{style}  {rival}"),
@@ -380,6 +381,15 @@ internal static class ShellLocalization
         Entry("agent-arena.outcome.step-limit", "OUTCOME STEP LIMIT"),
         Entry("agent-arena.outcome.agent-finished", "OUTCOME AGENT FINISHED"),
         Entry("agent-arena.outcome.replay-failure", "OUTCOME REPLAY FAILURE"),
+        // Short feed labels for the composed watch overlay row. The long
+        // status.agent-viewer.* sentences stay for the standalone waiting screen,
+        // where the disconnect promise about host match control must read in full.
+        Entry("agent-arena.feed.connecting", "FEED CONNECTING"),
+        Entry("agent-arena.feed.watching", "FEED LIVE"),
+        Entry("agent-arena.feed.completed", "FEED COMPLETE"),
+        Entry("agent-arena.feed.disconnected", "FEED DISCONNECTED"),
+        Entry("agent-arena.feed.rejected", "FEED REJECTED"),
+        Entry("agent-arena.feed.failed-closed", "FEED FAILED CLOSED"),
         Entry("status.agent-viewer.connecting", "CONNECTING TO AGENT MATCH"),
         Entry("status.agent-viewer.watching", "AWAITING AGENT ACTION; RULES PAUSED"),
         Entry(

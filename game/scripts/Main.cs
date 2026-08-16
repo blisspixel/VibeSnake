@@ -177,6 +177,11 @@ public partial class Main : Node2D
     // this width, so it stays available even when the preview route is compiled out.
     private const int AgentViewerStateHashPrefixLength = 8;
 
+    // Real upper bounds for the readable-overlay gate. A match cannot exceed the
+    // published step cap, and a viewer sequence cannot exceed the mutation ledger.
+    private const int MaximumAgentMatchSteps = 2_000;
+    private const int MaximumAgentViewerFrames = 4_096;
+
 #if AGENT_ARENA_PREVIEW
     private AgentViewerClient? _agentViewer;
     private AgentViewerFrameV8? _agentViewerFrame;
@@ -184,6 +189,7 @@ public partial class Main : Node2D
     private bool _agentViewerSnappedLatestFrame;
     private RunSnapshot? _agentViewerSnapshot;
     private string _agentViewerStatusId = "status.agent-viewer.connecting";
+    private string _agentViewerFeedId = "agent-arena.feed.connecting";
     private bool _agentViewerSmokeEnabled;
     private ulong? _agentViewerSmokeDeadlineMilliseconds;
     private string? _agentViewerPresentedAvatarId;
@@ -515,6 +521,7 @@ public partial class Main : Node2D
             _agentViewer = new AgentViewerClient(agentWatchPipe, agentWatchToken);
             TransitionToScreen(ScreenState.AgentWatch);
             _agentViewerStatusId = AgentViewerStatusCopyId(_agentViewer.State);
+            _agentViewerFeedId = AgentViewerFeedCopyId(_agentViewer.State);
             _agentViewerSmokeEnabled = agentWatchSmoke;
             _agentViewerSmokeDeadlineMilliseconds = agentWatchSmoke
                 ? Time.GetTicksMsec() + 30_000UL
@@ -9705,6 +9712,7 @@ public partial class Main : Node2D
         }
 
         _agentViewerStatusId = AgentViewerStatusCopyId(_agentViewer.State);
+        _agentViewerFeedId = AgentViewerFeedCopyId(_agentViewer.State);
         if (!_agentViewer.TryTakeLatest(out var frame, out var coalescedFrames)
             || frame is null)
         {
@@ -9767,6 +9775,19 @@ public partial class Main : Node2D
             QueueRedraw();
         }
     }
+
+    // The composed overlay row uses a short feed label. The long status sentence
+    // stays on the standalone waiting screen, where it has a full row to itself.
+    private static string AgentViewerFeedCopyId(AgentViewerClientState state) => state switch
+    {
+        AgentViewerClientState.Connecting => "agent-arena.feed.connecting",
+        AgentViewerClientState.Watching => "agent-arena.feed.watching",
+        AgentViewerClientState.Completed => "agent-arena.feed.completed",
+        AgentViewerClientState.Disconnected => "agent-arena.feed.disconnected",
+        AgentViewerClientState.Rejected => "agent-arena.feed.rejected",
+        AgentViewerClientState.FailedClosed => "agent-arena.feed.failed-closed",
+        _ => throw new ArgumentOutOfRangeException(nameof(state)),
+    };
 
     private static string AgentViewerStatusCopyId(AgentViewerClientState state) => state switch
     {
@@ -10004,12 +10025,17 @@ public partial class Main : Node2D
     private string AgentViewerReplayCopy(AgentViewerFrameV8 frame)
     {
         ArgumentNullException.ThrowIfNull(frame);
-        return frame.VerifiedReplayPayloadHash is { } replayPayloadHash
-            ? Localize(
+        if (frame.VerifiedReplayPayloadHash is { } replayPayloadHash)
+        {
+            return Localize(
                 "agent-arena.replay.verified",
                 ShellTextArgument.From(
                     "replay",
-                    AgentViewerStateHashPrefix(replayPayloadHash)))
+                    AgentViewerStateHashPrefix(replayPayloadHash)));
+        }
+
+        return frame.Observation.Lifecycle == AgentMatchLifecycle.FailedClosed
+            ? Localize("agent-arena.replay.unavailable")
             : Localize("agent-arena.replay.pending");
     }
 
@@ -10368,7 +10394,7 @@ public partial class Main : Node2D
             DrawFittedAgentLabel(
                 Localize(
                     "agent-arena.status",
-                    ShellTextArgument.From("status", Localize(_agentViewerStatusId)),
+                    ShellTextArgument.From("status", Localize(_agentViewerFeedId)),
                     ShellTextArgument.From("outcome", outcome),
                     ShellTextArgument.From("step", observation.Tick),
                     ShellTextArgument.From("maximum", observation.MaximumSteps),
@@ -10401,7 +10427,7 @@ public partial class Main : Node2D
             DrawFittedAgentLabel(
                 Localize(
                     "agent-arena.status",
-                    ShellTextArgument.From("status", Localize(_agentViewerStatusId)),
+                    ShellTextArgument.From("status", Localize(_agentViewerFeedId)),
                     ShellTextArgument.From("outcome", outcome),
                     ShellTextArgument.From("step", observation.Tick),
                     ShellTextArgument.From("maximum", observation.MaximumSteps),
@@ -13853,6 +13879,80 @@ public partial class Main : Node2D
             }
         }
 
+        // Fitting a row by eliding it is not the same as a spectator being able to
+        // read it. Two rounds of playtest reported the verification and outcome
+        // rows collapsing to A..TEP and ..UTCOME at real English content. These
+        // rows carry the facts a human compares against a host dump, so at maximum
+        // text scale their actual worst-case English must fit without elision.
+        string LongestEnglish(params string[] ids) => ids
+            .Select(id => ShellLocalization.Format(id, ShellLocale.English))
+            .OrderByDescending(value => value.Length)
+            .First();
+        var readableRows = new (string Id, string Text, int BaseFontSize, float MaximumWidth)[]
+        {
+            ("verification-readable",
+                ShellLocalization.Format(
+                    "agent-arena.verification",
+                    ShellLocale.English,
+                    ShellTextArgument.From(
+                        "seed",
+                        ShellLocalization.Format(
+                            "agent-arena.seed.open",
+                            ShellLocale.English,
+                            ShellTextArgument.From("seed", ulong.MaxValue))),
+                    ShellTextArgument.From(
+                        "state",
+                        new string('W', AgentViewerStateHashPrefixLength)),
+                    ShellTextArgument.From(
+                        "replay",
+                        LongestEnglish(
+                            "agent-arena.replay.pending",
+                            "agent-arena.replay.unavailable"))),
+                12,
+                1208.0f),
+            ("status-readable",
+                ShellLocalization.Format(
+                    "agent-arena.status",
+                    ShellLocale.English,
+                    ShellTextArgument.From(
+                        "status",
+                        LongestEnglish(
+                            "agent-arena.feed.connecting",
+                            "agent-arena.feed.watching",
+                            "agent-arena.feed.completed",
+                            "agent-arena.feed.disconnected",
+                            "agent-arena.feed.rejected",
+                            "agent-arena.feed.failed-closed")),
+                    ShellTextArgument.From(
+                        "outcome",
+                        LongestEnglish(
+                            "agent-arena.outcome.live",
+                            "agent-arena.outcome.rules-terminal",
+                            "agent-arena.outcome.step-limit",
+                            "agent-arena.outcome.agent-finished",
+                            "agent-arena.outcome.replay-failure")),
+                    // Real caps, not pseudo-localized fantasy values.
+                    ShellTextArgument.From("step", MaximumAgentMatchSteps),
+                    ShellTextArgument.From("maximum", MaximumAgentMatchSteps),
+                    ShellTextArgument.From("frame", MaximumAgentViewerFrames)),
+                8,
+                600.0f),
+        };
+        foreach (var row in readableRows)
+        {
+            var fontSize = Math.Max(
+                10,
+                (int)Math.Round(
+                    row.BaseFontSize * ShellSettings.MaximumTextScale,
+                    MidpointRounding.AwayFromZero));
+            var fittedText = FitAgentOverlayText(font, row.Text, fontSize, row.MaximumWidth);
+            if (!string.Equals(fittedText, row.Text, StringComparison.Ordinal))
+            {
+                agentViewerOverlayLayoutPassed = false;
+                agentViewerOverlayFailures.Add($"{row.Id}:elided");
+            }
+        }
+
         var glyphPrompt = ShellLocalization.Format(
             "prompt.action",
             ShellLocale.Pseudo,
@@ -13965,7 +14065,7 @@ public partial class Main : Node2D
 
         const int migratedRequiredFlowCount = 13;
         const double requiredExpansionRatio = 1.30;
-        var passed = ShellLocalization.All.Count == 627
+        var passed = ShellLocalization.All.Count == 634
             && ShellLocalization.All.Count(entry => entry.Parameters.Count > 0) == 98
             && migratedRequiredFlowCount == 13
             && minimumExpansionRatio >= requiredExpansionRatio

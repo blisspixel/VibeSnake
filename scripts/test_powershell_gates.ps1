@@ -296,7 +296,7 @@ try {
         }
     }
     foreach ($requiredLocalizationFragment in @(
-        "ShellLocalization.All.Count == 627",
+        "ShellLocalization.All.Count == 634",
         "entry.Parameters.Count > 0) == 98",
         'AgentActionRejection.WrongActionProfile =>',
         '"agent-arena.action.rejected-wrong-profile"',
@@ -312,7 +312,7 @@ try {
         }
     }
     foreach ($requiredLocalizationFragment in @(
-        '($localizationEvidence.stringCount -ne 627)',
+        '($localizationEvidence.stringCount -ne 634)',
         '($localizationEvidence.parameterizedStringCount -ne 98)'
     )) {
         if (-not $nativeTestScript.Contains($requiredLocalizationFragment, [StringComparison]::Ordinal)) {
