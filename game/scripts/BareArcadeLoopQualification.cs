@@ -368,8 +368,35 @@ internal static class BareArcadeLoopQualification
             && experienceHandoffComplete;
         if (!passed)
         {
+            // Name the exact budget and its measured values. A bare "one of six
+            // budgets failed" message forces a bisect on the only runner that can
+            // reproduce it, which is the slowest possible way to diagnose pacing.
+            var failures = new List<string>();
+            void Require(bool complete, string id)
+            {
+                if (!complete)
+                {
+                    failures.Add(id);
+                }
+            }
+
+            Require(inputResponseComplete, "input-response");
+            Require(bufferOrderingComplete, "buffer-ordering");
+            Require(fatalCellVisibilityComplete, "fatal-cell-visibility");
+            Require(headFoodContrastComplete, "head-food-contrast");
+            Require(wrapContinuityComplete, "wrap-continuity");
+            Require(framePacingComplete, "frame-pacing");
+            Require(deathAttributionComplete, "death-attribution");
+            Require(restartIntentComplete, "restart-intent");
+            Require(stateResetComplete, "state-reset");
+            Require(crossAspectAccessibilityFramesComplete, "cross-aspect-frames");
+            Require(experienceHandoffComplete, "experience-handoff");
             throw new InvalidOperationException(
-                "Bare arcade loop failed a response, visibility, pacing, death, restart, or reset budget.");
+                "Bare arcade loop failed: "
+                + string.Join(", ", failures)
+                + $". samples={frameSummary.SampleCount}/{RequiredLiveFrameSamples}, "
+                + $"p95={frameSummary.P95Milliseconds:0.00}/{MaximumSmokeP95Milliseconds:0.00}, "
+                + $"max={frameSummary.MaxMilliseconds:0.00}/{MaximumSmokeFrameMilliseconds:0.00}.");
         }
 
         return new BareArcadeLoopQualificationEvidence(

@@ -15,6 +15,10 @@ Status: pre-candidate alpha issues as of 2026-08-11. Replace this page from the 
 - Procedural fallback cues are complete and rights-clear. Authored production music, SFX, loudness, mix, listening, speaker, headphone, and physical audio-device review remain open.
 - Public support, issue, and conduct intake routes are not yet open and tested. Private vulnerability reporting is enabled, but its end-to-end acknowledgement and response flow still needs a controlled test. Do not publish private or security-sensitive information in a public channel.
 
+## Qualification flakiness
+
+- The `bare-arcade-loop` frame-pacing budget measures real p95 and maximum frame milliseconds on hosted runners. It has failed once on `macos-latest` and passed on an unchanged rerun, so a shared-runner stall can exceed the 60 ms p95 or 100 ms maximum budget without any product regression. The budget is deliberately not loosened, because it guards a real player-facing promise. The failure now names the exact budget and prints the measured values against their limits, so a recurrence is diagnosable from one log line rather than requiring a bisect on the only runner that reproduces it. Track recurrences before considering a runner-aware allowance.
+
 ## Data safety
 
 - Uninstalling the application preserves player data. See the [recovery guide](../guides/RECOVERY.md) for intentional category reset, verified backup, restore, and complete local removal.
