@@ -307,7 +307,11 @@ try {
         '_shellSettings.ReducedMotion && coalescedFrames > 0',
         'AgentViewerOverlayLayoutPassed: agentViewerOverlayLayoutPassed',
         'RunHudTitleLayoutPassed: runHudTitleLayoutPassed',
-        'RunModeTitleText(mode.DisplayName, statusText)'
+        'RunHudRowLayoutPassed: runHudRowLayoutPassed',
+        'RunModeTitleText(mode.DisplayName, statusText)',
+        'private void DrawRunHudCell(',
+        'private readonly record struct RunHudCell(',
+        'previous.RightEdge + RunHudCellGutter > next.Left'
     )) {
         if (-not $gameMainScript.Contains($requiredLocalizationFragment, [StringComparison]::Ordinal)) {
             throw "Godot localization evidence is missing catalog count: $requiredLocalizationFragment"
@@ -316,7 +320,9 @@ try {
     foreach ($requiredLocalizationFragment in @(
         '($localizationEvidence.stringCount -ne 647)',
         '($localizationEvidence.parameterizedStringCount -ne 99)',
-        '(-not $localizationEvidence.runHudTitleLayoutPassed)'
+        '(-not $localizationEvidence.runHudTitleLayoutPassed)',
+        '(-not $localizationEvidence.runHudRowLayoutPassed)',
+        '($localizationEvidence.runHudRowMinimumFontSize -lt 14)'
     )) {
         if (-not $nativeTestScript.Contains($requiredLocalizationFragment, [StringComparison]::Ordinal)) {
             throw "Native localization gate is missing catalog count: $requiredLocalizationFragment"

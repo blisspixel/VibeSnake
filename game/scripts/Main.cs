@@ -11146,16 +11146,82 @@ public partial class Main : Node2D
         }
     }
 
-    // The top-right run title is the only HUD row with a hard right edge: the
-    // logical canvas ends at 1280 and the radio line already owns 900 to 1262.
-    // A playtester read CLASSIC AGENT COMPLET at 150 percent text because the
-    // title drew unbounded from 980 and the canvas cut the last letter. The
-    // budget below is now explicit, and the readable gate composes the real
-    // worst-case English against it.
-    private const float RunModeTitleLeft = 980.0f;
-    private const float RunModeTitleMaximumWidth = 282.0f;
-    private const int RunModeTitleBaseFontSize = 16;
-    private const int RunModeTitleMinimumFontSize = 11;
+    // The top run HUD is one fixed strip of cells on a 1280-wide logical canvas.
+    // Every cell used to draw unbounded from its own left edge, which is only
+    // safe while the text happens to be short. Two playtest rounds found the two
+    // ways that fails: the mode title ran off the canvas and lost its last
+    // letter (CLASSIC AGENT COMPLET), and at 150 percent text the combo cell ran
+    // under the hunger cell so OVERDRIVE stacked on HUNGER READY. Both are the
+    // same defect. Each cell now declares where it starts, how much room it owns
+    // before the next cell begins, and the smallest type it may use to keep
+    // every character. The readable gate composes the real worst-case English
+    // for every cell and proves it neither elides nor crosses into its neighbour.
+    private readonly record struct RunHudCell(
+        string Id,
+        float Left,
+        float MaximumWidth,
+        int BaseFontSize,
+        int MinimumFontSize)
+    {
+        public float RightEdge => Left + MaximumWidth;
+    }
+
+    // The gutter every cell leaves between its budget and the next cell's left
+    // edge, so two fully packed neighbours still read as two separate facts.
+    private const float RunHudCellGutter = 8.0f;
+    private const float RunHudRightMargin = 1262.0f;
+
+    private static readonly RunHudCell RunHudScoreCell =
+        new("run-hud.score", 18.0f, 199.0f, 19, 11);
+    private static readonly RunHudCell RunHudComboCell =
+        new("run-hud.combo", 225.0f, 297.0f, 19, 11);
+    private static readonly RunHudCell RunHudHungerCell =
+        new("run-hud.hunger", 530.0f, 222.0f, 16, 11);
+    private static readonly RunHudCell RunHudClassicScoreCell =
+        new("run-hud.classic-score", 225.0f, 357.0f, 16, 11);
+    private static readonly RunHudCell RunHudClassicRulesCell =
+        new("run-hud.classic-rules", 590.0f, 382.0f, 15, 11);
+    private static readonly RunHudCell RunHudModeTitleCell =
+        new("run-hud.mode-title", 980.0f, 282.0f, 16, 11);
+
+    // The hunger meter is a fixed-size graphic rather than text, so it never
+    // rescales with the text setting. It still has to sit inside the row, and
+    // its critical phase appends a scaling warning glyph, so the gate measures
+    // that glyph against the mode title's left edge instead of assuming it.
+    private const float RunHudHungerMeterLeft = 760.0f;
+    private const float HungerMeterSegmentWidth = 11.0f;
+    private const float HungerMeterSegmentGap = 3.0f;
+    private const float HungerMeterMarkerOffset = 10.0f;
+    private const int HungerMeterMarkerFontSize = 17;
+
+    private const float RunHudHungerMeterWidth =
+        (HungerFeedback.SegmentCount * (HungerMeterSegmentWidth + HungerMeterSegmentGap))
+            - HungerMeterSegmentGap;
+
+    // Vibe draws score, combo, hunger, the meter, and the title. Classic draws
+    // score, its own two captions, and the title. Ordering matters: the gate
+    // walks each list left to right and requires a real gap at every seam.
+    private static IReadOnlyList<RunHudCell> RunHudVibeCells =>
+    [
+        RunHudScoreCell,
+        RunHudComboCell,
+        RunHudHungerCell,
+        new(
+            "run-hud.hunger-meter",
+            RunHudHungerMeterLeft,
+            RunHudHungerMeterWidth,
+            RunHudModeTitleCell.BaseFontSize,
+            RunHudModeTitleCell.MinimumFontSize),
+        RunHudModeTitleCell,
+    ];
+
+    private static IReadOnlyList<RunHudCell> RunHudClassicCells =>
+    [
+        RunHudScoreCell,
+        RunHudClassicScoreCell,
+        RunHudClassicRulesCell,
+        RunHudModeTitleCell,
+    ];
 
     private static string RunModeTitleText(string modeDisplayName, string statusText) =>
         $"{modeDisplayName.ToUpperInvariant()}  {statusText}";
@@ -11167,6 +11233,22 @@ public partial class Main : Node2D
         RunStatus.Won => "run.status.won",
         _ => throw new ArgumentOutOfRangeException(nameof(status)),
     };
+
+    // One draw path for the whole row, so no cell can be rendered under rules
+    // the readable gate never proved.
+    private void DrawRunHudCell(
+        RunHudCell cell,
+        string text,
+        Color color,
+        float verticalOffset = 0.0f,
+        int? preferredFontSize = null) =>
+        DrawFittedLabel(
+            text,
+            new Vector2(cell.Left, 30.0f + verticalOffset),
+            preferredFontSize: ScaledFontSize(preferredFontSize ?? cell.BaseFontSize),
+            minimumFontSize: cell.MinimumFontSize,
+            maximumWidth: cell.MaximumWidth,
+            color: color);
 
     private void DrawRun(
         RunSnapshot? replaySnapshot = null,
@@ -11211,52 +11293,48 @@ public partial class Main : Node2D
         DrawBoardTerrain(snapshot.Score);
         if (_capturePresentation.ShowRunHud)
         {
-            DrawLabel(
+            DrawRunHudCell(
+                RunHudScoreCell,
                 $"SCORE {snapshot.Score:D6}",
-                new Vector2(18.0f, 30.0f + combo.VerticalOffset),
-                ScaledFontSize(combo.Emphasized ? 19 : 18),
                 combo.Emphasized
                     ? ActiveShellPalette.GoldText
-                    : ActiveShellPalette.BodyText);
+                    : ActiveShellPalette.BodyText,
+                verticalOffset: combo.VerticalOffset,
+                preferredFontSize: combo.Emphasized ? 19 : 18);
             if (usesVibePresentation)
             {
                 var comboLevel = combo.Level == "BUILDING" ? string.Empty : "  " + combo.Level;
-                DrawLabel(
+                DrawRunHudCell(
+                    RunHudComboCell,
                     $"{combo.StaticMarker} {combo.Label}{comboLevel}",
-                    new Vector2(225.0f, 30.0f + combo.VerticalOffset),
-                    ScaledFontSize(combo.Emphasized ? 19 : 18),
                     combo.Emphasized || combo.Level != "BUILDING"
                         ? VibeHudColor(_vibeLevelDirector.CurrentDefinition)
-                        : ActiveShellPalette.BodyText);
+                        : ActiveShellPalette.BodyText,
+                    verticalOffset: combo.VerticalOffset,
+                    preferredFontSize: combo.Emphasized ? 19 : 18);
                 var hungerColor = HungerSignalColor(hunger.Phase);
-                DrawLabel(
-                    hunger.Label,
-                    new Vector2(530.0f, 30.0f),
-                    ScaledFontSize(16),
+                DrawRunHudCell(RunHudHungerCell, hunger.Label, hungerColor);
+                DrawHungerMeter(
+                    hunger,
+                    new Vector2(RunHudHungerMeterLeft, 14.0f),
                     hungerColor);
-                DrawHungerMeter(hunger, new Vector2(760.0f, 14.0f), hungerColor);
             }
             else
             {
-                DrawLabel(
+                DrawRunHudCell(
+                    RunHudClassicScoreCell,
                     Localize("run.classic-score"),
-                    new Vector2(225.0f, 30.0f),
-                    ScaledFontSize(16),
                     ActiveShellPalette.BodyText);
-                DrawLabel(
+                DrawRunHudCell(
+                    RunHudClassicRulesCell,
                     Localize("run.classic-rules"),
-                    new Vector2(590.0f, 30.0f),
-                    ScaledFontSize(15),
                     ActiveShellPalette.GoldText);
             }
 
-            DrawFittedLabel(
+            DrawRunHudCell(
+                RunHudModeTitleCell,
                 RunModeTitleText(mode.DisplayName, statusText),
-                new Vector2(RunModeTitleLeft, 30.0f),
-                preferredFontSize: ScaledFontSize(RunModeTitleBaseFontSize),
-                minimumFontSize: RunModeTitleMinimumFontSize,
-                maximumWidth: RunModeTitleMaximumWidth,
-                color: snapshot.Status == RunStatus.Dead
+                snapshot.Status == RunStatus.Dead
                     ? ActiveShellPalette.WarningText
                     : ActiveShellPalette.BodyText);
 
@@ -11893,8 +11971,8 @@ public partial class Main : Node2D
         Vector2 position,
         Color signalColor)
     {
-        const float segmentWidth = 11.0f;
-        const float segmentGap = 3.0f;
+        const float segmentWidth = HungerMeterSegmentWidth;
+        const float segmentGap = HungerMeterSegmentGap;
         const float segmentHeight = 15.0f;
         var emptyColor = ActiveShellPalette.SecondaryText;
         emptyColor.A = 0.28f;
@@ -11918,8 +11996,10 @@ public partial class Main : Node2D
         {
             DrawLabel(
                 WarningMarker,
-                new Vector2(position.X + meterWidth + 10.0f, position.Y + segmentHeight),
-                ScaledFontSize(17),
+                new Vector2(
+                    position.X + meterWidth + HungerMeterMarkerOffset,
+                    position.Y + segmentHeight),
+                ScaledFontSize(HungerMeterMarkerFontSize),
                 signalColor);
         }
         else if (hunger.Phase == HungerPhase.Empty)
@@ -14112,13 +14192,97 @@ public partial class Main : Node2D
             }
         }
 
-        // The same character-budget fight, one row up from the watch overlay. The
-        // ordinary run HUD title shares its 150 percent slot between the mode name
-        // and the longest status word, so compose every real pairing and require
-        // the fitted result to keep every letter. Elision here reads as a shorter
-        // word rather than as truncation: CLASSIC AGENT COMPLET is not COMPLETE.
+        // The same character-budget fight, one row up from the watch overlay.
+        // Two rounds of playtest found two ways this row fails: the title ran
+        // off the canvas and lost a letter, and the combo cell ran under the
+        // hunger cell so two facts stacked. Both are now one gate. It composes
+        // the real worst-case English for every cell of both mode presentations
+        // at maximum text scale, requires the fitted result to keep every
+        // character, and requires every cell to end before its neighbour begins.
+        // Elision here reads as a shorter word rather than as truncation:
+        // CLASSIC AGENT COMPLET is not COMPLETE, and an overlap reads as a
+        // different word entirely.
+        var runHudRowLayoutPassed = true;
+        var runHudRowFailures = new List<string>();
         var runHudTitleLayoutPassed = true;
         var runHudTitleFailures = new List<string>();
+        var runHudCellFontSizes = new Dictionary<string, int>(StringComparer.Ordinal);
+
+        static int RowFontSize(int baseFontSize) => Math.Max(
+            10,
+            (int)Math.Round(
+                baseFontSize * ShellSettings.MaximumTextScale,
+                MidpointRounding.AwayFromZero));
+
+        void RequireRunHudCell(RunHudCell cell, string text)
+        {
+            var (fontSize, fitted) = ResolveFittedLabel(
+                text,
+                RowFontSize(cell.BaseFontSize),
+                cell.MinimumFontSize,
+                cell.MaximumWidth);
+            runHudCellFontSizes[cell.Id] =
+                runHudCellFontSizes.TryGetValue(cell.Id, out var seen)
+                    ? Math.Min(seen, fontSize)
+                    : fontSize;
+            if (string.Equals(fitted, text, StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            runHudRowLayoutPassed = false;
+            runHudRowFailures.Add($"{cell.Id}:elided:{text}");
+            if (string.Equals(cell.Id, RunHudModeTitleCell.Id, StringComparison.Ordinal))
+            {
+                runHudTitleLayoutPassed = false;
+                runHudTitleFailures.Add($"{cell.Id}:elided:{text}");
+            }
+        }
+
+        // Seam truth first. A cell table that overlaps is broken no matter what
+        // any individual string does, and the draw path reads the same table.
+        foreach (var (presentation, cells) in new[]
+        {
+            ("vibe", RunHudVibeCells),
+            ("classic", RunHudClassicCells),
+        })
+        {
+            for (var index = 1; index < cells.Count; index++)
+            {
+                var previous = cells[index - 1];
+                var next = cells[index];
+                if (previous.RightEdge + RunHudCellGutter > next.Left)
+                {
+                    runHudRowLayoutPassed = false;
+                    runHudRowFailures.Add(
+                        $"{presentation}/{previous.Id}->{next.Id}:seam");
+                }
+            }
+
+            var last = cells[^1];
+            if (last.RightEdge > RunHudRightMargin)
+            {
+                runHudRowFailures.Add($"{presentation}/{last.Id}:margin");
+                runHudRowLayoutPassed = false;
+            }
+        }
+
+        // The hunger meter never rescales, but its critical warning glyph does,
+        // and it is the only thing between the meter and the mode title.
+        var hungerMarkerWidth = MeasureLabelWidth(
+            WarningMarker,
+            RowFontSize(HungerMeterMarkerFontSize));
+        var hungerMarkerRight = RunHudHungerMeterLeft
+            + RunHudHungerMeterWidth
+            + HungerMeterMarkerOffset
+            + hungerMarkerWidth;
+        if (hungerMarkerRight + RunHudCellGutter > RunHudModeTitleCell.Left)
+        {
+            runHudRowLayoutPassed = false;
+            runHudRowFailures.Add(
+                $"run-hud.hunger-meter:marker:{hungerMarkerRight:0.0}");
+        }
+
         var runTitleStatuses = new[]
         {
             "run.status.running",
@@ -14130,28 +14294,59 @@ public partial class Main : Node2D
             "agent-arena.run.complete",
             "agent-arena.run.failed",
         };
-        var runTitlePreferredFontSize = Math.Max(
-            10,
-            (int)Math.Round(
-                RunModeTitleBaseFontSize * ShellSettings.MaximumTextScale,
-                MidpointRounding.AwayFromZero));
         foreach (var mode in RunModeCatalog.All)
         {
             foreach (var statusId in runTitleStatuses)
             {
-                var title = RunModeTitleText(
-                    mode.DisplayName,
-                    ShellLocalization.Format(statusId, ShellLocale.English));
-                var (_, fittedTitle) = ResolveFittedLabel(
-                    title,
-                    runTitlePreferredFontSize,
-                    RunModeTitleMinimumFontSize,
-                    RunModeTitleMaximumWidth);
-                if (!string.Equals(fittedTitle, title, StringComparison.Ordinal))
-                {
-                    runHudTitleLayoutPassed = false;
-                    runHudTitleFailures.Add($"{mode.Id}/{statusId}:elided");
-                }
+                RequireRunHudCell(
+                    RunHudModeTitleCell,
+                    RunModeTitleText(
+                        mode.DisplayName,
+                        ShellLocalization.Format(statusId, ShellLocale.English)));
+            }
+        }
+
+        // The score cell carries a fixed six-digit field, so its worst case is
+        // exact rather than sampled.
+        RequireRunHudCell(RunHudScoreCell, $"SCORE {999999:D6}");
+        RequireRunHudCell(RunHudClassicScoreCell, Localize("run.classic-score"));
+        RequireRunHudCell(RunHudClassicRulesCell, Localize("run.classic-rules"));
+
+        // Compose the combo cell from the real Vibe Level catalog and the real
+        // multiplier ceiling rather than from a guessed longest string. The
+        // pulse marker and emphasis are the wide case, so use them.
+        var comboLayoutAccessibility = AccessibilityPresentationPolicy.FromSettings(
+            _shellSettings);
+        foreach (var level in VibeLevelDirector.Definitions)
+        {
+            var composed = ComboFeedback.Describe(
+                99,
+                10.0,
+                ComboFeedback.PulseTicks,
+                comboLayoutAccessibility,
+                level);
+            var comboLevel = composed.Level == "BUILDING"
+                ? string.Empty
+                : "  " + composed.Level;
+            RequireRunHudCell(
+                RunHudComboCell,
+                $"{composed.StaticMarker} {composed.Label}{comboLevel}");
+        }
+
+        // Walk every reachable hunger tick of every shipped mode instead of
+        // sampling phase boundaries, so a later starvation-budget change cannot
+        // silently widen this cell past its neighbour.
+        foreach (var mode in RunModeCatalog.All)
+        {
+            var config = RunModeCatalog.CreateConfig(mode);
+            for (var ticks = 0; ticks <= config.StarvationTicks; ticks++)
+            {
+                RequireRunHudCell(
+                    RunHudHungerCell,
+                    HungerFeedback.Describe(
+                        ticks,
+                        config.StarvationTicks,
+                        config.StarvationWarningTicks).Label);
             }
         }
 
@@ -14277,6 +14472,7 @@ public partial class Main : Node2D
             && maximumTextScaleLayoutPassed
             && agentViewerOverlayLayoutPassed
             && runHudTitleLayoutPassed
+            && runHudRowLayoutPassed
             && pseudoLocaleDeterministic
             && OnboardingCopyIds.All.Count == 18
             && rulesCopyIdsResolved
@@ -14302,6 +14498,8 @@ public partial class Main : Node2D
                 + $"[{string.Join(";", agentViewerOverlayFailures)}], "
                 + $"runHudTitleLayout={runHudTitleLayoutPassed} "
                 + $"[{string.Join(";", runHudTitleFailures)}], "
+                + $"runHudRowLayout={runHudRowLayoutPassed} "
+                + $"[{string.Join(";", runHudRowFailures)}], "
                 + $"deterministic={pseudoLocaleDeterministic}, "
                 + $"remainingDirectLabels={remainingDirectDrawLabelLiteralCount}, "
                 + $"remainingDirectPrompts={remainingDirectPromptLiteralCount}, "
@@ -14331,6 +14529,11 @@ public partial class Main : Node2D
             MaximumTextScaleLayoutPassed: maximumTextScaleLayoutPassed,
             AgentViewerOverlayLayoutPassed: agentViewerOverlayLayoutPassed,
             RunHudTitleLayoutPassed: runHudTitleLayoutPassed,
+            RunHudRowLayoutPassed: runHudRowLayoutPassed,
+            RunHudRowCellCount: runHudCellFontSizes.Count,
+            RunHudRowMinimumFontSize: runHudCellFontSizes.Count == 0
+                ? 0
+                : runHudCellFontSizes.Values.Min(),
             RulesCopyIdCount: OnboardingCopyIds.All.Count,
             RulesCopyIdsResolved: rulesCopyIdsResolved,
             FeedbackCopyIdCount: feedbackCopyIdCount,

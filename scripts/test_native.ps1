@@ -653,6 +653,9 @@ try {
         (-not $localizationEvidence.maximumTextScaleLayoutPassed) -or
         (-not $localizationEvidence.agentViewerOverlayLayoutPassed) -or
         (-not $localizationEvidence.runHudTitleLayoutPassed) -or
+        (-not $localizationEvidence.runHudRowLayoutPassed) -or
+        ($localizationEvidence.runHudRowCellCount -ne 6) -or
+        ($localizationEvidence.runHudRowMinimumFontSize -lt 14) -or
         ($localizationEvidence.rulesCopyIdCount -ne 18) -or
         (-not $localizationEvidence.rulesCopyIdsResolved) -or
         ($localizationEvidence.feedbackCopyIdCount -ne 24) -or
