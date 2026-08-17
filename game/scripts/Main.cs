@@ -8575,14 +8575,40 @@ public partial class Main : Node2D
             : sanitized[..(maximumCharacters - 3)] + "...";
     }
 
-    private string FitLabelToWidth(string value, int fontSize, float maximumWidth)
+    // Control characters would render as boxes or silently break a row, so every
+    // fitted label is sanitized first. The overwhelming majority of shell copy is
+    // already clean, and this runs for every fitted label on every drawn frame,
+    // so a clean string is returned as-is rather than copied.
+    private static string SanitizeLabel(string value)
     {
         ArgumentNullException.ThrowIfNull(value);
+        var index = 0;
+        while (index < value.Length && !char.IsControl(value[index]))
+        {
+            index++;
+        }
+
+        if (index == value.Length)
+        {
+            return value;
+        }
+
+        return string.Create(value.Length, value, static (destination, source) =>
+        {
+            for (var position = 0; position < source.Length; position++)
+            {
+                var character = source[position];
+                destination[position] = char.IsControl(character) ? ' ' : character;
+            }
+        });
+    }
+
+    private string FitLabelToWidth(string value, int fontSize, float maximumWidth)
+    {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(fontSize);
         ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(maximumWidth, 0.0f);
 
-        var sanitized = new string(
-            value.Select(character => char.IsControl(character) ? ' ' : character).ToArray());
+        var sanitized = SanitizeLabel(value);
         if (MeasureLabelWidth(sanitized, fontSize) <= maximumWidth)
         {
             return sanitized;
@@ -8621,14 +8647,22 @@ public partial class Main : Node2D
             throw new ArgumentOutOfRangeException(nameof(minimumFontSize));
         }
 
+        // This runs for every fitted label on every drawn frame, so the common
+        // case where the copy already fits costs exactly one measurement and no
+        // allocation. Only a label that still overflows at its floor pays for
+        // the elision search.
+        var sanitized = SanitizeLabel(value);
         var fontSize = preferredFontSize;
-        while (fontSize > minimumFontSize
-            && MeasureLabelWidth(value, fontSize) > maximumWidth)
+        var width = MeasureLabelWidth(sanitized, fontSize);
+        while (fontSize > minimumFontSize && width > maximumWidth)
         {
             fontSize--;
+            width = MeasureLabelWidth(sanitized, fontSize);
         }
 
-        return (fontSize, FitLabelToWidth(value, fontSize, maximumWidth));
+        return width <= maximumWidth
+            ? (fontSize, sanitized)
+            : (fontSize, FitLabelToWidth(sanitized, fontSize, maximumWidth));
     }
 
     private void DrawFittedLabel(
