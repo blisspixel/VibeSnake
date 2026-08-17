@@ -10,6 +10,8 @@ using VibeSnake.AgentViewer;
 using VibeSnake.Persistence;
 using VibeSnake.Rules;
 
+using static VibeSnake.Rules.Tests.AgentSurvivalTestFacts;
+
 namespace VibeSnake.Rules.Tests;
 
 [Collection(AgentHostIntegrationGroup.Name)]
@@ -248,8 +250,8 @@ public sealed class AgentViewerClientTests
                     Power: null),
             ],
         };
-        var validFrame = new AgentViewerFrameV8(
-            AgentViewerFrameV8.Contract,
+        var validFrame = new AgentViewerFrameV9(
+            AgentViewerFrameV9.Contract,
             0,
             AgentViewerOperationKind.Initial,
             StartTick: observation.Tick,
@@ -258,6 +260,7 @@ public sealed class AgentViewerClientTests
             BurstStopReason: null,
             BurstStopEvent: null,
             observation,
+            SurvivalFor(observation),
             AgentMatchEndReason.None,
             VerifiedResultAvailable: false);
         var completedObservation = observation with
@@ -620,8 +623,8 @@ public sealed class AgentViewerClientTests
             RunModeCatalog.CurrentModeVersion,
             9UL,
             AgentSeedVisibility.Open)).Observe();
-        var validFrame = new AgentViewerFrameV8(
-            AgentViewerFrameV8.Contract,
+        var validFrame = new AgentViewerFrameV9(
+            AgentViewerFrameV9.Contract,
             0,
             AgentViewerOperationKind.Initial,
             observation.Tick,
@@ -630,6 +633,7 @@ public sealed class AgentViewerClientTests
             BurstStopReason: null,
             BurstStopEvent: null,
             observation,
+            SurvivalFor(observation),
             AgentMatchEndReason.None,
             VerifiedResultAvailable: false);
         var validEvent = new AgentPublicEventV1(
@@ -781,8 +785,8 @@ public sealed class AgentViewerClientTests
             progress with { AllThresholdsReached = true },
             crownProgress,
         ];
-        var validFrame = new AgentViewerFrameV8(
-            AgentViewerFrameV8.Contract,
+        var validFrame = new AgentViewerFrameV9(
+            AgentViewerFrameV9.Contract,
             0,
             AgentViewerOperationKind.Initial,
             observation.Tick,
@@ -791,6 +795,7 @@ public sealed class AgentViewerClientTests
             BurstStopReason: null,
             BurstStopEvent: null,
             observation,
+            SurvivalFor(observation),
             AgentMatchEndReason.None,
             VerifiedResultAvailable: false,
             StyleOutcome: null);
@@ -820,8 +825,8 @@ public sealed class AgentViewerClientTests
             RunModeCatalog.CurrentModeVersion,
             9UL,
             AgentSeedVisibility.Open)).Observe();
-        var validFrame = new AgentViewerFrameV8(
-            AgentViewerFrameV8.Contract,
+        var validFrame = new AgentViewerFrameV9(
+            AgentViewerFrameV9.Contract,
             0,
             AgentViewerOperationKind.Initial,
             observation.Tick,
@@ -830,6 +835,7 @@ public sealed class AgentViewerClientTests
             BurstStopReason: null,
             BurstStopEvent: null,
             observation,
+            SurvivalFor(observation),
             AgentMatchEndReason.None,
             VerifiedResultAvailable: false);
         var validPayload = SerializeFrame(validFrame);
@@ -875,8 +881,8 @@ public sealed class AgentViewerClientTests
             9UL,
             AgentSeedVisibility.Open,
             styleContractId: AgentStyleContractCatalog.StillwaterId)).Observe();
-        var validFrame = new AgentViewerFrameV8(
-            AgentViewerFrameV8.Contract,
+        var validFrame = new AgentViewerFrameV9(
+            AgentViewerFrameV9.Contract,
             0,
             AgentViewerOperationKind.Initial,
             observation.Tick,
@@ -885,6 +891,7 @@ public sealed class AgentViewerClientTests
             BurstStopReason: null,
             BurstStopEvent: null,
             observation,
+            SurvivalFor(observation),
             AgentMatchEndReason.None,
             VerifiedResultAvailable: false,
             StyleOutcome: null);
@@ -905,7 +912,7 @@ public sealed class AgentViewerClientTests
                 "\"criteria\":[{\"unknown_criterion_member\":true,",
                 StringComparison.Ordinal),
             validPayload.Replace(
-                AgentViewerFrameV8.Contract,
+                AgentViewerFrameV9.Contract,
                 "vibesnake-agent-viewer-frame-v5",
                 StringComparison.Ordinal),
             validPayload.Replace(
@@ -1031,8 +1038,8 @@ public sealed class AgentViewerClientTests
             initial.Tick,
             initial.StateHash,
             AgentAction.Left)).Observation;
-        var first = new AgentViewerFrameV8(
-            AgentViewerFrameV8.Contract,
+        var first = new AgentViewerFrameV9(
+            AgentViewerFrameV9.Contract,
             0,
             AgentViewerOperationKind.Initial,
             initial.Tick,
@@ -1041,6 +1048,7 @@ public sealed class AgentViewerClientTests
             BurstStopReason: null,
             BurstStopEvent: null,
             initial,
+            SurvivalFor(initial),
             AgentMatchEndReason.None,
             VerifiedResultAvailable: false);
         var second = first with
@@ -1119,8 +1127,8 @@ public sealed class AgentViewerClientTests
             RunModeCatalog.CurrentModeVersion,
             4UL,
             AgentSeedVisibility.Open)).Observe();
-        var frame = new AgentViewerFrameV8(
-            AgentViewerFrameV8.Contract,
+        var frame = new AgentViewerFrameV9(
+            AgentViewerFrameV9.Contract,
             0,
             AgentViewerOperationKind.Initial,
             observation.Tick,
@@ -1129,6 +1137,7 @@ public sealed class AgentViewerClientTests
             BurstStopReason: null,
             BurstStopEvent: null,
             observation,
+            SurvivalFor(observation),
             AgentMatchEndReason.None,
             VerifiedResultAvailable: false);
         var invalid = oversized
@@ -1176,10 +1185,10 @@ public sealed class AgentViewerClientTests
             Lifecycle = AgentMatchLifecycle.FailedClosed,
             IsActionAwaited = false,
         };
-        (AgentViewerFrameV8 Frame, AgentViewerClientState State, string Status)[] cases =
+        (AgentViewerFrameV9 Frame, AgentViewerClientState State, string Status)[] cases =
         [
-            (new AgentViewerFrameV8(
-                AgentViewerFrameV8.Contract,
+            (new AgentViewerFrameV9(
+                AgentViewerFrameV9.Contract,
                 1,
                 AgentViewerOperationKind.Step,
                 StartTick: completedStart.Tick,
@@ -1188,13 +1197,14 @@ public sealed class AgentViewerClientTests
                 BurstStopReason: null,
                 BurstStopEvent: null,
                 completed,
+                SurvivalFor(completed),
                 AgentMatchEndReason.StepLimit,
                 VerifiedResultAvailable: true,
                 VerifiedReplayPayloadHash: new string('a', 64)),
                 AgentViewerClientState.Completed,
                 "STEP LIMIT"),
-            (new AgentViewerFrameV8(
-                AgentViewerFrameV8.Contract,
+            (new AgentViewerFrameV9(
+                AgentViewerFrameV9.Contract,
                 1,
                 AgentViewerOperationKind.Finish,
                 StartTick: abortedStart.Tick,
@@ -1203,13 +1213,14 @@ public sealed class AgentViewerClientTests
                 BurstStopReason: null,
                 BurstStopEvent: null,
                 aborted,
+                SurvivalFor(aborted),
                 AgentMatchEndReason.AgentFinished,
                 VerifiedResultAvailable: true,
                 VerifiedReplayPayloadHash: new string('b', 64)),
                 AgentViewerClientState.Completed,
                 "AGENT FINISHED MATCH"),
-            (new AgentViewerFrameV8(
-                AgentViewerFrameV8.Contract,
+            (new AgentViewerFrameV9(
+                AgentViewerFrameV9.Contract,
                 1,
                 AgentViewerOperationKind.Finish,
                 StartTick: failed.Tick,
@@ -1218,6 +1229,7 @@ public sealed class AgentViewerClientTests
                 BurstStopReason: null,
                 BurstStopEvent: null,
                 failed,
+                SurvivalFor(failed),
                 AgentMatchEndReason.ReplayFailure,
                 VerifiedResultAvailable: false),
                 AgentViewerClientState.FailedClosed,
@@ -1266,10 +1278,10 @@ public sealed class AgentViewerClientTests
             first.Observation.Tick,
             first.Observation.StateHash,
             AgentAction.Right));
-        AgentViewerFrameV8[] frames =
+        AgentViewerFrameV9[] frames =
         [
             new(
-                AgentViewerFrameV8.Contract,
+                AgentViewerFrameV9.Contract,
                 0,
                 AgentViewerOperationKind.Initial,
                 StartTick: initial.Tick,
@@ -1278,10 +1290,11 @@ public sealed class AgentViewerClientTests
                 BurstStopReason: null,
                 BurstStopEvent: null,
                 initial,
+                SurvivalFor(initial),
                 AgentMatchEndReason.None,
                 VerifiedResultAvailable: false),
             new(
-                AgentViewerFrameV8.Contract,
+                AgentViewerFrameV9.Contract,
                 1,
                 AgentViewerOperationKind.Step,
                 StartTick: initial.Tick,
@@ -1290,10 +1303,11 @@ public sealed class AgentViewerClientTests
                 BurstStopReason: null,
                 BurstStopEvent: null,
                 first.Observation,
+                SurvivalFor(first.Observation),
                 AgentMatchEndReason.None,
                 VerifiedResultAvailable: false),
             new(
-                AgentViewerFrameV8.Contract,
+                AgentViewerFrameV9.Contract,
                 2,
                 AgentViewerOperationKind.Step,
                 StartTick: first.Observation.Tick,
@@ -1302,6 +1316,7 @@ public sealed class AgentViewerClientTests
                 BurstStopReason: null,
                 BurstStopEvent: null,
                 second.Observation,
+                SurvivalFor(second.Observation),
                 AgentMatchEndReason.None,
                 VerifiedResultAvailable: false),
         ];
@@ -1356,8 +1371,8 @@ public sealed class AgentViewerClientTests
             AgentAction.Up,
             maximumSteps: 2));
         Assert.Equal(2, burst.StepsAdvanced);
-        var frame = new AgentViewerFrameV8(
-            AgentViewerFrameV8.Contract,
+        var frame = new AgentViewerFrameV9(
+            AgentViewerFrameV9.Contract,
             1,
             AgentViewerOperationKind.Burst,
             initial.Tick,
@@ -1366,6 +1381,7 @@ public sealed class AgentViewerClientTests
             burst.StopReason,
             burst.StopEvent,
             burst.Observation,
+            SurvivalFor(burst.Observation),
             AgentMatchEndReason.None,
             VerifiedResultAvailable: false);
         var pipeName = CreateTestPipeName();
@@ -1799,8 +1815,8 @@ public sealed class AgentViewerClientTests
             AgentAction.Continue));
         var terminal = response.Observation;
         var outcome = Assert.IsType<AgentStyleOutcomeV3>(response.MatchResult!.StyleOutcome);
-        var validFrame = new AgentViewerFrameV8(
-            AgentViewerFrameV8.Contract,
+        var validFrame = new AgentViewerFrameV9(
+            AgentViewerFrameV9.Contract,
             Sequence: 1,
             AgentViewerOperationKind.Step,
             StartTick: initial.Tick,
@@ -1809,6 +1825,7 @@ public sealed class AgentViewerClientTests
             BurstStopReason: null,
             BurstStopEvent: null,
             terminal,
+            SurvivalFor(terminal),
             AgentMatchEndReason.StepLimit,
             VerifiedResultAvailable: true,
             outcome.ReplayPayloadHash,
@@ -1822,7 +1839,7 @@ public sealed class AgentViewerClientTests
             Denominator = 1,
             ThresholdReached = false,
         };
-        AgentViewerFrameV8[] invalidFrames =
+        AgentViewerFrameV9[] invalidFrames =
         [
             validFrame with { StyleOutcome = null },
             validFrame with { StyleOutcome = outcome with { Schema = "wrong" } },
@@ -1848,8 +1865,8 @@ public sealed class AgentViewerClientTests
                 Observation = terminal with { StyleContract = null },
                 StyleOutcome = outcome,
             },
-            new AgentViewerFrameV8(
-                AgentViewerFrameV8.Contract,
+            new AgentViewerFrameV9(
+                AgentViewerFrameV9.Contract,
                 Sequence: 1,
                 AgentViewerOperationKind.Finish,
                 StartTick: initial.Tick,
@@ -1862,6 +1879,7 @@ public sealed class AgentViewerClientTests
                     Lifecycle = AgentMatchLifecycle.FailedClosed,
                     IsActionAwaited = false,
                 },
+                SurvivalFor(initial),
                 AgentMatchEndReason.ReplayFailure,
                 VerifiedResultAvailable: false,
                 null,
@@ -1901,8 +1919,8 @@ public sealed class AgentViewerClientTests
         var result = session.Finish();
         var terminal = session.Observe();
         var outcome = Assert.IsType<AgentLessonOutcomeV3>(result.LessonOutcome);
-        var validFrame = new AgentViewerFrameV8(
-            AgentViewerFrameV8.Contract,
+        var validFrame = new AgentViewerFrameV9(
+            AgentViewerFrameV9.Contract,
             Sequence: 3,
             AgentViewerOperationKind.Finish,
             StartTick: terminal.Tick,
@@ -1911,6 +1929,7 @@ public sealed class AgentViewerClientTests
             BurstStopReason: null,
             BurstStopEvent: null,
             terminal,
+            SurvivalFor(terminal),
             AgentMatchEndReason.AgentFinished,
             VerifiedResultAvailable: true,
             VerifiedReplayPayloadHash: outcome.ReplayPayloadHash,
@@ -1918,7 +1937,7 @@ public sealed class AgentViewerClientTests
             LessonOutcome: outcome);
         var first = outcome.Requirements[0];
         var second = outcome.Requirements[1];
-        AgentViewerFrameV8[] invalidFrames =
+        AgentViewerFrameV9[] invalidFrames =
         [
             validFrame with
             {
@@ -2027,8 +2046,8 @@ public sealed class AgentViewerClientTests
             initialFrame.Observation.StateHash,
             AgentAction.Continue));
         var result = Assert.IsType<AgentMatchResultV5>(response.MatchResult);
-        var terminalFrame = new AgentViewerFrameV8(
-            AgentViewerFrameV8.Contract,
+        var terminalFrame = new AgentViewerFrameV9(
+            AgentViewerFrameV9.Contract,
             Sequence: 1,
             AgentViewerOperationKind.Step,
             StartTick: initialFrame.Observation.Tick,
@@ -2037,6 +2056,7 @@ public sealed class AgentViewerClientTests
             BurstStopReason: null,
             BurstStopEvent: null,
             response.Observation,
+            SurvivalFor(response.Observation),
             result.EndReason,
             VerifiedResultAvailable: true,
             result.StyleOutcome!.ReplayPayloadHash,
@@ -2059,7 +2079,7 @@ public sealed class AgentViewerClientTests
         var valid = SerializeFrame(CreateInitialFrame(observation));
         string[] invalidPayloads =
         [
-            $"{{\"schema\":\"{AgentViewerFrameV8.Contract}\"," + valid[1..],
+            $"{{\"schema\":\"{AgentViewerFrameV9.Contract}\"," + valid[1..],
             valid.Replace(
                 "\"criterion_id\":\"survival_steps\"",
                 "\"criterion_id\":\"survival_steps\","
@@ -2416,8 +2436,8 @@ public sealed class AgentViewerClientTests
         var terminal = completed.Observation;
         var progress = Assert.IsType<AgentLessonProgressV3>(terminal.LessonProgress);
         var outcome = Assert.IsType<AgentLessonOutcomeV3>(result.LessonOutcome);
-        var valid = new AgentViewerFrameV8(
-            AgentViewerFrameV8.Contract,
+        var valid = new AgentViewerFrameV9(
+            AgentViewerFrameV9.Contract,
             Sequence: terminal.Tick,
             AgentViewerOperationKind.Step,
             StartTick: terminal.Tick - 1,
@@ -2426,6 +2446,7 @@ public sealed class AgentViewerClientTests
             BurstStopReason: null,
             BurstStopEvent: null,
             terminal,
+            SurvivalFor(terminal),
             AgentMatchEndReason.RulesTerminal,
             VerifiedResultAvailable: true,
             VerifiedReplayPayloadHash: outcome.ReplayPayloadHash,
@@ -2581,8 +2602,8 @@ public sealed class AgentViewerClientTests
         var outcome = Assert.IsType<AgentLessonOutcomeV3>(result.LessonOutcome);
         Assert.Equal(result.ReplayPayloadHash, outcome.ReplayPayloadHash);
 
-        var terminalFrame = new AgentViewerFrameV8(
-            AgentViewerFrameV8.Contract,
+        var terminalFrame = new AgentViewerFrameV9(
+            AgentViewerFrameV9.Contract,
             Sequence: 1,
             AgentViewerOperationKind.Finish,
             StartTick: terminal.Tick,
@@ -2591,6 +2612,7 @@ public sealed class AgentViewerClientTests
             BurstStopReason: null,
             BurstStopEvent: null,
             terminal,
+            SurvivalFor(terminal),
             AgentMatchEndReason.AgentFinished,
             VerifiedResultAvailable: true,
             VerifiedReplayPayloadHash: result.ReplayPayloadHash,
@@ -2622,9 +2644,139 @@ public sealed class AgentViewerClientTests
         });
     }
 
-    private static AgentViewerFrameV8 CreateInitialFrame(AgentObservationV5 observation) =>
+    [Fact]
+    public async Task Viewer_client_rejects_a_survival_block_that_disagrees_with_the_board()
+    {
+        var session = new AgentMatchSession(new AgentMatchOptions(
+            "survival-truth",
+            RunModeCatalog.VibeId,
+            RunModeCatalog.CurrentModeVersion,
+            4242UL,
+            AgentSeedVisibility.Open));
+        var observation = session.Observe();
+        var validFrame = CreateInitialFrame(observation);
+        await AssertViewerAcceptsAsync(validFrame);
+
+        var survival = validFrame.SurvivalState;
+        var resources = survival.RecoveryResources.ToArray();
+        AgentViewerFrameV9[] invalidFrames =
+        [
+            validFrame with { SurvivalState = survival with { Schema = "wrong" } },
+            validFrame with
+            {
+                SurvivalState = survival with
+                {
+                    StructuralOpenExits = survival.StructuralOpenExits - 1,
+                },
+            },
+            validFrame with { SurvivalState = survival with { CandidateExits = 4 } },
+            validFrame with
+            {
+                SurvivalState = survival with { ExitPressure = AgentExitPressureV1.Trapped },
+            },
+            validFrame with { SurvivalState = survival with { HeldRecoveryCount = 1 } },
+            validFrame with
+            {
+                SurvivalState = survival with
+                {
+                    RecoveryResources = resources.Reverse().ToArray(),
+                },
+            },
+            validFrame with
+            {
+                SurvivalState = survival with
+                {
+                    RecoveryResources = resources.Take(3).ToArray(),
+                },
+            },
+            validFrame with
+            {
+                SurvivalState = survival with
+                {
+                    RecoveryResources = resources
+                        .Select(item => item.Kind == AgentRecoveryResourceKind.Shield
+                            ? item with { Held = true, TicksRemaining = 40 }
+                            : item)
+                        .ToArray(),
+                },
+            },
+        ];
+        foreach (var invalid in invalidFrames)
+        {
+            await AssertViewerRejectsAsync(invalid);
+        }
+    }
+
+    [Fact]
+    public async Task Viewer_client_requires_the_survival_block_to_be_present()
+    {
+        var session = new AgentMatchSession(new AgentMatchOptions(
+            "survival-required",
+            RunModeCatalog.ClassicId,
+            RunModeCatalog.CurrentModeVersion,
+            99UL,
+            AgentSeedVisibility.Open));
+        var payload = JsonNode.Parse(SerializeFrame(CreateInitialFrame(session.Observe())))!
+            .AsObject();
+        Assert.NotNull(payload["survival_state"]);
+        payload.Remove("survival_state");
+
+        await AssertViewerRejectsPayloadAsync(payload.ToJsonString());
+    }
+
+    [Theory]
+    [InlineData(1, AgentExitPressureV1.Narrow)]
+    [InlineData(2, AgentExitPressureV1.Pinned)]
+    [InlineData(3, AgentExitPressureV1.Trapped)]
+    public async Task Viewer_client_tracks_a_board_that_closes_around_the_head(
+        int blockedExits,
+        AgentExitPressureV1 expected)
+    {
+        // The viewer must read the board rather than always answering OPEN, so
+        // occupy exits one at a time and require the pressure tier to follow.
+        var session = new AgentMatchSession(new AgentMatchOptions(
+            "survival-closing",
+            RunModeCatalog.VibeId,
+            RunModeCatalog.CurrentModeVersion,
+            4242UL,
+            AgentSeedVisibility.Open));
+        var observation = session.Observe();
+        var head = new GridPoint(observation.Head.X, observation.Head.Y);
+        var tail = Wrapped(observation, head, observation.Direction.Opposite());
+        var blockers = Enum.GetValues<Direction>()
+            .Where(direction => direction != observation.Direction.Opposite())
+            .Take(blockedExits)
+            .Select(direction => Wrapped(observation, head, direction))
+            .ToArray();
+        var closed = observation with
+        {
+            Body = Array.AsReadOnly(
+                new[] { tail }.Concat(blockers).Append(observation.Head).ToArray()),
+        };
+        var survival = AgentSurvivalTestFacts.SurvivalFor(closed);
+        Assert.Equal(expected, survival.ExitPressure);
+        Assert.Equal(
+            AgentSurvivalStateV1.RunningCandidateExits - blockedExits,
+            survival.StructuralOpenExits);
+
+        await AssertViewerAcceptsAsync(
+            CreateInitialFrame(closed) with { SurvivalState = survival });
+    }
+
+    private static AgentPointV1 Wrapped(
+        AgentObservationV5 observation,
+        GridPoint origin,
+        Direction direction)
+    {
+        var point = origin
+            .Add(direction.Offset())
+            .Wrap(observation.BoardWidth, observation.BoardHeight);
+        return new AgentPointV1(point.X, point.Y);
+    }
+
+    private static AgentViewerFrameV9 CreateInitialFrame(AgentObservationV5 observation) =>
         new(
-            AgentViewerFrameV8.Contract,
+            AgentViewerFrameV9.Contract,
             Sequence: 0,
             AgentViewerOperationKind.Initial,
             StartTick: observation.Tick,
@@ -2633,14 +2785,15 @@ public sealed class AgentViewerClientTests
             BurstStopReason: null,
             BurstStopEvent: null,
             observation,
+            SurvivalFor(observation),
             AgentMatchEndReason.None,
             VerifiedResultAvailable: false,
             StyleOutcome: null);
 
-    private static Task AssertViewerRejectsAsync(AgentViewerFrameV8 frame) =>
+    private static Task AssertViewerRejectsAsync(AgentViewerFrameV9 frame) =>
         AssertViewerRejectsPayloadAsync(SerializeFrame(frame));
 
-    private static async Task AssertViewerAcceptsAsync(AgentViewerFrameV8 frame)
+    private static async Task AssertViewerAcceptsAsync(AgentViewerFrameV9 frame)
     {
         var pipeName = CreateTestPipeName();
         var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -2726,7 +2879,7 @@ public sealed class AgentViewerClientTests
         Assert.False(client.TryTakeLatest(out _, out _));
     }
 
-    private static string SerializeFrame(AgentViewerFrameV8 frame) =>
+    private static string SerializeFrame(AgentViewerFrameV9 frame) =>
         JsonSerializer.Serialize(frame, ViewerJsonOptions) + "\n";
 
     private static string CreateTestPipeName() =>
@@ -2742,7 +2895,7 @@ public sealed class AgentViewerClientTests
         return options;
     }
 
-    private static async Task<AgentViewerFrameV8> TakeFrameAsync(
+    private static async Task<AgentViewerFrameV9> TakeFrameAsync(
         AgentViewerClient client,
         long minimumSequence = 0)
     {

@@ -213,6 +213,17 @@ internal static class ShellLocalization
         Entry("agent-arena.run.live", "AGENT LIVE"),
         Entry("agent-arena.run.complete", "AGENT COMPLETE"),
         Entry("agent-arena.run.failed", "AGENT FAILED CLOSED"),
+        Entry(
+            "agent-arena.survival",
+            "EXITS {open}/{candidate}  PRESSURE {pressure}  RECOVERY SHIELD {shield}"
+                + " PHASE {phase} LAST STAND {last_stand} SLOW {slow}"),
+        Entry("agent-arena.pressure.not-running", "NOT RUNNING"),
+        Entry("agent-arena.pressure.open", "OPEN"),
+        Entry("agent-arena.pressure.narrow", "NARROW"),
+        Entry("agent-arena.pressure.pinned", "PINNED"),
+        Entry("agent-arena.pressure.trapped", "TRAPPED"),
+        Entry("agent-arena.recovery.held", "HELD"),
+        Entry("agent-arena.recovery.none", "-"),
         Entry("agent-arena.style.open", "OPEN EXHIBITION"),
         Entry("agent-arena.rival.solo", "SOLO"),
         Entry(

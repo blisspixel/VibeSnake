@@ -28,7 +28,7 @@ public sealed class AgentViewerClient : IDisposable
     private readonly string _accessToken;
     private readonly CancellationTokenSource _shutdown = new();
     private readonly Task _readerTask;
-    private AgentViewerFrameV8? _latestFrame;
+    private AgentViewerFrameV9? _latestFrame;
     private long _lastPresentedSequence = -1;
     private AgentViewerClientState _state = AgentViewerClientState.Connecting;
     private string _status = "CONNECTING TO AGENT MATCH";
@@ -71,7 +71,7 @@ public sealed class AgentViewerClient : IDisposable
     }
 
     public bool TryTakeLatest(
-        out AgentViewerFrameV8? frame,
+        out AgentViewerFrameV9? frame,
         out long coalescedFrames)
     {
         lock (_sync)
@@ -143,7 +143,7 @@ public sealed class AgentViewerClient : IDisposable
             await pipe.FlushAsync(cancellationToken).ConfigureAwait(false);
 
             long lastSequence = -1;
-            AgentViewerFrameV8? lastFrame = null;
+            AgentViewerFrameV9? lastFrame = null;
             while (!cancellationToken.IsCancellationRequested)
             {
                 var line = await ReadLineBoundedAsync(pipe, cancellationToken).ConfigureAwait(false);
@@ -159,9 +159,9 @@ public sealed class AgentViewerClient : IDisposable
                     return;
                 }
 
-                var frame = JsonSerializer.Deserialize<AgentViewerFrameV8>(line, SerializerOptions);
+                var frame = JsonSerializer.Deserialize<AgentViewerFrameV9>(line, SerializerOptions);
                 if (frame is null
-                    || frame.Schema != AgentViewerFrameV8.Contract
+                    || frame.Schema != AgentViewerFrameV9.Contract
                     || frame.Observation is null
                     || frame.Observation.Schema != AgentObservationV5.Contract
                     || !HasValidObservationShape(frame.Observation)
@@ -171,6 +171,7 @@ public sealed class AgentViewerClient : IDisposable
                         && !HasConsistentIdentity(lastFrame.Observation, frame.Observation)
                     || lastFrame is not null
                         && !HasStableReplayIdentity(lastFrame, frame)
+                    || !HasConsistentSurvivalState(frame)
                     || !HasConsistentOutcome(frame))
                 {
                     SetTerminalState(
@@ -214,8 +215,8 @@ public sealed class AgentViewerClient : IDisposable
     }
 
     private static bool HasConsistentOperation(
-        AgentViewerFrameV8 frame,
-        AgentViewerFrameV8? previousFrame)
+        AgentViewerFrameV9 frame,
+        AgentViewerFrameV9? previousFrame)
     {
         if (frame.Sequence < 0
             || frame.StartTick < 0
@@ -276,7 +277,7 @@ public sealed class AgentViewerClient : IDisposable
         };
     }
 
-    private static bool HasConsistentBurst(AgentViewerFrameV8 frame)
+    private static bool HasConsistentBurst(AgentViewerFrameV9 frame)
     {
         if (frame.Sequence <= 0
             || frame.StepsAdvanced > AgentBurstRequest.MaximumBurstSteps
@@ -303,6 +304,88 @@ public sealed class AgentViewerClient : IDisposable
         var selectedEvent = frame.Observation.PreviousEvents
             .FirstOrDefault(item => AgentBurstPolicy.Stops.Contains(item.Kind));
         return selectedEvent?.Kind == stopEvent;
+    }
+
+    // The survival block is presentation, so it is only worth showing if it cannot
+    // disagree with the board in the same frame. Every value is recomputed here
+    // from the public observation and compared exactly; the host derives its copy
+    // from the authoritative run snapshot instead.
+    private static bool HasConsistentSurvivalState(AgentViewerFrameV9 frame)
+    {
+        var survival = frame.SurvivalState;
+        if (survival is null
+            || !string.Equals(
+                survival.Schema,
+                AgentSurvivalStateV1.Contract,
+                StringComparison.Ordinal)
+            || survival.RecoveryResources is null)
+        {
+            return false;
+        }
+
+        var observation = frame.Observation;
+        var expected = AgentSurvivalStateV1.Create(
+            observation.Status == RunStatus.Running,
+            RecomputeStructuralOpenExits(observation),
+            observation.ShieldTicksRemaining,
+            observation.PhaseShiftTicksRemaining,
+            observation.LastStandHeld,
+            observation.LastStandRecoveryTicksRemaining,
+            observation.SlowMoTicksRemaining);
+        return survival.CandidateExits == expected.CandidateExits
+            && survival.StructuralOpenExits == expected.StructuralOpenExits
+            && survival.ExitPressure == expected.ExitPressure
+            && Enum.IsDefined(survival.ExitPressure)
+            && survival.HeldRecoveryCount == expected.HeldRecoveryCount
+            && survival.RecoveryResources.Count == expected.RecoveryResources.Count
+            && survival.RecoveryResources
+                .Zip(expected.RecoveryResources)
+                .All(pair =>
+                    pair.First is not null
+                    && pair.First.Kind == pair.Second.Kind
+                    && pair.First.Held == pair.Second.Held
+                    && pair.First.TicksRemaining == pair.Second.TicksRemaining);
+    }
+
+    // The same structural-exit definition the Stillwater criterion uses, read from
+    // the public observation rather than from rules state.
+    private static int RecomputeStructuralOpenExits(AgentObservationV5 observation)
+    {
+        if (observation.Status != RunStatus.Running || observation.Body.Count == 0)
+        {
+            return 0;
+        }
+
+        var effectiveDirection = observation.PendingDirections.Count == 0
+            ? observation.Direction
+            : observation.PendingDirections[^1];
+        var openExits = 0;
+        foreach (var candidateDirection in Enum.GetValues<Direction>())
+        {
+            if (candidateDirection == effectiveDirection.Opposite())
+            {
+                continue;
+            }
+
+            var wrapped = new GridPoint(observation.Head.X, observation.Head.Y)
+                .Add(candidateDirection.Offset())
+                .Wrap(observation.BoardWidth, observation.BoardHeight);
+            var candidate = new AgentPointV1(wrapped.X, wrapped.Y);
+            var grows = observation.Food == candidate
+                && observation.GluttonyTicksRemaining <= 0;
+            var movesOntoDepartingTail = !grows
+                && candidate == observation.Body[0]
+                && !observation.Body.Skip(1).Contains(candidate);
+            var structurallyBlocked =
+                observation.Body.Contains(candidate) && !movesOntoDepartingTail
+                || observation.DetachedObstacles.Contains(candidate);
+            if (!structurallyBlocked)
+            {
+                openExits++;
+            }
+        }
+
+        return openExits;
     }
 
     private static bool HasValidObservationShape(AgentObservationV5 observation) =>
@@ -821,7 +904,7 @@ public sealed class AgentViewerClient : IDisposable
                 StringComparison.Ordinal)
             && string.Equals(expected.DisplayName, actual.DisplayName, StringComparison.Ordinal);
 
-    private static bool HasConsistentOutcome(AgentViewerFrameV8 frame)
+    private static bool HasConsistentOutcome(AgentViewerFrameV9 frame)
     {
         var observation = frame.Observation;
         if (!HasConsistentEndReason(frame)
@@ -913,8 +996,8 @@ public sealed class AgentViewerClient : IDisposable
     // A match finalizes once, so a published replay identity can appear but never
     // change or disappear on a later frame.
     private static bool HasStableReplayIdentity(
-        AgentViewerFrameV8 previousFrame,
-        AgentViewerFrameV8 frame) =>
+        AgentViewerFrameV9 previousFrame,
+        AgentViewerFrameV9 frame) =>
         previousFrame.VerifiedReplayPayloadHash is not { } published
         || string.Equals(
             published,
@@ -923,7 +1006,7 @@ public sealed class AgentViewerClient : IDisposable
 
     // A replay payload hash exists only alongside a verified result, and a verified
     // lesson or style outcome must name the same replay the frame advertises.
-    private static bool HasConsistentReplayIdentity(AgentViewerFrameV8 frame)
+    private static bool HasConsistentReplayIdentity(AgentViewerFrameV9 frame)
     {
         if (!frame.VerifiedResultAvailable)
         {
@@ -947,7 +1030,7 @@ public sealed class AgentViewerClient : IDisposable
                     StringComparison.Ordinal));
     }
 
-    private static bool HasConsistentRunEnd(AgentViewerFrameV8 frame) =>
+    private static bool HasConsistentRunEnd(AgentViewerFrameV9 frame) =>
         frame.EndReason switch
         {
             AgentMatchEndReason.None => frame.Observation.Status == RunStatus.Running,
@@ -961,7 +1044,7 @@ public sealed class AgentViewerClient : IDisposable
             _ => false,
         };
 
-    private static bool HasConsistentEndReason(AgentViewerFrameV8 frame)
+    private static bool HasConsistentEndReason(AgentViewerFrameV9 frame)
     {
         if (frame.Operation == AgentViewerOperationKind.Finish)
         {
@@ -1013,7 +1096,7 @@ public sealed class AgentViewerClient : IDisposable
     }
 
     private static (AgentViewerClientState State, string Status) DescribeFrame(
-        AgentViewerFrameV8 frame) => frame.EndReason switch
+        AgentViewerFrameV9 frame) => frame.EndReason switch
         {
             AgentMatchEndReason.None => (
                 AgentViewerClientState.Watching,

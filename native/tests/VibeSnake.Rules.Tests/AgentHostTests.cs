@@ -14,6 +14,8 @@ using VibeSnake.AgentViewer;
 using VibeSnake.Persistence;
 using VibeSnake.Rules;
 
+using static VibeSnake.Rules.Tests.AgentSurvivalTestFacts;
+
 namespace VibeSnake.Rules.Tests;
 
 [Collection(AgentHostIntegrationGroup.Name)]
@@ -755,7 +757,7 @@ public sealed class AgentHostTests
         var playbook = AgentResources.GetPlaybook();
 
         Assert.Equal(
-            "vibesnake-agent-rules-resource-v11",
+            "vibesnake-agent-rules-resource-v12",
             rules.RootElement.GetProperty("contract").GetString());
         var lifecycleSemantics = rules.RootElement.GetProperty("lifecycle_semantics");
         Assert.Contains(
@@ -824,7 +826,7 @@ public sealed class AgentHostTests
             rules.RootElement.GetProperty("burst").GetProperty("maximum_steps").GetInt32());
         var viewer = rules.RootElement.GetProperty("viewer");
         Assert.Equal(
-            AgentViewerFrameV8.Contract,
+            AgentViewerFrameV9.Contract,
             viewer.GetProperty("frame_contract").GetString());
         Assert.Equal(
             ["initial", "step", "burst", "finish"],
@@ -1247,7 +1249,7 @@ public sealed class AgentHostTests
         Assert.NotNull(host.Services);
         Assert.NotNull(defaultHost.Services);
         Assert.Equal("vibesnake-agent-host", Program.HostName);
-        Assert.Equal("0.10.0", Program.HostVersion);
+        Assert.Equal("0.11.0", Program.HostVersion);
         Assert.Throws<ArgumentNullException>(() =>
             Program.CreateHostApplicationBuilder(null!, temporary.Path));
     }
@@ -1796,7 +1798,7 @@ public sealed class AgentHostTests
             resource => resource.Uri == "vibesnake://agent/identity");
         var rulesText = Assert.IsType<TextResourceContents>(Assert.Single(rules.Contents));
         Assert.Contains(
-            "vibesnake-agent-rules-resource-v11",
+            "vibesnake-agent-rules-resource-v12",
             rulesText.Text,
             StringComparison.Ordinal);
         Assert.False(moved.IsError ?? false);
@@ -1806,7 +1808,7 @@ public sealed class AgentHostTests
         Assert.True(moved.StructuredContent!.Value.GetProperty("accepted").GetBoolean());
         Assert.Equal(2, moved.StructuredContent.Value.GetProperty("steps_advanced").GetInt32());
         Assert.Equal(AgentViewerOperationKind.Burst, terminalViewerFrame.Operation);
-        Assert.Equal(AgentViewerFrameV8.Contract, terminalViewerFrame.Schema);
+        Assert.Equal(AgentViewerFrameV9.Contract, terminalViewerFrame.Schema);
         Assert.Equal(2, terminalViewerFrame.StepsAdvanced);
         Assert.Equal(AgentBurstStopReason.MatchStepLimit, terminalViewerFrame.BurstStopReason);
         Assert.Equal(AgentMatchEndReason.StepLimit, terminalViewerFrame.EndReason);
@@ -1885,12 +1887,12 @@ public sealed class AgentHostTests
         };
     }
 
-    private static async Task<AgentViewerFrameV8> TakeViewerFrameAsync(
+    private static async Task<AgentViewerFrameV9> TakeViewerFrameAsync(
         AgentViewerClient client,
         long minimumSequence) =>
         (await TakeViewerDeliveryAsync(client, minimumSequence)).Frame;
 
-    private static async Task<(AgentViewerFrameV8 Frame, long CoalescedFrames)>
+    private static async Task<(AgentViewerFrameV9 Frame, long CoalescedFrames)>
         TakeViewerDeliveryAsync(
             AgentViewerClient client,
             long minimumSequence)
@@ -2069,8 +2071,8 @@ public sealed class AgentHostTests
             RunModeCatalog.CurrentModeVersion,
             1UL,
             AgentSeedVisibility.Open)).Observe();
-        Assert.True(server.TryPublish(new AgentViewerFrameV8(
-            AgentViewerFrameV8.Contract,
+        Assert.True(server.TryPublish(new AgentViewerFrameV9(
+            AgentViewerFrameV9.Contract,
             0,
             AgentViewerOperationKind.Initial,
             StartTick: initialObservation.Tick,
@@ -2079,6 +2081,7 @@ public sealed class AgentHostTests
             BurstStopReason: null,
             BurstStopEvent: null,
             initialObservation,
+            SurvivalFor(initialObservation),
             AgentMatchEndReason.None,
             VerifiedResultAvailable: false)));
         server.Dispose();
@@ -2088,8 +2091,8 @@ public sealed class AgentHostTests
             RunModeCatalog.CurrentModeVersion,
             2UL,
             AgentSeedVisibility.Open)).Observe();
-        Assert.False(server.TryPublish(new AgentViewerFrameV8(
-            AgentViewerFrameV8.Contract,
+        Assert.False(server.TryPublish(new AgentViewerFrameV9(
+            AgentViewerFrameV9.Contract,
             1,
             AgentViewerOperationKind.Initial,
             StartTick: secondObservation.Tick,
@@ -2098,6 +2101,7 @@ public sealed class AgentHostTests
             BurstStopReason: null,
             BurstStopEvent: null,
             secondObservation,
+            SurvivalFor(secondObservation),
             AgentMatchEndReason.None,
             VerifiedResultAvailable: false)));
 

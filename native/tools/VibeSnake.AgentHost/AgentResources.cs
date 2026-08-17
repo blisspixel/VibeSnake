@@ -65,7 +65,7 @@ public sealed class AgentResources
     public static string GetRules() => JsonSerializer.Serialize(
         new
         {
-            contract = "vibesnake-agent-rules-resource-v11",
+            contract = "vibesnake-agent-rules-resource-v12",
             ruleset_id = RulesetIdentity.CurrentId,
             rules_version = RulesetIdentity.CurrentVersion,
             observation_schema = AgentObservationV5.Contract,
@@ -93,7 +93,7 @@ public sealed class AgentResources
             },
             viewer = new
             {
-                frame_contract = AgentViewerFrameV8.Contract,
+                frame_contract = AgentViewerFrameV9.Contract,
                 operations = Enum.GetNames<AgentViewerOperationKind>()
                     .Select(JsonNamingPolicy.SnakeCaseLower.ConvertName),
                 pre_mutation_tick_and_state_hash = true,
@@ -102,6 +102,20 @@ public sealed class AgentResources
                 monotonic_sequence = true,
                 delivery = "The host retains only the newest unsent frame. Consumers report sequence gaps as coalesced earlier updates; the verified replay remains canonical.",
                 awaiting_agent = "Awaiting an agent action pauses rules and score while the viewer remains presentation-only.",
+                survival_state = new
+                {
+                    contract = AgentSurvivalStateV1.Contract,
+                    candidate_exits = AgentSurvivalStateV1.RunningCandidateExits,
+                    exit_pressure = Enum.GetNames<AgentExitPressureV1>()
+                        .Select(JsonNamingPolicy.SnakeCaseLower.ConvertName),
+                    recovery_resources = AgentSurvivalStateV1.RecoveryOrder
+                        .Select(value =>
+                            JsonNamingPolicy.SnakeCaseLower.ConvertName(value.ToString())),
+                    definition = "structural_open_exits counts the non-reversal directions whose next cell is not occupied by the body or a detached obstacle, using the departing-tail rule. It is the same structural-exit definition the Stillwater style criterion measures.",
+                    derivation = "Every survival field is derived from public board state the same frame already carries. A viewer recomputes all of it from the observation and rejects a frame that disagrees with itself.",
+                    boundary = "exit_pressure is a threshold crossing of structural_open_exits, not a grade, a prediction, or advice. The block never names a direction to take, and an agent that wants a route must still compute one.",
+                    scope = "This block is spectator presentation on the viewer frame. The agent observation is unchanged, because an agent can already derive every one of these facts from the board it receives.",
+                },
             },
             intent_semantics = "A public intent is an optional self-declared presentation label. It never changes rules, score, rewards, replay verification, or qualification.",
             lifecycle_semantics = new

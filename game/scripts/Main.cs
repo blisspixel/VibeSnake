@@ -184,7 +184,7 @@ public partial class Main : Node2D
 
 #if AGENT_ARENA_PREVIEW
     private AgentViewerClient? _agentViewer;
-    private AgentViewerFrameV8? _agentViewerFrame;
+    private AgentViewerFrameV9? _agentViewerFrame;
     private long _agentViewerCoalescedFrames;
     private bool _agentViewerSnappedLatestFrame;
     private RunSnapshot? _agentViewerSnapshot;
@@ -9954,7 +9954,7 @@ public partial class Main : Node2D
         _ => throw new ArgumentOutOfRangeException(nameof(endReason)),
     };
 
-    private string AgentViewerOperationCopy(AgentViewerFrameV8 frame) => frame.Operation switch
+    private string AgentViewerOperationCopy(AgentViewerFrameV9 frame) => frame.Operation switch
     {
         AgentViewerOperationKind.Initial => Localize("agent-arena.operation.initial"),
         AgentViewerOperationKind.Step => Localize(
@@ -10034,7 +10034,7 @@ public partial class Main : Node2D
 
     // The verified replay payload hash is the last host identity the window withheld.
     // It exists only with a verified result, so a live match reads REPLAY PENDING.
-    private string AgentViewerReplayCopy(AgentViewerFrameV8 frame)
+    private string AgentViewerReplayCopy(AgentViewerFrameV9 frame)
     {
         ArgumentNullException.ThrowIfNull(frame);
         if (frame.VerifiedReplayPayloadHash is { } replayPayloadHash)
@@ -10050,6 +10050,54 @@ public partial class Main : Node2D
             ? Localize("agent-arena.replay.unavailable")
             : Localize("agent-arena.replay.pending");
     }
+
+    // Observed danger and held recovery, in the order a spectator asks for it:
+    // how many ways out are left, what that count is called, and what is still in
+    // hand if the next step goes wrong. It never names a direction.
+    private string AgentSurvivalCopy(AgentSurvivalStateV1 survival)
+    {
+        ArgumentNullException.ThrowIfNull(survival);
+        var resources = AgentSurvivalStateV1.RecoveryOrder
+            .Select(kind => survival.RecoveryResources.Single(item => item.Kind == kind))
+            .ToArray();
+        return Localize(
+            "agent-arena.survival",
+            ShellTextArgument.From("open", survival.StructuralOpenExits),
+            ShellTextArgument.From("candidate", survival.CandidateExits),
+            ShellTextArgument.From(
+                "pressure",
+                Localize(AgentExitPressureCopyId(survival.ExitPressure))),
+            ShellTextArgument.From("shield", AgentRecoveryCopy(resources[0])),
+            ShellTextArgument.From("phase", AgentRecoveryCopy(resources[1])),
+            ShellTextArgument.From("last_stand", AgentRecoveryCopy(resources[2])),
+            ShellTextArgument.From("slow", AgentRecoveryCopy(resources[3])));
+    }
+
+    // A one-shot charge reads as HELD; a timed effect reads as its remaining
+    // ticks. Nothing held reads as the empty marker rather than a zero, so a
+    // spectator never has to decide whether 0 means expired or absent.
+    private string AgentRecoveryCopy(AgentRecoveryResourceV1 resource)
+    {
+        ArgumentNullException.ThrowIfNull(resource);
+        if (resource.TicksRemaining > 0)
+        {
+            return resource.TicksRemaining.ToString(CultureInfo.InvariantCulture);
+        }
+
+        return resource.Held
+            ? Localize("agent-arena.recovery.held")
+            : Localize("agent-arena.recovery.none");
+    }
+
+    private static string AgentExitPressureCopyId(AgentExitPressureV1 pressure) => pressure switch
+    {
+        AgentExitPressureV1.NotRunning => "agent-arena.pressure.not-running",
+        AgentExitPressureV1.Open => "agent-arena.pressure.open",
+        AgentExitPressureV1.Narrow => "agent-arena.pressure.narrow",
+        AgentExitPressureV1.Pinned => "agent-arena.pressure.pinned",
+        AgentExitPressureV1.Trapped => "agent-arena.pressure.trapped",
+        _ => throw new ArgumentOutOfRangeException(nameof(pressure)),
+    };
 
     private string AgentViewerSeedCopy(AgentObservationV5 observation)
     {
@@ -10232,7 +10280,7 @@ public partial class Main : Node2D
 
         var panel = ActiveShellPalette.CanvasBackground;
         panel.A = 0.90f;
-        DrawRect(new Rect2(20.0f, 546.0f, 1240.0f, 172.0f), panel);
+        DrawRect(new Rect2(20.0f, 518.0f, 1240.0f, 200.0f), panel);
         var styleProgress = observation.StyleContract;
         var styleOutcome = _agentViewerFrame.StyleOutcome;
         var lessonProgress = observation.LessonProgress;
@@ -10335,6 +10383,12 @@ public partial class Main : Node2D
             : Localize(
                 "agent-arena.delivery.coalesced",
                 ShellTextArgument.From("count", _agentViewerCoalescedFrames));
+        DrawFittedAgentLabel(
+            AgentSurvivalCopy(_agentViewerFrame.SurvivalState),
+            new Vector2(52.0f, 545.0f),
+            11,
+            1208.0f,
+            ActiveShellPalette.BodyText);
         DrawRect(
             new Rect2(38.0f, 554.0f, 9.0f, 9.0f),
             CosmeticColor(agentAccent.Color));
@@ -13709,6 +13763,40 @@ public partial class Main : Node2D
         var longestReplay = Pseudo(
             "agent-arena.replay.verified",
             ShellTextArgument.From("replay", longestStateHash));
+        // A recovery slot shows either a localized marker or a real remaining-tick
+        // count, so the largest count any shipped mode configures bounds that row.
+        var maximumRecoveryTicks = RunModeCatalog.All
+            .Select(mode => RunModeCatalog.CreateConfig(mode))
+            .SelectMany(config => new[]
+            {
+                config.ShieldDurationTicks,
+                config.PhaseShiftDurationTicks,
+                config.LastStandRecoveryTicks,
+                config.SlowMoDurationTicks,
+            })
+            .Max();
+        var pressureCopyIds = new[]
+        {
+            "agent-arena.pressure.not-running",
+            "agent-arena.pressure.open",
+            "agent-arena.pressure.narrow",
+            "agent-arena.pressure.pinned",
+            "agent-arena.pressure.trapped",
+        };
+        var recoveryCopyIds = new[]
+        {
+            "agent-arena.recovery.held",
+            "agent-arena.recovery.none",
+        };
+        var longestPressure = pressureCopyIds
+            .Select(id => Pseudo(id))
+            .OrderByDescending(value => value.Length)
+            .First();
+        var longestRecoveryValue = recoveryCopyIds
+            .Select(id => Pseudo(id))
+            .Append(maximumRecoveryTicks.ToString(CultureInfo.InvariantCulture))
+            .OrderByDescending(value => value.Length)
+            .First();
         var overlayRows = new (
             string Id,
             string Text,
@@ -13716,6 +13804,19 @@ public partial class Main : Node2D
             float Baseline,
             float MaximumWidth)[]
         {
+            ("survival",
+                Pseudo(
+                "agent-arena.survival",
+                ShellTextArgument.From("open", AgentSurvivalStateV1.RunningCandidateExits),
+                ShellTextArgument.From("candidate", AgentSurvivalStateV1.RunningCandidateExits),
+                ShellTextArgument.From("pressure", longestPressure),
+                ShellTextArgument.From("shield", longestRecoveryValue),
+                ShellTextArgument.From("phase", longestRecoveryValue),
+                ShellTextArgument.From("last_stand", longestRecoveryValue),
+                ShellTextArgument.From("slow", longestRecoveryValue)),
+                11,
+                545.0f,
+                1208.0f),
             ("verification",
                 Pseudo(
                 "agent-arena.verification",
@@ -13791,7 +13892,7 @@ public partial class Main : Node2D
         };
         var agentViewerOverlayLayoutPassed = true;
         var agentViewerOverlayFailures = new List<string>();
-        var priorBottom = 546.0f;
+        var priorBottom = 518.0f;
         foreach (var row in overlayRows)
         {
             var fontSize = Math.Max(
@@ -13924,8 +14025,30 @@ public partial class Main : Node2D
             .Select(id => ShellLocalization.Format(id, ShellLocale.English))
             .OrderByDescending(value => value.Length)
             .First();
+        var longestEnglishRecoveryValue = recoveryCopyIds
+            .Select(id => ShellLocalization.Format(id, ShellLocale.English))
+            .Append(maximumRecoveryTicks.ToString(CultureInfo.InvariantCulture))
+            .OrderByDescending(value => value.Length)
+            .First();
         var readableRows = new (string Id, string Text, int BaseFontSize, float MaximumWidth)[]
         {
+            ("survival-readable",
+                ShellLocalization.Format(
+                    "agent-arena.survival",
+                    ShellLocale.English,
+                    ShellTextArgument.From(
+                        "open",
+                        AgentSurvivalStateV1.RunningCandidateExits),
+                    ShellTextArgument.From(
+                        "candidate",
+                        AgentSurvivalStateV1.RunningCandidateExits),
+                    ShellTextArgument.From("pressure", LongestEnglish(pressureCopyIds)),
+                    ShellTextArgument.From("shield", longestEnglishRecoveryValue),
+                    ShellTextArgument.From("phase", longestEnglishRecoveryValue),
+                    ShellTextArgument.From("last_stand", longestEnglishRecoveryValue),
+                    ShellTextArgument.From("slow", longestEnglishRecoveryValue)),
+                11,
+                1208.0f),
             ("verification-readable",
                 ShellLocalization.Format(
                     "agent-arena.verification",
@@ -14144,8 +14267,8 @@ public partial class Main : Node2D
 
         const int migratedRequiredFlowCount = 13;
         const double requiredExpansionRatio = 1.30;
-        var passed = ShellLocalization.All.Count == 639
-            && ShellLocalization.All.Count(entry => entry.Parameters.Count > 0) == 98
+        var passed = ShellLocalization.All.Count == 647
+            && ShellLocalization.All.Count(entry => entry.Parameters.Count > 0) == 99
             && migratedRequiredFlowCount == 13
             && minimumExpansionRatio >= requiredExpansionRatio
             && missingGlyphs.Count == 0
@@ -14281,6 +14404,7 @@ public partial class Main : Node2D
             or "action.slower" or "action.step" or "action.swap" or "action.toggle-hud"
             or "action.versioned-scores" => 14,
         "run-end.recovery" or "settings.reset.backup-location" or "action.cycle-radio" => 12,
+        "agent-arena.survival" => 11,
         _ when id.StartsWith("status.settings.", StringComparison.Ordinal)
             || id.StartsWith("status.onboarding.", StringComparison.Ordinal)
             || id.StartsWith("status.player-data.", StringComparison.Ordinal) => 15,

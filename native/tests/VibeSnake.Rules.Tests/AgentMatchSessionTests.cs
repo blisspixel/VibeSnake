@@ -1393,6 +1393,105 @@ public sealed class AgentMatchSessionTests
         Assert.Null(session.TryCreateExhibitionReceipt());
     }
 
+    [Fact]
+    public void Published_survival_state_matches_the_board_on_every_frame()
+    {
+        var sink = new RecordingViewerSink();
+        var session = CreateSession(viewerSink: sink);
+        var directions = new[]
+        {
+            AgentAction.Up,
+            AgentAction.Left,
+            AgentAction.Down,
+            AgentAction.Right,
+            AgentAction.Up,
+            AgentAction.Left,
+        };
+        for (var index = 0; index < directions.Length; index++)
+        {
+            var current = session.Observe();
+            session.SubmitAction(Request($"survival-{index}", current, directions[index]));
+        }
+
+        Assert.Equal(directions.Length + 1, sink.Frames.Count);
+        foreach (var frame in sink.Frames)
+        {
+            AgentSurvivalTestFacts.AssertSurvivalEquivalent(
+                AgentSurvivalTestFacts.SurvivalFor(frame.Observation),
+                frame.SurvivalState);
+            Assert.Equal(AgentSurvivalStateV1.Contract, frame.SurvivalState.Schema);
+            Assert.Equal(
+                AgentSurvivalStateV1.RecoveryOrder,
+                frame.SurvivalState.RecoveryResources.Select(item => item.Kind));
+        }
+    }
+
+    [Fact]
+    public void Published_survival_state_reports_an_open_start_and_a_closed_terminal()
+    {
+        var sink = new RecordingViewerSink();
+        var session = CreateSession(viewerSink: sink, maximumSteps: 1);
+        var initial = sink.Frames[0].SurvivalState;
+
+        Assert.Equal(AgentSurvivalStateV1.RunningCandidateExits, initial.CandidateExits);
+        Assert.Equal(AgentSurvivalStateV1.RunningCandidateExits, initial.StructuralOpenExits);
+        Assert.Equal(AgentExitPressureV1.Open, initial.ExitPressure);
+        Assert.Equal(0, initial.HeldRecoveryCount);
+        Assert.All(
+            initial.RecoveryResources,
+            resource =>
+            {
+                Assert.False(resource.Held);
+                Assert.Equal(0, resource.TicksRemaining);
+            });
+
+        var observation = session.Observe();
+        session.SubmitAction(Request("survival-cap", observation, AgentAction.Up));
+        var last = sink.Frames[^1].SurvivalState;
+
+        // A capped match keeps a living snake, so the structural facts stay real.
+        AgentSurvivalTestFacts.AssertSurvivalEquivalent(
+            AgentSurvivalTestFacts.SurvivalFor(sink.Frames[^1].Observation),
+            last);
+    }
+
+    [Theory]
+    [InlineData(3, AgentExitPressureV1.Open)]
+    [InlineData(2, AgentExitPressureV1.Narrow)]
+    [InlineData(1, AgentExitPressureV1.Pinned)]
+    [InlineData(0, AgentExitPressureV1.Trapped)]
+    public void Exit_pressure_is_a_threshold_crossing_of_the_open_exit_count(
+        int structuralOpenExits,
+        AgentExitPressureV1 expected)
+    {
+        Assert.Equal(expected, AgentSurvivalStateV1.Pressure(true, structuralOpenExits));
+        Assert.Equal(
+            AgentExitPressureV1.NotRunning,
+            AgentSurvivalStateV1.Pressure(false, structuralOpenExits));
+    }
+
+    [Fact]
+    public void Survival_state_reports_held_recovery_resources_without_naming_a_route()
+    {
+        var survival = AgentSurvivalStateV1.Create(
+            running: true,
+            structuralOpenExits: 2,
+            shieldTicksRemaining: 40,
+            phaseShiftTicksRemaining: 0,
+            lastStandHeld: true,
+            lastStandRecoveryTicksRemaining: 0,
+            slowMoTicksRemaining: 7);
+
+        Assert.Equal(3, survival.HeldRecoveryCount);
+        Assert.Equal(AgentExitPressureV1.Narrow, survival.ExitPressure);
+        var byKind = survival.RecoveryResources.ToDictionary(item => item.Kind);
+        Assert.Equal(40, byKind[AgentRecoveryResourceKind.Shield].TicksRemaining);
+        Assert.False(byKind[AgentRecoveryResourceKind.PhaseShift].Held);
+        Assert.True(byKind[AgentRecoveryResourceKind.LastStand].Held);
+        Assert.Equal(0, byKind[AgentRecoveryResourceKind.LastStand].TicksRemaining);
+        Assert.Equal(7, byKind[AgentRecoveryResourceKind.SlowMo].TicksRemaining);
+    }
+
     private static AgentMatchSession CreateSession(
         AgentSeedVisibility visibility = AgentSeedVisibility.Open,
         int maximumSteps = AgentMatchOptions.DefaultMaximumSteps,
@@ -1509,13 +1608,13 @@ public sealed class AgentMatchSessionTests
 
     private sealed class RecordingViewerSink : IAgentViewerSink
     {
-        public List<AgentViewerFrameV8> Frames { get; } = [];
+        public List<AgentViewerFrameV9> Frames { get; } = [];
 
         public int Attempts { get; private set; }
 
         public bool Throw { get; set; }
 
-        public bool TryPublish(AgentViewerFrameV8 frame)
+        public bool TryPublish(AgentViewerFrameV9 frame)
         {
             Attempts++;
             if (Throw)
@@ -1530,9 +1629,9 @@ public sealed class AgentMatchSessionTests
 
     private sealed class LatestViewerSink : IAgentViewerSink
     {
-        public AgentViewerFrameV8? Latest { get; private set; }
+        public AgentViewerFrameV9? Latest { get; private set; }
 
-        public bool TryPublish(AgentViewerFrameV8 frame)
+        public bool TryPublish(AgentViewerFrameV9 frame)
         {
             Latest = frame;
             return true;

@@ -919,6 +919,23 @@ public sealed class AgentMatchSession
             _styleEvidence?.Snapshot(),
             CreateLessonProgress());
 
+    // Observed danger and recovery facts for the frame being published. They are
+    // derived from the authoritative run snapshot, while a viewer independently
+    // recomputes the same values from the public observation it also received,
+    // so a disagreeing frame is rejected instead of presented.
+    private AgentSurvivalStateV1 CreateSurvivalState()
+    {
+        var snapshot = _run.GetSnapshot();
+        return AgentSurvivalStateV1.Create(
+            snapshot.Status == RunStatus.Running,
+            AgentStyleEvidenceMath.StructuralOpenExitCount(_config, snapshot),
+            snapshot.ShieldTicksRemaining,
+            snapshot.PhaseShiftTicksRemaining,
+            snapshot.LastStandHeld,
+            snapshot.LastStandRecoveryTicksRemaining,
+            snapshot.SlowMoTicksRemaining);
+    }
+
     private AgentLessonProgressV3? CreateLessonProgress()
     {
         if (_options.LessonId is null)
@@ -1043,8 +1060,8 @@ public sealed class AgentMatchSession
         {
             var verifiedResultAvailable =
                 _matchResult?.ReplayVerificationCode == ReplayVerificationCode.Verified;
-            _ = _viewerSink.TryPublish(new AgentViewerFrameV8(
-                AgentViewerFrameV8.Contract,
+            _ = _viewerSink.TryPublish(new AgentViewerFrameV9(
+                AgentViewerFrameV9.Contract,
                 _viewerSequence++,
                 operation,
                 startTick,
@@ -1053,6 +1070,7 @@ public sealed class AgentMatchSession
                 burstStopReason,
                 burstStopEvent,
                 observation,
+                CreateSurvivalState(),
                 _matchResult?.EndReason
                     ?? (Lifecycle == AgentMatchLifecycle.FailedClosed
                         ? AgentMatchEndReason.ReplayFailure

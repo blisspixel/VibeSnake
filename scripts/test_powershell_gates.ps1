@@ -296,8 +296,8 @@ try {
         }
     }
     foreach ($requiredLocalizationFragment in @(
-        "ShellLocalization.All.Count == 639",
-        "entry.Parameters.Count > 0) == 98",
+        "ShellLocalization.All.Count == 647",
+        "entry.Parameters.Count > 0) == 99",
         'AgentActionRejection.WrongActionProfile =>',
         '"agent-arena.action.rejected-wrong-profile"',
         'AgentActionRejection.MutationCapacityExceeded =>',
@@ -314,8 +314,8 @@ try {
         }
     }
     foreach ($requiredLocalizationFragment in @(
-        '($localizationEvidence.stringCount -ne 639)',
-        '($localizationEvidence.parameterizedStringCount -ne 98)',
+        '($localizationEvidence.stringCount -ne 647)',
+        '($localizationEvidence.parameterizedStringCount -ne 99)',
         '(-not $localizationEvidence.runHudTitleLayoutPassed)'
     )) {
         if (-not $nativeTestScript.Contains($requiredLocalizationFragment, [StringComparison]::Ordinal)) {
