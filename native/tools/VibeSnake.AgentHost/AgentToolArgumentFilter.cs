@@ -54,6 +54,7 @@ internal static class AgentToolArgumentFilter
             ["get_match_result"] = new([Text("matchHandle")], []),
             ["get_exhibition_receipt"] = new([Text("matchHandle")], []),
             ["save_verified_replay"] = new([Text("matchHandle")], []),
+            ["archive_exhibition"] = new([Text("matchHandle")], []),
         };
 
     public static McpRequestFilter<CallToolRequestParams, CallToolResult> Create() =>

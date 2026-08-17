@@ -142,6 +142,63 @@ public sealed record AgentExhibitionReceiptStatusV1(
     public const string Contract = "vibesnake-agent-exhibition-receipt-status-v1";
 }
 
+/// <summary>
+/// The result of one explicit archive request, including the archive index as
+/// it stands afterwards. The index is always present, including on a refusal,
+/// so a caller never has to guess what a failed write left behind. Entries carry
+/// their promoted identity fields rather than the full receipts, because a
+/// browser lists exhibitions far more often than it opens one.
+/// </summary>
+public sealed record AgentExhibitionArchiveStatusV1(
+    string Schema,
+    string MatchHandle,
+    bool Archived,
+    AgentExhibitionArchiveCode Code,
+    string Message,
+    string? ReceiptHash,
+    string? RouteIdentityHash,
+    int EntryCount,
+    int Capacity,
+    int EvictedCount,
+    bool RecoveredFromCorruption,
+    IReadOnlyList<AgentArchivedExhibitionIndexEntryV1> Entries)
+{
+    public const string Contract = "vibesnake-agent-exhibition-archive-status-v1";
+}
+
+/// <summary>
+/// One listed exhibition. Every field is a copy of a receipt value, so listing
+/// the archive reveals nothing the receipt did not already publish.
+/// </summary>
+public sealed record AgentArchivedExhibitionIndexEntryV1(
+    string Schema,
+    string ReceiptHash,
+    string RouteIdentityHash,
+    string DivisionId,
+    string GameplaySeed,
+    int Score,
+    string AgentReplayFileName,
+    string? RivalReplayFileName,
+    string? RivalPersonalityId,
+    int? RivalScore)
+{
+    public const string Contract = "vibesnake-agent-archived-exhibition-index-entry-v1";
+
+    internal static AgentArchivedExhibitionIndexEntryV1 FromEntry(
+        AgentArchivedExhibitionV1 entry) =>
+        new(
+            Contract,
+            entry.ReceiptHash,
+            entry.RouteIdentityHash,
+            entry.DivisionId,
+            entry.GameplaySeed,
+            entry.Score,
+            entry.AgentReplayFileName,
+            entry.RivalReplayFileName,
+            entry.RivalPersonalityId,
+            entry.RivalScore);
+}
+
 public sealed record AgentReplaySaveV1(
     string Schema,
     string MatchHandle,

@@ -390,6 +390,7 @@ public sealed class AgentHostTests
 
         Assert.Equal(
             [
+                "archive_exhibition",
                 "finish_match",
                 "get_exhibition_receipt",
                 "get_match_result",
@@ -416,6 +417,7 @@ public sealed class AgentHostTests
                     "finish_match" => typeof(AgentMatchSummaryV5),
                     "get_match_result" => typeof(AgentMatchResultStatusV5),
                     "save_verified_replay" => typeof(AgentReplaySaveV1),
+                    "archive_exhibition" => typeof(AgentExhibitionArchiveStatusV1),
                     _ => throw new InvalidOperationException(
                         $"Unexpected MCP tool {value.Tool.Name}."),
                 },
@@ -623,6 +625,7 @@ public sealed class AgentHostTests
             "get_match_result",
             "get_exhibition_receipt",
             "save_verified_replay",
+            "archive_exhibition",
         })
         {
             Assert.Null(AgentToolArgumentFilter.Validate(new CallToolRequestParams
@@ -757,8 +760,43 @@ public sealed class AgentHostTests
         var playbook = AgentResources.GetPlaybook();
 
         Assert.Equal(
-            "vibesnake-agent-rules-resource-v12",
+            "vibesnake-agent-rules-resource-v13",
             rules.RootElement.GetProperty("contract").GetString());
+        var archive = rules.RootElement.GetProperty("archive");
+        Assert.Equal(
+            AgentExhibitionArchiveV1.Contract,
+            archive.GetProperty("contract").GetString());
+        Assert.Equal(
+            AgentArchivedExhibitionV1.Contract,
+            archive.GetProperty("entry_contract").GetString());
+        Assert.Equal(
+            AgentExhibitionArchiveStatusV1.Contract,
+            archive.GetProperty("status_contract").GetString());
+        Assert.Equal(
+            AgentArchivedExhibitionIndexEntryV1.Contract,
+            archive.GetProperty("index_entry_contract").GetString());
+        Assert.Equal("archive_exhibition", archive.GetProperty("tool").GetString());
+        Assert.Equal(
+            AgentExhibitionArchiveV1.MaximumEntries,
+            archive.GetProperty("capacity").GetInt32());
+        Assert.Equal(
+            AgentExhibitionArchiveV1.MaximumBytes,
+            archive.GetProperty("maximum_bytes").GetInt32());
+        Assert.Equal(
+            Enum.GetValues<AgentExhibitionArchiveCode>().Length,
+            archive.GetProperty("codes").GetArrayLength());
+        Assert.Contains(
+            "save_verified_replay must already have written every lane",
+            archive.GetProperty("prerequisites").GetString(),
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "outside the supported player Persistence assembly",
+            archive.GetProperty("boundary").GetString(),
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "quarantined beside the archive rather than repaired",
+            archive.GetProperty("integrity").GetString(),
+            StringComparison.Ordinal);
         var lifecycleSemantics = rules.RootElement.GetProperty("lifecycle_semantics");
         Assert.Contains(
             "never describes the snake",
@@ -1249,7 +1287,7 @@ public sealed class AgentHostTests
         Assert.NotNull(host.Services);
         Assert.NotNull(defaultHost.Services);
         Assert.Equal("vibesnake-agent-host", Program.HostName);
-        Assert.Equal("0.11.0", Program.HostVersion);
+        Assert.Equal("0.12.0", Program.HostVersion);
         Assert.Throws<ArgumentNullException>(() =>
             Program.CreateHostApplicationBuilder(null!, temporary.Path));
     }
@@ -1685,6 +1723,35 @@ public sealed class AgentHostTests
             receiptBody.GetProperty("division").GetProperty("schema").GetString());
         Assert.False(receiptBody.TryGetProperty("display_time_utc", out _));
 
+        // The AA-06 archive tool over real MCP, on a route that writes nothing.
+        // This transcript runs the shipped host executable, which resolves the
+        // machine's real Godot user-data root, so it must never exercise a write
+        // path. Bounded archive writes, eviction, corruption recovery, and
+        // repeat archiving are covered by AgentExhibitionArchiveTests over a
+        // temporary root.
+        var unsavedArchive = await client.CallToolAsync(
+            "archive_exhibition",
+            new Dictionary<string, object?> { ["matchHandle"] = handle },
+            cancellationToken: timeout.Token);
+        Assert.False(unsavedArchive.IsError ?? false);
+        var unsavedArchiveJson = Assert.IsType<JsonElement>(unsavedArchive.StructuredContent);
+        Assert.Equal(
+            AgentExhibitionArchiveStatusV1.Contract,
+            unsavedArchiveJson.GetProperty("schema").GetString());
+        Assert.Equal(
+            AgentExhibitionArchiveV1.MaximumEntries,
+            unsavedArchiveJson.GetProperty("capacity").GetInt32());
+        Assert.False(unsavedArchiveJson.GetProperty("archived").GetBoolean());
+        Assert.Equal(
+            "replay_not_saved",
+            unsavedArchiveJson.GetProperty("code").GetString());
+        Assert.Equal(
+            receiptBody.GetProperty("receipt_hash").GetString(),
+            unsavedArchiveJson.GetProperty("receipt_hash").GetString());
+        Assert.Equal(
+            receiptBody.GetProperty("route_identity_hash").GetString(),
+            unsavedArchiveJson.GetProperty("route_identity_hash").GetString());
+
         var numericSeedMatch = await client.CallToolAsync(
             "start_match",
             new Dictionary<string, object?>
@@ -1769,6 +1836,7 @@ public sealed class AgentHostTests
         Assert.Null(client.SessionId);
         Assert.Equal(
             [
+                "archive_exhibition",
                 "finish_match",
                 "get_exhibition_receipt",
                 "get_match_result",
@@ -1798,7 +1866,7 @@ public sealed class AgentHostTests
             resource => resource.Uri == "vibesnake://agent/identity");
         var rulesText = Assert.IsType<TextResourceContents>(Assert.Single(rules.Contents));
         Assert.Contains(
-            "vibesnake-agent-rules-resource-v12",
+            "vibesnake-agent-rules-resource-v13",
             rulesText.Text,
             StringComparison.Ordinal);
         Assert.False(moved.IsError ?? false);
@@ -2124,7 +2192,8 @@ public sealed class AgentHostTests
         new(
             new ReplayStore(root),
             () => handle,
-            () => seed);
+            () => seed,
+            archiveStore: new AgentExhibitionArchiveStore(root));
 
     private static SignalSchoolQualificationMeasurement MeasureQualificationRoute(
         AgentSignalLessonDefinitionV2 definition,

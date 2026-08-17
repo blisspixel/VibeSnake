@@ -5,6 +5,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
+using VibeSnake.AgentPlay;
 using VibeSnake.Persistence;
 
 namespace VibeSnake.AgentHost;
@@ -12,7 +13,7 @@ namespace VibeSnake.AgentHost;
 public static class Program
 {
     public const string HostName = "vibesnake-agent-host";
-    public const string HostVersion = "0.11.0";
+    public const string HostVersion = "0.12.0";
     public const string McpProtocolVersion = "2026-07-28";
 
     public static async Task Main(string[] args)
@@ -33,9 +34,12 @@ public static class Program
             options.LogToStandardErrorThreshold = LogLevel.Trace;
         });
 
-        var replayStore = new ReplayStore(
-            userDataRoot ?? AgentHostDataPaths.ResolveGodotUserDataRoot());
-        var registry = new AgentSessionRegistry(replayStore);
+        var resolvedUserDataRoot = userDataRoot
+            ?? AgentHostDataPaths.ResolveGodotUserDataRoot();
+        var replayStore = new ReplayStore(resolvedUserDataRoot);
+        var registry = new AgentSessionRegistry(
+            replayStore,
+            archiveStore: new AgentExhibitionArchiveStore(resolvedUserDataRoot));
         var tools = new McpAgentTools(registry);
         var serializerOptions = CreateSerializerOptions();
 

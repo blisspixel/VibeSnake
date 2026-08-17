@@ -181,6 +181,19 @@ public sealed class McpAgentTools
         [Description("Opaque handle returned by start_match.")] string matchHandle) =>
         Execute(() => _registry.SaveVerifiedReplay(matchHandle));
 
+    [McpServerTool(
+        Name = "archive_exhibition",
+        Title = "Archive Vibe Snake exhibition",
+        UseStructuredContent = true,
+        OutputSchemaType = typeof(AgentExhibitionArchiveStatusV1),
+        Destructive = false,
+        Idempotent = true,
+        OpenWorld = false)]
+    [Description("Explicitly keeps one verified exhibition in Vibe Snake's bounded local archive and returns the archive index. Call save_verified_replay first: an archived exhibition names the saved replay file for every lane it contains, and a rivalry archives both lanes or neither. The write is atomic and bounded to 32 exhibitions, evicting the oldest at capacity and reporting how many were dropped. Archiving the same exhibition again writes nothing and reports already_archived, so the call is safe to repeat. It accepts no path, never overwrites a different exhibition under an existing receipt hash, and never advances or finishes a match.")]
+    public AgentExhibitionArchiveStatusV1 ArchiveExhibition(
+        [Description("Opaque handle returned by start_match.")] string matchHandle) =>
+        Execute(() => _registry.ArchiveExhibition(matchHandle));
+
     private static T Execute<T>(Func<T> action)
     {
         try
