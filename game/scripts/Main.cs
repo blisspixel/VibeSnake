@@ -8608,13 +8608,13 @@ public partial class Main : Node2D
         return sanitized[..lower].TrimEnd() + suffix;
     }
 
-    private void DrawFittedLabel(
+    // Shared by the draw path and the readable-layout gate so a row can never be
+    // proven readable under different rules than the ones that render it.
+    private (int FontSize, string Text) ResolveFittedLabel(
         string value,
-        Vector2 position,
         int preferredFontSize,
         int minimumFontSize,
-        float maximumWidth,
-        Color color)
+        float maximumWidth)
     {
         if (minimumFontSize <= 0 || minimumFontSize > preferredFontSize)
         {
@@ -8628,11 +8628,23 @@ public partial class Main : Node2D
             fontSize--;
         }
 
-        DrawLabel(
-            FitLabelToWidth(value, fontSize, maximumWidth),
-            position,
-            fontSize,
-            color);
+        return (fontSize, FitLabelToWidth(value, fontSize, maximumWidth));
+    }
+
+    private void DrawFittedLabel(
+        string value,
+        Vector2 position,
+        int preferredFontSize,
+        int minimumFontSize,
+        float maximumWidth,
+        Color color)
+    {
+        var (fontSize, text) = ResolveFittedLabel(
+            value,
+            preferredFontSize,
+            minimumFontSize,
+            maximumWidth);
+        DrawLabel(text, position, fontSize, color);
     }
 
     private float MeasureLabelWidth(string value, int fontSize) =>
@@ -11080,6 +11092,28 @@ public partial class Main : Node2D
         }
     }
 
+    // The top-right run title is the only HUD row with a hard right edge: the
+    // logical canvas ends at 1280 and the radio line already owns 900 to 1262.
+    // A playtester read CLASSIC AGENT COMPLET at 150 percent text because the
+    // title drew unbounded from 980 and the canvas cut the last letter. The
+    // budget below is now explicit, and the readable gate composes the real
+    // worst-case English against it.
+    private const float RunModeTitleLeft = 980.0f;
+    private const float RunModeTitleMaximumWidth = 282.0f;
+    private const int RunModeTitleBaseFontSize = 16;
+    private const int RunModeTitleMinimumFontSize = 11;
+
+    private static string RunModeTitleText(string modeDisplayName, string statusText) =>
+        $"{modeDisplayName.ToUpperInvariant()}  {statusText}";
+
+    private static string RunStatusCopyId(RunStatus status) => status switch
+    {
+        RunStatus.Running => "run.status.running",
+        RunStatus.Dead => "run.status.dead",
+        RunStatus.Won => "run.status.won",
+        _ => throw new ArgumentOutOfRangeException(nameof(status)),
+    };
+
     private void DrawRun(
         RunSnapshot? replaySnapshot = null,
         string? replayStatus = null,
@@ -11115,11 +11149,11 @@ public partial class Main : Node2D
             accessibility,
             _vibeLevelDirector.CurrentDefinition);
         var statusText = replayStatus
-            ?? (_pausedByFocusLoss
-                ? "PAUSED: FOCUS LOST"
+            ?? Localize(_pausedByFocusLoss
+                ? "run.status.paused-focus-lost"
                 : _paused
-                    ? "PAUSED"
-                    : snapshot.Status.ToString().ToUpperInvariant());
+                    ? "run.status.paused"
+                    : RunStatusCopyId(snapshot.Status));
         DrawBoardTerrain(snapshot.Score);
         if (_capturePresentation.ShowRunHud)
         {
@@ -11162,11 +11196,13 @@ public partial class Main : Node2D
                     ActiveShellPalette.GoldText);
             }
 
-            DrawLabel(
-                $"{mode.DisplayName.ToUpperInvariant()}  {statusText}",
-                new Vector2(980.0f, 30.0f),
-                ScaledFontSize(16),
-                snapshot.Status == RunStatus.Dead
+            DrawFittedLabel(
+                RunModeTitleText(mode.DisplayName, statusText),
+                new Vector2(RunModeTitleLeft, 30.0f),
+                preferredFontSize: ScaledFontSize(RunModeTitleBaseFontSize),
+                minimumFontSize: RunModeTitleMinimumFontSize,
+                maximumWidth: RunModeTitleMaximumWidth,
+                color: snapshot.Status == RunStatus.Dead
                     ? ActiveShellPalette.WarningText
                     : ActiveShellPalette.BodyText);
 
@@ -13953,6 +13989,49 @@ public partial class Main : Node2D
             }
         }
 
+        // The same character-budget fight, one row up from the watch overlay. The
+        // ordinary run HUD title shares its 150 percent slot between the mode name
+        // and the longest status word, so compose every real pairing and require
+        // the fitted result to keep every letter. Elision here reads as a shorter
+        // word rather than as truncation: CLASSIC AGENT COMPLET is not COMPLETE.
+        var runHudTitleLayoutPassed = true;
+        var runHudTitleFailures = new List<string>();
+        var runTitleStatuses = new[]
+        {
+            "run.status.running",
+            "run.status.dead",
+            "run.status.won",
+            "run.status.paused",
+            "run.status.paused-focus-lost",
+            "agent-arena.run.live",
+            "agent-arena.run.complete",
+            "agent-arena.run.failed",
+        };
+        var runTitlePreferredFontSize = Math.Max(
+            10,
+            (int)Math.Round(
+                RunModeTitleBaseFontSize * ShellSettings.MaximumTextScale,
+                MidpointRounding.AwayFromZero));
+        foreach (var mode in RunModeCatalog.All)
+        {
+            foreach (var statusId in runTitleStatuses)
+            {
+                var title = RunModeTitleText(
+                    mode.DisplayName,
+                    ShellLocalization.Format(statusId, ShellLocale.English));
+                var (_, fittedTitle) = ResolveFittedLabel(
+                    title,
+                    runTitlePreferredFontSize,
+                    RunModeTitleMinimumFontSize,
+                    RunModeTitleMaximumWidth);
+                if (!string.Equals(fittedTitle, title, StringComparison.Ordinal))
+                {
+                    runHudTitleLayoutPassed = false;
+                    runHudTitleFailures.Add($"{mode.Id}/{statusId}:elided");
+                }
+            }
+        }
+
         var glyphPrompt = ShellLocalization.Format(
             "prompt.action",
             ShellLocale.Pseudo,
@@ -14065,7 +14144,7 @@ public partial class Main : Node2D
 
         const int migratedRequiredFlowCount = 13;
         const double requiredExpansionRatio = 1.30;
-        var passed = ShellLocalization.All.Count == 634
+        var passed = ShellLocalization.All.Count == 639
             && ShellLocalization.All.Count(entry => entry.Parameters.Count > 0) == 98
             && migratedRequiredFlowCount == 13
             && minimumExpansionRatio >= requiredExpansionRatio
@@ -14074,6 +14153,7 @@ public partial class Main : Node2D
             && inputGlyphParameterPreserved
             && maximumTextScaleLayoutPassed
             && agentViewerOverlayLayoutPassed
+            && runHudTitleLayoutPassed
             && pseudoLocaleDeterministic
             && OnboardingCopyIds.All.Count == 18
             && rulesCopyIdsResolved
@@ -14097,6 +14177,8 @@ public partial class Main : Node2D
                 + $"maximumLayout={maximumTextScaleLayoutPassed} [{string.Join(",", overflowingEntries)}], "
                 + $"agentViewerOverlayLayout={agentViewerOverlayLayoutPassed} "
                 + $"[{string.Join(";", agentViewerOverlayFailures)}], "
+                + $"runHudTitleLayout={runHudTitleLayoutPassed} "
+                + $"[{string.Join(";", runHudTitleFailures)}], "
                 + $"deterministic={pseudoLocaleDeterministic}, "
                 + $"remainingDirectLabels={remainingDirectDrawLabelLiteralCount}, "
                 + $"remainingDirectPrompts={remainingDirectPromptLiteralCount}, "
@@ -14125,6 +14207,7 @@ public partial class Main : Node2D
             InputGlyphParameterPreserved: inputGlyphParameterPreserved,
             MaximumTextScaleLayoutPassed: maximumTextScaleLayoutPassed,
             AgentViewerOverlayLayoutPassed: agentViewerOverlayLayoutPassed,
+            RunHudTitleLayoutPassed: runHudTitleLayoutPassed,
             RulesCopyIdCount: OnboardingCopyIds.All.Count,
             RulesCopyIdsResolved: rulesCopyIdsResolved,
             FeedbackCopyIdCount: feedbackCopyIdCount,

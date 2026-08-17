@@ -296,7 +296,7 @@ try {
         }
     }
     foreach ($requiredLocalizationFragment in @(
-        "ShellLocalization.All.Count == 634",
+        "ShellLocalization.All.Count == 639",
         "entry.Parameters.Count > 0) == 98",
         'AgentActionRejection.WrongActionProfile =>',
         '"agent-arena.action.rejected-wrong-profile"',
@@ -305,15 +305,18 @@ try {
         'private void DrawFittedAgentLabel(',
         'FitAgentOverlayText(',
         '_shellSettings.ReducedMotion && coalescedFrames > 0',
-        'AgentViewerOverlayLayoutPassed: agentViewerOverlayLayoutPassed'
+        'AgentViewerOverlayLayoutPassed: agentViewerOverlayLayoutPassed',
+        'RunHudTitleLayoutPassed: runHudTitleLayoutPassed',
+        'RunModeTitleText(mode.DisplayName, statusText)'
     )) {
         if (-not $gameMainScript.Contains($requiredLocalizationFragment, [StringComparison]::Ordinal)) {
             throw "Godot localization evidence is missing catalog count: $requiredLocalizationFragment"
         }
     }
     foreach ($requiredLocalizationFragment in @(
-        '($localizationEvidence.stringCount -ne 634)',
-        '($localizationEvidence.parameterizedStringCount -ne 98)'
+        '($localizationEvidence.stringCount -ne 639)',
+        '($localizationEvidence.parameterizedStringCount -ne 98)',
+        '(-not $localizationEvidence.runHudTitleLayoutPassed)'
     )) {
         if (-not $nativeTestScript.Contains($requiredLocalizationFragment, [StringComparison]::Ordinal)) {
             throw "Native localization gate is missing catalog count: $requiredLocalizationFragment"
