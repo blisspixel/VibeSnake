@@ -79,9 +79,7 @@ def local_path(document: Path, target: str) -> Path | None:
 
 
 CHANGELOG = ROOT / "CHANGELOG.md"
-CONTRACT_RELEASE = re.compile(
-    r"contracts to `(?P<version>\d+\.\d+\.\d+)` with rules resource (?P<resource>v\d+)"
-)
+CONTRACT_RELEASE = re.compile(r"contracts to `(?P<version>\d+\.\d+\.\d+)` with rules resource (?P<resource>v\d+)")
 
 
 def changelog_contract_failures() -> list[str]:
