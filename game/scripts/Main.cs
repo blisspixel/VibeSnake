@@ -237,6 +237,11 @@ public partial class Main : Node2D
     private bool _captureSummaryIdempotenceQualified;
     private ReplayDeletionPlan? _pendingReplayDeletion;
     private OfflineChallengeStore? _offlineChallengeStore;
+#if AGENT_ARENA_PREVIEW
+    private AgentExhibitionArchiveStore? _agentExhibitionArchive;
+    private AgentExhibitionBrowseReportV1? _agentExhibitionReport;
+    private int _agentExhibitionCursor;
+#endif
     private IReadOnlyList<GhostSlotEntry> _ghostSlots = [];
     private int _ghostSlotCursor;
     private GhostDeletionPlan? _pendingGhostDeletion;
@@ -279,6 +284,7 @@ public partial class Main : Node2D
         Comparisons,
 #if AGENT_ARENA_PREVIEW
         AgentWatch,
+        AgentExhibitions,
 #endif
     }
 
@@ -380,6 +386,12 @@ public partial class Main : Node2D
         var agentWatchSmoke = userArguments.Contains(
             "--agent-watch-smoke",
             StringComparer.Ordinal);
+        // The browser is preview-only, so it is reachable by an explicit flag
+        // rather than from the supported main menu. The marker keeps the
+        // existing Release exclusion assertion covering it unchanged.
+        var agentWatchExhibitions = userArguments.Contains(
+            "--agent-watch-exhibitions",
+            StringComparer.Ordinal);
         // A spectator QA aid. The accessibility profile is otherwise only reachable
         // through F6 and F9, which an automated watcher cannot press, so overlay
         // legibility at maximum text scale could never be observed from outside.
@@ -442,6 +454,9 @@ public partial class Main : Node2D
             ?? ProjectSettings.GlobalizePath("user://");
         _replayStore = new ReplayStore(userDataRoot);
         _offlineChallengeStore = new OfflineChallengeStore(userDataRoot);
+#if AGENT_ARENA_PREVIEW
+        _agentExhibitionArchive = new AgentExhibitionArchiveStore(userDataRoot);
+#endif
         _preferencesStore = new PreferencesStore(userDataRoot);
         _onboardingStore = new OnboardingStore(userDataRoot);
         _achievementsStore = new AchievementsStore(userDataRoot);
@@ -526,6 +541,13 @@ public partial class Main : Node2D
             _agentViewerSmokeDeadlineMilliseconds = agentWatchSmoke
                 ? Time.GetTicksMsec() + 30_000UL
                 : null;
+        }
+        else if (agentWatchExhibitions)
+        {
+            // Browsing what was kept needs no live viewer capability, because
+            // it reads the local archive rather than a running match.
+            RefreshAgentExhibitions(0);
+            TransitionToScreen(ScreenState.AgentExhibitions);
         }
 #endif
         QueueRedraw();
@@ -2539,6 +2561,14 @@ public partial class Main : Node2D
             return;
         }
 
+#if AGENT_ARENA_PREVIEW
+        if (_screenState == ScreenState.AgentExhibitions)
+        {
+            HandleAgentExhibitionsInput(inputEvent);
+            return;
+        }
+#endif
+
         if (_screenState == ScreenState.Ended)
         {
             if (inputEvent.IsActionPressed(GameActions.Help))
@@ -3208,6 +3238,9 @@ public partial class Main : Node2D
 #if AGENT_ARENA_PREVIEW
             case ScreenState.AgentWatch:
                 DrawAgentWatch();
+                break;
+            case ScreenState.AgentExhibitions:
+                DrawAgentExhibitions();
                 break;
 #endif
             case ScreenState.Menu:
@@ -4365,6 +4398,7 @@ public partial class Main : Node2D
             ScreenState.Comparisons => ShellScreen.Comparisons,
 #if AGENT_ARENA_PREVIEW
             ScreenState.AgentWatch => ShellScreen.AgentWatch,
+            ScreenState.AgentExhibitions => ShellScreen.AgentExhibitions,
 #endif
             _ => throw new ArgumentOutOfRangeException(nameof(state)),
         };
@@ -5394,6 +5428,136 @@ public partial class Main : Node2D
         PlayCue(AudioCue.Confirm);
         QueueRedraw();
     }
+
+#if AGENT_ARENA_PREVIEW
+    private void HandleAgentExhibitionsInput(InputEvent inputEvent)
+    {
+        var report = _agentExhibitionReport;
+        if (inputEvent.IsActionPressed(GameActions.Back))
+        {
+            ReturnToMenu();
+            return;
+        }
+
+        if (report is null || report.IsEmpty)
+        {
+            return;
+        }
+
+        if (inputEvent.IsActionPressed(GameActions.MoveUp))
+        {
+            SelectAgentExhibition(report.SelectedIndex - 1);
+        }
+        else if (inputEvent.IsActionPressed(GameActions.MoveDown))
+        {
+            SelectAgentExhibition(report.SelectedIndex + 1);
+        }
+        else if (inputEvent.IsActionPressed(GameActions.Confirm))
+        {
+            WatchSelectedAgentExhibition();
+        }
+        else if (inputEvent.IsActionPressed(GameActions.Replay))
+        {
+            ChallengeSelectedAgentExhibition();
+        }
+    }
+
+    private void SelectAgentExhibition(int index)
+    {
+        if (_agentExhibitionReport is not { } report || report.IsEmpty)
+        {
+            return;
+        }
+
+        var moved = report.WithSelection(index);
+        if (moved.SelectedIndex == report.SelectedIndex)
+        {
+            return;
+        }
+
+        _agentExhibitionReport = moved;
+        _agentExhibitionCursor = moved.SelectedIndex;
+        PlayCue(AudioCue.Navigate);
+        QueueRedraw();
+    }
+
+    // Watching an exhibition is ordinary verified replay playback. The archive
+    // names a file; it never carries one, so a removed recording is refused
+    // here rather than discovered halfway through a playback.
+    private void WatchSelectedAgentExhibition()
+    {
+        if (_agentExhibitionReport?.Selected is not { } entry || _replayStore is null)
+        {
+            return;
+        }
+
+        if (!entry.WatchAvailable)
+        {
+            PlayCue(AudioCue.Back);
+            RefreshAgentExhibitions(_agentExhibitionCursor);
+            QueueRedraw();
+            return;
+        }
+
+        var store = _replayStore;
+        var fileName = entry.AgentReplayFileName;
+        if (!TryStartReplayResultOperation(
+            () => LoadArchivedExhibitionPlayback(store, fileName),
+            "EXHIBITION REPLAY LOAD AND VERIFICATION IN PROGRESS",
+            ReplayOperationKind.PlaybackLoad))
+        {
+            ShowReplayStatus("REPLAY OPERATION ALREADY IN PROGRESS");
+        }
+    }
+
+    private static ReplayOperationResult LoadArchivedExhibitionPlayback(
+        ReplayStore store,
+        string fileName)
+    {
+        var loaded = store.Load(fileName);
+        if (!loaded.IsSuccess || loaded.Replay is null)
+        {
+            return new ReplayOperationResult(
+                $"EXHIBITION PLAYBACK UNAVAILABLE [{loaded.Code}]: {loaded.Message}");
+        }
+
+        var playback = new RunReplayPlayback(loaded.Replay);
+        return new ReplayOperationResult(
+            $"EXHIBITION READY: {playback.StepCount} STEPS, SCORE {loaded.Replay.Outcome.Score}",
+            playback);
+    }
+
+    // The same-seed handoff. The challenge descriptor decides the score
+    // category, so this method cannot accidentally place an agent's line in an
+    // ordinary human category.
+    private void ChallengeSelectedAgentExhibition()
+    {
+        if (_agentExhibitionReport?.SelectedChallenge() is not { } challenge)
+        {
+            PlayCue(AudioCue.Back);
+            return;
+        }
+
+        var mode = RunModeCatalog.All.FirstOrDefault(
+            candidate => string.Equals(candidate.Id, challenge.ModeId, StringComparison.Ordinal));
+        if (mode is null)
+        {
+            PlayCue(AudioCue.Back);
+            return;
+        }
+
+        // The score context comes from the challenge descriptor, which the
+        // browse report built. This method cannot place an agent's line in an
+        // ordinary human category even by mistake.
+        BeginPreparedRun(
+            SnakeRun.Create(challenge.GameplaySeed, RunModeCatalog.CreateConfig(mode)),
+            AgentExhibitionBrowseReportV1.ChallengeRunContext,
+            tourEvent: null,
+            isRestart: false);
+        ShowReplayStatus(
+            $"CHALLENGE STARTED ON SEED {challenge.GameplaySeed}; AGENT SCORED {challenge.AgentScore}");
+    }
+#endif
 
     private void HandleOfflineComparisonsInput(InputEvent inputEvent)
     {
@@ -10822,6 +10986,163 @@ public partial class Main : Node2D
         return $"{powers}  HUNGER {resources.HungerTicksRemaining}/{resources.HungerMaximumTicks}";
     }
 
+#if AGENT_ARENA_PREVIEW
+    // AA-06's browser. Every decision shown here is made by
+    // AgentExhibitionBrowseReportV1 so this screen never invents a rule the
+    // report has not already stated and tests have not already proven.
+    private void DrawAgentExhibitions()
+    {
+        DrawLabel(
+            Localize("agent-arena.exhibitions.title"),
+            new Vector2(46.0f, 108.0f),
+            ScaledFontSize(32),
+            PrimaryTextColor());
+
+        var report = _agentExhibitionReport;
+        if (report is null || report.IsEmpty)
+        {
+            DrawLabel(
+                Localize("agent-arena.exhibitions.empty"),
+                new Vector2(46.0f, 160.0f),
+                ScaledFontSize(20),
+                SecondaryTextColor());
+            DrawFittedLabel(
+                Localize("agent-arena.exhibitions.empty-detail"),
+                new Vector2(46.0f, 192.0f),
+                preferredFontSize: ScaledFontSize(14),
+                minimumFontSize: 11,
+                maximumWidth: AgentExhibitionRowWidth,
+                color: ActiveShellPalette.AccentText);
+            DrawAgentExhibitionIsolationNote();
+            return;
+        }
+
+        DrawFittedLabel(
+            Localize(
+                "agent-arena.exhibitions.summary",
+                ShellTextArgument.From("count", report.EntryCount),
+                ShellTextArgument.From("watchable", report.WatchableCount),
+                ShellTextArgument.From("rivalries", report.RivalryCount),
+                ShellTextArgument.From("position", report.SelectedIndex + 1),
+                ShellTextArgument.From("total", report.EntryCount)),
+            new Vector2(46.0f, 146.0f),
+            preferredFontSize: ScaledFontSize(15),
+            minimumFontSize: 11,
+            maximumWidth: AgentExhibitionRowWidth,
+            color: SecondaryTextColor());
+
+        var first = Math.Max(
+            0,
+            Math.Min(
+                report.SelectedIndex - (AgentExhibitionVisibleRows / 2),
+                report.EntryCount - AgentExhibitionVisibleRows));
+        var last = Math.Min(report.EntryCount, first + AgentExhibitionVisibleRows);
+        for (var index = first; index < last; index++)
+        {
+            var entry = report.Entries[index];
+            var selected = index == report.SelectedIndex;
+            var top = 190.0f + ((index - first) * AgentExhibitionRowHeight);
+            var marker = ShellFocusPresentation.BindingPrefix(
+                selected,
+                capture: false,
+                conflict: false);
+            DrawFittedLabel(
+                marker + " " + Localize(
+                    "agent-arena.exhibitions.row",
+                    ShellTextArgument.From("position", entry.Position + 1),
+                    ShellTextArgument.From("mode", entry.ModeId.ToUpperInvariant()),
+                    ShellTextArgument.From("seed", entry.GameplaySeed),
+                    ShellTextArgument.From(
+                        "score",
+                        entry.Score.ToString("D6", CultureInfo.InvariantCulture)),
+                    ShellTextArgument.From(
+                        "ending",
+                        entry.EndReason.ToString().ToUpperInvariant()),
+                    ShellTextArgument.From("tick", entry.FinalTick)),
+                new Vector2(58.0f, top),
+                preferredFontSize: ScaledFontSize(16),
+                minimumFontSize: 11,
+                maximumWidth: AgentExhibitionRowWidth,
+                color: selected ? ActiveShellPalette.PrimaryText : SecondaryTextColor());
+            DrawFittedLabel(
+                AgentExhibitionRowDetail(entry),
+                new Vector2(76.0f, top + 22.0f),
+                preferredFontSize: ScaledFontSize(13),
+                minimumFontSize: 10,
+                maximumWidth: AgentExhibitionRowWidth - 18.0f,
+                color: entry.WatchAvailable
+                    ? ActiveShellPalette.AccentText
+                    : ActiveShellPalette.WarningText);
+        }
+
+        DrawAgentExhibitionIsolationNote();
+    }
+
+    private void DrawAgentExhibitionIsolationNote() =>
+        DrawFittedLabel(
+            Localize("agent-arena.exhibitions.isolation"),
+            new Vector2(46.0f, 672.0f),
+            preferredFontSize: ScaledFontSize(13),
+            minimumFontSize: 10,
+            maximumWidth: AgentExhibitionRowWidth,
+            color: SecondaryTextColor());
+
+    // The row detail answers the two questions a person actually has: what was
+    // this, and what can I do with it right now.
+    private string AgentExhibitionRowDetail(AgentExhibitionBrowseEntryV1 entry)
+    {
+        var what = entry.LessonId is { } lesson
+            ? Localize(
+                "agent-arena.exhibitions.row-lesson",
+                ShellTextArgument.From("lesson", lesson.ToUpperInvariant()))
+            : entry.StyleContractId is { } style
+                ? Localize(
+                    "agent-arena.exhibitions.row-style",
+                    ShellTextArgument.From("style", style.ToUpperInvariant()))
+                : entry.RivalPersonalityId is { } rival
+                    ? Localize(
+                        "agent-arena.exhibitions.row-rival",
+                        ShellTextArgument.From("rival", rival.ToUpperInvariant()),
+                        ShellTextArgument.From("score", entry.RivalScore ?? 0))
+                    : Localize("agent-arena.exhibitions.row-solo");
+        var availability = entry.WatchBlock switch
+        {
+            AgentExhibitionWatchBlock.AgentReplayMissing =>
+                Localize("agent-arena.exhibitions.watch-missing-agent"),
+            AgentExhibitionWatchBlock.RivalReplayMissing =>
+                Localize("agent-arena.exhibitions.watch-missing-rival"),
+            _ => Localize("agent-arena.exhibitions.watch-ready"),
+        };
+        var challenge = entry.RematchAvailable
+            ? Localize("agent-arena.exhibitions.challenge-ready")
+            : Localize("agent-arena.exhibitions.challenge-unavailable");
+        return $"{what}  |  {availability}  |  {challenge}";
+    }
+
+    // Reloading rather than caching, because the archive is written by a
+    // separate host process and a stale list would offer a person a row that
+    // no longer exists.
+    private void RefreshAgentExhibitions(int selectedIndex)
+    {
+        var store = _agentExhibitionArchive;
+        if (store is null)
+        {
+            _agentExhibitionReport = null;
+            return;
+        }
+
+        var replayDirectory = _replayStore?.ReplayDirectory;
+        _agentExhibitionReport = AgentExhibitionBrowseReportV1.Create(
+            store.Read(),
+            fileName => replayDirectory is not null
+                && !string.IsNullOrWhiteSpace(fileName)
+                && System.IO.File.Exists(
+                    System.IO.Path.Combine(replayDirectory, fileName)),
+            selectedIndex);
+        _agentExhibitionCursor = _agentExhibitionReport.SelectedIndex;
+    }
+#endif
+
     private void DrawOfflineComparisons()
     {
         DrawLabel(
@@ -11203,6 +11524,11 @@ public partial class Main : Node2D
     // The gutter every cell leaves between its budget and the next cell's left
     // edge, so two fully packed neighbours still read as two separate facts.
     private const float RunHudCellGutter = 8.0f;
+#if AGENT_ARENA_PREVIEW
+    private const float AgentExhibitionRowWidth = 1188.0f;
+    private const float AgentExhibitionRowHeight = 54.0f;
+    private const int AgentExhibitionVisibleRows = 8;
+#endif
     private const float RunHudRightMargin = 1262.0f;
 
     private static readonly RunHudCell RunHudScoreCell =
@@ -14496,8 +14822,8 @@ public partial class Main : Node2D
 
         const int migratedRequiredFlowCount = 13;
         const double requiredExpansionRatio = 1.30;
-        var passed = ShellLocalization.All.Count == 647
-            && ShellLocalization.All.Count(entry => entry.Parameters.Count > 0) == 99
+        var passed = ShellLocalization.All.Count == 663
+            && ShellLocalization.All.Count(entry => entry.Parameters.Count > 0) == 105
             && migratedRequiredFlowCount == 13
             && minimumExpansionRatio >= requiredExpansionRatio
             && missingGlyphs.Count == 0

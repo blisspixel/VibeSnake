@@ -401,6 +401,41 @@ internal static class ShellLocalization
         Entry("agent-arena.feed.disconnected", "FEED DISCONNECTED"),
         Entry("agent-arena.feed.rejected", "FEED REJECTED"),
         Entry("agent-arena.feed.failed-closed", "FEED FAILED CLOSED"),
+
+        // AA-06 exhibition browser. A person opens this to decide what to look
+        // at, so every row states what it is and what can be done with it now.
+        Entry("agent-arena.exhibitions.title", "AGENT EXHIBITIONS"),
+        Entry("agent-arena.exhibitions.empty", "NO ARCHIVED EXHIBITIONS YET"),
+        Entry(
+            "agent-arena.exhibitions.empty-detail",
+            "AN AGENT ARCHIVES ONE THROUGH THE LOCAL HOST."),
+        Entry(
+            "agent-arena.exhibitions.summary",
+            "{count} KEPT  |  {watchable} WATCHABLE  |  {rivalries} RIVALRY  |  SLOT {position}/{total}"),
+        Entry(
+            "agent-arena.exhibitions.row",
+            "{position}. {mode}  SEED {seed}  SCORE {score}  {ending}  {tick} STEPS"),
+        Entry("agent-arena.exhibitions.row-lesson", "PRACTICE {lesson}"),
+        Entry("agent-arena.exhibitions.row-style", "STYLE {style}"),
+        Entry("agent-arena.exhibitions.row-rival", "RIVAL {rival} SCORED {score}"),
+        Entry("agent-arena.exhibitions.row-solo", "NO RIVAL"),
+        Entry("agent-arena.exhibitions.route", "ROUTE {route}  RECEIPT {receipt}"),
+        Entry("agent-arena.exhibitions.watch-ready", "WATCH AVAILABLE"),
+        Entry(
+            "agent-arena.exhibitions.watch-missing-agent",
+            "CANNOT WATCH: THE AGENT REPLAY FILE WAS REMOVED"),
+        Entry(
+            "agent-arena.exhibitions.watch-missing-rival",
+            "CANNOT WATCH: THE RIVAL REPLAY FILE WAS REMOVED"),
+        Entry(
+            "agent-arena.exhibitions.challenge-ready",
+            "CHALLENGE PLAYS THIS EXACT SEED AS A SEPARATE SCORE CATEGORY"),
+        Entry(
+            "agent-arena.exhibitions.challenge-unavailable",
+            "CHALLENGE UNAVAILABLE: THIS BUILD CANNOT START THAT MODE OR SEED"),
+        Entry(
+            "agent-arena.exhibitions.isolation",
+            "AGENT RESULTS NEVER CHANGE YOUR SCORES, ACHIEVEMENTS, OR PROGRESSION."),
         Entry("status.agent-viewer.connecting", "CONNECTING TO AGENT MATCH"),
         Entry("status.agent-viewer.watching", "AWAITING AGENT ACTION; RULES PAUSED"),
         Entry(

@@ -16,7 +16,7 @@ Input glyphs remain vector badges selected from the active keyboard or controlle
 
 `localization-qualification-v1` is produced by the real Godot headless smoke and enforced by `scripts/test_native.ps1`. It currently proves:
 
-- 647 unique schema-bound copy entries and 99 parameterized templates, including preview-only Agent Arena watch copy outside the supported 1.0 shell-flow set below.
+- 663 unique schema-bound copy entries and 105 parameterized templates, including preview-only Agent Arena watch copy outside the supported 1.0 shell-flow set below.
 - Thirteen shell flows migrated to stable IDs: menu, onboarding, settings, bindings, progression, Broadcast Tour, cosmetics, local scores, content packs, replays, interactive spectator mode, optional lore archive, and offline comparisons.
 - All 18 Rules-owned onboarding IDs, 24 typed step-feedback IDs, and 24 Persistence-owned broadcast caption IDs resolve to exact English copy.
 - Deterministic pseudo-localization with a measured minimum expansion ratio of 1.3125.

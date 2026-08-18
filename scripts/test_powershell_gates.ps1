@@ -130,6 +130,7 @@ try {
         "VibeSnake.AgentViewer",
         "VibeSnake.AgentHost",
         "--agent-watch-pipe=",
+        "--agent-watch-exhibitions",
         "vibesnake-agent-plugin",
         "vibesnake-agent-knowledge"
     )) {
@@ -296,8 +297,8 @@ try {
         }
     }
     foreach ($requiredLocalizationFragment in @(
-        "ShellLocalization.All.Count == 647",
-        "entry.Parameters.Count > 0) == 99",
+        "ShellLocalization.All.Count == 663",
+        "entry.Parameters.Count > 0) == 105",
         'AgentActionRejection.WrongActionProfile =>',
         '"agent-arena.action.rejected-wrong-profile"',
         'AgentActionRejection.MutationCapacityExceeded =>',
@@ -318,8 +319,8 @@ try {
         }
     }
     foreach ($requiredLocalizationFragment in @(
-        '($localizationEvidence.stringCount -ne 647)',
-        '($localizationEvidence.parameterizedStringCount -ne 99)',
+        '($localizationEvidence.stringCount -ne 663)',
+        '($localizationEvidence.parameterizedStringCount -ne 105)',
         '(-not $localizationEvidence.runHudTitleLayoutPassed)',
         '(-not $localizationEvidence.runHudRowLayoutPassed)',
         '($localizationEvidence.runHudRowMinimumFontSize -lt 14)'

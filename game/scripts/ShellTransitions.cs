@@ -24,6 +24,7 @@ internal enum ShellScreen : byte
     Comparisons = 15,
 #if AGENT_ARENA_PREVIEW
     AgentWatch = 16,
+    AgentExhibitions = 17,
 #endif
 }
 
