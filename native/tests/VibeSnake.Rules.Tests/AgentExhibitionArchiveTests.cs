@@ -36,7 +36,7 @@ public sealed class AgentExhibitionArchiveTests
         Assert.False(status.Archive.RecoveredFromCorruption);
 
         var listed = Assert.Single(status.Archive.Entries);
-        Assert.Equal(AgentArchivedExhibitionIndexEntryV2.Contract, listed.Schema);
+        Assert.Equal(AgentArchivedExhibitionIndexEntryV3.Contract, listed.Schema);
         Assert.Equal(exhibition.Receipt.ReceiptHash, listed.ReceiptHash);
         Assert.Equal(exhibition.Receipt.RouteIdentityHash, listed.RouteIdentityHash);
         Assert.Equal(exhibition.Receipt.Division.DivisionId, listed.DivisionId);
@@ -728,6 +728,107 @@ public sealed class AgentExhibitionArchiveTests
         builder.Append("      \"receipt\": ").Append(receipt).Append('\n');
         builder.Append("    }\n  ]\n}\n");
         return builder.ToString();
+    }
+
+    [Fact]
+    public void A_migrate_on_read_reports_the_file_it_has_not_rewritten_yet()
+    {
+        using var temporary = new ArchiveTemporaryDirectory();
+        var exhibition = PlayAndSave(temporary.Path, "match_pending", seed: 70UL);
+        var store = new AgentExhibitionArchiveStore(temporary.Path);
+        Directory.CreateDirectory(Path.GetDirectoryName(store.ArchivePath)!);
+        File.WriteAllText(store.ArchivePath, LegacyDocument(exhibition));
+        var legacyBytes = File.ReadAllBytes(store.ArchivePath).Length;
+
+        var listed = exhibition.Registry.ListExhibitions(null);
+
+        // A playtester compared bytes_used against the file after a migration and
+        // found them disagreeing, because reading never writes. bytes_used now
+        // describes the file that exists; bytes_projected describes the write
+        // that has not happened yet, and the ceiling binds on the latter.
+        Assert.True(listed.Archive.MigratedFromLegacySchema);
+        Assert.Equal(legacyBytes, listed.Archive.BytesUsed);
+        Assert.NotEqual(listed.Archive.BytesUsed, listed.Archive.BytesProjected);
+        Assert.Equal(
+            AgentExhibitionArchiveV2.MaximumBytes - listed.Archive.BytesProjected,
+            listed.Archive.RemainingBytes);
+
+        // The two schema versions say one to two rather than leaving a boolean
+        // to imply it, and the stored one still reports the file on disk.
+        Assert.Equal(AgentExhibitionArchiveV2.CurrentSchemaVersion, listed.Archive.SchemaVersion);
+        Assert.Equal(AgentExhibitionArchiveV2.LegacySchemaVersion, listed.Archive.StoredSchemaVersion);
+        Assert.Equal(legacyBytes, File.ReadAllBytes(store.ArchivePath).Length);
+    }
+
+    [Fact]
+    public void The_next_write_settles_both_sizes_and_both_schema_versions()
+    {
+        using var temporary = new ArchiveTemporaryDirectory();
+        var legacy = PlayAndSave(temporary.Path, "match_settle1", seed: 71UL);
+        var store = new AgentExhibitionArchiveStore(temporary.Path);
+        Directory.CreateDirectory(Path.GetDirectoryName(store.ArchivePath)!);
+        File.WriteAllText(store.ArchivePath, LegacyDocument(legacy));
+        legacy.Registry.Dispose();
+
+        var fresh = PlayAndSave(temporary.Path, "match_settle2", seed: 72UL);
+        var status = fresh.Registry.ArchiveExhibition(fresh.Handle);
+
+        var onDisk = File.ReadAllBytes(store.ArchivePath).Length;
+        Assert.Equal(onDisk, status.Archive.BytesUsed);
+        Assert.Equal(onDisk, status.Archive.BytesProjected);
+        Assert.Equal(
+            AgentExhibitionArchiveV2.CurrentSchemaVersion,
+            status.Archive.StoredSchemaVersion);
+        Assert.Equal(
+            AgentExhibitionArchiveV2.MaximumBytes - onDisk,
+            status.Archive.RemainingBytes);
+        Assert.Equal(2, status.Archive.EntryCount);
+    }
+
+    [Fact]
+    public void Every_listed_entry_carries_its_place_in_the_whole_store()
+    {
+        using var temporary = new ArchiveTemporaryDirectory();
+        var receipts = new List<string>();
+        var routes = new List<string>();
+        for (var index = 0; index < 3; index++)
+        {
+            var exhibition = PlayAndSave(
+                temporary.Path,
+                $"match_place{index}",
+                seed: 3000UL + (ulong)index);
+            exhibition.Registry.ArchiveExhibition(exhibition.Handle);
+            receipts.Add(exhibition.Receipt.ReceiptHash);
+            routes.Add(exhibition.Receipt.RouteIdentityHash);
+            if (index < 2)
+            {
+                exhibition.Registry.Dispose();
+            }
+            else
+            {
+                _ = exhibition;
+            }
+        }
+
+        using var registry = CreateRegistry(temporary.Path, "match_placeread", seed: 3100UL);
+        var all = registry.ListExhibitions(null);
+        Assert.Equal([0, 1, 2], all.Archive.Entries.Select(entry => entry.Position).ToArray());
+        Assert.Equal(
+            receipts,
+            all.Archive.Entries.Select(entry => entry.ReceiptHash).ToArray());
+
+        // Filtering used to lose the ordering entirely. Position is the store's
+        // order, so eviction order stays visible through a narrowed listing.
+        var narrowed = registry.ListExhibitions(routes[2]);
+        var listed = Assert.Single(narrowed.Archive.Entries);
+        Assert.Equal(2, listed.Position);
+        Assert.Equal(3, narrowed.Archive.EntryCount);
+
+        // final_tick rides along so a browser can order or label without opening
+        // a receipt. It comes from the stored receipt, not from a new stored field.
+        Assert.All(
+            all.Archive.Entries,
+            entry => Assert.True(entry.FinalTick >= 0));
     }
 
     private static AgentSessionRegistry CreateRegistry(

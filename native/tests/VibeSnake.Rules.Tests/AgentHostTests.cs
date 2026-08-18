@@ -764,7 +764,7 @@ public sealed class AgentHostTests
         var playbook = AgentResources.GetPlaybook();
 
         Assert.Equal(
-            "vibesnake-agent-rules-resource-v14",
+            "vibesnake-agent-rules-resource-v15",
             rules.RootElement.GetProperty("contract").GetString());
         var archive = rules.RootElement.GetProperty("archive");
         Assert.Equal(
@@ -777,7 +777,7 @@ public sealed class AgentHostTests
             AgentExhibitionArchiveStatusV2.Contract,
             archive.GetProperty("status_contract").GetString());
         Assert.Equal(
-            AgentArchivedExhibitionIndexEntryV2.Contract,
+            AgentArchivedExhibitionIndexEntryV3.Contract,
             archive.GetProperty("index_entry_contract").GetString());
         Assert.Equal(
             AgentExhibitionArchiveListingV1.Contract,
@@ -786,7 +786,7 @@ public sealed class AgentHostTests
             AgentExhibitionForgetStatusV1.Contract,
             archive.GetProperty("forget_contract").GetString());
         Assert.Equal(
-            AgentExhibitionArchiveIndexV2.Contract,
+            AgentExhibitionArchiveIndexV3.Contract,
             archive.GetProperty("index_contract").GetString());
         Assert.Equal(
             AgentExhibitionArchiveDropV1.Contract,
@@ -1328,7 +1328,7 @@ public sealed class AgentHostTests
         Assert.NotNull(host.Services);
         Assert.NotNull(defaultHost.Services);
         Assert.Equal("vibesnake-agent-host", Program.HostName);
-        Assert.Equal("0.13.0", Program.HostVersion);
+        Assert.Equal("0.14.0", Program.HostVersion);
         Assert.Throws<ArgumentNullException>(() =>
             Program.CreateHostApplicationBuilder(null!, temporary.Path));
     }
@@ -1909,7 +1909,7 @@ public sealed class AgentHostTests
             resource => resource.Uri == "vibesnake://agent/identity");
         var rulesText = Assert.IsType<TextResourceContents>(Assert.Single(rules.Contents));
         Assert.Contains(
-            "vibesnake-agent-rules-resource-v14",
+            "vibesnake-agent-rules-resource-v15",
             rulesText.Text,
             StringComparison.Ordinal);
         Assert.False(moved.IsError ?? false);

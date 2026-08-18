@@ -284,6 +284,8 @@ public sealed record AgentExhibitionArchiveWriteV1(
     bool RecoveredFromCorruption,
     bool MigratedFromLegacySchema,
     int BytesUsed,
+    int BytesProjected,
+    int StoredSchemaVersion,
     AgentExhibitionArchiveV2 Archive);
 
 /// <summary>
@@ -296,6 +298,8 @@ public sealed record AgentExhibitionForgetResultV1(
     bool RecoveredFromCorruption,
     bool MigratedFromLegacySchema,
     int BytesUsed,
+    int BytesProjected,
+    int StoredSchemaVersion,
     AgentExhibitionArchiveV2 Archive);
 
 /// <summary>
@@ -377,7 +381,9 @@ public sealed class AgentExhibitionArchiveStore
                 loaded.Recovered,
                 loaded.Blocked,
                 loaded.Migrated,
-                loaded.BytesUsed);
+                loaded.BytesUsed,
+                loaded.BytesProjected,
+                loaded.StoredSchemaVersion);
         }
     }
 
@@ -494,6 +500,8 @@ public sealed class AgentExhibitionArchiveStore
                 loaded.Recovered,
                 loaded.Migrated,
                 payload.Length,
+                payload.Length,
+                AgentExhibitionArchiveV2.CurrentSchemaVersion,
                 candidateArchive);
         }
     }
@@ -526,6 +534,8 @@ public sealed class AgentExhibitionArchiveStore
                     RecoveredFromCorruption: false,
                     MigratedFromLegacySchema: false,
                     loaded.BytesUsed,
+                    loaded.BytesProjected,
+                    loaded.StoredSchemaVersion,
                     archive);
             }
 
@@ -545,6 +555,8 @@ public sealed class AgentExhibitionArchiveStore
                     loaded.Recovered,
                     loaded.Migrated,
                     loaded.BytesUsed,
+                    loaded.BytesProjected,
+                    loaded.StoredSchemaVersion,
                     archive);
             }
 
@@ -568,6 +580,8 @@ public sealed class AgentExhibitionArchiveStore
                     loaded.Recovered,
                     loaded.Migrated,
                     loaded.BytesUsed,
+                    loaded.BytesProjected,
+                    loaded.StoredSchemaVersion,
                     archive);
             }
 
@@ -580,6 +594,8 @@ public sealed class AgentExhibitionArchiveStore
                 loaded.Recovered,
                 loaded.Migrated,
                 payload.Length,
+                payload.Length,
+                AgentExhibitionArchiveV2.CurrentSchemaVersion,
                 candidateArchive);
         }
     }
@@ -596,6 +612,8 @@ public sealed class AgentExhibitionArchiveStore
             loaded.Recovered,
             loaded.Migrated,
             loaded.BytesUsed,
+            loaded.BytesProjected,
+            loaded.StoredSchemaVersion,
             loaded.Archive);
 
     private LoadedArchive LoadLocked()
@@ -608,18 +626,26 @@ public sealed class AgentExhibitionArchiveStore
                 Recovered: false,
                 Blocked: false,
                 Migrated: false,
-                BytesUsed: 0);
+                BytesUsed: 0,
+                Serialize(AgentExhibitionArchiveV2.Empty).Length,
+                StoredSchemaVersion: 0);
         }
 
         AgentExhibitionArchiveV2? loaded = null;
         var migrated = false;
+        var storedSchemaVersion = 0;
+        var storedBytes = 0;
         try
         {
             // Check the size before reading it, so a file that grew outside this
             // store can never be pulled into memory in full just to be rejected.
-            if (new FileInfo(path).Length <= AgentExhibitionArchiveV2.MaximumBytes)
+            var length = new FileInfo(path).Length;
+            if (length <= AgentExhibitionArchiveV2.MaximumBytes)
             {
-                (loaded, migrated) = Deserialize(File.ReadAllBytes(path));
+                var bytes = File.ReadAllBytes(path);
+                storedBytes = bytes.Length;
+                storedSchemaVersion = ReadSchemaVersion(bytes);
+                (loaded, migrated) = Deserialize(bytes);
             }
         }
         catch (Exception exception) when (
@@ -635,7 +661,9 @@ public sealed class AgentExhibitionArchiveStore
                 Recovered: false,
                 Blocked: false,
                 migrated,
-                Serialize(loaded).Length);
+                storedBytes,
+                Serialize(loaded).Length,
+                storedSchemaVersion);
         }
 
         var quarantined = TryQuarantineLocked(path);
@@ -644,7 +672,9 @@ public sealed class AgentExhibitionArchiveStore
             quarantined,
             !quarantined,
             Migrated: false,
-            BytesUsed: 0);
+            BytesUsed: 0,
+            Serialize(AgentExhibitionArchiveV2.Empty).Length,
+            StoredSchemaVersion: 0);
     }
 
     /// <summary>
@@ -757,12 +787,22 @@ public sealed class AgentExhibitionArchiveStore
     private static byte[] Serialize(AgentExhibitionArchiveV2 archive) =>
         JsonSerializer.SerializeToUtf8Bytes(archive, SerializerOptions);
 
+    /// <summary>
+    /// One load. Two sizes are carried rather than one because a read never
+    /// writes: after a migration the document in memory is the current schema
+    /// while the bytes on disk are still the old one, and a playtester checking
+    /// bytes_used against the file found them disagreeing. BytesUsed is what the
+    /// file holds now; BytesProjected is what the next write would produce and
+    /// is therefore the size the byte ceiling actually binds.
+    /// </summary>
     private sealed record LoadedArchive(
         AgentExhibitionArchiveV2 Archive,
         bool Recovered,
         bool Blocked,
         bool Migrated,
-        int BytesUsed);
+        int BytesUsed,
+        int BytesProjected,
+        int StoredSchemaVersion);
 
     /// <summary>
     /// The schema-1 shape, retained only so a store written by an earlier host
@@ -798,4 +838,6 @@ public sealed record AgentExhibitionArchiveReadV1(
     bool RecoveredFromCorruption,
     bool Blocked,
     bool MigratedFromLegacySchema,
-    int BytesUsed);
+    int BytesUsed,
+    int BytesProjected,
+    int StoredSchemaVersion);

@@ -78,6 +78,48 @@ def local_path(document: Path, target: str) -> Path | None:
     return document.parent / path_text
 
 
+CHANGELOG = ROOT / "CHANGELOG.md"
+CONTRACT_RELEASE = re.compile(
+    r"contracts to `(?P<version>\d+\.\d+\.\d+)` with rules resource (?P<resource>v\d+)"
+)
+
+
+def changelog_contract_failures() -> list[str]:
+    """Report changelog entries that claim the same contract release twice.
+
+    Each entry names the release it shipped in, so two entries claiming one
+    version means an edit rewrote a past entry rather than adding a new one.
+    A blanket version replace across the tree does exactly that, and it is
+    invisible in review because every individual line still reads correctly.
+    """
+    if not CHANGELOG.is_file():
+        return ["missing CHANGELOG.md"]
+
+    failures: list[str] = []
+    seen_versions: dict[str, int] = {}
+    seen_resources: dict[str, int] = {}
+    for line_number, line in enumerate(CHANGELOG.read_text(encoding="utf-8").splitlines(), 1):
+        match = CONTRACT_RELEASE.search(line)
+        if match is None:
+            continue
+        version = match.group("version")
+        resource = match.group("resource")
+        if version in seen_versions:
+            failures.append(
+                f"CHANGELOG.md:{line_number}: agent contract version {version} is already "
+                f"claimed on line {seen_versions[version]}; each entry names its own release"
+            )
+        if resource in seen_resources:
+            failures.append(
+                f"CHANGELOG.md:{line_number}: rules resource {resource} is already claimed "
+                f"on line {seen_resources[resource]}; each entry names its own resource"
+            )
+        seen_versions.setdefault(version, line_number)
+        seen_resources.setdefault(resource, line_number)
+
+    return failures
+
+
 def main() -> int:
     """Report missing relative link targets and return a process status."""
     failures = []
@@ -91,6 +133,8 @@ def main() -> int:
             path = local_path(document, target)
             if path is not None and not path.exists():
                 failures.append(f"{document.relative_to(ROOT)}:{line_number}: missing target {target}")
+
+    failures.extend(changelog_contract_failures())
 
     if failures:
         print("Documentation link check failed:")

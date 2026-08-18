@@ -158,7 +158,7 @@ public sealed record AgentExhibitionArchiveStatusV2(
     string? ReceiptHash,
     string? RouteIdentityHash,
     IReadOnlyList<AgentExhibitionArchiveDropV1> Evicted,
-    AgentExhibitionArchiveIndexV2 Archive) : IAgentExhibitionArchiveResponse
+    AgentExhibitionArchiveIndexV3 Archive) : IAgentExhibitionArchiveResponse
 {
     public const string Contract = "vibesnake-agent-exhibition-archive-status-v2";
 }
@@ -172,7 +172,7 @@ public sealed record AgentExhibitionForgetStatusV1(
     AgentExhibitionForgetCode Code,
     string Message,
     IReadOnlyList<AgentExhibitionArchiveDropV1> Removed,
-    AgentExhibitionArchiveIndexV2 Archive) : IAgentExhibitionArchiveResponse
+    AgentExhibitionArchiveIndexV3 Archive) : IAgentExhibitionArchiveResponse
 {
     public const string Contract = "vibesnake-agent-exhibition-forget-status-v1";
 }
@@ -185,7 +185,7 @@ public sealed record AgentExhibitionArchiveListingV1(
     string Schema,
     string? RouteIdentityHashFilter,
     int MatchedCount,
-    AgentExhibitionArchiveIndexV2 Archive) : IAgentExhibitionArchiveResponse
+    AgentExhibitionArchiveIndexV3 Archive) : IAgentExhibitionArchiveResponse
 {
     public const string Contract = "vibesnake-agent-exhibition-listing-v1";
 }
@@ -196,69 +196,98 @@ public sealed record AgentExhibitionArchiveListingV1(
 /// </summary>
 public interface IAgentExhibitionArchiveResponse
 {
-    AgentExhibitionArchiveIndexV2 Archive { get; }
+    AgentExhibitionArchiveIndexV3 Archive { get; }
 }
 
 /// <summary>
-/// The archive as it stands, with both of its bounds and the exact bytes it
-/// occupies. Effective capacity is the lesser of the entry and byte ceilings, so
-/// an entry count alone cannot tell a caller how much room is actually left.
+/// The archive as it stands, with both of its bounds and the bytes it occupies.
+/// Effective capacity is the lesser of the entry and byte ceilings, so an entry
+/// count alone cannot tell a caller how much room is actually left.
+///
+/// Two sizes and two schema versions are published rather than one of each,
+/// because a read never writes. After a legacy archive is migrated on read, the
+/// document in memory is the current schema while the file still holds the old
+/// one. A playtester checking bytes_used against the file found them disagreeing
+/// and was right to. bytes_used is what the file holds now and is verifiable
+/// against it; bytes_projected is what the next write would produce and is the
+/// size the byte ceiling actually binds, which is why remaining_bytes follows it.
 /// </summary>
-public sealed record AgentExhibitionArchiveIndexV2(
+public sealed record AgentExhibitionArchiveIndexV3(
     string Schema,
     int SchemaVersion,
+    int StoredSchemaVersion,
     int EntryCount,
     int Capacity,
     int BytesUsed,
+    int BytesProjected,
     int MaximumBytes,
     int RemainingEntries,
     int RemainingBytes,
     bool RecoveredFromCorruption,
     bool MigratedFromLegacySchema,
-    IReadOnlyList<AgentArchivedExhibitionIndexEntryV2> Entries)
+    IReadOnlyList<AgentArchivedExhibitionIndexEntryV3> Entries)
 {
-    public const string Contract = "vibesnake-agent-exhibition-archive-index-v2";
+    public const string Contract = "vibesnake-agent-exhibition-archive-index-v3";
 
-    internal static AgentExhibitionArchiveIndexV2 Create(
+    internal static AgentExhibitionArchiveIndexV3 Create(
         AgentExhibitionArchiveV2 archive,
         int bytesUsed,
+        int bytesProjected,
+        int storedSchemaVersion,
         bool recoveredFromCorruption,
         bool migratedFromLegacySchema,
         Func<string, bool> replayFileExists,
-        IReadOnlyList<AgentArchivedExhibitionV2>? listed = null) =>
-        new(
+        IReadOnlyList<AgentArchivedExhibitionV2>? listed = null)
+    {
+        // Position is an entry's place in the whole store, not in the listing,
+        // so a filtered listing still says where each exhibition sits and which
+        // one eviction reaches first.
+        var positions = new Dictionary<string, int>(StringComparer.Ordinal);
+        for (var index = 0; index < archive.Entries.Count; index++)
+        {
+            positions[archive.Entries[index].ReceiptHash] = index;
+        }
+
+        return new AgentExhibitionArchiveIndexV3(
             Contract,
             archive.SchemaVersion,
+            storedSchemaVersion,
             archive.Entries.Count,
             archive.Capacity,
             bytesUsed,
+            bytesProjected,
             AgentExhibitionArchiveV2.MaximumBytes,
             Math.Max(0, archive.Capacity - archive.Entries.Count),
-            Math.Max(0, AgentExhibitionArchiveV2.MaximumBytes - bytesUsed),
+            Math.Max(0, AgentExhibitionArchiveV2.MaximumBytes - bytesProjected),
             recoveredFromCorruption,
             migratedFromLegacySchema,
             (listed ?? archive.Entries)
-                .Select(entry => AgentArchivedExhibitionIndexEntryV2.FromEntry(
+                .Select(entry => AgentArchivedExhibitionIndexEntryV3.FromEntry(
                     entry,
+                    positions.TryGetValue(entry.ReceiptHash, out var position) ? position : -1,
                     replayFileExists))
                 .ToArray());
+    }
 }
 
 /// <summary>
 /// One listed exhibition. Every identity field is a copy of a receipt value, so
-/// listing the archive reveals nothing the receipt did not already publish. The
-/// two presence flags are the exception: they are observed now rather than
-/// copied, because a named replay file can be deleted after it was archived and
-/// a caller choosing what to open needs to know that.
+/// listing the archive reveals nothing the receipt did not already publish. Two
+/// fields are computed at read time rather than copied: the presence flags,
+/// because a named replay file can be deleted after it was archived, and the
+/// position, because eviction order is a property of the store rather than of
+/// any one exhibition and a filtered listing would otherwise lose it.
 /// </summary>
-public sealed record AgentArchivedExhibitionIndexEntryV2(
+public sealed record AgentArchivedExhibitionIndexEntryV3(
     string Schema,
+    int Position,
     string ReceiptHash,
     string RouteIdentityHash,
     string DivisionId,
     string ModeId,
     string GameplaySeed,
     int Score,
+    int FinalTick,
     AgentMatchEndReason EndReason,
     RunStatus RunStatus,
     string? LessonId,
@@ -270,19 +299,22 @@ public sealed record AgentArchivedExhibitionIndexEntryV2(
     string? RivalPersonalityId,
     int? RivalScore)
 {
-    public const string Contract = "vibesnake-agent-archived-exhibition-index-entry-v2";
+    public const string Contract = "vibesnake-agent-archived-exhibition-index-entry-v3";
 
-    internal static AgentArchivedExhibitionIndexEntryV2 FromEntry(
+    internal static AgentArchivedExhibitionIndexEntryV3 FromEntry(
         AgentArchivedExhibitionV2 entry,
+        int position,
         Func<string, bool> replayFileExists) =>
         new(
             Contract,
+            position,
             entry.ReceiptHash,
             entry.RouteIdentityHash,
             entry.DivisionId,
             entry.ModeId,
             entry.GameplaySeed,
             entry.Score,
+            entry.Receipt.FinalTick,
             entry.EndReason,
             entry.RunStatus,
             entry.LessonId,

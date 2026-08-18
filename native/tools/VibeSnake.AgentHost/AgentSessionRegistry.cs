@@ -293,9 +293,11 @@ public sealed class AgentSessionRegistry : IDisposable
             AgentExhibitionArchiveListingV1.Contract,
             routeIdentityHash,
             matched.Count,
-            AgentExhibitionArchiveIndexV2.Create(
+            AgentExhibitionArchiveIndexV3.Create(
                 read.Archive,
                 read.BytesUsed,
+                read.BytesProjected,
+                read.StoredSchemaVersion,
                 read.RecoveredFromCorruption,
                 read.MigratedFromLegacySchema,
                 ReplayFileExists,
@@ -315,9 +317,11 @@ public sealed class AgentSessionRegistry : IDisposable
             result.Code,
             result.Message,
             result.Forgotten,
-            AgentExhibitionArchiveIndexV2.Create(
+            AgentExhibitionArchiveIndexV3.Create(
                 result.Archive,
                 result.BytesUsed,
+                result.BytesProjected,
+                result.StoredSchemaVersion,
                 result.RecoveredFromCorruption,
                 result.MigratedFromLegacySchema,
                 ReplayFileExists));
@@ -342,6 +346,8 @@ public sealed class AgentSessionRegistry : IDisposable
             read.RecoveredFromCorruption,
             read.MigratedFromLegacySchema,
             read.BytesUsed,
+            read.BytesProjected,
+            read.StoredSchemaVersion,
             read.Archive);
     }
 
@@ -367,9 +373,11 @@ public sealed class AgentSessionRegistry : IDisposable
             receipt?.ReceiptHash,
             receipt?.RouteIdentityHash,
             write.Evicted,
-            AgentExhibitionArchiveIndexV2.Create(
+            AgentExhibitionArchiveIndexV3.Create(
                 write.Archive,
                 write.BytesUsed,
+                write.BytesProjected,
+                write.StoredSchemaVersion,
                 write.RecoveredFromCorruption,
                 write.MigratedFromLegacySchema,
                 ReplayFileExists));

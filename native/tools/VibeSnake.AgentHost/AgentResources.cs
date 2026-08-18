@@ -67,7 +67,7 @@ public sealed class AgentResources
     public static string GetRules() => JsonSerializer.Serialize(
         new
         {
-            contract = "vibesnake-agent-rules-resource-v14",
+            contract = "vibesnake-agent-rules-resource-v15",
             ruleset_id = RulesetIdentity.CurrentId,
             rules_version = RulesetIdentity.CurrentVersion,
             observation_schema = AgentObservationV5.Contract,
@@ -160,8 +160,8 @@ public sealed class AgentResources
                 status_contract = AgentExhibitionArchiveStatusV2.Contract,
                 listing_contract = AgentExhibitionArchiveListingV1.Contract,
                 forget_contract = AgentExhibitionForgetStatusV1.Contract,
-                index_contract = AgentExhibitionArchiveIndexV2.Contract,
-                index_entry_contract = AgentArchivedExhibitionIndexEntryV2.Contract,
+                index_contract = AgentExhibitionArchiveIndexV3.Contract,
+                index_entry_contract = AgentArchivedExhibitionIndexEntryV3.Contract,
                 drop_contract = AgentExhibitionArchiveDropV1.Contract,
                 tools = ArchiveTools,
                 schema_version = AgentExhibitionArchiveV2.CurrentSchemaVersion,
@@ -182,6 +182,8 @@ public sealed class AgentResources
                 integrity = "Every stored entry must recompute both of its canonical receipt hashes and agree with each promoted field copied from that receipt. A document that fails is quarantined beside the archive rather than repaired, and the caller is told through recovered_from_corruption. If it can be neither read nor moved aside, the write is refused as archive_unavailable rather than overwriting evidence. A different exhibition is never written under an existing receipt hash.",
                 migration = "A schema-1 archive written by an earlier host is migrated forward on read rather than quarantined, and migrated_from_legacy_schema reports it. Migration is lossless by construction because every field the current schema promotes is derived from the receipt the older schema already stored verbatim, and every rebuilt entry must verify against that receipt exactly as a freshly archived one would.",
                 listing = "list_exhibitions reads the archive without writing to it and optionally narrows to one route_identity_hash, which the same division, seed, and verified replays reproduce across matches and host processes. Each listed entry reports whether its named lane replay files are still present, because an entry names a file rather than embedding it and that file can be deleted after archiving.",
+                accounting = "bytes_used is what the archive file holds right now and is verifiable against it. bytes_projected is what the next write would produce and is the size the byte ceiling binds, so remaining_bytes follows it. The two differ only between a migrate-on-read and the next write, because reading never writes. schema_version is the document in memory and stored_schema_version is the one on disk, so a pending migration reads as 1 to 2 rather than as a bare boolean.",
+                ordering = "Entries are oldest first and eviction takes position 0. Every listed entry carries its position in the whole store rather than in the listing, so a filtered listing still says where an exhibition sits and which one eviction reaches next. Position is computed at read time and is not stored, because order is a property of the store rather than of any one exhibition.",
                 identity = "Presentation display time is stripped before an exhibition is stored, because display time is never part of exhibition identity and an archive that kept it would make one exhibition look different on every visit.",
             },
             privacy = "Observations exclude random state, future outcomes, controller internals, profiles, progression, paths, prompts, credentials, diagnostics, and hidden reasoning.",
