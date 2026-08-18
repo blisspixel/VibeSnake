@@ -228,26 +228,18 @@ public sealed class AgentSessionRegistry : IDisposable
     /// is ephemeral until a caller asks for it to be kept, and an exhibition
     /// cannot be kept until both of its lanes exist as saved replay files.
     /// </summary>
-    public AgentExhibitionArchiveStatusV1 ArchiveExhibition(string matchHandle)
+    public AgentExhibitionArchiveStatusV2 ArchiveExhibition(string matchHandle)
     {
-        if (_archiveStore is null)
-        {
-            throw new InvalidOperationException(
-                "This host was started without an exhibition archive.");
-        }
-
+        var store = RequireArchiveStore();
         var receipt = GetSession(matchHandle).TryCreateExhibitionReceipt();
         if (receipt is null)
         {
             return ArchiveStatus(
                 matchHandle,
-                new AgentExhibitionArchiveWriteV1(
+                Refusal(
+                    store,
                     AgentExhibitionArchiveCode.NoVerifiedReceipt,
-                    "A live, unverified, or failed-closed match has no exhibition receipt to archive.",
-                    Archived: false,
-                    EvictedCount: 0,
-                    RecoveredFromCorruption: false,
-                    _archiveStore.Read()),
+                    "A live, unverified, or failed-closed match has no exhibition receipt to archive."),
                 receipt);
         }
 
@@ -257,44 +249,130 @@ public sealed class AgentSessionRegistry : IDisposable
         {
             return ArchiveStatus(
                 matchHandle,
-                new AgentExhibitionArchiveWriteV1(
+                Refusal(
+                    store,
                     AgentExhibitionArchiveCode.ReplayNotSaved,
-                    "Call save_verified_replay first. An archived exhibition names the saved replay file for every lane it contains.",
-                    Archived: false,
-                    EvictedCount: 0,
-                    RecoveredFromCorruption: false,
-                    _archiveStore.Read()),
+                    "Call save_verified_replay first. An archived exhibition names the saved replay file for every lane it contains."),
                 receipt);
         }
 
         return ArchiveStatus(
             matchHandle,
-            _archiveStore.Archive(
+            store.Archive(
                 receipt,
                 saved.AgentFileName,
                 receipt.RivalReplayPayloadHash is null ? null : saved.RivalFileName),
             receipt);
     }
 
-    private static AgentExhibitionArchiveStatusV1 ArchiveStatus(
+    /// <summary>
+    /// Lists the archive without writing to it, optionally narrowed to one
+    /// walked line. The same line replayed on a later match keeps its route
+    /// identity, so this is how a caller recognises an exhibition they have
+    /// already produced.
+    /// </summary>
+    public AgentExhibitionArchiveListingV1 ListExhibitions(string? routeIdentityHash)
+    {
+        if (routeIdentityHash is not null && string.IsNullOrWhiteSpace(routeIdentityHash))
+        {
+            throw new ArgumentException(
+                "routeIdentityHash must be absent or non-empty.",
+                nameof(routeIdentityHash));
+        }
+
+        var read = RequireArchiveStore().Inspect();
+        var matched = routeIdentityHash is null
+            ? read.Archive.Entries
+            : read.Archive.Entries
+                .Where(entry => string.Equals(
+                    entry.RouteIdentityHash,
+                    routeIdentityHash,
+                    StringComparison.Ordinal))
+                .ToArray();
+        return new AgentExhibitionArchiveListingV1(
+            AgentExhibitionArchiveListingV1.Contract,
+            routeIdentityHash,
+            matched.Count,
+            AgentExhibitionArchiveIndexV2.Create(
+                read.Archive,
+                read.BytesUsed,
+                read.RecoveredFromCorruption,
+                read.MigratedFromLegacySchema,
+                ReplayFileExists,
+                matched));
+    }
+
+    /// <summary>
+    /// Removes one archived exhibition, or clears the archive. Eviction alone
+    /// left a caller with no way to drop a run they did not want to keep.
+    /// </summary>
+    public AgentExhibitionForgetStatusV1 ForgetExhibition(string? receiptHash)
+    {
+        var result = RequireArchiveStore().Forget(receiptHash);
+        return new AgentExhibitionForgetStatusV1(
+            AgentExhibitionForgetStatusV1.Contract,
+            result.Code == AgentExhibitionForgetCode.Forgotten,
+            result.Code,
+            result.Message,
+            result.Forgotten,
+            AgentExhibitionArchiveIndexV2.Create(
+                result.Archive,
+                result.BytesUsed,
+                result.RecoveredFromCorruption,
+                result.MigratedFromLegacySchema,
+                ReplayFileExists));
+    }
+
+    private AgentExhibitionArchiveStore RequireArchiveStore() =>
+        _archiveStore
+            ?? throw new InvalidOperationException(
+                "This host was started without an exhibition archive.");
+
+    private static AgentExhibitionArchiveWriteV1 Refusal(
+        AgentExhibitionArchiveStore store,
+        AgentExhibitionArchiveCode code,
+        string message)
+    {
+        var read = store.Inspect();
+        return new AgentExhibitionArchiveWriteV1(
+            code,
+            message,
+            Archived: false,
+            Array.Empty<AgentExhibitionArchiveDropV1>(),
+            read.RecoveredFromCorruption,
+            read.MigratedFromLegacySchema,
+            read.BytesUsed,
+            read.Archive);
+    }
+
+    /// <summary>
+    /// Whether a named lane replay is still on disk. An archived entry names a
+    /// file rather than embedding it, so a caller choosing what to open has to
+    /// be told when that file was deleted after archiving.
+    /// </summary>
+    private bool ReplayFileExists(string fileName) =>
+        !string.IsNullOrWhiteSpace(fileName)
+        && File.Exists(Path.Combine(_replayStore.ReplayDirectory, fileName));
+
+    private AgentExhibitionArchiveStatusV2 ArchiveStatus(
         string matchHandle,
         AgentExhibitionArchiveWriteV1 write,
         AgentExhibitionReceiptV2? receipt) =>
         new(
-            AgentExhibitionArchiveStatusV1.Contract,
+            AgentExhibitionArchiveStatusV2.Contract,
             matchHandle,
             write.Archived,
             write.Code,
             write.Message,
             receipt?.ReceiptHash,
             receipt?.RouteIdentityHash,
-            write.Archive.Entries.Count,
-            write.Archive.Capacity,
-            write.EvictedCount,
-            write.RecoveredFromCorruption,
-            write.Archive.Entries
-                .Select(AgentArchivedExhibitionIndexEntryV1.FromEntry)
-                .ToArray());
+            write.Evicted,
+            AgentExhibitionArchiveIndexV2.Create(
+                write.Archive,
+                write.BytesUsed,
+                write.RecoveredFromCorruption,
+                write.MigratedFromLegacySchema,
+                ReplayFileExists));
 
     private (string? AgentFileName, string? RivalFileName) ReadSavedReplayNames(
         string matchHandle)

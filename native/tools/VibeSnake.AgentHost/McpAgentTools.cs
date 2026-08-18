@@ -185,14 +185,43 @@ public sealed class McpAgentTools
         Name = "archive_exhibition",
         Title = "Archive Vibe Snake exhibition",
         UseStructuredContent = true,
-        OutputSchemaType = typeof(AgentExhibitionArchiveStatusV1),
+        OutputSchemaType = typeof(AgentExhibitionArchiveStatusV2),
+        ReadOnly = false,
         Destructive = false,
         Idempotent = true,
         OpenWorld = false)]
-    [Description("Explicitly keeps one verified exhibition in Vibe Snake's bounded local archive and returns the archive index. Call save_verified_replay first: an archived exhibition names the saved replay file for every lane it contains, and a rivalry archives both lanes or neither. The write is atomic and bounded to 32 exhibitions, evicting the oldest at capacity and reporting how many were dropped. Archiving the same exhibition again writes nothing and reports already_archived, so the call is safe to repeat. It accepts no path, never overwrites a different exhibition under an existing receipt hash, and never advances or finishes a match.")]
-    public AgentExhibitionArchiveStatusV1 ArchiveExhibition(
+    [Description("Explicitly keeps one verified exhibition in Vibe Snake's bounded local archive and returns the archive index. Call save_verified_replay first: an archived exhibition names the saved replay file for every lane it contains, and a rivalry archives both lanes or neither. The write is atomic and bounded to 32 exhibitions and 4,194,304 bytes, whichever binds first; at capacity the oldest are evicted and every dropped exhibition is named. Archiving the same exhibition again writes nothing and reports already_archived, so the call is safe to repeat. It accepts no path, never overwrites a different exhibition under an existing receipt hash, and never advances or finishes a match.")]
+    public AgentExhibitionArchiveStatusV2 ArchiveExhibition(
         [Description("Opaque handle returned by start_match.")] string matchHandle) =>
         Execute(() => _registry.ArchiveExhibition(matchHandle));
+
+    [McpServerTool(
+        Name = "list_exhibitions",
+        Title = "List archived Vibe Snake exhibitions",
+        UseStructuredContent = true,
+        OutputSchemaType = typeof(AgentExhibitionArchiveListingV1),
+        ReadOnly = true,
+        Destructive = false,
+        Idempotent = true,
+        OpenWorld = false)]
+    [Description("Reads the local exhibition archive without writing to it and publishes both of its bounds plus the exact bytes it occupies. Supply routeIdentityHash to narrow the listing to one walked line; the same division, seed, and verified replays reproduce that hash across matches and host processes, so this is how a rematch of a line already kept is recognised. Every listed entry also reports whether its named lane replay files are still on disk. It never advances, finishes, or archives a match.")]
+    public AgentExhibitionArchiveListingV1 ListExhibitions(
+        [Description("Optional route identity hash to filter by. Use null to list every archived exhibition.")] string? routeIdentityHash = null) =>
+        Execute(() => _registry.ListExhibitions(routeIdentityHash));
+
+    [McpServerTool(
+        Name = "forget_exhibition",
+        Title = "Forget archived Vibe Snake exhibition",
+        UseStructuredContent = true,
+        OutputSchemaType = typeof(AgentExhibitionForgetStatusV1),
+        ReadOnly = false,
+        Destructive = true,
+        Idempotent = true,
+        OpenWorld = false)]
+    [Description("Removes one archived exhibition by receipt hash, or clears the archive when receiptHash is null, and returns the archive index afterwards. Every removed exhibition is named in the response. This deletes archive entries only: the saved replay files and every other store are untouched, and no human score, progression, or profile data is reachable from here. Removing something that is not archived writes nothing and reports not_archived, so the call is safe to repeat.")]
+    public AgentExhibitionForgetStatusV1 ForgetExhibition(
+        [Description("Receipt hash of the exhibition to remove. Use null to clear every archived exhibition.")] string? receiptHash = null) =>
+        Execute(() => _registry.ForgetExhibition(receiptHash));
 
     private static T Execute<T>(Func<T> action)
     {

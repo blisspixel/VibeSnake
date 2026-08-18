@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using VibeSnake.Rules;
 
 namespace VibeSnake.AgentPlay;
 
@@ -34,26 +35,53 @@ public enum AgentExhibitionArchiveCode : byte
 }
 
 /// <summary>
+/// Why one removal request ended the way it did. Removal is deliberately its own
+/// vocabulary: forgetting an exhibition that was never kept is not an error, and
+/// a caller clearing a store should not have to distinguish that from a failure.
+/// </summary>
+public enum AgentExhibitionForgetCode : byte
+{
+    /// <summary>The named exhibitions were removed and the archive was rewritten.</summary>
+    Forgotten = 0,
+
+    /// <summary>No entry matched, so nothing was written.</summary>
+    NotArchived = 1,
+
+    /// <summary>The archive could not be read or written. No state changed.</summary>
+    ArchiveUnavailable = 2,
+}
+
+/// <summary>
 /// One archived exhibition. It stores the canonical receipt verbatim beside the
 /// replay file names the application-owned replay store actually wrote, so both
-/// lanes of a rivalry can be found again without re-deriving anything. The
-/// promoted fields are copies of receipt values, published so an index can be
-/// listed without opening every receipt.
+/// lanes of a rivalry can be found again without re-deriving anything.
+///
+/// Every promoted field is a copy of a receipt value, published so an index can
+/// be listed and chosen from without opening a single receipt. A playtester
+/// reading the v1 index could tell two exhibitions apart only when their seeds
+/// differed, and had to open a receipt to learn how a run ended or which
+/// practice it was. v2 promotes the mode, the terminal facts, and the lesson and
+/// style identities for exactly that reason.
 /// </summary>
-public sealed record AgentArchivedExhibitionV1(
+public sealed record AgentArchivedExhibitionV2(
     string Schema,
     string ReceiptHash,
     string RouteIdentityHash,
     string DivisionId,
+    string ModeId,
     string GameplaySeed,
     int Score,
+    AgentMatchEndReason EndReason,
+    RunStatus RunStatus,
+    string? LessonId,
+    string? StyleContractId,
     string AgentReplayFileName,
     string? RivalReplayFileName,
     string? RivalPersonalityId,
     int? RivalScore,
     AgentExhibitionReceiptV2 Receipt)
 {
-    public const string Contract = "vibesnake-agent-archived-exhibition-v1";
+    public const string Contract = "vibesnake-agent-archived-exhibition-v2";
 
     /// <summary>
     /// Builds an entry from a receipt and the two lane file names. The receipt
@@ -61,7 +89,7 @@ public sealed record AgentArchivedExhibitionV1(
     /// never part of exhibition identity and an archive that kept it would make
     /// the same exhibition look different on every visit.
     /// </summary>
-    public static AgentArchivedExhibitionV1 Create(
+    public static AgentArchivedExhibitionV2 Create(
         AgentExhibitionReceiptV2 receipt,
         string agentReplayFileName,
         string? rivalReplayFileName)
@@ -83,13 +111,18 @@ public sealed record AgentArchivedExhibitionV1(
                 nameof(rivalReplayFileName));
         }
 
-        return new AgentArchivedExhibitionV1(
+        return new AgentArchivedExhibitionV2(
             Contract,
             receipt.ReceiptHash,
             receipt.RouteIdentityHash,
             receipt.Division.DivisionId,
+            receipt.Division.ModeId,
             receipt.GameplaySeed,
             receipt.Score,
+            receipt.EndReason,
+            receipt.RunStatus,
+            receipt.LessonOutcome?.LessonId,
+            receipt.StyleOutcome?.ContractId,
             agentReplayFileName,
             rivalReplayFileName,
             receipt.RivalPersonalityId,
@@ -106,7 +139,7 @@ public sealed record AgentArchivedExhibitionV1(
     /// The receipt hash already covers every canonical receipt fact, so the only
     /// fields left to compare are the lane file names the archive itself adds.
     /// </summary>
-    public bool DescribesSameExhibitionAs(AgentArchivedExhibitionV1 other)
+    public bool DescribesSameExhibitionAs(AgentArchivedExhibitionV2 other)
     {
         ArgumentNullException.ThrowIfNull(other);
         return string.Equals(ReceiptHash, other.ReceiptHash, StringComparison.Ordinal)
@@ -143,8 +176,16 @@ public sealed record AgentArchivedExhibitionV1(
             DivisionId,
             Receipt.Division.DivisionId,
             StringComparison.Ordinal)
+        && string.Equals(ModeId, Receipt.Division.ModeId, StringComparison.Ordinal)
         && string.Equals(GameplaySeed, Receipt.GameplaySeed, StringComparison.Ordinal)
         && Score == Receipt.Score
+        && EndReason == Receipt.EndReason
+        && RunStatus == Receipt.RunStatus
+        && string.Equals(LessonId, Receipt.LessonOutcome?.LessonId, StringComparison.Ordinal)
+        && string.Equals(
+            StyleContractId,
+            Receipt.StyleOutcome?.ContractId,
+            StringComparison.Ordinal)
         && !string.IsNullOrWhiteSpace(AgentReplayFileName)
         && (RivalReplayFileName is null) == (Receipt.RivalReplayPayloadHash is null)
         && string.Equals(
@@ -160,18 +201,23 @@ public sealed record AgentArchivedExhibitionV1(
 /// is a preview surface and must never share a store, a schema, or a recovery
 /// path with a human player's saves.
 /// </summary>
-public sealed record AgentExhibitionArchiveV1(
+public sealed record AgentExhibitionArchiveV2(
     string Schema,
     int SchemaVersion,
     int Capacity,
-    IReadOnlyList<AgentArchivedExhibitionV1> Entries)
+    IReadOnlyList<AgentArchivedExhibitionV2> Entries)
 {
-    public const string Contract = "vibesnake-agent-exhibition-archive-v1";
-    public const int CurrentSchemaVersion = 1;
+    public const string Contract = "vibesnake-agent-exhibition-archive-v2";
+    public const int CurrentSchemaVersion = 2;
+
+    /// <summary>The one older schema this store migrates forward rather than rejects.</summary>
+    public const int LegacySchemaVersion = 1;
+    public const string LegacyContract = "vibesnake-agent-exhibition-archive-v1";
+    public const string LegacyEntryContract = "vibesnake-agent-archived-exhibition-v1";
 
     /// <summary>
     /// The archive is an exhibition shelf, not a history database. Oldest
-    /// entries are evicted first and the caller is told how many were dropped.
+    /// entries are evicted first and the caller is told exactly which ones.
     /// </summary>
     public const int MaximumEntries = 32;
 
@@ -181,15 +227,16 @@ public sealed record AgentExhibitionArchiveV1(
     /// the entry count is legal. A receipt carries one accepted presentation
     /// event per accepted rules step, so a long exhibition is far larger than a
     /// short one and the byte ceiling can evict before the entry count does.
-    /// Effective capacity is therefore the lesser of the two bounds.
+    /// Effective capacity is therefore the lesser of the two bounds, which is
+    /// why every result publishes the exact bytes the archive occupies.
     /// </summary>
     public const int MaximumBytes = 4_194_304;
 
-    public static AgentExhibitionArchiveV1 Empty { get; } = new(
+    public static AgentExhibitionArchiveV2 Empty { get; } = new(
         Contract,
         CurrentSchemaVersion,
         MaximumEntries,
-        Array.Empty<AgentArchivedExhibitionV1>());
+        Array.Empty<AgentArchivedExhibitionV2>());
 
     /// <summary>
     /// Whether a loaded document is structurally usable. Anything else is
@@ -209,6 +256,22 @@ public sealed record AgentExhibitionArchiveV1(
 }
 
 /// <summary>
+/// One exhibition an operation dropped. Reporting only a count told a caller
+/// that something was lost without telling them what, so both eviction and
+/// removal now name the identities they took out.
+/// </summary>
+public sealed record AgentExhibitionArchiveDropV1(
+    string Schema,
+    string ReceiptHash,
+    string RouteIdentityHash)
+{
+    public const string Contract = "vibesnake-agent-exhibition-archive-drop-v1";
+
+    internal static AgentExhibitionArchiveDropV1 FromEntry(AgentArchivedExhibitionV2 entry) =>
+        new(Contract, entry.ReceiptHash, entry.RouteIdentityHash);
+}
+
+/// <summary>
 /// The factual outcome of one archive attempt, including the archive as it
 /// stands afterwards. The archive is always returned, including on a refusal,
 /// so a caller never has to guess what a failed write left behind.
@@ -217,9 +280,23 @@ public sealed record AgentExhibitionArchiveWriteV1(
     AgentExhibitionArchiveCode Code,
     string Message,
     bool Archived,
-    int EvictedCount,
+    IReadOnlyList<AgentExhibitionArchiveDropV1> Evicted,
     bool RecoveredFromCorruption,
-    AgentExhibitionArchiveV1 Archive);
+    bool MigratedFromLegacySchema,
+    int BytesUsed,
+    AgentExhibitionArchiveV2 Archive);
+
+/// <summary>
+/// The factual outcome of one removal request.
+/// </summary>
+public sealed record AgentExhibitionForgetResultV1(
+    AgentExhibitionForgetCode Code,
+    string Message,
+    IReadOnlyList<AgentExhibitionArchiveDropV1> Forgotten,
+    bool RecoveredFromCorruption,
+    bool MigratedFromLegacySchema,
+    int BytesUsed,
+    AgentExhibitionArchiveV2 Archive);
 
 /// <summary>
 /// Reads and writes the bounded exhibition archive under one caller-supplied
@@ -273,15 +350,34 @@ public sealed class AgentExhibitionArchiveStore
     public string ArchivePath => Path.Combine(_directory, FileName);
 
     /// <summary>
-    /// Returns the archive as it stands. A missing file is an empty archive;
-    /// an unreadable or inconsistent file is quarantined and reported as empty
-    /// rather than silently repaired.
+    /// Returns the archive as it stands. A missing file is an empty archive, the
+    /// one supported older schema is migrated forward, and an unreadable or
+    /// inconsistent file is quarantined and reported as empty rather than
+    /// silently repaired.
     /// </summary>
-    public AgentExhibitionArchiveV1 Read()
+    public AgentExhibitionArchiveV2 Read()
     {
         lock (_sync)
         {
             return LoadLocked().Archive;
+        }
+    }
+
+    /// <summary>
+    /// The archive as it stands, with the exact bytes it occupies and whether
+    /// reading it recovered from corruption or migrated an older schema.
+    /// </summary>
+    public AgentExhibitionArchiveReadV1 Inspect()
+    {
+        lock (_sync)
+        {
+            var loaded = LoadLocked();
+            return new AgentExhibitionArchiveReadV1(
+                loaded.Archive,
+                loaded.Recovered,
+                loaded.Blocked,
+                loaded.Migrated,
+                loaded.BytesUsed);
         }
     }
 
@@ -311,25 +407,23 @@ public sealed class AgentExhibitionArchiveStore
         string? rivalReplayFileName)
     {
         ArgumentNullException.ThrowIfNull(receipt);
-        var entry = AgentArchivedExhibitionV1.Create(
+        var entry = AgentArchivedExhibitionV2.Create(
             receipt,
             agentReplayFileName,
             rivalReplayFileName);
         lock (_sync)
         {
-            var (archive, recovered, blocked) = LoadLocked();
-            if (blocked)
+            var loaded = LoadLocked();
+            var archive = loaded.Archive;
+            if (loaded.Blocked)
             {
                 // The stored document is unreadable and could not be moved
                 // aside. Writing now would overwrite bytes a person may still
                 // need to inspect, so refuse instead.
-                return new AgentExhibitionArchiveWriteV1(
+                return Refused(
                     AgentExhibitionArchiveCode.ArchiveUnavailable,
                     "The stored archive could not be read or quarantined, so nothing was written. Move or remove it before archiving again.",
-                    Archived: false,
-                    EvictedCount: 0,
-                    RecoveredFromCorruption: false,
-                    archive);
+                    loaded);
             }
 
             var existing = archive.Entries.FirstOrDefault(candidate => string.Equals(
@@ -339,51 +433,42 @@ public sealed class AgentExhibitionArchiveStore
             if (existing is not null)
             {
                 return existing.DescribesSameExhibitionAs(entry)
-                    ? new AgentExhibitionArchiveWriteV1(
+                    ? Refused(
                         AgentExhibitionArchiveCode.AlreadyArchived,
                         "This exhibition is already archived under the same receipt hash.",
-                        Archived: false,
-                        EvictedCount: 0,
-                        recovered,
-                        archive)
-                    : new AgentExhibitionArchiveWriteV1(
+                        loaded)
+                    : Refused(
                         AgentExhibitionArchiveCode.ConflictingReceipt,
                         "A different exhibition already occupies this receipt hash. The archive never overwrites it.",
-                        Archived: false,
-                        EvictedCount: 0,
-                        recovered,
-                        archive);
+                        loaded);
             }
 
             var kept = archive.Entries.ToList();
             kept.Add(entry);
-            var evicted = 0;
-            while (kept.Count > AgentExhibitionArchiveV1.MaximumEntries)
+            var evicted = new List<AgentExhibitionArchiveDropV1>();
+            while (kept.Count > AgentExhibitionArchiveV2.MaximumEntries)
             {
+                evicted.Add(AgentExhibitionArchiveDropV1.FromEntry(kept[0]));
                 kept.RemoveAt(0);
-                evicted++;
             }
 
             var candidateArchive = archive with { Entries = kept.AsReadOnly() };
             var payload = Serialize(candidateArchive);
             // Measure the exact bytes that would land on disk, not an estimate.
-            while (payload.Length > AgentExhibitionArchiveV1.MaximumBytes && kept.Count > 1)
+            while (payload.Length > AgentExhibitionArchiveV2.MaximumBytes && kept.Count > 1)
             {
+                evicted.Add(AgentExhibitionArchiveDropV1.FromEntry(kept[0]));
                 kept.RemoveAt(0);
-                evicted++;
                 candidateArchive = archive with { Entries = kept.AsReadOnly() };
                 payload = Serialize(candidateArchive);
             }
 
-            if (payload.Length > AgentExhibitionArchiveV1.MaximumBytes)
+            if (payload.Length > AgentExhibitionArchiveV2.MaximumBytes)
             {
-                return new AgentExhibitionArchiveWriteV1(
+                return Refused(
                     AgentExhibitionArchiveCode.ArchiveUnavailable,
-                    $"One exhibition exceeds the {AgentExhibitionArchiveV1.MaximumBytes}-byte archive ceiling and was not written.",
-                    Archived: false,
-                    EvictedCount: 0,
-                    recovered,
-                    archive);
+                    $"One exhibition exceeds the {AgentExhibitionArchiveV2.MaximumBytes}-byte archive ceiling and was not written.",
+                    loaded);
             }
 
             try
@@ -393,45 +478,148 @@ public sealed class AgentExhibitionArchiveStore
             catch (Exception exception) when (
                 exception is IOException or UnauthorizedAccessException)
             {
-                return new AgentExhibitionArchiveWriteV1(
+                return Refused(
                     AgentExhibitionArchiveCode.ArchiveUnavailable,
                     "The exhibition archive could not be written: " + exception.Message,
-                    Archived: false,
-                    EvictedCount: 0,
-                    recovered,
-                    archive);
+                    loaded);
             }
 
             return new AgentExhibitionArchiveWriteV1(
                 AgentExhibitionArchiveCode.Archived,
-                evicted == 0
+                evicted.Count == 0
                     ? "The exhibition was archived."
-                    : $"The exhibition was archived and {evicted} older exhibition(s) were evicted at capacity.",
+                    : $"The exhibition was archived and {evicted.Count} older exhibition(s) were evicted at capacity.",
                 Archived: true,
-                evicted,
-                recovered,
+                evicted.AsReadOnly(),
+                loaded.Recovered,
+                loaded.Migrated,
+                payload.Length,
                 candidateArchive);
         }
     }
 
-    private (AgentExhibitionArchiveV1 Archive, bool Recovered, bool Blocked) LoadLocked()
+    /// <summary>
+    /// Removes one archived exhibition by receipt hash, or every exhibition when
+    /// no hash is given. Nothing but eviction used to remove anything, which left
+    /// a caller with no way to drop a run they did not want to keep, and no way
+    /// to clear a store whose named replay files they had already deleted.
+    /// </summary>
+    public AgentExhibitionForgetResultV1 Forget(string? receiptHash)
+    {
+        if (receiptHash is not null && string.IsNullOrWhiteSpace(receiptHash))
+        {
+            throw new ArgumentException(
+                "A receipt hash must be absent or non-empty.",
+                nameof(receiptHash));
+        }
+
+        lock (_sync)
+        {
+            var loaded = LoadLocked();
+            var archive = loaded.Archive;
+            if (loaded.Blocked)
+            {
+                return new AgentExhibitionForgetResultV1(
+                    AgentExhibitionForgetCode.ArchiveUnavailable,
+                    "The stored archive could not be read or quarantined, so nothing was removed. Move or remove it before trying again.",
+                    Array.Empty<AgentExhibitionArchiveDropV1>(),
+                    RecoveredFromCorruption: false,
+                    MigratedFromLegacySchema: false,
+                    loaded.BytesUsed,
+                    archive);
+            }
+
+            var removed = archive.Entries
+                .Where(entry => receiptHash is null
+                    || string.Equals(entry.ReceiptHash, receiptHash, StringComparison.Ordinal))
+                .Select(AgentExhibitionArchiveDropV1.FromEntry)
+                .ToArray();
+            if (removed.Length == 0)
+            {
+                return new AgentExhibitionForgetResultV1(
+                    AgentExhibitionForgetCode.NotArchived,
+                    receiptHash is null
+                        ? "The archive is already empty."
+                        : "No archived exhibition carries that receipt hash.",
+                    removed,
+                    loaded.Recovered,
+                    loaded.Migrated,
+                    loaded.BytesUsed,
+                    archive);
+            }
+
+            var kept = archive.Entries
+                .Where(entry => receiptHash is not null
+                    && !string.Equals(entry.ReceiptHash, receiptHash, StringComparison.Ordinal))
+                .ToArray();
+            var candidateArchive = archive with { Entries = kept };
+            var payload = Serialize(candidateArchive);
+            try
+            {
+                WriteAtomicLocked(payload);
+            }
+            catch (Exception exception) when (
+                exception is IOException or UnauthorizedAccessException)
+            {
+                return new AgentExhibitionForgetResultV1(
+                    AgentExhibitionForgetCode.ArchiveUnavailable,
+                    "The exhibition archive could not be written: " + exception.Message,
+                    Array.Empty<AgentExhibitionArchiveDropV1>(),
+                    loaded.Recovered,
+                    loaded.Migrated,
+                    loaded.BytesUsed,
+                    archive);
+            }
+
+            return new AgentExhibitionForgetResultV1(
+                AgentExhibitionForgetCode.Forgotten,
+                receiptHash is null
+                    ? $"The archive was cleared and {removed.Length} exhibition(s) were removed."
+                    : "The exhibition was removed from the archive.",
+                removed,
+                loaded.Recovered,
+                loaded.Migrated,
+                payload.Length,
+                candidateArchive);
+        }
+    }
+
+    private static AgentExhibitionArchiveWriteV1 Refused(
+        AgentExhibitionArchiveCode code,
+        string message,
+        LoadedArchive loaded) =>
+        new(
+            code,
+            message,
+            Archived: false,
+            Array.Empty<AgentExhibitionArchiveDropV1>(),
+            loaded.Recovered,
+            loaded.Migrated,
+            loaded.BytesUsed,
+            loaded.Archive);
+
+    private LoadedArchive LoadLocked()
     {
         var path = ArchivePath;
         if (!File.Exists(path))
         {
-            return (AgentExhibitionArchiveV1.Empty, false, false);
+            return new LoadedArchive(
+                AgentExhibitionArchiveV2.Empty,
+                Recovered: false,
+                Blocked: false,
+                Migrated: false,
+                BytesUsed: 0);
         }
 
-        AgentExhibitionArchiveV1? loaded = null;
+        AgentExhibitionArchiveV2? loaded = null;
+        var migrated = false;
         try
         {
             // Check the size before reading it, so a file that grew outside this
             // store can never be pulled into memory in full just to be rejected.
-            if (new FileInfo(path).Length <= AgentExhibitionArchiveV1.MaximumBytes)
+            if (new FileInfo(path).Length <= AgentExhibitionArchiveV2.MaximumBytes)
             {
-                loaded = JsonSerializer.Deserialize<AgentExhibitionArchiveV1>(
-                    File.ReadAllBytes(path),
-                    SerializerOptions);
+                (loaded, migrated) = Deserialize(File.ReadAllBytes(path));
             }
         }
         catch (Exception exception) when (
@@ -442,11 +630,89 @@ public sealed class AgentExhibitionArchiveStore
 
         if (loaded is not null && loaded.IsWellFormed())
         {
-            return (loaded, false, false);
+            return new LoadedArchive(
+                loaded,
+                Recovered: false,
+                Blocked: false,
+                migrated,
+                Serialize(loaded).Length);
         }
 
         var quarantined = TryQuarantineLocked(path);
-        return (AgentExhibitionArchiveV1.Empty, quarantined, !quarantined);
+        return new LoadedArchive(
+            AgentExhibitionArchiveV2.Empty,
+            quarantined,
+            !quarantined,
+            Migrated: false,
+            BytesUsed: 0);
+    }
+
+    /// <summary>
+    /// Reads the current schema, or migrates the one supported older schema
+    /// forward. Migration is lossless by construction: every field v2 promotes
+    /// is derived from the receipt that v1 already stored verbatim, and the
+    /// rebuilt entry has to verify against that receipt exactly as a freshly
+    /// archived one would. A legacy document that fails any of those checks is
+    /// treated as corruption rather than migrated on hope.
+    /// </summary>
+    private static (AgentExhibitionArchiveV2? Archive, bool Migrated) Deserialize(byte[] bytes)
+    {
+        if (ReadSchemaVersion(bytes) != AgentExhibitionArchiveV2.LegacySchemaVersion)
+        {
+            return (
+                JsonSerializer.Deserialize<AgentExhibitionArchiveV2>(bytes, SerializerOptions),
+                false);
+        }
+
+        var legacy = JsonSerializer.Deserialize<LegacyArchive>(bytes, SerializerOptions);
+        if (legacy is null
+            || !string.Equals(
+                legacy.Schema,
+                AgentExhibitionArchiveV2.LegacyContract,
+                StringComparison.Ordinal)
+            || legacy.Capacity != AgentExhibitionArchiveV2.MaximumEntries
+            || legacy.Entries.Count > AgentExhibitionArchiveV2.MaximumEntries)
+        {
+            return (null, false);
+        }
+
+        var upgraded = new List<AgentArchivedExhibitionV2>(legacy.Entries.Count);
+        foreach (var entry in legacy.Entries)
+        {
+            if (!string.Equals(
+                    entry.Schema,
+                    AgentExhibitionArchiveV2.LegacyEntryContract,
+                    StringComparison.Ordinal)
+                || entry.Receipt.DisplayTimeUtc is not null
+                || !AgentExhibitionReceipt.HasCanonicalHash(entry.Receipt)
+                || !string.Equals(
+                    entry.ReceiptHash,
+                    entry.Receipt.ReceiptHash,
+                    StringComparison.Ordinal))
+            {
+                return (null, false);
+            }
+
+            upgraded.Add(AgentArchivedExhibitionV2.Create(
+                entry.Receipt,
+                entry.AgentReplayFileName,
+                entry.RivalReplayFileName));
+        }
+
+        return (
+            AgentExhibitionArchiveV2.Empty with { Entries = upgraded.AsReadOnly() },
+            true);
+    }
+
+    private static int ReadSchemaVersion(byte[] bytes)
+    {
+        using var document = JsonDocument.Parse(bytes);
+        return document.RootElement.ValueKind == JsonValueKind.Object
+            && document.RootElement.TryGetProperty("schema_version", out var value)
+            && value.ValueKind == JsonValueKind.Number
+            && value.TryGetInt32(out var version)
+                ? version
+                : 0;
     }
 
     private static bool TryQuarantineLocked(string path)
@@ -488,6 +754,48 @@ public sealed class AgentExhibitionArchiveStore
         File.Move(temporary, ArchivePath, overwrite: true);
     }
 
-    private static byte[] Serialize(AgentExhibitionArchiveV1 archive) =>
+    private static byte[] Serialize(AgentExhibitionArchiveV2 archive) =>
         JsonSerializer.SerializeToUtf8Bytes(archive, SerializerOptions);
+
+    private sealed record LoadedArchive(
+        AgentExhibitionArchiveV2 Archive,
+        bool Recovered,
+        bool Blocked,
+        bool Migrated,
+        int BytesUsed);
+
+    /// <summary>
+    /// The schema-1 shape, retained only so a store written by an earlier host
+    /// can be migrated instead of quarantined.
+    /// </summary>
+    private sealed record LegacyArchive(
+        string Schema,
+        int SchemaVersion,
+        int Capacity,
+        IReadOnlyList<LegacyEntry> Entries);
+
+    private sealed record LegacyEntry(
+        string Schema,
+        string ReceiptHash,
+        string RouteIdentityHash,
+        string DivisionId,
+        string GameplaySeed,
+        int Score,
+        string AgentReplayFileName,
+        string? RivalReplayFileName,
+        string? RivalPersonalityId,
+        int? RivalScore,
+        AgentExhibitionReceiptV2 Receipt);
 }
+
+/// <summary>
+/// One read of the archive, with the exact bytes it occupies. A caller cannot
+/// see the effective room left from an entry count alone, because the byte
+/// ceiling can bind first.
+/// </summary>
+public sealed record AgentExhibitionArchiveReadV1(
+    AgentExhibitionArchiveV2 Archive,
+    bool RecoveredFromCorruption,
+    bool Blocked,
+    bool MigratedFromLegacySchema,
+    int BytesUsed);

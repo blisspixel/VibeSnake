@@ -392,8 +392,10 @@ public sealed class AgentHostTests
             [
                 "archive_exhibition",
                 "finish_match",
+                "forget_exhibition",
                 "get_exhibition_receipt",
                 "get_match_result",
+                "list_exhibitions",
                 "observe_match",
                 "play_burst",
                 "play_move",
@@ -417,7 +419,9 @@ public sealed class AgentHostTests
                     "finish_match" => typeof(AgentMatchSummaryV5),
                     "get_match_result" => typeof(AgentMatchResultStatusV5),
                     "save_verified_replay" => typeof(AgentReplaySaveV1),
-                    "archive_exhibition" => typeof(AgentExhibitionArchiveStatusV1),
+                    "archive_exhibition" => typeof(AgentExhibitionArchiveStatusV2),
+                    "list_exhibitions" => typeof(AgentExhibitionArchiveListingV1),
+                    "forget_exhibition" => typeof(AgentExhibitionForgetStatusV1),
                     _ => throw new InvalidOperationException(
                         $"Unexpected MCP tool {value.Tool.Name}."),
                 },
@@ -760,31 +764,68 @@ public sealed class AgentHostTests
         var playbook = AgentResources.GetPlaybook();
 
         Assert.Equal(
-            "vibesnake-agent-rules-resource-v13",
+            "vibesnake-agent-rules-resource-v14",
             rules.RootElement.GetProperty("contract").GetString());
         var archive = rules.RootElement.GetProperty("archive");
         Assert.Equal(
-            AgentExhibitionArchiveV1.Contract,
+            AgentExhibitionArchiveV2.Contract,
             archive.GetProperty("contract").GetString());
         Assert.Equal(
-            AgentArchivedExhibitionV1.Contract,
+            AgentArchivedExhibitionV2.Contract,
             archive.GetProperty("entry_contract").GetString());
         Assert.Equal(
-            AgentExhibitionArchiveStatusV1.Contract,
+            AgentExhibitionArchiveStatusV2.Contract,
             archive.GetProperty("status_contract").GetString());
         Assert.Equal(
-            AgentArchivedExhibitionIndexEntryV1.Contract,
+            AgentArchivedExhibitionIndexEntryV2.Contract,
             archive.GetProperty("index_entry_contract").GetString());
-        Assert.Equal("archive_exhibition", archive.GetProperty("tool").GetString());
         Assert.Equal(
-            AgentExhibitionArchiveV1.MaximumEntries,
+            AgentExhibitionArchiveListingV1.Contract,
+            archive.GetProperty("listing_contract").GetString());
+        Assert.Equal(
+            AgentExhibitionForgetStatusV1.Contract,
+            archive.GetProperty("forget_contract").GetString());
+        Assert.Equal(
+            AgentExhibitionArchiveIndexV2.Contract,
+            archive.GetProperty("index_contract").GetString());
+        Assert.Equal(
+            AgentExhibitionArchiveDropV1.Contract,
+            archive.GetProperty("drop_contract").GetString());
+        Assert.Equal(
+            ["archive_exhibition", "list_exhibitions", "forget_exhibition"],
+            archive.GetProperty("tools").EnumerateArray()
+                .Select(value => value.GetString() ?? string.Empty)
+                .ToArray());
+        Assert.Equal(
+            AgentExhibitionArchiveV2.CurrentSchemaVersion,
+            archive.GetProperty("schema_version").GetInt32());
+        Assert.Equal(
+            AgentExhibitionArchiveV2.LegacySchemaVersion,
+            archive.GetProperty("migrates_from_schema_version").GetInt32());
+        Assert.Equal(
+            AgentExhibitionArchiveV2.MaximumEntries,
             archive.GetProperty("capacity").GetInt32());
         Assert.Equal(
-            AgentExhibitionArchiveV1.MaximumBytes,
+            AgentExhibitionArchiveV2.MaximumBytes,
             archive.GetProperty("maximum_bytes").GetInt32());
         Assert.Equal(
             Enum.GetValues<AgentExhibitionArchiveCode>().Length,
-            archive.GetProperty("codes").GetArrayLength());
+            archive.GetProperty("archive_codes").GetArrayLength());
+        Assert.Equal(
+            Enum.GetValues<AgentExhibitionForgetCode>().Length,
+            archive.GetProperty("forget_codes").GetArrayLength());
+        Assert.Contains(
+            "lossless by construction",
+            archive.GetProperty("migration").GetString(),
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "without writing to it",
+            archive.GetProperty("listing").GetString(),
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "bytes_used",
+            archive.GetProperty("capacity_rule").GetString(),
+            StringComparison.Ordinal);
         Assert.Contains(
             "save_verified_replay must already have written every lane",
             archive.GetProperty("prerequisites").GetString(),
@@ -1287,7 +1328,7 @@ public sealed class AgentHostTests
         Assert.NotNull(host.Services);
         Assert.NotNull(defaultHost.Services);
         Assert.Equal("vibesnake-agent-host", Program.HostName);
-        Assert.Equal("0.12.0", Program.HostVersion);
+        Assert.Equal("0.13.0", Program.HostVersion);
         Assert.Throws<ArgumentNullException>(() =>
             Program.CreateHostApplicationBuilder(null!, temporary.Path));
     }
@@ -1736,11 +1777,11 @@ public sealed class AgentHostTests
         Assert.False(unsavedArchive.IsError ?? false);
         var unsavedArchiveJson = Assert.IsType<JsonElement>(unsavedArchive.StructuredContent);
         Assert.Equal(
-            AgentExhibitionArchiveStatusV1.Contract,
+            AgentExhibitionArchiveStatusV2.Contract,
             unsavedArchiveJson.GetProperty("schema").GetString());
         Assert.Equal(
-            AgentExhibitionArchiveV1.MaximumEntries,
-            unsavedArchiveJson.GetProperty("capacity").GetInt32());
+            AgentExhibitionArchiveV2.MaximumEntries,
+            unsavedArchiveJson.GetProperty("archive").GetProperty("capacity").GetInt32());
         Assert.False(unsavedArchiveJson.GetProperty("archived").GetBoolean());
         Assert.Equal(
             "replay_not_saved",
@@ -1838,8 +1879,10 @@ public sealed class AgentHostTests
             [
                 "archive_exhibition",
                 "finish_match",
+                "forget_exhibition",
                 "get_exhibition_receipt",
                 "get_match_result",
+                "list_exhibitions",
                 "observe_match",
                 "play_burst",
                 "play_move",
@@ -1866,7 +1909,7 @@ public sealed class AgentHostTests
             resource => resource.Uri == "vibesnake://agent/identity");
         var rulesText = Assert.IsType<TextResourceContents>(Assert.Single(rules.Contents));
         Assert.Contains(
-            "vibesnake-agent-rules-resource-v13",
+            "vibesnake-agent-rules-resource-v14",
             rulesText.Text,
             StringComparison.Ordinal);
         Assert.False(moved.IsError ?? false);

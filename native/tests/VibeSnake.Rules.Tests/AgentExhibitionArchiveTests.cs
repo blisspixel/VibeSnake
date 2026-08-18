@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using VibeSnake.AgentHost;
 using VibeSnake.AgentPlay;
 using VibeSnake.Persistence;
@@ -24,18 +25,18 @@ public sealed class AgentExhibitionArchiveTests
 
         var status = exhibition.Registry.ArchiveExhibition(exhibition.Handle);
 
-        Assert.Equal(AgentExhibitionArchiveStatusV1.Contract, status.Schema);
+        Assert.Equal(AgentExhibitionArchiveStatusV2.Contract, status.Schema);
         Assert.True(status.Archived);
         Assert.Equal(AgentExhibitionArchiveCode.Archived, status.Code);
         Assert.Equal(exhibition.Receipt.ReceiptHash, status.ReceiptHash);
         Assert.Equal(exhibition.Receipt.RouteIdentityHash, status.RouteIdentityHash);
-        Assert.Equal(1, status.EntryCount);
-        Assert.Equal(AgentExhibitionArchiveV1.MaximumEntries, status.Capacity);
-        Assert.Equal(0, status.EvictedCount);
-        Assert.False(status.RecoveredFromCorruption);
+        Assert.Equal(1, status.Archive.EntryCount);
+        Assert.Equal(AgentExhibitionArchiveV2.MaximumEntries, status.Archive.Capacity);
+        Assert.Empty(status.Evicted);
+        Assert.False(status.Archive.RecoveredFromCorruption);
 
-        var listed = Assert.Single(status.Entries);
-        Assert.Equal(AgentArchivedExhibitionIndexEntryV1.Contract, listed.Schema);
+        var listed = Assert.Single(status.Archive.Entries);
+        Assert.Equal(AgentArchivedExhibitionIndexEntryV2.Contract, listed.Schema);
         Assert.Equal(exhibition.Receipt.ReceiptHash, listed.ReceiptHash);
         Assert.Equal(exhibition.Receipt.RouteIdentityHash, listed.RouteIdentityHash);
         Assert.Equal(exhibition.Receipt.Division.DivisionId, listed.DivisionId);
@@ -64,8 +65,8 @@ public sealed class AgentExhibitionArchiveTests
         // host process: no shared memory, no live handle, only the file.
         var reopened = new AgentExhibitionArchiveStore(temporary.Path).Read();
 
-        Assert.Equal(AgentExhibitionArchiveV1.Contract, reopened.Schema);
-        Assert.Equal(AgentExhibitionArchiveV1.CurrentSchemaVersion, reopened.SchemaVersion);
+        Assert.Equal(AgentExhibitionArchiveV2.Contract, reopened.Schema);
+        Assert.Equal(AgentExhibitionArchiveV2.CurrentSchemaVersion, reopened.SchemaVersion);
         var entry = Assert.Single(reopened.Entries);
         Assert.True(entry.IsSelfConsistent());
         Assert.Equal(exhibition.Receipt.ReceiptHash, entry.Receipt.ReceiptHash);
@@ -90,7 +91,7 @@ public sealed class AgentExhibitionArchiveTests
         Assert.True(first.Archived);
         Assert.False(second.Archived);
         Assert.Equal(AgentExhibitionArchiveCode.AlreadyArchived, second.Code);
-        Assert.Equal(1, second.EntryCount);
+        Assert.Equal(1, second.Archive.EntryCount);
         Assert.Equal(firstBytes, secondBytes);
     }
 
@@ -105,8 +106,8 @@ public sealed class AgentExhibitionArchiveTests
 
         Assert.False(status.Archived);
         Assert.Equal(AgentExhibitionArchiveCode.ReplayNotSaved, status.Code);
-        Assert.Equal(0, status.EntryCount);
-        Assert.Empty(status.Entries);
+        Assert.Equal(0, status.Archive.EntryCount);
+        Assert.Empty(status.Archive.Entries);
         // The receipt exists; only the durable lane file does not.
         Assert.NotNull(status.ReceiptHash);
         Assert.False(File.Exists(
@@ -129,7 +130,7 @@ public sealed class AgentExhibitionArchiveTests
         Assert.False(status.Archived);
         Assert.Equal(AgentExhibitionArchiveCode.NoVerifiedReceipt, status.Code);
         Assert.Null(status.ReceiptHash);
-        Assert.Equal(0, status.EntryCount);
+        Assert.Equal(0, status.Archive.EntryCount);
     }
 
     [Fact]
@@ -162,8 +163,8 @@ public sealed class AgentExhibitionArchiveTests
         var status = exhibition.Registry.ArchiveExhibition(exhibition.Handle);
 
         Assert.True(status.Archived);
-        Assert.True(status.RecoveredFromCorruption);
-        Assert.Equal(1, status.EntryCount);
+        Assert.True(status.Archive.RecoveredFromCorruption);
+        Assert.Equal(1, status.Archive.EntryCount);
         var quarantined = Assert.Single(Directory.GetFiles(
             Path.GetDirectoryName(store.ArchivePath)!,
             "*" + AgentExhibitionArchiveStore.CorruptFileExtension));
@@ -216,7 +217,7 @@ public sealed class AgentExhibitionArchiveTests
 
         Assert.False(status.Archived);
         Assert.Equal(AgentExhibitionArchiveCode.ArchiveUnavailable, status.Code);
-        Assert.False(status.RecoveredFromCorruption);
+        Assert.False(status.Archive.RecoveredFromCorruption);
         // The unreadable document is still exactly where it was.
         Assert.Equal("{", File.ReadAllText(store.ArchivePath));
         Assert.Equal(
@@ -232,7 +233,7 @@ public sealed class AgentExhibitionArchiveTests
         using var temporary = new ArchiveTemporaryDirectory();
         var store = new AgentExhibitionArchiveStore(temporary.Path);
         var ordered = new List<string>();
-        for (var index = 0; index <= AgentExhibitionArchiveV1.MaximumEntries; index++)
+        for (var index = 0; index <= AgentExhibitionArchiveV2.MaximumEntries; index++)
         {
             var exhibition = PlayAndSave(
                 temporary.Path,
@@ -243,12 +244,12 @@ public sealed class AgentExhibitionArchiveTests
             ordered.Add(exhibition.Receipt.ReceiptHash);
             Assert.True(status.Archived, status.Message);
             Assert.Equal(
-                index < AgentExhibitionArchiveV1.MaximumEntries ? 0 : 1,
-                status.EvictedCount);
+                index < AgentExhibitionArchiveV2.MaximumEntries ? 0 : 1,
+                status.Evicted.Count);
         }
 
         var entries = store.Read().Entries;
-        Assert.Equal(AgentExhibitionArchiveV1.MaximumEntries, entries.Count);
+        Assert.Equal(AgentExhibitionArchiveV2.MaximumEntries, entries.Count);
         // Oldest first out, insertion order preserved for everything kept.
         Assert.Equal(
             ordered.Skip(1).ToArray(),
@@ -267,7 +268,7 @@ public sealed class AgentExhibitionArchiveTests
 
         Assert.NotNull(exhibition.Receipt.RivalReplayPayloadHash);
         Assert.NotNull(exhibition.SavedRivalFileName);
-        Assert.Throws<ArgumentException>(() => AgentArchivedExhibitionV1.Create(
+        Assert.Throws<ArgumentException>(() => AgentArchivedExhibitionV2.Create(
             exhibition.Receipt,
             exhibition.SavedFileName,
             rivalReplayFileName: null));
@@ -275,7 +276,7 @@ public sealed class AgentExhibitionArchiveTests
         var status = exhibition.Registry.ArchiveExhibition(exhibition.Handle);
 
         Assert.True(status.Archived, status.Message);
-        var listed = Assert.Single(status.Entries);
+        var listed = Assert.Single(status.Archive.Entries);
         Assert.Equal(exhibition.SavedRivalFileName, listed.RivalReplayFileName);
         Assert.Equal(exhibition.Receipt.RivalPersonalityId, listed.RivalPersonalityId);
         Assert.Equal(exhibition.Receipt.RivalScore, listed.RivalScore);
@@ -319,7 +320,7 @@ public sealed class AgentExhibitionArchiveTests
     {
         using var temporary = new ArchiveTemporaryDirectory();
         var exhibition = PlayAndSave(temporary.Path, "match_drift", seed: 52UL);
-        var entry = AgentArchivedExhibitionV1.Create(
+        var entry = AgentArchivedExhibitionV2.Create(
             exhibition.Receipt,
             exhibition.SavedFileName,
             rivalReplayFileName: null);
@@ -328,9 +329,9 @@ public sealed class AgentExhibitionArchiveTests
         // Every promoted field is a copy of a receipt value. A reader that
         // trusted a copy without checking it would report something the receipt
         // never said, so each one has to break self-consistency on its own.
-        var drifted = new (string Field, AgentArchivedExhibitionV1 Entry)[]
+        var drifted = new (string Field, AgentArchivedExhibitionV2 Entry)[]
         {
-            ("schema", entry with { Schema = "vibesnake-agent-archived-exhibition-v2" }),
+            ("schema", entry with { Schema = "vibesnake-agent-archived-exhibition-v3" }),
             ("receipt_hash", entry with { ReceiptHash = new string('a', 64) }),
             ("route_identity_hash", entry with { RouteIdentityHash = new string('b', 64) }),
             ("division_id", entry with { DivisionId = "classic@1|open|x|y" }),
@@ -360,18 +361,18 @@ public sealed class AgentExhibitionArchiveTests
     {
         using var temporary = new ArchiveTemporaryDirectory();
         var exhibition = PlayAndSave(temporary.Path, "match_wellformed", seed: 53UL);
-        var entry = AgentArchivedExhibitionV1.Create(
+        var entry = AgentArchivedExhibitionV2.Create(
             exhibition.Receipt,
             exhibition.SavedFileName,
             rivalReplayFileName: null);
-        var archive = AgentExhibitionArchiveV1.Empty with
+        var archive = AgentExhibitionArchiveV2.Empty with
         {
             Entries = new[] { entry },
         };
         Assert.True(archive.IsWellFormed());
 
         Assert.False((archive with { Schema = "other" }).IsWellFormed());
-        Assert.False((archive with { SchemaVersion = 2 }).IsWellFormed());
+        Assert.False((archive with { SchemaVersion = 3 }).IsWellFormed());
         Assert.False((archive with { Capacity = 8 }).IsWellFormed());
         Assert.False((archive with
         {
@@ -384,7 +385,7 @@ public sealed class AgentExhibitionArchiveTests
         Assert.False((archive with
         {
             Entries = Enumerable
-                .Range(0, AgentExhibitionArchiveV1.MaximumEntries + 1)
+                .Range(0, AgentExhibitionArchiveV2.MaximumEntries + 1)
                 .Select(index => entry with
                 {
                     ReceiptHash = index.ToString("x64", CultureInfo.InvariantCulture),
@@ -399,20 +400,20 @@ public sealed class AgentExhibitionArchiveTests
         using var temporary = new ArchiveTemporaryDirectory();
         var exhibition = PlayAndSave(temporary.Path, "match_lane", seed: 54UL);
 
-        Assert.Throws<ArgumentNullException>(() => AgentArchivedExhibitionV1.Create(
+        Assert.Throws<ArgumentNullException>(() => AgentArchivedExhibitionV2.Create(
             null!,
             exhibition.SavedFileName,
             null));
-        Assert.Throws<ArgumentException>(() => AgentArchivedExhibitionV1.Create(
+        Assert.Throws<ArgumentException>(() => AgentArchivedExhibitionV2.Create(
             exhibition.Receipt,
             "  ",
             null));
-        Assert.Throws<ArgumentException>(() => AgentArchivedExhibitionV1.Create(
+        Assert.Throws<ArgumentException>(() => AgentArchivedExhibitionV2.Create(
             exhibition.Receipt,
             exhibition.SavedFileName,
             rivalReplayFileName: "   "));
         // No rival in this receipt, so naming a rival lane is a contradiction.
-        Assert.Throws<ArgumentException>(() => AgentArchivedExhibitionV1.Create(
+        Assert.Throws<ArgumentException>(() => AgentArchivedExhibitionV2.Create(
             exhibition.Receipt,
             exhibition.SavedFileName,
             rivalReplayFileName: "rival.json"));
@@ -422,7 +423,7 @@ public sealed class AgentExhibitionArchiveTests
                 exhibition.SavedFileName,
                 null));
         Assert.Throws<ArgumentNullException>(() =>
-            AgentArchivedExhibitionV1
+            AgentArchivedExhibitionV2
                 .Create(exhibition.Receipt, exhibition.SavedFileName, null)
                 .DescribesSameExhibitionAs(null!));
     }
@@ -457,6 +458,276 @@ public sealed class AgentExhibitionArchiveTests
         Assert.Equal(AgentExhibitionArchiveCode.ArchiveUnavailable, status.Code);
         var kept = Assert.Single(store.Read().Entries);
         Assert.Equal(exhibition.Receipt.ReceiptHash, kept.ReceiptHash);
+    }
+
+    [Fact]
+    public void A_schema_one_archive_is_migrated_forward_rather_than_quarantined()
+    {
+        using var temporary = new ArchiveTemporaryDirectory();
+        var exhibition = PlayAndSave(temporary.Path, "match_migrate", seed: 60UL);
+        var store = new AgentExhibitionArchiveStore(temporary.Path);
+        Directory.CreateDirectory(Path.GetDirectoryName(store.ArchivePath)!);
+        File.WriteAllText(store.ArchivePath, LegacyDocument(exhibition));
+
+        var read = store.Inspect();
+
+        Assert.True(read.MigratedFromLegacySchema);
+        Assert.False(read.RecoveredFromCorruption);
+        Assert.False(read.Blocked);
+        Assert.Empty(Directory.GetFiles(
+            Path.GetDirectoryName(store.ArchivePath)!,
+            "*" + AgentExhibitionArchiveStore.CorruptFileExtension));
+        Assert.Equal(
+            AgentExhibitionArchiveV2.CurrentSchemaVersion,
+            read.Archive.SchemaVersion);
+
+        // Every field the new schema promotes is rebuilt from the receipt the
+        // old schema already stored, so nothing is invented and nothing is lost.
+        var entry = Assert.Single(read.Archive.Entries);
+        Assert.True(entry.IsSelfConsistent());
+        Assert.Equal(exhibition.Receipt.ReceiptHash, entry.ReceiptHash);
+        Assert.Equal(exhibition.Receipt.Division.ModeId, entry.ModeId);
+        Assert.Equal(exhibition.Receipt.EndReason, entry.EndReason);
+        Assert.Equal(exhibition.Receipt.RunStatus, entry.RunStatus);
+        Assert.Equal(exhibition.SavedFileName, entry.AgentReplayFileName);
+    }
+
+    [Fact]
+    public void A_legacy_entry_whose_receipt_does_not_verify_is_not_migrated()
+    {
+        using var temporary = new ArchiveTemporaryDirectory();
+        var exhibition = PlayAndSave(temporary.Path, "match_badmigrate", seed: 61UL);
+        var store = new AgentExhibitionArchiveStore(temporary.Path);
+        Directory.CreateDirectory(Path.GetDirectoryName(store.ArchivePath)!);
+
+        // Raise the archived score without touching the canonical hash. A
+        // migration that trusted the old document would carry the lie forward.
+        var tampered = LegacyDocument(exhibition).Replace(
+            "\"receipt_hash\": \"" + exhibition.Receipt.ReceiptHash + "\"",
+            "\"receipt_hash\": \"" + new string('e', 64) + "\"",
+            StringComparison.Ordinal);
+        File.WriteAllText(store.ArchivePath, tampered);
+
+        var read = store.Inspect();
+
+        Assert.False(read.MigratedFromLegacySchema);
+        Assert.True(read.RecoveredFromCorruption);
+        Assert.Empty(read.Archive.Entries);
+        Assert.Single(Directory.GetFiles(
+            Path.GetDirectoryName(store.ArchivePath)!,
+            "*" + AgentExhibitionArchiveStore.CorruptFileExtension));
+    }
+
+    [Fact]
+    public void Listing_reads_the_archive_without_writing_and_can_narrow_to_one_line()
+    {
+        using var temporary = new ArchiveTemporaryDirectory();
+        var first = PlayAndSave(temporary.Path, "match_list1", seed: 62UL);
+        first.Registry.ArchiveExhibition(first.Handle);
+        first.Registry.Dispose();
+        var second = PlayAndSave(temporary.Path, "match_list2", seed: 63UL);
+        second.Registry.ArchiveExhibition(second.Handle);
+        var store = new AgentExhibitionArchiveStore(temporary.Path);
+        var before = File.ReadAllBytes(store.ArchivePath);
+
+        var all = second.Registry.ListExhibitions(null);
+        var narrowed = second.Registry.ListExhibitions(first.Receipt.RouteIdentityHash);
+
+        Assert.Equal(before, File.ReadAllBytes(store.ArchivePath));
+        Assert.Equal(AgentExhibitionArchiveListingV1.Contract, all.Schema);
+        Assert.Null(all.RouteIdentityHashFilter);
+        Assert.Equal(2, all.MatchedCount);
+        Assert.Equal(2, all.Archive.EntryCount);
+        Assert.Equal(2, all.Archive.Entries.Count);
+
+        Assert.Equal(first.Receipt.RouteIdentityHash, narrowed.RouteIdentityHashFilter);
+        Assert.Equal(1, narrowed.MatchedCount);
+        // Narrowing filters what is listed, never what is stored.
+        Assert.Equal(2, narrowed.Archive.EntryCount);
+        Assert.Equal(
+            first.Receipt.ReceiptHash,
+            Assert.Single(narrowed.Archive.Entries).ReceiptHash);
+        Assert.Empty(second.Registry.ListExhibitions(new string('f', 64)).Archive.Entries);
+    }
+
+    [Fact]
+    public void A_listing_reports_both_bounds_and_the_bytes_actually_used()
+    {
+        using var temporary = new ArchiveTemporaryDirectory();
+        var exhibition = PlayAndSave(temporary.Path, "match_bytes", seed: 64UL);
+        var status = exhibition.Registry.ArchiveExhibition(exhibition.Handle);
+        var store = new AgentExhibitionArchiveStore(temporary.Path);
+        var onDisk = File.ReadAllBytes(store.ArchivePath).Length;
+
+        Assert.Equal(onDisk, status.Archive.BytesUsed);
+        Assert.Equal(AgentExhibitionArchiveV2.MaximumBytes, status.Archive.MaximumBytes);
+        Assert.Equal(
+            AgentExhibitionArchiveV2.MaximumEntries - 1,
+            status.Archive.RemainingEntries);
+        Assert.Equal(
+            AgentExhibitionArchiveV2.MaximumBytes - onDisk,
+            status.Archive.RemainingBytes);
+
+        Assert.Equal(onDisk, exhibition.Registry.ListExhibitions(null).Archive.BytesUsed);
+    }
+
+    [Fact]
+    public void A_listing_reports_whether_a_named_lane_file_is_still_present()
+    {
+        using var temporary = new ArchiveTemporaryDirectory();
+        var exhibition = PlayAndSave(temporary.Path, "match_orphan", seed: 65UL);
+        exhibition.Registry.ArchiveExhibition(exhibition.Handle);
+
+        Assert.True(Assert.Single(
+            exhibition.Registry.ListExhibitions(null).Archive.Entries).AgentReplayPresent);
+
+        // An entry names a file rather than embedding it, so deleting the file
+        // leaves the entry pointing at nothing. A caller choosing what to open
+        // has to be told, rather than discovering it on open.
+        File.Delete(Path.Combine(
+            temporary.Path,
+            ReplayStore.ReplayDirectoryName,
+            exhibition.SavedFileName));
+
+        var listed = Assert.Single(
+            exhibition.Registry.ListExhibitions(null).Archive.Entries);
+        Assert.False(listed.AgentReplayPresent);
+        Assert.Null(listed.RivalReplayPresent);
+    }
+
+    [Fact]
+    public void Forgetting_removes_one_exhibition_and_names_what_it_took()
+    {
+        using var temporary = new ArchiveTemporaryDirectory();
+        var first = PlayAndSave(temporary.Path, "match_forget1", seed: 66UL);
+        first.Registry.ArchiveExhibition(first.Handle);
+        first.Registry.Dispose();
+        var second = PlayAndSave(temporary.Path, "match_forget2", seed: 67UL);
+        second.Registry.ArchiveExhibition(second.Handle);
+
+        var forgotten = second.Registry.ForgetExhibition(first.Receipt.ReceiptHash);
+
+        Assert.Equal(AgentExhibitionForgetStatusV1.Contract, forgotten.Schema);
+        Assert.True(forgotten.Forgotten);
+        Assert.Equal(AgentExhibitionForgetCode.Forgotten, forgotten.Code);
+        var removed = Assert.Single(forgotten.Removed);
+        Assert.Equal(AgentExhibitionArchiveDropV1.Contract, removed.Schema);
+        Assert.Equal(first.Receipt.ReceiptHash, removed.ReceiptHash);
+        Assert.Equal(first.Receipt.RouteIdentityHash, removed.RouteIdentityHash);
+        Assert.Equal(1, forgotten.Archive.EntryCount);
+        Assert.Equal(
+            second.Receipt.ReceiptHash,
+            Assert.Single(forgotten.Archive.Entries).ReceiptHash);
+
+        // Removal touches archive entries only.
+        Assert.True(File.Exists(Path.Combine(
+            temporary.Path,
+            ReplayStore.ReplayDirectoryName,
+            first.SavedFileName)));
+    }
+
+    [Fact]
+    public void Forgetting_is_safe_to_repeat_and_can_clear_the_archive()
+    {
+        using var temporary = new ArchiveTemporaryDirectory();
+        var exhibition = PlayAndSave(temporary.Path, "match_clear", seed: 68UL);
+        exhibition.Registry.ArchiveExhibition(exhibition.Handle);
+
+        var missing = exhibition.Registry.ForgetExhibition(new string('a', 64));
+        Assert.False(missing.Forgotten);
+        Assert.Equal(AgentExhibitionForgetCode.NotArchived, missing.Code);
+        Assert.Empty(missing.Removed);
+        Assert.Equal(1, missing.Archive.EntryCount);
+
+        var cleared = exhibition.Registry.ForgetExhibition(null);
+        Assert.True(cleared.Forgotten);
+        Assert.Single(cleared.Removed);
+        Assert.Equal(0, cleared.Archive.EntryCount);
+
+        var again = exhibition.Registry.ForgetExhibition(null);
+        Assert.False(again.Forgotten);
+        Assert.Equal(AgentExhibitionForgetCode.NotArchived, again.Code);
+        Assert.Equal(0, again.Archive.EntryCount);
+
+        // A cleared archive is an empty archive, not a missing one.
+        Assert.Equal(
+            AgentExhibitionArchiveV2.CurrentSchemaVersion,
+            new AgentExhibitionArchiveStore(temporary.Path).Read().SchemaVersion);
+    }
+
+    [Fact]
+    public void An_eviction_names_every_exhibition_it_dropped()
+    {
+        using var temporary = new ArchiveTemporaryDirectory();
+        var store = new AgentExhibitionArchiveStore(temporary.Path);
+        var ordered = new List<string>();
+        AgentExhibitionArchiveStatusV2? last = null;
+        for (var index = 0; index <= AgentExhibitionArchiveV2.MaximumEntries; index++)
+        {
+            var exhibition = PlayAndSave(
+                temporary.Path,
+                $"match_named{index}",
+                seed: 2000UL + (ulong)index);
+            last = exhibition.Registry.ArchiveExhibition(exhibition.Handle);
+            exhibition.Registry.Dispose();
+            ordered.Add(exhibition.Receipt.ReceiptHash);
+        }
+
+        Assert.NotNull(last);
+        var dropped = Assert.Single(last.Evicted);
+        Assert.Equal(ordered[0], dropped.ReceiptHash);
+        Assert.DoesNotContain(
+            store.Read().Entries,
+            entry => string.Equals(entry.ReceiptHash, ordered[0], StringComparison.Ordinal));
+    }
+
+    private static readonly JsonSerializerOptions LegacySerializerOptions = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
+        Converters =
+        {
+            new JsonStringEnumConverter(JsonNamingPolicy.SnakeCaseLower),
+        },
+    };
+
+    /// <summary>
+    /// The exact schema-1 document an earlier host would have written, built from
+    /// a real receipt so migration is exercised against true bytes rather than a
+    /// hand-written fixture that could drift from what shipped.
+    /// </summary>
+    private static string LegacyDocument(ArchivedExhibitionFixture exhibition)
+    {
+        var receipt = JsonSerializer.Serialize(exhibition.Receipt, LegacySerializerOptions);
+        var builder = new StringBuilder();
+        builder.Append("{\n");
+        builder.Append("  \"schema\": \"")
+            .Append(AgentExhibitionArchiveV2.LegacyContract).Append("\",\n");
+        builder.Append("  \"schema_version\": ")
+            .Append(AgentExhibitionArchiveV2.LegacySchemaVersion).Append(",\n");
+        builder.Append("  \"capacity\": ")
+            .Append(AgentExhibitionArchiveV2.MaximumEntries).Append(",\n");
+        builder.Append("  \"entries\": [\n    {\n");
+        builder.Append("      \"schema\": \"")
+            .Append(AgentExhibitionArchiveV2.LegacyEntryContract).Append("\",\n");
+        builder.Append("      \"receipt_hash\": \"")
+            .Append(exhibition.Receipt.ReceiptHash).Append("\",\n");
+        builder.Append("      \"route_identity_hash\": \"")
+            .Append(exhibition.Receipt.RouteIdentityHash).Append("\",\n");
+        builder.Append("      \"division_id\": \"")
+            .Append(exhibition.Receipt.Division.DivisionId).Append("\",\n");
+        builder.Append("      \"gameplay_seed\": \"")
+            .Append(exhibition.Receipt.GameplaySeed).Append("\",\n");
+        builder.Append("      \"score\": ")
+            .Append(exhibition.Receipt.Score.ToString(CultureInfo.InvariantCulture))
+            .Append(",\n");
+        builder.Append("      \"agent_replay_file_name\": \"")
+            .Append(exhibition.SavedFileName).Append("\",\n");
+        builder.Append("      \"rival_replay_file_name\": null,\n");
+        builder.Append("      \"rival_personality_id\": null,\n");
+        builder.Append("      \"rival_score\": null,\n");
+        builder.Append("      \"receipt\": ").Append(receipt).Append('\n');
+        builder.Append("    }\n  ]\n}\n");
+        return builder.ToString();
     }
 
     private static AgentSessionRegistry CreateRegistry(

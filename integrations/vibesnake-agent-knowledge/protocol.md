@@ -38,7 +38,7 @@ sources:
 ---
 # Versions
 
-The host version is `0.12.0`. The Agent Plugin version is `0.12.0` and targets `https://agent-plugins.org/schemas/1.0.0/plugin.schema.json`.
+The host version is `0.13.0`. The Agent Plugin version is `0.13.0` and targets `https://agent-plugins.org/schemas/1.0.0/plugin.schema.json`.
 The MCP server targets stable protocol `2026-07-28` through the official C# SDK `2.2.0`.
 Clients must speak the stateless MCP `2026-07-28` era: every request carries protocol metadata, optional discovery uses `server/discover`, and there is no protocol session. Legacy `initialize` handshakes are rejected and this preview provides no downlevel fallback.
 
@@ -46,8 +46,10 @@ Clients must speak the stateless MCP `2026-07-28` era: every request carries pro
 
 * `archive_exhibition`
 * `finish_match`
+* `forget_exhibition`
 * `get_exhibition_receipt`
 * `get_match_result`
+* `list_exhibitions`
 * `observe_match`
 * `play_burst`
 * `play_move`

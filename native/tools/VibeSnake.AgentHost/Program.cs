@@ -13,7 +13,7 @@ namespace VibeSnake.AgentHost;
 public static class Program
 {
     public const string HostName = "vibesnake-agent-host";
-    public const string HostVersion = "0.12.0";
+    public const string HostVersion = "0.13.0";
     public const string McpProtocolVersion = "2026-07-28";
 
     public static async Task Main(string[] args)

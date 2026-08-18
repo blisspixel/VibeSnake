@@ -149,7 +149,7 @@ public sealed record AgentExhibitionReceiptStatusV1(
 /// their promoted identity fields rather than the full receipts, because a
 /// browser lists exhibitions far more often than it opens one.
 /// </summary>
-public sealed record AgentExhibitionArchiveStatusV1(
+public sealed record AgentExhibitionArchiveStatusV2(
     string Schema,
     string MatchHandle,
     bool Archived,
@@ -157,44 +157,142 @@ public sealed record AgentExhibitionArchiveStatusV1(
     string Message,
     string? ReceiptHash,
     string? RouteIdentityHash,
-    int EntryCount,
-    int Capacity,
-    int EvictedCount,
-    bool RecoveredFromCorruption,
-    IReadOnlyList<AgentArchivedExhibitionIndexEntryV1> Entries)
+    IReadOnlyList<AgentExhibitionArchiveDropV1> Evicted,
+    AgentExhibitionArchiveIndexV2 Archive) : IAgentExhibitionArchiveResponse
 {
-    public const string Contract = "vibesnake-agent-exhibition-archive-status-v1";
+    public const string Contract = "vibesnake-agent-exhibition-archive-status-v2";
 }
 
 /// <summary>
-/// One listed exhibition. Every field is a copy of a receipt value, so listing
-/// the archive reveals nothing the receipt did not already publish.
+/// The result of one explicit removal request.
 /// </summary>
-public sealed record AgentArchivedExhibitionIndexEntryV1(
+public sealed record AgentExhibitionForgetStatusV1(
+    string Schema,
+    bool Forgotten,
+    AgentExhibitionForgetCode Code,
+    string Message,
+    IReadOnlyList<AgentExhibitionArchiveDropV1> Removed,
+    AgentExhibitionArchiveIndexV2 Archive) : IAgentExhibitionArchiveResponse
+{
+    public const string Contract = "vibesnake-agent-exhibition-forget-status-v1";
+}
+
+/// <summary>
+/// One read-only listing of the archive, optionally narrowed to a single walked
+/// line. A caller used to be able to see the index only by writing to it.
+/// </summary>
+public sealed record AgentExhibitionArchiveListingV1(
+    string Schema,
+    string? RouteIdentityHashFilter,
+    int MatchedCount,
+    AgentExhibitionArchiveIndexV2 Archive) : IAgentExhibitionArchiveResponse
+{
+    public const string Contract = "vibesnake-agent-exhibition-listing-v1";
+}
+
+/// <summary>
+/// Marker for every response that carries the archive index, so one gate can
+/// assert that no archive surface answers without publishing its bounds.
+/// </summary>
+public interface IAgentExhibitionArchiveResponse
+{
+    AgentExhibitionArchiveIndexV2 Archive { get; }
+}
+
+/// <summary>
+/// The archive as it stands, with both of its bounds and the exact bytes it
+/// occupies. Effective capacity is the lesser of the entry and byte ceilings, so
+/// an entry count alone cannot tell a caller how much room is actually left.
+/// </summary>
+public sealed record AgentExhibitionArchiveIndexV2(
+    string Schema,
+    int SchemaVersion,
+    int EntryCount,
+    int Capacity,
+    int BytesUsed,
+    int MaximumBytes,
+    int RemainingEntries,
+    int RemainingBytes,
+    bool RecoveredFromCorruption,
+    bool MigratedFromLegacySchema,
+    IReadOnlyList<AgentArchivedExhibitionIndexEntryV2> Entries)
+{
+    public const string Contract = "vibesnake-agent-exhibition-archive-index-v2";
+
+    internal static AgentExhibitionArchiveIndexV2 Create(
+        AgentExhibitionArchiveV2 archive,
+        int bytesUsed,
+        bool recoveredFromCorruption,
+        bool migratedFromLegacySchema,
+        Func<string, bool> replayFileExists,
+        IReadOnlyList<AgentArchivedExhibitionV2>? listed = null) =>
+        new(
+            Contract,
+            archive.SchemaVersion,
+            archive.Entries.Count,
+            archive.Capacity,
+            bytesUsed,
+            AgentExhibitionArchiveV2.MaximumBytes,
+            Math.Max(0, archive.Capacity - archive.Entries.Count),
+            Math.Max(0, AgentExhibitionArchiveV2.MaximumBytes - bytesUsed),
+            recoveredFromCorruption,
+            migratedFromLegacySchema,
+            (listed ?? archive.Entries)
+                .Select(entry => AgentArchivedExhibitionIndexEntryV2.FromEntry(
+                    entry,
+                    replayFileExists))
+                .ToArray());
+}
+
+/// <summary>
+/// One listed exhibition. Every identity field is a copy of a receipt value, so
+/// listing the archive reveals nothing the receipt did not already publish. The
+/// two presence flags are the exception: they are observed now rather than
+/// copied, because a named replay file can be deleted after it was archived and
+/// a caller choosing what to open needs to know that.
+/// </summary>
+public sealed record AgentArchivedExhibitionIndexEntryV2(
     string Schema,
     string ReceiptHash,
     string RouteIdentityHash,
     string DivisionId,
+    string ModeId,
     string GameplaySeed,
     int Score,
+    AgentMatchEndReason EndReason,
+    RunStatus RunStatus,
+    string? LessonId,
+    string? StyleContractId,
     string AgentReplayFileName,
+    bool AgentReplayPresent,
     string? RivalReplayFileName,
+    bool? RivalReplayPresent,
     string? RivalPersonalityId,
     int? RivalScore)
 {
-    public const string Contract = "vibesnake-agent-archived-exhibition-index-entry-v1";
+    public const string Contract = "vibesnake-agent-archived-exhibition-index-entry-v2";
 
-    internal static AgentArchivedExhibitionIndexEntryV1 FromEntry(
-        AgentArchivedExhibitionV1 entry) =>
+    internal static AgentArchivedExhibitionIndexEntryV2 FromEntry(
+        AgentArchivedExhibitionV2 entry,
+        Func<string, bool> replayFileExists) =>
         new(
             Contract,
             entry.ReceiptHash,
             entry.RouteIdentityHash,
             entry.DivisionId,
+            entry.ModeId,
             entry.GameplaySeed,
             entry.Score,
+            entry.EndReason,
+            entry.RunStatus,
+            entry.LessonId,
+            entry.StyleContractId,
             entry.AgentReplayFileName,
+            replayFileExists(entry.AgentReplayFileName),
             entry.RivalReplayFileName,
+            entry.RivalReplayFileName is null
+                ? null
+                : replayFileExists(entry.RivalReplayFileName),
             entry.RivalPersonalityId,
             entry.RivalScore);
 }

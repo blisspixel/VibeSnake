@@ -13,6 +13,8 @@ public sealed class AgentResources
     private static readonly string[] StaleActionGuards =
         ["expected_tick", "expected_state_hash", "idempotency_key"];
     private static readonly string[] SeedDivisions = ["open", "blind"];
+    private static readonly string[] ArchiveTools =
+        ["archive_exhibition", "list_exhibitions", "forget_exhibition"];
     private static readonly string[] InteractionAccountingExclusions =
     [
         "mcp_or_json_rpc_framing",
@@ -65,7 +67,7 @@ public sealed class AgentResources
     public static string GetRules() => JsonSerializer.Serialize(
         new
         {
-            contract = "vibesnake-agent-rules-resource-v13",
+            contract = "vibesnake-agent-rules-resource-v14",
             ruleset_id = RulesetIdentity.CurrentId,
             rules_version = RulesetIdentity.CurrentVersion,
             observation_schema = AgentObservationV5.Contract,
@@ -153,23 +155,33 @@ public sealed class AgentResources
             },
             archive = new
             {
-                contract = AgentExhibitionArchiveV1.Contract,
-                entry_contract = AgentArchivedExhibitionV1.Contract,
-                status_contract = AgentExhibitionArchiveStatusV1.Contract,
-                index_entry_contract = AgentArchivedExhibitionIndexEntryV1.Contract,
-                tool = "archive_exhibition",
-                schema_version = AgentExhibitionArchiveV1.CurrentSchemaVersion,
-                capacity = AgentExhibitionArchiveV1.MaximumEntries,
-                maximum_bytes = AgentExhibitionArchiveV1.MaximumBytes,
-                codes = Enum.GetNames<AgentExhibitionArchiveCode>()
+                contract = AgentExhibitionArchiveV2.Contract,
+                entry_contract = AgentArchivedExhibitionV2.Contract,
+                status_contract = AgentExhibitionArchiveStatusV2.Contract,
+                listing_contract = AgentExhibitionArchiveListingV1.Contract,
+                forget_contract = AgentExhibitionForgetStatusV1.Contract,
+                index_contract = AgentExhibitionArchiveIndexV2.Contract,
+                index_entry_contract = AgentArchivedExhibitionIndexEntryV2.Contract,
+                drop_contract = AgentExhibitionArchiveDropV1.Contract,
+                tools = ArchiveTools,
+                schema_version = AgentExhibitionArchiveV2.CurrentSchemaVersion,
+                migrates_from_schema_version = AgentExhibitionArchiveV2.LegacySchemaVersion,
+                capacity = AgentExhibitionArchiveV2.MaximumEntries,
+                maximum_bytes = AgentExhibitionArchiveV2.MaximumBytes,
+                archive_codes = Enum.GetNames<AgentExhibitionArchiveCode>()
+                    .Select(JsonNamingPolicy.SnakeCaseLower.ConvertName)
+                    .ToArray(),
+                forget_codes = Enum.GetNames<AgentExhibitionForgetCode>()
                     .Select(JsonNamingPolicy.SnakeCaseLower.ConvertName)
                     .ToArray(),
                 definition = "An archive entry keeps one verified exhibition: its canonical receipt verbatim, plus the saved replay file name of every lane the receipt contains. It is the durable half of the exhibition loop, and it exists so a person can find a match again after the host process that played it has exited.",
                 prerequisites = "Archiving is explicit and ordered. A match must be finalized and verified so it has a receipt, and save_verified_replay must already have written every lane, because an archived exhibition names files rather than hopes. A rivalry archives both lanes or neither.",
-                boundary = "The archive is local, bounded, and lives outside the supported player Persistence assembly. It stores no human score, progression, achievement, cosmetic, or profile data, and it never affects them. It accepts no path.",
-                capacity_rule = "Effective capacity is the lesser of the entry and byte bounds. A receipt carries one accepted presentation event per accepted rules step, so a long exhibition is much larger than a short one and the byte ceiling can evict before 32 entries are reached.",
-                durability = "The write is atomic: a complete document is staged and then replaced, so an interrupted write leaves the previous archive intact. At capacity the oldest exhibitions are evicted first and the exact evicted count is reported. Archiving the same exhibition again writes nothing and reports already_archived, so the call is safe to repeat.",
+                boundary = "The archive is local, bounded, and lives outside the supported player Persistence assembly. It stores no human score, progression, achievement, cosmetic, or profile data, and it never affects them. It accepts no path. forget_exhibition removes archive entries only and never touches a saved replay file or any other store.",
+                capacity_rule = "Effective capacity is the lesser of the entry and byte bounds. A receipt carries one accepted presentation event per accepted rules step, so a long exhibition is much larger than a short one and the byte ceiling can evict before 32 entries are reached. Every archive response therefore publishes bytes_used, maximum_bytes, remaining_entries, and remaining_bytes rather than an entry count alone.",
+                durability = "The write is atomic: a complete document is staged and then replaced, so an interrupted write leaves the previous archive intact. At capacity the oldest exhibitions are evicted first and every dropped exhibition is named by receipt and route hash rather than counted. Archiving the same exhibition again writes nothing and reports already_archived, so the call is safe to repeat.",
                 integrity = "Every stored entry must recompute both of its canonical receipt hashes and agree with each promoted field copied from that receipt. A document that fails is quarantined beside the archive rather than repaired, and the caller is told through recovered_from_corruption. If it can be neither read nor moved aside, the write is refused as archive_unavailable rather than overwriting evidence. A different exhibition is never written under an existing receipt hash.",
+                migration = "A schema-1 archive written by an earlier host is migrated forward on read rather than quarantined, and migrated_from_legacy_schema reports it. Migration is lossless by construction because every field the current schema promotes is derived from the receipt the older schema already stored verbatim, and every rebuilt entry must verify against that receipt exactly as a freshly archived one would.",
+                listing = "list_exhibitions reads the archive without writing to it and optionally narrows to one route_identity_hash, which the same division, seed, and verified replays reproduce across matches and host processes. Each listed entry reports whether its named lane replay files are still present, because an entry names a file rather than embedding it and that file can be deleted after archiving.",
                 identity = "Presentation display time is stripped before an exhibition is stored, because display time is never part of exhibition identity and an archive that kept it would make one exhibition look different on every visit.",
             },
             privacy = "Observations exclude random state, future outcomes, controller internals, profiles, progression, paths, prompts, credentials, diagnostics, and hidden reasoning.",
