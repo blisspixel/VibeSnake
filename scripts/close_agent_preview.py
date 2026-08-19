@@ -127,7 +127,10 @@ def main() -> int:
 
     print("5. focused native tests", flush=True)
     test_filter = (
-        "FullyQualifiedName~AgentPassport|FullyQualifiedName~AgentExhibitionStory|FullyQualifiedName~AgentQualification|FullyQualifiedName~AgentHostTests"
+        "FullyQualifiedName~AgentPassport|"
+        "FullyQualifiedName~AgentExhibitionStory|"
+        "FullyQualifiedName~AgentQualification|"
+        "FullyQualifiedName~AgentHostTests"
     )
     if _run(
         [
