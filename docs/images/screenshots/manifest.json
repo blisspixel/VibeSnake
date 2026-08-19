@@ -6,7 +6,7 @@
       "file": "main-menu.png",
       "height": 720,
       "label": "Main menu",
-      "sha256": "d786dbfa17233068ff3e7ee0e202435d56dcb1f5c7c907c078da36e67280cc59",
+      "sha256": "c81289bbd8b957ae504a756a591d36274febee81dc58b074d3c9324af46eb4a8",
       "state": "MENU",
       "width": 1280
     },
@@ -14,7 +14,7 @@
       "file": "powers-run.png",
       "height": 720,
       "label": "Vibe mode gameplay",
-      "sha256": "b46278bbe95fda1b4aa231a3ca5b67de102ebb248385914e7ae975d111079681",
+      "sha256": "819752055b6cbf9e4a1b407fbdd84c4cc3aa5f604f315c8f5014ebf63bc56522",
       "state": "RUNNING",
       "width": 1280
     },
@@ -22,7 +22,7 @@
       "file": "customization.png",
       "height": 720,
       "label": "Customization",
-      "sha256": "b573c7fd639a4f45d37eaf6370e3a79be2ec980944571c2fb9fb38af38ba0f17",
+      "sha256": "c2fb2bee82eda0a47e78bd617deb09543fa1b414ccebdf03212c85b351775ec8",
       "state": "COSMETICS",
       "width": 1280
     },
@@ -30,10 +30,10 @@
       "file": "ai-channel.png",
       "height": 720,
       "label": "AI channel",
-      "sha256": "3e7b09c9bc9eee373e38e9132776370a3d0d0ec0ea80bce4a1c5787f7396c02b",
+      "sha256": "332c244fc4af11dda6e9eef051a724a70d0f10e72cb241e40c0c8dfe41efa3c3",
       "state": "SPECTATOR",
       "width": 1280
     }
   ],
-  "sourceSha256": "0d3f153df7306b51dbcc1f85dec7b147d27857d46a43a22b89a9cba671d3a9d7"
+  "sourceSha256": "2c52be599234d9826e2fa4331ea208ae4f718e6017e263cd59e93cce6b48fbd0"
 }
