@@ -327,6 +327,17 @@ public sealed class AgentSessionRegistry : IDisposable
     }
 
     /// <summary>
+    /// Builds the local qualification report from the archive. The division
+    /// manifest and public decks are catalogs; the rows are facts about
+    /// receipts already kept. Voluntary finish_match is never a standing.
+    /// </summary>
+    public AgentQualificationReportV1 GetQualificationReport(string? agentId)
+    {
+        var archived = RequireArchiveStore().Inspect().Archive.Entries;
+        return AgentQualificationReportV1.FromArchive(archived, agentId);
+    }
+
+    /// <summary>
     /// Removes one archived exhibition, or clears the archive. Eviction alone
     /// left a caller with no way to drop a run they did not want to keep.
     /// </summary>

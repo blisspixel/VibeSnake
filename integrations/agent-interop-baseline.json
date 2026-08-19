@@ -6,7 +6,7 @@
     "protocol_version": "2026-07-28",
     "sdk_package": "ModelContextProtocol",
     "sdk_version": "2.2.0",
-    "host_version": "0.16.0",
+    "host_version": "0.17.0",
     "transport": "stdio",
     "session_model": "stateless"
   },
@@ -17,7 +17,7 @@
     "spec_source_commit": "1fc1b6270e3cc492ec2d24ad7a34277c6d53b9c1",
     "spec_source_url": "https://raw.githubusercontent.com/agentplugins/agent-plugins-spec/1fc1b6270e3cc492ec2d24ad7a34277c6d53b9c1/spec/1.0.0.md",
     "spec_source_sha256": "97a658b7dca3ce1b4c2266b95da300fa51d9dc4ade59d73168e5f9104272da18",
-    "plugin_version": "0.16.0",
+    "plugin_version": "0.17.0",
     "plugin_schema_url": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
     "plugin_schema_sha256": "0a4aad95ce337878ad38802ebf0daa3fde76abe3f65400c86bcbb1ec0b3ab883",
     "mcp_schema_url": "https://agent-plugins.org/schemas/1.0.0/mcp.schema.json",
@@ -110,6 +110,10 @@
       {
         "version": "0.16.0",
         "sha256": "22e4e0d6c791dc248e7b01c3fb312bb502b4a7531004caa0198e225fb116b3d7"
+      },
+      {
+        "version": "0.17.0",
+        "sha256": "ae0d58549190ee331cca4bf821099be7092a02f72f87d44db8a5bf16836d67bc"
       }
     ],
     "plugin": [
@@ -184,6 +188,10 @@
       {
         "version": "0.16.0",
         "sha256": "3952b0ace2975e4355a3a4e940b2784d9ffd5bfddc5a3b89aae9e3402fb3bf20"
+      },
+      {
+        "version": "0.17.0",
+        "sha256": "1386607b4f159e15e31fa6e14dd734434d3033658226d5b111360ea8f9446b9d"
       }
     ]
   }

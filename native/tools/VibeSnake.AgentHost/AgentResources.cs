@@ -69,7 +69,7 @@ public sealed class AgentResources
     public static string GetRules() => JsonSerializer.Serialize(
         new
         {
-            contract = "vibesnake-agent-rules-resource-v17",
+            contract = "vibesnake-agent-rules-resource-v18",
             ruleset_id = RulesetIdentity.CurrentId,
             rules_version = RulesetIdentity.CurrentVersion,
             observation_schema = AgentObservationV5.Contract,
@@ -153,7 +153,7 @@ public sealed class AgentResources
                 route_identity_hash = "route_identity_hash names the line rather than the visit. It covers the division, seed, terminal facts, both verified lane replay hashes, and the style and lesson satisfaction outcome, and it deliberately omits the match handle, the caller-declared passport, presentation events, and any attempt evidence derived from idempotency keys. The same seed and route reproduce it across separate matches and separate host processes, so use it to recognise an already-walked line and to compare same-seed rematches.",
                 display_time = "display_time_utc is presentation-only, may be absent, and is deliberately excluded from receipt_hash so the same exhibition keeps one identity whenever it is shown.",
                 presentation_events = "accepted_presentation_events record the ordered tick, action, and self-declared public intent of each accepted rules step. They are spectator labels and never changed rules, score, or verification.",
-                boundary = "The receipt is transport-neutral and local. League standings remain AA-08 work. A verified receipt can be recorded into the local passport store through record_passport.",
+                boundary = "The receipt is transport-neutral and local. Local qualification standings are derived at read time by get_qualification_report and never mix divisions. A verified receipt can be recorded into the local passport store through record_passport.",
             },
             passport = new
             {
@@ -242,6 +242,29 @@ public sealed class AgentResources
                     .ToArray(),
                 boundary = "Building a story never writes the archive, the passport store, or any human player data.",
             },
+            qualification = new
+            {
+                contract = AgentQualificationReportV1.Contract,
+                manifest_contract = AgentDivisionManifestV1.Contract,
+                decks_contract = AgentQualificationDecksV1.Contract,
+                eligibility_contract = AgentQualificationEligibilityV1.Contract,
+                standing_contract = AgentStandingRowV1.Contract,
+                generalization_contract = AgentGeneralizationRowV1.Contract,
+                rival_breaker_contract = AgentRivalBreakerRowV1.Contract,
+                resource = "vibesnake://agent/qualification",
+                tool = "get_qualification_report",
+                classes = Enum.GetNames<AgentQualificationClass>()
+                    .Select(JsonNamingPolicy.SnakeCaseLower.ConvertName)
+                    .ToArray(),
+                rival_breaker_kinds = Enum.GetNames<AgentRivalBreakerKind>()
+                    .Select(JsonNamingPolicy.SnakeCaseLower.ConvertName)
+                    .ToArray(),
+                definition = "Local qualification is derived from archived receipts against an immutable division manifest and public decks. Practice seeds teach. Qualification-time seeds are the already-public non-practice evaluator boards plus a small closed style and rivalry set. They are not secret.",
+                eligibility = "Rules-terminal and step-capped verified exhibitions qualify in their own division. Voluntary finish_match of a running exhibition is never a qualifying result. A completed Signal School practice on its canonical seed is practice evidence, not a standing.",
+                standings = "Standings never mix modes, seed visibilities, observation profiles, action profiles, or policy versions. Passport ahead, level, and behind facts are not standings.",
+                rival_breaker = "Rival Breaker beats a named verified rival on that rival's published characteristic terms. Five built-in rivals map to a Style Contract; the others are beaten on equal-seed score.",
+                boundary = "Building the report never writes the archive, the passport store, or any human player data. Display time is ignored.",
+            },
             privacy = "Observations exclude random state, future outcomes, controller internals, profiles, progression, paths, prompts, credentials, diagnostics, and hidden reasoning.",
         },
         JsonOptions);
@@ -283,7 +306,7 @@ public sealed class AgentResources
                 declaration = "Passport identity is caller-declared and catalog-validated, not authenticated.",
                 presentation = "Avatar, accent, and station choices are presentation-only and never change rules, score, verification, or qualification.",
                 independence = "Agent presentation is independent of the watching human's selected cosmetic and progression unlocks.",
-                persistence = "record_passport can fold a verified exhibition into a local public record assembled only from receipts. That store never writes a display name. League standings remain a later surface.",
+                persistence = "record_passport can fold a verified exhibition into a local public record assembled only from receipts. That store never writes a display name. Ahead, level, and behind are not standings; get_qualification_report owns local standings.",
                 station_boundary = "A station identity is a presentation affinity, not approval to schedule, publish, moderate, or provide station audio.",
             },
         },
@@ -403,6 +426,23 @@ public sealed class AgentResources
         JsonOptions);
 
     [McpServerResource(
+        UriTemplate = "vibesnake://agent/qualification",
+        Name = "Vibe Snake agent qualification catalogs",
+        MimeType = "application/json")]
+    [Description("Immutable division manifest, public practice and qualification-time decks, and Rival Breaker characteristic terms. Rankings are derived at read time by get_qualification_report and are not stored here.")]
+    public static string GetQualification() => JsonSerializer.Serialize(
+        new
+        {
+            contract = "vibesnake-agent-qualification-resource-v1",
+            manifest = AgentQualificationCatalog.Manifest,
+            decks = AgentQualificationCatalog.Decks,
+            rival_breaker_terms = AgentQualificationCatalog.RivalBreakerTerms,
+            report_tool = "get_qualification_report",
+            eligibility = "Rules-terminal and step-capped verified exhibitions qualify in their own division. Voluntary finish_match of a running exhibition is never a qualifying result. A completed Signal School practice is practice evidence, not a standing.",
+        },
+        JsonOptions);
+
+    [McpServerResource(
         UriTemplate = "vibesnake://agent/playbook",
         Name = "Vibe Snake agent playbook",
         MimeType = "text/markdown")]
@@ -420,6 +460,7 @@ public sealed class AgentResources
         7. Confirm that finalization returned a verified result. A reached lesson target omits retry guidance; only an unmet outcome or failed-closed progress provides a fresh `start_lesson` descriptor. For a styled match, threshold flags are measurement crossings, not grades, and only its replay-bound style outcome is verified criterion evidence. Call `save_verified_replay` only when accepted-step replay persistence for later human viewing is desired.
         8. After a verified result, `record_passport` can fold the exhibition into a local public record. Supply exactly one of `matchHandle` or an archived `receiptHash`. That store never writes a display name. `archive_exhibition` is a separate decision and requires the saved lane replays first.
         9. After archiving, `get_exhibition_story` builds the recorded-first montage from the receipt and named lane files. A missing or disagreeing tape is refused. Display time is ignored.
+        10. `get_qualification_report` classifies archived receipts against the public decks. Voluntary `finish_match` is not a standing. Completed practice is not qualification. Standings never mix divisions or policy versions.
 
         Public intents are `seek_food`, `seek_power`, `preserve_space`, `take_risk`, and `recover`. They are self-reported presentation only. `continue` preserves the current direction. Never submit the current direction or its opposite as a turn. Response latency has no scoring effect. At capacity, a live handle idle for 30 minutes may be reclaimed without producing a result or replay; viewer activity is never match control.
         """;

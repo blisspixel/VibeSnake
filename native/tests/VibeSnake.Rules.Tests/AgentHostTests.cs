@@ -397,6 +397,7 @@ public sealed class AgentHostTests
                 "get_exhibition_receipt",
                 "get_exhibition_story",
                 "get_match_result",
+                "get_qualification_report",
                 "list_exhibitions",
                 "list_passports",
                 "observe_match",
@@ -419,6 +420,7 @@ public sealed class AgentHostTests
                     "observe_match" => typeof(AgentObservationV5),
                     "get_exhibition_receipt" => typeof(AgentExhibitionReceiptStatusV1),
                     "get_exhibition_story" => typeof(AgentExhibitionStoryReportV1),
+                    "get_qualification_report" => typeof(AgentQualificationReportV1),
                     "play_move" => typeof(AgentActionResponseV5),
                     "play_burst" => typeof(AgentBurstResponseV5),
                     "finish_match" => typeof(AgentMatchSummaryV5),
@@ -441,6 +443,8 @@ public sealed class AgentHostTests
             methods.Single(value => value.Tool!.Name == "get_exhibition_receipt").Tool!.ReadOnly);
         Assert.True(
             methods.Single(value => value.Tool!.Name == "get_exhibition_story").Tool!.ReadOnly);
+        Assert.True(
+            methods.Single(value => value.Tool!.Name == "get_qualification_report").Tool!.ReadOnly);
         Assert.True(methods.Single(value => value.Tool!.Name == "list_passports").Tool!.ReadOnly);
         Assert.True(methods.Single(value => value.Tool!.Name == "forget_passport").Tool!.Destructive);
         Assert.False(methods.Single(value => value.Tool!.Name == "save_verified_replay").Tool!.Destructive);
@@ -806,7 +810,7 @@ public sealed class AgentHostTests
         var playbook = AgentResources.GetPlaybook();
 
         Assert.Equal(
-            "vibesnake-agent-rules-resource-v17",
+            "vibesnake-agent-rules-resource-v18",
             rules.RootElement.GetProperty("contract").GetString());
         var archive = rules.RootElement.GetProperty("archive");
         Assert.Equal(
@@ -964,6 +968,27 @@ public sealed class AgentHostTests
             "never writes",
             story.GetProperty("boundary").GetString(),
             StringComparison.Ordinal);
+        var qualification = rules.RootElement.GetProperty("qualification");
+        Assert.Equal(
+            AgentQualificationReportV1.Contract,
+            qualification.GetProperty("contract").GetString());
+        Assert.Equal("get_qualification_report", qualification.GetProperty("tool").GetString());
+        Assert.Equal(
+            Enum.GetValues<AgentQualificationClass>().Length,
+            qualification.GetProperty("classes").GetArrayLength());
+        Assert.Contains(
+            "never mix",
+            qualification.GetProperty("standings").GetString(),
+            StringComparison.Ordinal);
+        using var qualificationResource = JsonDocument.Parse(AgentResources.GetQualification());
+        Assert.Equal(
+            "vibesnake-agent-qualification-resource-v1",
+            qualificationResource.RootElement.GetProperty("contract").GetString());
+        Assert.Equal(
+            8,
+            qualificationResource.RootElement.GetProperty("manifest")
+                .GetProperty("divisions")
+                .GetArrayLength());
         Assert.Contains(
             "quarantined beside the archive rather than repaired",
             archive.GetProperty("integrity").GetString(),
@@ -1215,6 +1240,7 @@ public sealed class AgentHostTests
         Assert.Contains("save_verified_replay", playbook, StringComparison.Ordinal);
         Assert.Contains("record_passport", playbook, StringComparison.Ordinal);
         Assert.Contains("get_exhibition_story", playbook, StringComparison.Ordinal);
+        Assert.Contains("get_qualification_report", playbook, StringComparison.Ordinal);
         Assert.Contains("vibesnake://agent/identity", playbook, StringComparison.Ordinal);
         var lessonSemantics = school.RootElement.GetProperty("evidence_semantics");
         Assert.Contains(
@@ -1464,7 +1490,7 @@ public sealed class AgentHostTests
         Assert.NotNull(host.Services);
         Assert.NotNull(defaultHost.Services);
         Assert.Equal("vibesnake-agent-host", Program.HostName);
-        Assert.Equal("0.16.0", Program.HostVersion);
+        Assert.Equal("0.17.0", Program.HostVersion);
         Assert.Throws<ArgumentNullException>(() =>
             Program.CreateHostApplicationBuilder(null!, temporary.Path));
     }
@@ -2060,6 +2086,7 @@ public sealed class AgentHostTests
                 "get_exhibition_receipt",
                 "get_exhibition_story",
                 "get_match_result",
+                "get_qualification_report",
                 "list_exhibitions",
                 "list_passports",
                 "observe_match",
@@ -2071,7 +2098,7 @@ public sealed class AgentHostTests
                 "start_match",
             ],
             tools.Select(tool => tool.Name).Order().ToArray());
-        Assert.Equal(7, resources.Count);
+        Assert.Equal(8, resources.Count);
         Assert.Contains(
             resources,
             resource => resource.Uri == "vibesnake://agent/playbook");
@@ -2087,9 +2114,12 @@ public sealed class AgentHostTests
         Assert.Contains(
             resources,
             resource => resource.Uri == "vibesnake://agent/identity");
+        Assert.Contains(
+            resources,
+            resource => resource.Uri == "vibesnake://agent/qualification");
         var rulesText = Assert.IsType<TextResourceContents>(Assert.Single(rules.Contents));
         Assert.Contains(
-            "vibesnake-agent-rules-resource-v17",
+            "vibesnake-agent-rules-resource-v18",
             rulesText.Text,
             StringComparison.Ordinal);
         Assert.False(moved.IsError ?? false);

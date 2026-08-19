@@ -38,7 +38,7 @@ sources:
 ---
 # Versions
 
-The host version is `0.16.0`. The Agent Plugin version is `0.16.0` and targets `https://agent-plugins.org/schemas/1.0.0/plugin.schema.json`.
+The host version is `0.17.0`. The Agent Plugin version is `0.17.0` and targets `https://agent-plugins.org/schemas/1.0.0/plugin.schema.json`.
 The MCP server targets stable protocol `2026-07-28` through the official C# SDK `2.2.0`.
 Clients must speak the stateless MCP `2026-07-28` era: every request carries protocol metadata, optional discovery uses `server/discover`, and there is no protocol session. Legacy `initialize` handshakes are rejected and this preview provides no downlevel fallback.
 
@@ -51,6 +51,7 @@ Clients must speak the stateless MCP `2026-07-28` era: every request carries pro
 * `get_exhibition_receipt`
 * `get_exhibition_story`
 * `get_match_result`
+* `get_qualification_report`
 * `list_exhibitions`
 * `list_passports`
 * `observe_match`
@@ -66,6 +67,7 @@ Clients must speak the stateless MCP `2026-07-28` era: every request carries pro
 * `vibesnake://agent/identity`
 * `vibesnake://agent/modes`
 * `vibesnake://agent/playbook`
+* `vibesnake://agent/qualification`
 * `vibesnake://agent/rivals`
 * `vibesnake://agent/rules`
 * `vibesnake://agent/signal-school`

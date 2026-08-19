@@ -34,6 +34,8 @@ REQUIRED_FILES = (
     Path("native/src/VibeSnake.AgentPlay/AgentPassportStore.cs"),
     Path("native/src/VibeSnake.AgentPlay/AgentExhibitionStory.cs"),
     Path("native/src/VibeSnake.AgentPlay/AgentExhibitionStoryReport.cs"),
+    Path("native/src/VibeSnake.AgentPlay/AgentQualificationCatalog.cs"),
+    Path("native/src/VibeSnake.AgentPlay/AgentQualificationReport.cs"),
     Path("native/src/VibeSnake.Rules/CosmeticSetCatalog.cs"),
     Path("native/src/VibeSnake.Rules/StationIdentityCatalog.cs"),
     Path("native/tools/VibeSnake.AgentHost/AgentHostContracts.cs"),

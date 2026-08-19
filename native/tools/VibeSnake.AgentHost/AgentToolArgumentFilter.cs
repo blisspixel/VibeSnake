@@ -57,6 +57,7 @@ internal static class AgentToolArgumentFilter
             ["archive_exhibition"] = new([Text("matchHandle")], []),
             ["list_exhibitions"] = new([], [NullableText("routeIdentityHash")]),
             ["get_exhibition_story"] = new([Text("receiptHash")], []),
+            ["get_qualification_report"] = new([], [NullableText("agentId")]),
             ["forget_exhibition"] = new([], [NullableText("receiptHash")]),
             ["record_passport"] = new([], [NullableText("matchHandle"), NullableText("receiptHash")]),
             ["list_passports"] = new([], [NullableText("agentId")]),

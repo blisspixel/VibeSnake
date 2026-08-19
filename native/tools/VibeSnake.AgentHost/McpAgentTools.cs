@@ -224,6 +224,20 @@ public sealed class McpAgentTools
         Execute(() => _registry.GetExhibitionStory(receiptHash));
 
     [McpServerTool(
+        Name = "get_qualification_report",
+        Title = "Get local Vibe Snake qualification report",
+        UseStructuredContent = true,
+        OutputSchemaType = typeof(AgentQualificationReportV1),
+        ReadOnly = true,
+        Destructive = false,
+        Idempotent = true,
+        OpenWorld = false)]
+    [Description("Builds the local qualification report from archived receipts against the immutable division manifest and the public practice and qualification-time decks. Voluntary finish_match is never a qualifying result. Completed Signal School practice is practice evidence, not a standing. Standings never mix divisions or policy versions. Rival Breaker is scored on the rival's published characteristic terms. Display time is ignored. Building the report never writes.")]
+    public AgentQualificationReportV1 GetQualificationReport(
+        [Description("Optional agent id to narrow the report. Use null to include every archived exhibition.")] string? agentId = null) =>
+        Execute(() => _registry.GetQualificationReport(agentId));
+
+    [McpServerTool(
         Name = "forget_exhibition",
         Title = "Forget archived Vibe Snake exhibition",
         UseStructuredContent = true,
