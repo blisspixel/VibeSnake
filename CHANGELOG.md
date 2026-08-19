@@ -4,6 +4,8 @@ Notable player-facing and engineering changes are recorded here. The project is 
 
 ## Unreleased
 
+- Retried Windows Coverlet hit-stream truncation after a green native test run. All 1,223 tests can pass while Coverlet still fails with "Unable to read beyond the end of the stream"; that is now treated as a coverage-report failure and gets the existing one rebuild retry instead of being mistaken for a test failure.
+
 - Bound the unsigned Agent Host package to its source revision. `package_agent_host.ps1` now writes `host-inventory.json` from the host lock closure and `host-provenance.json` that hashes the executable, manifest, and inventory. `publication_eligible` stays false. The inventory is NuGet-only, generated from locks, and includes the published RID graph. This is lock-derived SBOM evidence, not a platform signature. Viewer artifact qualification, signing, installers, update, rollback, and supported publication remain later AA-10 work. Host and plugin remain `0.17.0`.
 
 - Started AA-10 with a current-RID self-contained Agent Host package. `./scripts/package_agent_host.ps1` publishes an unsigned `vibesnake-agent-host-package-v1` that contains the host executable, license files, `INSTALL.txt`, a closed manifest, and complete `SHA256SUMS`. `publication_eligible` stays false. The package smoke-starts over stdio and must not write preview data beside the executable. CI builds and validates it on Windows, macOS, and Linux. The framework-dependent Agent Plugin package is unchanged. Host and plugin remain `0.17.0`.

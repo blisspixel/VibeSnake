@@ -291,6 +291,8 @@ try {
         "-p:ThresholdStat=minimum",
         'for ($attempt = 1; $attempt -le 2; $attempt++)',
         "Native tests failed; a coverage-report retry cannot hide a test failure.",
+        "Coverlet truncated a hit stream after a green test run.",
+        "Unable to read beyond the end of the stream",
         "build-server",
         "Assert-NativeCoverageReport"
     )) {

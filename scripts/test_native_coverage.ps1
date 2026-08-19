@@ -80,12 +80,20 @@ try {
         if (Test-Path -LiteralPath $coveragePath -PathType Leaf) {
             Remove-Item -LiteralPath $coveragePath -Force
         }
-        & dotnet @testArguments
-        if ($LASTEXITCODE -ne 0) {
+        $testLines = & dotnet @testArguments 2>&1
+        $testExit = $LASTEXITCODE
+        $testLines | ForEach-Object { Write-Output "$_" }
+        $joined = ($testLines | ForEach-Object { "$_" }) -join [Environment]::NewLine
+        $testsPassed = $joined -match 'Passed!\s+-\s+Failed:\s+0,'
+        $coverletTruncated = $joined -match 'Unable to read beyond the end of the stream'
+        if ($testExit -ne 0 -and -not ($testsPassed -and $coverletTruncated)) {
             throw "Native tests failed; a coverage-report retry cannot hide a test failure."
         }
 
         try {
+            if ($testExit -ne 0) {
+                throw "Coverlet truncated a hit stream after a green test run."
+            }
             Assert-NativeCoverageReport
             $coverageAccepted = $true
             Write-Output "Native tests with coverage passed on attempt $attempt."
