@@ -46,6 +46,14 @@ On macOS or Linux:
 
 Both launchers call the same PowerShell 7 path. They install and verify the pinned Godot editor when needed, build `game/VibeSnake.Game.sln`, and launch `game/project.godot`. The first run downloads the platform editor archive. Later runs reuse the verified repository-local cache.
 
+To finish the current Agent Arena preview slice from Windows `cmd.exe` without first fixing a global-tool PowerShell, run:
+
+```bat
+close-agent-preview.cmd
+```
+
+That sets `DOTNET_ROOT` to the repository `.dotnet` SDK, patches public-contract digests, regenerates knowledge, checks interop and docs, and runs the focused Agent Arena native tests. Pass `--commit` to create a local commit after those gates pass. It does not push.
+
 The editable Python install still registers `vibesnake`, `vibesnake status`, `vibesnake update`, `vibesnake doctor`, and `vibesnake version` for frozen-oracle and migration work. It is not the default product launcher.
 
 ## Set up the native toolchain

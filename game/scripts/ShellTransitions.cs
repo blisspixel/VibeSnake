@@ -46,6 +46,10 @@ internal static class ShellTransitions
         (ShellScreen.Menu, ShellScreen.Spectator) => true,
 #if AGENT_ARENA_PREVIEW
         (ShellScreen.Menu, ShellScreen.AgentWatch) => true,
+        // Documented ./play.sh --agent-watch-exhibitions launches from Menu.
+        // Without this edge the flag is recognized and then refused, so the
+        // player stays on the title screen in front of a real archive.
+        (ShellScreen.Menu, ShellScreen.AgentExhibitions) => true,
 #endif
         (ShellScreen.Running, ShellScreen.Paused) => true,
         (ShellScreen.Running, ShellScreen.Ended) => true,
@@ -111,6 +115,9 @@ internal static class ShellTransitions
         (ShellScreen.Comparisons, ShellScreen.Running) => true,
 #if AGENT_ARENA_PREVIEW
         (ShellScreen.AgentWatch, ShellScreen.Menu) => true,
+        (ShellScreen.AgentExhibitions, ShellScreen.Menu) => true,
+        (ShellScreen.AgentExhibitions, ShellScreen.Running) => true,
+        (ShellScreen.AgentExhibitions, ShellScreen.AgentExhibitions) => true,
 #endif
         _ => false,
     };

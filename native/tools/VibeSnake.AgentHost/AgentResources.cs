@@ -15,6 +15,8 @@ public sealed class AgentResources
     private static readonly string[] SeedDivisions = ["open", "blind"];
     private static readonly string[] ArchiveTools =
         ["archive_exhibition", "list_exhibitions", "forget_exhibition"];
+    private static readonly string[] PassportTools =
+        ["record_passport", "list_passports", "forget_passport"];
     private static readonly string[] InteractionAccountingExclusions =
     [
         "mcp_or_json_rpc_framing",
@@ -67,7 +69,7 @@ public sealed class AgentResources
     public static string GetRules() => JsonSerializer.Serialize(
         new
         {
-            contract = "vibesnake-agent-rules-resource-v15",
+            contract = "vibesnake-agent-rules-resource-v17",
             ruleset_id = RulesetIdentity.CurrentId,
             rules_version = RulesetIdentity.CurrentVersion,
             observation_schema = AgentObservationV5.Contract,
@@ -151,7 +153,41 @@ public sealed class AgentResources
                 route_identity_hash = "route_identity_hash names the line rather than the visit. It covers the division, seed, terminal facts, both verified lane replay hashes, and the style and lesson satisfaction outcome, and it deliberately omits the match handle, the caller-declared passport, presentation events, and any attempt evidence derived from idempotency keys. The same seed and route reproduce it across separate matches and separate host processes, so use it to recognise an already-walked line and to compare same-seed rematches.",
                 display_time = "display_time_utc is presentation-only, may be absent, and is deliberately excluded from receipt_hash so the same exhibition keeps one identity whenever it is shown.",
                 presentation_events = "accepted_presentation_events record the ordered tick, action, and self-declared public intent of each accepted rules step. They are spectator labels and never changed rules, score, or verification.",
-                boundary = "The receipt is transport-neutral and local. Persisted passports and league standings remain separate future work.",
+                boundary = "The receipt is transport-neutral and local. League standings remain AA-08 work. A verified receipt can be recorded into the local passport store through record_passport.",
+            },
+            passport = new
+            {
+                contract = AgentPassportDocumentV1.Contract,
+                record_contract = AgentPassportRecordV1.Contract,
+                status_contract = AgentPassportWriteStatusV1.Contract,
+                listing_contract = AgentPassportListingV1.Contract,
+                forget_contract = AgentPassportForgetStatusV1.Contract,
+                index_contract = AgentPassportIndexV1.Contract,
+                index_entry_contract = AgentPassportIndexEntryV1.Contract,
+                drop_contract = AgentPassportDropV1.Contract,
+                milestone_contract = AgentPassportMilestoneV1.Contract,
+                tools = PassportTools,
+                schema_version = AgentPassportDocumentV1.CurrentSchemaVersion,
+                capacity = AgentPassportDocumentV1.MaximumRecords,
+                maximum_receipts_per_agent = AgentPassportDocumentV1.MaximumRecordedReceiptsPerAgent,
+                maximum_bytes = AgentPassportDocumentV1.MaximumBytes,
+                write_codes = Enum.GetNames<AgentPassportWriteCode>()
+                    .Select(JsonNamingPolicy.SnakeCaseLower.ConvertName)
+                    .ToArray(),
+                forget_codes = Enum.GetNames<AgentPassportForgetCode>()
+                    .Select(JsonNamingPolicy.SnakeCaseLower.ConvertName)
+                    .ToArray(),
+                milestones = AgentPassportMilestoneV1.All.ToArray(),
+                definition = "A passport record is one agent's public history, assembled only from verified exhibition receipts. The ephemeral passport a caller declares at start_match remains a claim; this store is the opposite by construction.",
+                prerequisites = "Recording is explicit. A match must be finalized and verified so it has a receipt. Saved replay files are not required, because a public record names receipts rather than tapes. Archiving remains a separate decision.",
+                boundary = "The store is local, bounded, and lives outside the supported player Persistence assembly. It stores no display name, prompt, credential, provider output, or human score, progression, achievement, cosmetic, or profile data, and it never affects them. It accepts no path. forget_passport removes passport entries only and never touches the exhibition archive or a saved replay file.",
+                capacity_rule = "Effective capacity is 16 agents, 32 receipts per agent, and 1,048,576 bytes. A seventeenth agent or a thirty-third receipt on one record is refused. A write that would exceed the byte ceiling is refused rather than dropping another agent's history to make room. Every response publishes bytes_used, maximum_bytes, remaining_records, and remaining_bytes.",
+                durability = "The write is atomic: a complete document is staged and then replaced, so an interrupted write leaves the previous store intact. Recording the same exhibition again writes nothing and reports already_recorded. The store never evicts a public record to make room.",
+                integrity = "A receipt that cannot recompute its own canonical hashes is refused as no_verified_receipt. A stored document that is unreadable or inconsistent is quarantined rather than repaired. If it can be neither read nor moved aside, the write is refused as store_unavailable rather than overwriting evidence.",
+                listing = "list_passports reads the store without writing to it and optionally narrows to one agent_id. Each listed record publishes policy versions, divisions, exhibition counts, style and lesson tallies, rival ahead/level/behind facts, and milestones that point at the receipt that earned them.",
+                accounting = "bytes_used is what the passport file holds right now and is verifiable against it. bytes_projected is what the next write would produce and is the size the byte ceiling binds, so remaining_bytes follows it. schema_version is the document in memory and stored_schema_version is the one on disk.",
+                ordering = "Records are oldest first and eviction takes position 0. Every listed entry carries its position in the whole store rather than in the listing. Position is computed at read time and is not stored.",
+                identity = "The caller-declared display name is never stored. Ahead, level, and behind are three counts of a score comparison, not a ranking; AA-08 owns standings.",
             },
             archive = new
             {
@@ -185,6 +221,22 @@ public sealed class AgentResources
                 accounting = "bytes_used is what the archive file holds right now and is verifiable against it. bytes_projected is what the next write would produce and is the size the byte ceiling binds, so remaining_bytes follows it. The two differ only between a migrate-on-read and the next write, because reading never writes. schema_version is the document in memory and stored_schema_version is the one on disk, so a pending migration reads as 1 to 2 rather than as a bare boolean.",
                 ordering = "Entries are oldest first and eviction takes position 0. Every listed entry carries its position in the whole store rather than in the listing, so a filtered listing still says where an exhibition sits and which one eviction reaches next. Position is computed at read time and is not stored, because order is a property of the store rather than of any one exhibition.",
                 identity = "Presentation display time is stripped before an exhibition is stored, because display time is never part of exhibition identity and an archive that kept it would make one exhibition look different on every visit.",
+            },
+            story = new
+            {
+                contract = AgentExhibitionStoryV1.Contract,
+                report_contract = AgentExhibitionStoryReportV1.Contract,
+                cursor_contract = AgentExhibitionStoryCursorV1.Contract,
+                highlight_contract = AgentHighlightV1.Contract,
+                window_contract = AgentMontageWindowV1.Contract,
+                tool = "get_exhibition_story",
+                refuse_codes = Enum.GetNames<AgentExhibitionStoryRefuse>()
+                    .Select(JsonNamingPolicy.SnakeCaseLower.ConvertName)
+                    .ToArray(),
+                definition = "A story is derived from one verified receipt plus the named lane tapes the archive already published. It invents no second identity: the story binds the receipt hashes and the verified replay payload hashes.",
+                availability = "get_exhibition_story reads an archived receipt hash. A missing archive entry, missing tape, or disagreeing payload hash is refused. Display time is ignored.",
+                pacing = "The montage covers every tick exactly once. Linger holds a turning point at half the viewer's chosen speed. Skip windows are not played; the cursor jumps to the next beat. Selected plays the beat around a turning point.",
+                boundary = "Building a story never writes the archive, the passport store, or any human player data.",
             },
             privacy = "Observations exclude random state, future outcomes, controller internals, profiles, progression, paths, prompts, credentials, diagnostics, and hidden reasoning.",
         },
@@ -227,6 +279,7 @@ public sealed class AgentResources
                 declaration = "Passport identity is caller-declared and catalog-validated, not authenticated.",
                 presentation = "Avatar, accent, and station choices are presentation-only and never change rules, score, verification, or qualification.",
                 independence = "Agent presentation is independent of the watching human's selected cosmetic and progression unlocks.",
+                persistence = "record_passport can fold a verified exhibition into a local public record assembled only from receipts. That store never writes a display name. League standings remain a later surface.",
                 station_boundary = "A station identity is a presentation affinity, not approval to schedule, publish, moderate, or provide station audio.",
             },
         },
@@ -361,6 +414,8 @@ public sealed class AgentResources
         5. On rejection or burst stop, inspect the reason, actual advancement, final-step public events, and refreshed observation. Preflight and logical rejections do not step the rules. A `replay_failure` can report `rules_advanced=true` after a real step and always fails closed without a verified result.
         6. Continue until the result appears. When Signal School reports `recommended_next_tool: finish_match`, call it to finalize a completed lesson without padding steps. In any other running match, `finish_match` requests an aborted early finish.
         7. Confirm that finalization returned a verified result. A reached lesson target omits retry guidance; only an unmet outcome or failed-closed progress provides a fresh `start_lesson` descriptor. For a styled match, threshold flags are measurement crossings, not grades, and only its replay-bound style outcome is verified criterion evidence. Call `save_verified_replay` only when accepted-step replay persistence for later human viewing is desired.
+        8. After a verified result, `record_passport` can fold the exhibition into a local public record. Supply exactly one of `matchHandle` or an archived `receiptHash`. That store never writes a display name. `archive_exhibition` is a separate decision and requires the saved lane replays first.
+        9. After archiving, `get_exhibition_story` builds the recorded-first montage from the receipt and named lane files. A missing or disagreeing tape is refused. Display time is ignored.
 
         Public intents are `seek_food`, `seek_power`, `preserve_space`, `take_risk`, and `recover`. They are self-reported presentation only. `continue` preserves the current direction. Never submit the current direction or its opposite as a turn. Response latency has no scoring effect. At capacity, a live handle idle for 30 minutes may be reclaimed without producing a result or replay; viewer activity is never match control.
         """;

@@ -63,6 +63,9 @@ Notes:
 | `playtest-summaries/summaries.json.tmp` | `LocalPlaytestSummaryStore` | Atomic-write staging owned by the summary store and removed by confirmed summary deletion |
 | `playtest-summaries/exports/playtest-summaries_*.json` | `LocalPlaytestSummaryStore` | Player-requested local exports; newest 20 maximum |
 | `playtest-summaries/exports/playtest-summaries_*.json.tmp` | `LocalPlaytestSummaryStore` | Interrupted export staging removed by confirmed summary deletion |
+| `agent_arena/exhibition_archive.json` | `AgentExhibitionArchiveStore` | Preview-only bounded archive of verified exhibition receipts plus saved lane replay file names. Outside Persistence. |
+| `agent_arena/agent_passports.json` | `AgentPassportStore` | Preview-only bounded public agent records assembled from verified receipts. Outside Persistence. Never stores a display name or human profile. |
+| `agent_arena/*.corrupt.json` | Preview arena stores | Quarantined unreadable documents. Not repaired in place. |
 
 Future native-owned rows (not yet writers in shipping code):
 

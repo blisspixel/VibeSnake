@@ -18,6 +18,7 @@ public sealed class AgentSessionRegistry : IDisposable
     private readonly Dictionary<string, Entry> _entries = new(StringComparer.Ordinal);
     private readonly ReplayStore _replayStore;
     private readonly AgentExhibitionArchiveStore? _archiveStore;
+    private readonly AgentPassportStore? _passportStore;
     private readonly Func<string> _handleGenerator;
     private readonly Func<ulong> _seedGenerator;
     private readonly TimeProvider _timeProvider;
@@ -29,11 +30,13 @@ public sealed class AgentSessionRegistry : IDisposable
         Func<string>? handleGenerator = null,
         Func<ulong>? seedGenerator = null,
         TimeProvider? timeProvider = null,
-        AgentExhibitionArchiveStore? archiveStore = null)
+        AgentExhibitionArchiveStore? archiveStore = null,
+        AgentPassportStore? passportStore = null)
     {
         ArgumentNullException.ThrowIfNull(replayStore);
         _replayStore = replayStore;
         _archiveStore = archiveStore;
+        _passportStore = passportStore;
         _handleGenerator = handleGenerator ?? GenerateHandle;
         _seedGenerator = seedGenerator ?? GenerateSeed;
         _timeProvider = timeProvider ?? TimeProvider.System;
@@ -305,6 +308,25 @@ public sealed class AgentSessionRegistry : IDisposable
     }
 
     /// <summary>
+    /// Builds the recorded-first story for one archived exhibition. The named
+    /// lane files must still be present and must recompute the receipt hashes,
+    /// because a missing or disagreeing tape is not a story.
+    /// </summary>
+    public AgentExhibitionStoryReportV1 GetExhibitionStory(string receiptHash)
+    {
+        if (string.IsNullOrWhiteSpace(receiptHash))
+        {
+            throw new ArgumentException(
+                "receiptHash must be a non-empty receipt identity.",
+                nameof(receiptHash));
+        }
+
+        var archived = RequireArchiveStore().Inspect().Archive.Entries.FirstOrDefault(entry =>
+            string.Equals(entry.ReceiptHash, receiptHash, StringComparison.Ordinal));
+        return AgentExhibitionStoryReportV1.FromArchive(archived, LoadReplayOrNull);
+    }
+
+    /// <summary>
     /// Removes one archived exhibition, or clears the archive. Eviction alone
     /// left a caller with no way to drop a run they did not want to keep.
     /// </summary>
@@ -327,10 +349,177 @@ public sealed class AgentSessionRegistry : IDisposable
                 ReplayFileExists));
     }
 
+    /// <summary>
+    /// Records one verified exhibition against its agent's public identity.
+    /// Supply a live match handle or an archived receipt hash, never both.
+    /// A receipt is enough; a missing replay file does not block the public record.
+    /// </summary>
+    public AgentPassportWriteStatusV1 RecordPassport(string? matchHandle, string? receiptHash)
+    {
+        var hasHandle = matchHandle is not null;
+        var hasHash = receiptHash is not null;
+        if (hasHandle == hasHash)
+        {
+            throw new ArgumentException(
+                "Supply exactly one of matchHandle or receiptHash.");
+        }
+
+        if (matchHandle is not null && string.IsNullOrWhiteSpace(matchHandle))
+        {
+            throw new ArgumentException(
+                "matchHandle must be absent or non-empty.",
+                nameof(matchHandle));
+        }
+
+        if (receiptHash is not null && string.IsNullOrWhiteSpace(receiptHash))
+        {
+            throw new ArgumentException(
+                "receiptHash must be absent or non-empty.",
+                nameof(receiptHash));
+        }
+
+        var store = RequirePassportStore();
+        if (matchHandle is not null)
+        {
+            var receipt = GetSession(matchHandle).TryCreateExhibitionReceipt();
+            if (receipt is null)
+            {
+                return PassportStatus(
+                    matchHandle,
+                    store.Inspect(),
+                    AgentPassportWriteCode.NoVerifiedReceipt,
+                    "A live, unverified, or failed-closed match has no exhibition receipt to record.",
+                    recorded: false,
+                    agentId: null,
+                    Array.Empty<AgentPassportDropV1>());
+            }
+
+            return PassportWrite(matchHandle, store.Record(receipt));
+        }
+
+        var archived = RequireArchiveStore().Inspect().Archive.Entries.FirstOrDefault(entry =>
+            string.Equals(entry.ReceiptHash, receiptHash, StringComparison.Ordinal));
+        if (archived is null)
+        {
+            return PassportStatus(
+                matchHandle: null,
+                store.Inspect(),
+                AgentPassportWriteCode.NotArchived,
+                "No archived exhibition carries that receipt hash.",
+                recorded: false,
+                agentId: null,
+                Array.Empty<AgentPassportDropV1>());
+        }
+
+        return PassportWrite(null, store.Record(archived.Receipt));
+    }
+
+    private static AgentPassportWriteStatusV1 PassportWrite(
+        string? matchHandle,
+        AgentPassportWriteResultV1 written) =>
+        new(
+            AgentPassportWriteStatusV1.Contract,
+            matchHandle,
+            written.Recorded,
+            written.Code,
+            written.Message,
+            written.AgentId,
+            written.Evicted,
+            AgentPassportIndexV1.Create(
+                written.Document,
+                written.BytesUsed,
+                written.BytesProjected,
+                written.StoredSchemaVersion,
+                written.RecoveredFromCorruption));
+
+    /// <summary>
+    /// Lists public agent records without writing to the store, optionally
+    /// narrowed to one agent id.
+    /// </summary>
+    public AgentPassportListingV1 ListPassports(string? agentId)
+    {
+        if (agentId is not null && string.IsNullOrWhiteSpace(agentId))
+        {
+            throw new ArgumentException(
+                "agentId must be absent or non-empty.",
+                nameof(agentId));
+        }
+
+        var read = RequirePassportStore().Inspect();
+        var matched = agentId is null
+            ? read.Document.Records
+            : read.Document.Records
+                .Where(record => string.Equals(
+                    record.AgentId,
+                    agentId,
+                    StringComparison.Ordinal))
+                .ToArray();
+        return new AgentPassportListingV1(
+            AgentPassportListingV1.Contract,
+            agentId,
+            matched.Count,
+            AgentPassportIndexV1.Create(
+                read.Document,
+                read.BytesUsed,
+                read.BytesProjected,
+                read.StoredSchemaVersion,
+                read.RecoveredFromCorruption,
+                matched));
+    }
+
+    /// <summary>
+    /// Removes one public record, or clears the store. Forgetting a passport
+    /// never touches the exhibition archive, saved replays, or human data.
+    /// </summary>
+    public AgentPassportForgetStatusV1 ForgetPassport(string? agentId)
+    {
+        var result = RequirePassportStore().Forget(agentId);
+        return new AgentPassportForgetStatusV1(
+            AgentPassportForgetStatusV1.Contract,
+            result.Code == AgentPassportForgetCode.Forgotten,
+            result.Code,
+            result.Message,
+            result.Forgotten,
+            AgentPassportIndexV1.Create(
+                result.Document,
+                result.BytesUsed,
+                result.BytesProjected,
+                result.StoredSchemaVersion,
+                result.RecoveredFromCorruption));
+    }
+
     private AgentExhibitionArchiveStore RequireArchiveStore() =>
         _archiveStore
             ?? throw new InvalidOperationException(
                 "This host was started without an exhibition archive.");
+
+    private AgentPassportStore RequirePassportStore() =>
+        _passportStore
+            ?? throw new InvalidOperationException(
+                "This host was started without a passport store.");
+
+    private static AgentPassportWriteStatusV1 PassportStatus(
+        string? matchHandle,
+        AgentPassportReadV1 read,
+        AgentPassportWriteCode code,
+        string message,
+        bool recorded,
+        string? agentId,
+        IReadOnlyList<AgentPassportDropV1> evicted) =>
+        new(
+            AgentPassportWriteStatusV1.Contract,
+            matchHandle,
+            recorded,
+            code,
+            message,
+            agentId,
+            evicted,
+            AgentPassportIndexV1.Create(
+                read.Document,
+                read.BytesUsed,
+                read.BytesProjected,
+                read.StoredSchemaVersion,
+                read.RecoveredFromCorruption));
 
     private static AgentExhibitionArchiveWriteV1 Refusal(
         AgentExhibitionArchiveStore store,
@@ -359,6 +548,17 @@ public sealed class AgentSessionRegistry : IDisposable
     private bool ReplayFileExists(string fileName) =>
         !string.IsNullOrWhiteSpace(fileName)
         && File.Exists(Path.Combine(_replayStore.ReplayDirectory, fileName));
+
+    private RunReplay? LoadReplayOrNull(string fileName)
+    {
+        if (!ReplayFileExists(fileName))
+        {
+            return null;
+        }
+
+        var loaded = _replayStore.Load(fileName);
+        return loaded.IsSuccess ? loaded.Replay : null;
+    }
 
     private AgentExhibitionArchiveStatusV2 ArchiveStatus(
         string matchHandle,

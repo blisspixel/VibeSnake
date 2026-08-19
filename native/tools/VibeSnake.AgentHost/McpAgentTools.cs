@@ -210,6 +210,20 @@ public sealed class McpAgentTools
         Execute(() => _registry.ListExhibitions(routeIdentityHash));
 
     [McpServerTool(
+        Name = "get_exhibition_story",
+        Title = "Get archived Vibe Snake exhibition story",
+        UseStructuredContent = true,
+        OutputSchemaType = typeof(AgentExhibitionStoryReportV1),
+        ReadOnly = true,
+        Destructive = false,
+        Idempotent = true,
+        OpenWorld = false)]
+    [Description("Builds the recorded-first story for one archived exhibition from its receipt and named lane replay files. Display time is ignored. A missing or disagreeing tape is refused before any highlight is returned. It never writes, never advances a match, and never touches the passport store.")]
+    public AgentExhibitionStoryReportV1 GetExhibitionStory(
+        [Description("Receipt hash of an archived exhibition.")] string receiptHash) =>
+        Execute(() => _registry.GetExhibitionStory(receiptHash));
+
+    [McpServerTool(
         Name = "forget_exhibition",
         Title = "Forget archived Vibe Snake exhibition",
         UseStructuredContent = true,
@@ -222,6 +236,49 @@ public sealed class McpAgentTools
     public AgentExhibitionForgetStatusV1 ForgetExhibition(
         [Description("Receipt hash of the exhibition to remove. Use null to clear every archived exhibition.")] string? receiptHash = null) =>
         Execute(() => _registry.ForgetExhibition(receiptHash));
+
+    [McpServerTool(
+        Name = "record_passport",
+        Title = "Record Vibe Snake agent passport",
+        UseStructuredContent = true,
+        OutputSchemaType = typeof(AgentPassportWriteStatusV1),
+        ReadOnly = false,
+        Destructive = false,
+        Idempotent = true,
+        OpenWorld = false)]
+    [Description("Records one verified exhibition against its agent's public identity and returns the passport store index. Supply exactly one of matchHandle or receiptHash. A live handle needs a finalized verified match; a receipt hash must already be in the local exhibition archive. Saved replay files are not required. Recording is idempotent by receipt hash, so repeating the call never inflates a count. A live, unverified, or failed-closed match reports no_verified_receipt. The store is local, bounded to 16 agents, 32 receipts per agent, and 1,048,576 bytes, lives outside the supported Persistence assembly, and never stores a display name, prompt, or human profile. A seventeenth agent is refused rather than evicted.")]
+    public AgentPassportWriteStatusV1 RecordPassport(
+        [Description("Opaque handle returned by start_match. Use null when recording from an archived receipt hash.")] string? matchHandle = null,
+        [Description("Receipt hash of an archived exhibition. Use null when recording from a live match handle.")] string? receiptHash = null) =>
+        Execute(() => _registry.RecordPassport(matchHandle, receiptHash));
+
+    [McpServerTool(
+        Name = "list_passports",
+        Title = "List Vibe Snake agent passports",
+        UseStructuredContent = true,
+        OutputSchemaType = typeof(AgentPassportListingV1),
+        ReadOnly = true,
+        Destructive = false,
+        Idempotent = true,
+        OpenWorld = false)]
+    [Description("Reads the local public-identity store without writing to it and publishes both of its bounds plus the exact bytes it occupies. Supply agentId to narrow the listing to one agent. Every listed record is assembled only from verified receipts: exhibition counts, style and lesson tallies, rival ahead/level/behind facts, and milestones that point back at the exhibition that earned them. Ahead, level, and behind are not standings. It never advances or finishes a match.")]
+    public AgentPassportListingV1 ListPassports(
+        [Description("Optional agent id to filter by. Use null to list every public record.")] string? agentId = null) =>
+        Execute(() => _registry.ListPassports(agentId));
+
+    [McpServerTool(
+        Name = "forget_passport",
+        Title = "Forget Vibe Snake agent passport",
+        UseStructuredContent = true,
+        OutputSchemaType = typeof(AgentPassportForgetStatusV1),
+        ReadOnly = false,
+        Destructive = true,
+        Idempotent = true,
+        OpenWorld = false)]
+    [Description("Removes one public agent record by agent id, or clears the store when agentId is null, and returns the index afterwards. Every removed record is named. This deletes passport entries only: the exhibition archive, saved replay files, and every human store are untouched. Removing something that is not recorded writes nothing and reports not_recorded, so the call is safe to repeat.")]
+    public AgentPassportForgetStatusV1 ForgetPassport(
+        [Description("Agent id of the public record to remove. Use null to clear every public record.")] string? agentId = null) =>
+        Execute(() => _registry.ForgetPassport(agentId));
 
     private static T Execute<T>(Func<T> action)
     {

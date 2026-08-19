@@ -344,3 +344,146 @@ public sealed record AgentReplaySaveV1(
 {
     public const string Contract = "vibesnake-agent-replay-save-v1";
 }
+
+/// <summary>
+/// The result of one explicit passport write, including the store index as it
+/// stands afterwards. The index is always present, including on a refusal.
+/// </summary>
+public sealed record AgentPassportWriteStatusV1(
+    string Schema,
+    string? MatchHandle,
+    bool Recorded,
+    AgentPassportWriteCode Code,
+    string Message,
+    string? AgentId,
+    IReadOnlyList<AgentPassportDropV1> Evicted,
+    AgentPassportIndexV1 Passports) : IAgentPassportResponse
+{
+    public const string Contract = "vibesnake-agent-passport-write-status-v1";
+}
+
+/// <summary>The result of one explicit passport removal.</summary>
+public sealed record AgentPassportForgetStatusV1(
+    string Schema,
+    bool Forgotten,
+    AgentPassportForgetCode Code,
+    string Message,
+    IReadOnlyList<AgentPassportDropV1> ForgottenAgents,
+    AgentPassportIndexV1 Passports) : IAgentPassportResponse
+{
+    public const string Contract = "vibesnake-agent-passport-forget-status-v1";
+}
+
+/// <summary>
+/// One read-only listing of public agent records, optionally narrowed to a
+/// single agent. A caller used to be able to see the store only by writing to it.
+/// </summary>
+public sealed record AgentPassportListingV1(
+    string Schema,
+    string? AgentIdFilter,
+    int MatchedCount,
+    AgentPassportIndexV1 Passports) : IAgentPassportResponse
+{
+    public const string Contract = "vibesnake-agent-passport-listing-v1";
+}
+
+public interface IAgentPassportResponse
+{
+    AgentPassportIndexV1 Passports { get; }
+}
+
+/// <summary>
+/// The passport store as it stands. Two sizes are published because a read
+/// never writes: bytes_used is the file, bytes_projected is the next write.
+/// </summary>
+public sealed record AgentPassportIndexV1(
+    string Schema,
+    int SchemaVersion,
+    int StoredSchemaVersion,
+    int RecordCount,
+    int Capacity,
+    int BytesUsed,
+    int BytesProjected,
+    int MaximumBytes,
+    int RemainingRecords,
+    int RemainingBytes,
+    bool RecoveredFromCorruption,
+    IReadOnlyList<AgentPassportIndexEntryV1> Entries)
+{
+    public const string Contract = "vibesnake-agent-passport-index-v1";
+
+    internal static AgentPassportIndexV1 Create(
+        AgentPassportDocumentV1 document,
+        int bytesUsed,
+        int bytesProjected,
+        int storedSchemaVersion,
+        bool recoveredFromCorruption,
+        IReadOnlyList<AgentPassportRecordV1>? listed = null)
+    {
+        var positions = new Dictionary<string, int>(StringComparer.Ordinal);
+        for (var index = 0; index < document.Records.Count; index++)
+        {
+            positions[document.Records[index].AgentId] = index;
+        }
+
+        return new AgentPassportIndexV1(
+            Contract,
+            document.SchemaVersion,
+            storedSchemaVersion,
+            document.Records.Count,
+            document.Capacity,
+            bytesUsed,
+            bytesProjected,
+            AgentPassportDocumentV1.MaximumBytes,
+            Math.Max(0, document.Capacity - document.Records.Count),
+            Math.Max(0, AgentPassportDocumentV1.MaximumBytes - bytesProjected),
+            recoveredFromCorruption,
+            (listed ?? document.Records)
+                .Select(record => AgentPassportIndexEntryV1.FromRecord(
+                    record,
+                    positions.TryGetValue(record.AgentId, out var position) ? position : -1))
+                .ToArray());
+    }
+}
+
+/// <summary>
+/// One listed public record. Every field is a fact the receipts earned. The
+/// caller-declared display name is absent on purpose: a name is a claim.
+/// Position is computed at read time so a filtered listing still says where
+/// the record sits and which one eviction reaches next.
+/// </summary>
+public sealed record AgentPassportIndexEntryV1(
+    string Schema,
+    int Position,
+    string AgentId,
+    IReadOnlyList<string> PolicyVersions,
+    IReadOnlyList<string> DivisionIds,
+    int Exhibitions,
+    int BestScore,
+    IReadOnlyList<AgentPassportStyleRecordV1> Styles,
+    IReadOnlyList<AgentPassportLessonRecordV1> Lessons,
+    IReadOnlyList<AgentPassportRivalRecordV1> Rivals,
+    IReadOnlyList<AgentPassportMilestoneV1> Milestones,
+    string FirstReceiptHash,
+    string LatestReceiptHash)
+{
+    public const string Contract = "vibesnake-agent-passport-index-entry-v1";
+
+    internal static AgentPassportIndexEntryV1 FromRecord(
+        AgentPassportRecordV1 record,
+        int position) =>
+        new(
+            Contract,
+            position,
+            record.AgentId,
+            record.PolicyVersions,
+            record.DivisionIds,
+            record.Exhibitions,
+            record.BestScore,
+            record.Styles,
+            record.Lessons,
+            record.Rivals,
+            record.Milestones,
+            record.FirstReceiptHash,
+            record.LatestReceiptHash);
+}

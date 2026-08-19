@@ -12,6 +12,7 @@ This directory contains explicit command-line tools. Runtime code belongs under 
 | `check_product_version.py` | Align canonical `VERSION`, native `ProductIdentity.AppVersion`, and the equivalent PEP 440 package version |
 | `check_agent_interop.py` | Validate the closed machine-readable MCP, Agent Plugins, Agent Skill, MCP Apps, and OKF baseline, canonical UTC lifecycle metadata, absolute review dates, source alignment, version-bound public-contract digests, documentation pins, and optional read-only integrity of pinned Agent Plugins specification and schema bytes |
 | `generate_agent_knowledge.py` | Deterministically render and freshness-check the Open Knowledge Format 0.2 bundle from canonical sources and the interoperability baseline |
+| `close_agent_preview.py` | One-command Agent Arena preview close-out: patch public-contract digests, regenerate knowledge, check interop and docs, run focused native tests. Invoked by root `close-agent-preview.cmd` so cmd.exe can set the repo SDK before any .NET global tool starts. |
 | `validate_agent_plugin.py` | Enforce Vibe Snake's intentionally narrow Agent Plugins stdio producer and containment profile, exact packaged launch declaration, required components, and complete checksums |
 | `capture_readme_screenshots.py` | Isolated current-build README screenshot capture and freshness verification |
 | `visual_generate_badges.py` | Deterministic radio-station badge generation and byte verification |

@@ -241,6 +241,8 @@ public partial class Main : Node2D
     private AgentExhibitionArchiveStore? _agentExhibitionArchive;
     private AgentExhibitionBrowseReportV1? _agentExhibitionReport;
     private int _agentExhibitionCursor;
+    private AgentExhibitionStoryReportV1? _agentExhibitionStory;
+    private RunReplayPlayback? _agentExhibitionRivalPlayback;
 #endif
     private IReadOnlyList<GhostSlotEntry> _ghostSlots = [];
     private int _ghostSlotCursor;
@@ -349,7 +351,14 @@ public partial class Main : Node2D
         ReplayDeletionPlan? DeletionPlan = null,
         IReadOnlyList<GhostSlotEntry>? GhostSlots = null,
         GhostDeletionPlan? GhostDeletionPlan = null,
-        GhostRaceSession? GhostRace = null);
+        GhostRaceSession? GhostRace = null
+#if AGENT_ARENA_PREVIEW
+        ,
+        AgentExhibitionStoryReportV1? ExhibitionStory = null,
+        RunReplayPlayback? RivalPlayback = null,
+        AgentExhibitionStoryRefuse? StoryRefuse = null
+#endif
+        );
 
     private sealed record PlayerDataOperationResult(
         PlayerDataOperationKind Kind,
@@ -387,7 +396,8 @@ public partial class Main : Node2D
             "--agent-watch-smoke",
             StringComparer.Ordinal);
         // The browser is preview-only, so it is reachable by an explicit flag
-        // rather than from the supported main menu. The marker keeps the
+        // rather than from the supported main menu. Menu to AgentExhibitions
+        // is a legal launch transition for that flag. The marker keeps the
         // existing Release exclusion assertion covering it unchanged.
         var agentWatchExhibitions = userArguments.Contains(
             "--agent-watch-exhibitions",
@@ -1855,7 +1865,11 @@ public partial class Main : Node2D
             return;
         }
 
-        if (_screenState == ScreenState.Replays)
+        if (_screenState == ScreenState.Replays
+#if AGENT_ARENA_PREVIEW
+            || (_screenState == ScreenState.AgentExhibitions && _replayPlayback is not null)
+#endif
+            )
         {
             AdvanceReplayPlayback(delta);
             return;
@@ -1895,9 +1909,16 @@ public partial class Main : Node2D
             return;
         }
 
+        var speed = ReplayPlaybackSpeeds[_replayPlaybackSpeedIndex];
+#if AGENT_ARENA_PREVIEW
+        if (_agentExhibitionStory?.Cursor is { Rate: AgentMontageRate.Linger })
+        {
+            speed *= AgentExhibitionStoryReportV1.LingerSpeedBasisPoints / 10_000.0;
+        }
+#endif
         var steps = RulesCadenceClock.DrainSteps(
             ref _rulesStepAccumulatorMilliseconds,
-            delta * ReplayPlaybackSpeeds[_replayPlaybackSpeedIndex],
+            delta * speed,
             () => _replayPlayback.CurrentSnapshot.EffectiveRulesStepMilliseconds);
         for (var index = 0; index < steps; index++)
         {
@@ -1907,6 +1928,9 @@ public partial class Main : Node2D
             }
 
             AdvanceReplayPlaybackStep();
+#if AGENT_ARENA_PREVIEW
+            ApplyAgentExhibitionStoryPacing();
+#endif
         }
 
         if (steps > 0)
@@ -2059,9 +2083,27 @@ public partial class Main : Node2D
         }
 
         var before = _replayPlayback.CurrentSnapshot;
+#if AGENT_ARENA_PREVIEW
+        if (_agentExhibitionStory is { IsAvailable: true })
+        {
+            before = PresentedExhibitionSnapshot();
+        }
+#endif
         if (_replayPlayback.TryAdvance(out var frame) && frame is not null)
         {
+#if AGENT_ARENA_PREVIEW
+            if (_agentExhibitionStory is { IsAvailable: true })
+            {
+                SyncAgentExhibitionStory();
+            }
+#endif
             var after = _replayPlayback.CurrentSnapshot;
+#if AGENT_ARENA_PREVIEW
+            if (_agentExhibitionStory is { IsAvailable: true })
+            {
+                after = PresentedExhibitionSnapshot();
+            }
+#endif
             BeginSnakeMotion(
                 before.Body,
                 after.Body,
@@ -2331,7 +2373,11 @@ public partial class Main : Node2D
         var redrawAnimatedScreen = _screenState is ScreenState.Running
             or ScreenState.Ended
             or ScreenState.Replays
-            or ScreenState.Spectator;
+            or ScreenState.Spectator
+#if AGENT_ARENA_PREVIEW
+            or ScreenState.AgentExhibitions
+#endif
+            ;
 #if AGENT_ARENA_PREVIEW
         redrawAnimatedScreen |= _screenState == ScreenState.AgentWatch;
 #endif
@@ -4283,6 +4329,9 @@ public partial class Main : Node2D
         _replayRecorder = null;
         _replayPlayback = null;
         _replayPlaybackPaused = true;
+#if AGENT_ARENA_PREVIEW
+        ClearAgentExhibitionStoryPlayback();
+#endif
         _replayBrowserEntries = [];
         _replayBrowseCursor = 0;
         _replayPlaybackSpeedIndex = 1;
@@ -5432,6 +5481,12 @@ public partial class Main : Node2D
 #if AGENT_ARENA_PREVIEW
     private void HandleAgentExhibitionsInput(InputEvent inputEvent)
     {
+        if (_replayPlayback is not null)
+        {
+            HandleAgentExhibitionStoryInput(inputEvent);
+            return;
+        }
+
         var report = _agentExhibitionReport;
         if (inputEvent.IsActionPressed(GameActions.Back))
         {
@@ -5481,12 +5536,14 @@ public partial class Main : Node2D
         QueueRedraw();
     }
 
-    // Watching an exhibition is ordinary verified replay playback. The archive
-    // names a file; it never carries one, so a removed recording is refused
-    // here rather than discovered halfway through a playback.
+    // Watching an exhibition plays the recorded-first story. The archive names
+    // files rather than carrying them, so a missing or disagreeing tape is
+    // refused here instead of becoming a raw dump or a halfway failure.
     private void WatchSelectedAgentExhibition()
     {
-        if (_agentExhibitionReport?.Selected is not { } entry || _replayStore is null)
+        if (_agentExhibitionReport?.Selected is not { } entry
+            || _replayStore is null
+            || _agentExhibitionArchive is null)
         {
             return;
         }
@@ -5500,31 +5557,231 @@ public partial class Main : Node2D
         }
 
         var store = _replayStore;
-        var fileName = entry.AgentReplayFileName;
+        var archive = _agentExhibitionArchive;
+        var receiptHash = entry.ReceiptHash;
         if (!TryStartReplayResultOperation(
-            () => LoadArchivedExhibitionPlayback(store, fileName),
-            "EXHIBITION REPLAY LOAD AND VERIFICATION IN PROGRESS",
+            () => LoadArchivedExhibitionStory(store, archive, receiptHash),
+            "EXHIBITION STORY LOAD AND VERIFICATION IN PROGRESS",
             ReplayOperationKind.PlaybackLoad))
         {
             ShowReplayStatus("REPLAY OPERATION ALREADY IN PROGRESS");
         }
     }
 
-    private static ReplayOperationResult LoadArchivedExhibitionPlayback(
+    private static ReplayOperationResult LoadArchivedExhibitionStory(
         ReplayStore store,
-        string fileName)
+        AgentExhibitionArchiveStore archiveStore,
+        string receiptHash)
     {
-        var loaded = store.Load(fileName);
-        if (!loaded.IsSuccess || loaded.Replay is null)
+        var archived = archiveStore.Read().Entries.FirstOrDefault(entry =>
+            string.Equals(entry.ReceiptHash, receiptHash, StringComparison.Ordinal));
+        var agentLoaded = archived is null
+            ? null
+            : store.Load(archived.AgentReplayFileName);
+        var rivalLoaded = archived?.RivalReplayFileName is { } rivalName
+            ? store.Load(rivalName)
+            : null;
+        var report = AgentExhibitionStoryReportV1.FromArchive(
+            archived,
+            name =>
+            {
+                if (archived is not null
+                    && string.Equals(
+                        name,
+                        archived.AgentReplayFileName,
+                        StringComparison.Ordinal))
+                {
+                    return agentLoaded?.Replay;
+                }
+
+                return rivalLoaded?.Replay;
+            });
+        if (!report.IsAvailable || agentLoaded?.Replay is null)
         {
             return new ReplayOperationResult(
-                $"EXHIBITION PLAYBACK UNAVAILABLE [{loaded.Code}]: {loaded.Message}");
+                "STORY UNAVAILABLE",
+                StoryRefuse: report.Refuse);
         }
 
-        var playback = new RunReplayPlayback(loaded.Replay);
+        var playback = new RunReplayPlayback(agentLoaded.Replay);
+        var rivalPlayback = rivalLoaded?.Replay is { } rivalReplay
+            ? new RunReplayPlayback(rivalReplay)
+            : null;
         return new ReplayOperationResult(
-            $"EXHIBITION READY: {playback.StepCount} STEPS, SCORE {loaded.Replay.Outcome.Score}",
-            playback);
+            $"STORY READY: {playback.StepCount} STEPS, SCORE {agentLoaded.Replay.Outcome.Score}",
+            playback,
+            ExhibitionStory: report,
+            RivalPlayback: rivalPlayback);
+    }
+
+    private void HandleAgentExhibitionStoryInput(InputEvent inputEvent)
+    {
+        if (_replayPlayback is null)
+        {
+            return;
+        }
+
+        if (inputEvent.IsActionPressed(GameActions.Back))
+        {
+            ClearAgentExhibitionStoryPlayback();
+            _replayPlayback = null;
+            _replayPlaybackPaused = true;
+            _vibeLevelDirector.Reset();
+            _rulesStepAccumulatorMilliseconds = 0.0;
+            ShowReplayStatus(Localize("agent-arena.exhibitions.title"));
+            PlayCue(AudioCue.Back);
+            QueueRedraw();
+            return;
+        }
+
+        if (inputEvent.IsActionPressed(GameActions.Confirm)
+            || inputEvent.IsActionPressed(GameActions.Pause))
+        {
+            if (_replayPlayback.IsComplete)
+            {
+                SeekAgentExhibitionStory(0);
+            }
+
+            _replayPlaybackPaused = !_replayPlaybackPaused;
+            _rulesStepAccumulatorMilliseconds = 0.0;
+            ShowReplayStatus(_replayPlaybackPaused ? "REPLAY PAUSED" : "REPLAY PLAYING");
+            PlayCue(AudioCue.Confirm);
+        }
+        else if (inputEvent.IsActionPressed(GameActions.Replay))
+        {
+            SeekAgentExhibitionStory(0);
+            _replayPlaybackPaused = true;
+            ShowReplayStatus("REPLAY RESET TO STEP 0");
+            PlayCue(AudioCue.Confirm);
+        }
+        else if (inputEvent.IsActionPressed(GameActions.MoveLeft))
+        {
+            SeekAgentExhibitionStory(Math.Max(0, _replayPlayback.StepIndex - 10));
+            _replayPlaybackPaused = true;
+            ShowReplayStatus($"REPLAY STEP {_replayPlayback.StepIndex}/{_replayPlayback.StepCount}");
+            PlayCue(AudioCue.Confirm);
+        }
+        else if (inputEvent.IsActionPressed(GameActions.MoveRight))
+        {
+            _replayPlaybackPaused = true;
+            _rulesStepAccumulatorMilliseconds = 0.0;
+            AdvanceReplayPlaybackStep();
+            SyncAgentExhibitionStory();
+            PlayCue(AudioCue.Confirm);
+        }
+        else if (inputEvent.IsActionPressed(GameActions.MoveUp))
+        {
+            ChangeReplayPlaybackSpeed(1);
+        }
+        else if (inputEvent.IsActionPressed(GameActions.MoveDown))
+        {
+            ChangeReplayPlaybackSpeed(-1);
+        }
+        else if (inputEvent.IsActionPressed(GameActions.Help))
+        {
+            ToggleCleanCaptureMode();
+        }
+        else if (inputEvent.IsActionPressed(GameActions.BrowseContentPacks))
+        {
+            SeekAgentExhibitionTurningPoint(-1);
+        }
+        else if (inputEvent.IsActionPressed(GameActions.BrowseAchievements))
+        {
+            SeekAgentExhibitionTurningPoint(1);
+        }
+
+        QueueRedraw();
+    }
+
+    private void SeekAgentExhibitionStory(int tick)
+    {
+        if (_replayPlayback is null)
+        {
+            return;
+        }
+
+        _replayPlayback.Seek(Math.Clamp(tick, 0, _replayPlayback.StepCount));
+        _snakeMotionPresentation.Reset(PresentedExhibitionSnapshot().Body);
+        SyncVibeLevel(PresentedExhibitionSnapshot().ComboCount);
+        _rulesStepAccumulatorMilliseconds = 0.0;
+        SyncAgentExhibitionStory();
+    }
+
+    private void SeekAgentExhibitionTurningPoint(int direction)
+    {
+        if (_agentExhibitionStory is not { IsAvailable: true } report || _replayPlayback is null)
+        {
+            return;
+        }
+
+        var moved = report.AtTick(_replayPlayback.StepIndex).SeekTurningPoint(direction);
+        SeekAgentExhibitionStory(moved.Cursor!.Tick);
+        _replayPlaybackPaused = true;
+        ShowReplayStatus(
+            Localize(
+                "agent-arena.story.turning",
+                ShellTextArgument.From(
+                    "index",
+                    (moved.Cursor.TurningPointIndex ?? 0) + 1),
+                ShellTextArgument.From(
+                    "total",
+                    moved.Story!.TurningPointIndexes.Count)));
+        PlayCue(AudioCue.Navigate);
+    }
+
+    private void ApplyAgentExhibitionStoryPacing()
+    {
+        if (_replayPlayback is null
+            || _replayPlaybackPaused
+            || _agentExhibitionStory is not { IsAvailable: true })
+        {
+            return;
+        }
+
+        SyncAgentExhibitionStory();
+        var cursor = _agentExhibitionStory.Cursor!;
+        if (cursor.Rate != AgentMontageRate.Skip || cursor.NextPlayableTick == cursor.Tick)
+        {
+            return;
+        }
+
+        SeekAgentExhibitionStory(cursor.NextPlayableTick);
+    }
+
+    private void SyncAgentExhibitionStory()
+    {
+        if (_agentExhibitionStory is not { IsAvailable: true } report || _replayPlayback is null)
+        {
+            return;
+        }
+
+        _agentExhibitionStory = report.AtTick(_replayPlayback.StepIndex);
+        if (_agentExhibitionRivalPlayback is null)
+        {
+            return;
+        }
+
+        _agentExhibitionRivalPlayback.Seek(Math.Clamp(
+            _agentExhibitionStory.Cursor!.Tick,
+            0,
+            _agentExhibitionRivalPlayback.StepCount));
+    }
+
+    private RunSnapshot PresentedExhibitionSnapshot()
+    {
+        if (_agentExhibitionStory?.Cursor is { Lane: AgentHighlightLane.Rival }
+            && _agentExhibitionRivalPlayback is { } rival)
+        {
+            return rival.CurrentSnapshot;
+        }
+
+        return _replayPlayback!.CurrentSnapshot;
+    }
+
+    private void ClearAgentExhibitionStoryPlayback()
+    {
+        _agentExhibitionStory = null;
+        _agentExhibitionRivalPlayback = null;
     }
 
     // The same-seed handoff. The challenge descriptor decides the score
@@ -9063,7 +9320,12 @@ public partial class Main : Node2D
         try
         {
             var result = operation.GetAwaiter().GetResult();
-            if (result.Playback is not null && _screenState == ScreenState.Replays)
+            if (result.Playback is not null
+                && (_screenState == ScreenState.Replays
+#if AGENT_ARENA_PREVIEW
+                    || _screenState == ScreenState.AgentExhibitions
+#endif
+                    ))
             {
                 _replayPlayback = result.Playback;
                 _snakeMotionPresentation.Reset(_replayPlayback.CurrentSnapshot.Body);
@@ -9073,6 +9335,11 @@ public partial class Main : Node2D
                 _replayHudVisible = true;
                 _capturePresentation = CapturePresentationState.Visible;
                 _rulesStepAccumulatorMilliseconds = 0.0;
+#if AGENT_ARENA_PREVIEW
+                _agentExhibitionStory = result.ExhibitionStory;
+                _agentExhibitionRivalPlayback = result.RivalPlayback;
+                SyncAgentExhibitionStory();
+#endif
             }
 
             if (result.BrowserEntries is not null && _screenState == ScreenState.Replays)
@@ -9132,7 +9399,19 @@ public partial class Main : Node2D
                     isRestart: false);
             }
 
+#if AGENT_ARENA_PREVIEW
+            if (result.StoryRefuse is { } storyRefuse
+                && storyRefuse != AgentExhibitionStoryRefuse.None)
+            {
+                ShowReplayStatus(Localize(AgentExhibitionStoryRefuseId(storyRefuse)));
+            }
+            else
+            {
+                ShowReplayStatus(result.Caption);
+            }
+#else
             ShowReplayStatus(result.Caption);
+#endif
             operationSucceeded = true;
         }
         catch (Exception exception)
@@ -10990,8 +11269,15 @@ public partial class Main : Node2D
     // AA-06's browser. Every decision shown here is made by
     // AgentExhibitionBrowseReportV1 so this screen never invents a rule the
     // report has not already stated and tests have not already proven.
+    // AA-09b watch plays the story report instead of dumping the raw tape.
     private void DrawAgentExhibitions()
     {
+        if (_replayPlayback is not null)
+        {
+            DrawAgentExhibitionStory();
+            return;
+        }
+
         DrawLabel(
             Localize("agent-arena.exhibitions.title"),
             new Vector2(46.0f, 108.0f),
@@ -11086,6 +11372,181 @@ public partial class Main : Node2D
             minimumFontSize: 10,
             maximumWidth: AgentExhibitionRowWidth,
             color: SecondaryTextColor());
+
+    private void DrawAgentExhibitionStory()
+    {
+        var playback = _replayPlayback!;
+        var snapshot = PresentedExhibitionSnapshot();
+        var playbackState = playback.IsComplete
+            ? "COMPLETE"
+            : _replayPlaybackPaused
+                ? "PAUSED"
+                : "PLAYING";
+        DrawRun(
+            snapshot,
+            $"STORY {playback.StepIndex}/{playback.StepCount}  {playbackState}  "
+                + $"{ReplayPlaybackSpeeds[_replayPlaybackSpeedIndex]:0.0#}X  "
+                + (_replayHudVisible ? "HUD ON" : "HUD OFF"));
+
+        if (!_capturePresentation.ShowReplayControls)
+        {
+            return;
+        }
+
+        DrawFittedLabel(
+            AgentExhibitionStoryOverlay(),
+            new Vector2(46.0f, 548.0f),
+            preferredFontSize: ScaledFontSize(14),
+            minimumFontSize: 10,
+            maximumWidth: 1188.0f,
+            color: ActiveShellPalette.AccentText);
+
+        if (!_replayHudVisible)
+        {
+            DrawRect(
+                new Rect2(0.0f, 0.0f, VirtualViewport.LogicalWidth, HudHeight),
+                ActiveShellPalette.CanvasBackground);
+        }
+
+        var panelColor = ActiveShellPalette.CanvasBackground;
+        panelColor.A = 0.94f;
+        DrawRect(new Rect2(120.0f, 574.0f, 1040.0f, 124.0f), panelColor);
+        var nextX = DrawActionPromptSegment(
+            "confirm",
+            Localize("action.play-pause"),
+            new Vector2(142.0f, 606.0f),
+            ScaledFontSize(14),
+            SecondaryTextColor());
+        nextX = DrawActionPromptSegment(
+            "move_left",
+            Localize("action.back-ten"),
+            new Vector2(nextX, 606.0f),
+            ScaledFontSize(14),
+            SecondaryTextColor());
+        nextX = DrawActionPromptSegment(
+            "move_right",
+            Localize("action.step"),
+            new Vector2(nextX, 606.0f),
+            ScaledFontSize(14),
+            SecondaryTextColor());
+        nextX = DrawActionPromptSegment(
+            "move_down",
+            Localize("action.slower"),
+            new Vector2(nextX, 606.0f),
+            ScaledFontSize(14),
+            SecondaryTextColor());
+        DrawActionPromptSegment(
+            "move_up",
+            Localize("action.faster"),
+            new Vector2(nextX, 606.0f),
+            ScaledFontSize(14),
+            SecondaryTextColor());
+        nextX = DrawActionPromptSegment(
+            "browse_content_packs",
+            Localize("action.turning-previous"),
+            new Vector2(142.0f, 642.0f),
+            ScaledFontSize(14),
+            SecondaryTextColor());
+        nextX = DrawActionPromptSegment(
+            "browse_achievements",
+            Localize("action.turning-next"),
+            new Vector2(nextX, 642.0f),
+            ScaledFontSize(14),
+            SecondaryTextColor());
+        DrawActionPromptSegment(
+            "help",
+            Localize("action.toggle-hud"),
+            new Vector2(nextX, 642.0f),
+            ScaledFontSize(14),
+            SecondaryTextColor());
+        nextX = DrawActionPromptSegment(
+            "replay",
+            Localize("action.restart"),
+            new Vector2(142.0f, 678.0f),
+            ScaledFontSize(14),
+            SecondaryTextColor());
+        DrawActionPromptSegment(
+            "back",
+            Localize("action.list"),
+            new Vector2(nextX, 678.0f),
+            ScaledFontSize(14),
+            SecondaryTextColor());
+    }
+
+    private string AgentExhibitionStoryOverlay()
+    {
+        var cursor = _agentExhibitionStory?.Cursor;
+        var story = _agentExhibitionStory?.Story;
+        var highlight = cursor?.HighlightIndex is { } index && story is not null
+            ? Localize(AgentExhibitionHighlightId(story.Highlights[index].Kind))
+            : Localize("agent-arena.story.highlight.none");
+        var lane = cursor?.Lane == AgentHighlightLane.Rival
+            ? Localize("agent-arena.story.lane.rival")
+            : Localize("agent-arena.story.lane.agent");
+        var pace = cursor?.Rate switch
+        {
+            AgentMontageRate.Linger => Localize("agent-arena.story.pace.linger"),
+            AgentMontageRate.Skip => Localize("agent-arena.story.pace.skip"),
+            _ => Localize("agent-arena.story.pace.selected"),
+        };
+        var lead = cursor?.ScoreRelation switch
+        {
+            AgentScoreRelation.Ahead => Localize("agent-arena.story.lead.ahead"),
+            AgentScoreRelation.Level => Localize("agent-arena.story.lead.level"),
+            AgentScoreRelation.Behind => Localize("agent-arena.story.lead.behind"),
+            _ => Localize("agent-arena.story.lead.none"),
+        };
+        var turning = Localize(
+            "agent-arena.story.turning",
+            ShellTextArgument.From(
+                "index",
+                cursor?.TurningPointIndex is { } turningIndex ? turningIndex + 1 : 0),
+            ShellTextArgument.From("total", story?.TurningPointIndexes.Count ?? 0));
+        return Localize(
+            "agent-arena.story.overlay",
+            ShellTextArgument.From("highlight", highlight),
+            ShellTextArgument.From("lane", lane),
+            ShellTextArgument.From("pace", pace),
+            ShellTextArgument.From("lead", lead),
+            ShellTextArgument.From("turning", turning));
+    }
+
+    private static string AgentExhibitionHighlightId(AgentHighlightKind kind) => kind switch
+    {
+        AgentHighlightKind.TerminalWon => "agent-arena.story.highlight.won",
+        AgentHighlightKind.TerminalDied => "agent-arena.story.highlight.died",
+        AgentHighlightKind.LeadChange => "agent-arena.story.highlight.lead",
+        AgentHighlightKind.Recovery => "agent-arena.story.highlight.recovery",
+        AgentHighlightKind.StyleAllThresholds => "agent-arena.story.highlight.style-all",
+        AgentHighlightKind.LessonAllRequirements => "agent-arena.story.highlight.lesson-all",
+        AgentHighlightKind.StyleThresholdFirst => "agent-arena.story.highlight.style-first",
+        AgentHighlightKind.LessonRequirementFirst => "agent-arena.story.highlight.lesson-first",
+        AgentHighlightKind.NearMiss => "agent-arena.story.highlight.near-miss",
+        AgentHighlightKind.ComboMilestone => "agent-arena.story.highlight.combo",
+        AgentHighlightKind.PowerActivated => "agent-arena.story.highlight.power-on",
+        AgentHighlightKind.PowerCollected => "agent-arena.story.highlight.power-get",
+        AgentHighlightKind.HungerWarning => "agent-arena.story.highlight.hunger",
+        AgentHighlightKind.PressureTrapped => "agent-arena.story.highlight.trapped",
+        AgentHighlightKind.PressurePinned => "agent-arena.story.highlight.pinned",
+        AgentHighlightKind.IntentChanged => "agent-arena.story.highlight.intent",
+        _ => "agent-arena.story.highlight.none",
+    };
+
+    private static string AgentExhibitionStoryRefuseId(AgentExhibitionStoryRefuse refuse) =>
+        refuse switch
+        {
+            AgentExhibitionStoryRefuse.NotArchived =>
+                "agent-arena.story.refuse.not-archived",
+            AgentExhibitionStoryRefuse.AgentReplayMissing =>
+                "agent-arena.story.refuse.agent-missing",
+            AgentExhibitionStoryRefuse.RivalReplayMissing =>
+                "agent-arena.story.refuse.rival-missing",
+            AgentExhibitionStoryRefuse.AgentReplayHashMismatch =>
+                "agent-arena.story.refuse.agent-mismatch",
+            AgentExhibitionStoryRefuse.RivalReplayHashMismatch =>
+                "agent-arena.story.refuse.rival-mismatch",
+            _ => "agent-arena.story.refuse.invalid",
+        };
 
     // The row detail answers the two questions a person actually has: what was
     // this, and what can I do with it right now.
@@ -14822,8 +15283,8 @@ public partial class Main : Node2D
 
         const int migratedRequiredFlowCount = 13;
         const double requiredExpansionRatio = 1.30;
-        var passed = ShellLocalization.All.Count == 663
-            && ShellLocalization.All.Count(entry => entry.Parameters.Count > 0) == 105
+        var passed = ShellLocalization.All.Count == 699
+            && ShellLocalization.All.Count(entry => entry.Parameters.Count > 0) == 107
             && migratedRequiredFlowCount == 13
             && minimumExpansionRatio >= requiredExpansionRatio
             && missingGlyphs.Count == 0
@@ -17572,6 +18033,7 @@ public partial class Main : Node2D
             (ShellScreen.Menu, ShellScreen.Spectator),
 #if AGENT_ARENA_PREVIEW
             (ShellScreen.Menu, ShellScreen.AgentWatch),
+            (ShellScreen.Menu, ShellScreen.AgentExhibitions),
 #endif
             (ShellScreen.Running, ShellScreen.Paused),
             (ShellScreen.Running, ShellScreen.Ended),
@@ -17637,6 +18099,9 @@ public partial class Main : Node2D
             (ShellScreen.Comparisons, ShellScreen.Running),
 #if AGENT_ARENA_PREVIEW
             (ShellScreen.AgentWatch, ShellScreen.Menu),
+            (ShellScreen.AgentExhibitions, ShellScreen.Menu),
+            (ShellScreen.AgentExhibitions, ShellScreen.Running),
+            (ShellScreen.AgentExhibitions, ShellScreen.AgentExhibitions),
 #endif
         ];
 

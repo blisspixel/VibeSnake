@@ -393,12 +393,16 @@ public sealed class AgentHostTests
                 "archive_exhibition",
                 "finish_match",
                 "forget_exhibition",
+                "forget_passport",
                 "get_exhibition_receipt",
+                "get_exhibition_story",
                 "get_match_result",
                 "list_exhibitions",
+                "list_passports",
                 "observe_match",
                 "play_burst",
                 "play_move",
+                "record_passport",
                 "save_verified_replay",
                 "start_lesson",
                 "start_match",
@@ -414,6 +418,7 @@ public sealed class AgentHostTests
                     "start_match" or "start_lesson" => typeof(StartAgentMatchV5),
                     "observe_match" => typeof(AgentObservationV5),
                     "get_exhibition_receipt" => typeof(AgentExhibitionReceiptStatusV1),
+                    "get_exhibition_story" => typeof(AgentExhibitionStoryReportV1),
                     "play_move" => typeof(AgentActionResponseV5),
                     "play_burst" => typeof(AgentBurstResponseV5),
                     "finish_match" => typeof(AgentMatchSummaryV5),
@@ -422,6 +427,9 @@ public sealed class AgentHostTests
                     "archive_exhibition" => typeof(AgentExhibitionArchiveStatusV2),
                     "list_exhibitions" => typeof(AgentExhibitionArchiveListingV1),
                     "forget_exhibition" => typeof(AgentExhibitionForgetStatusV1),
+                    "record_passport" => typeof(AgentPassportWriteStatusV1),
+                    "list_passports" => typeof(AgentPassportListingV1),
+                    "forget_passport" => typeof(AgentPassportForgetStatusV1),
                     _ => throw new InvalidOperationException(
                         $"Unexpected MCP tool {value.Tool.Name}."),
                 },
@@ -431,6 +439,10 @@ public sealed class AgentHostTests
         Assert.True(methods.Single(value => value.Tool!.Name == "get_match_result").Tool!.ReadOnly);
         Assert.True(
             methods.Single(value => value.Tool!.Name == "get_exhibition_receipt").Tool!.ReadOnly);
+        Assert.True(
+            methods.Single(value => value.Tool!.Name == "get_exhibition_story").Tool!.ReadOnly);
+        Assert.True(methods.Single(value => value.Tool!.Name == "list_passports").Tool!.ReadOnly);
+        Assert.True(methods.Single(value => value.Tool!.Name == "forget_passport").Tool!.Destructive);
         Assert.False(methods.Single(value => value.Tool!.Name == "save_verified_replay").Tool!.Destructive);
         Assert.False(methods.Single(value => value.Tool!.Name == "start_match").Tool!.Idempotent);
         Assert.False(methods.Single(value => value.Tool!.Name == "start_lesson").Tool!.Idempotent);
@@ -674,6 +686,36 @@ public sealed class AgentHostTests
                 ["anything"] = JsonValue(1),
             },
         }));
+        Assert.Null(AgentToolArgumentFilter.Validate(new CallToolRequestParams
+        {
+            Name = "record_passport",
+            Arguments = new Dictionary<string, JsonElement>
+            {
+                ["matchHandle"] = JsonValue("match"),
+            },
+        }));
+        Assert.Null(AgentToolArgumentFilter.Validate(new CallToolRequestParams
+        {
+            Name = "record_passport",
+            Arguments = new Dictionary<string, JsonElement>
+            {
+                ["receiptHash"] = JsonValue("abc"),
+            },
+        }));
+        var bothPassportSources = Assert.IsType<CallToolResult>(
+            AgentToolArgumentFilter.Validate(new CallToolRequestParams
+            {
+                Name = "record_passport",
+                Arguments = new Dictionary<string, JsonElement>
+                {
+                    ["matchHandle"] = JsonValue("match"),
+                    ["unexpected"] = JsonValue("x"),
+                },
+            }));
+        Assert.Contains(
+            "unexpected argument name(s): \"unexpected\"",
+            Assert.Single(bothPassportSources.Content.OfType<TextContentBlock>()).Text,
+            StringComparison.Ordinal);
     }
 
     [Fact]
@@ -764,7 +806,7 @@ public sealed class AgentHostTests
         var playbook = AgentResources.GetPlaybook();
 
         Assert.Equal(
-            "vibesnake-agent-rules-resource-v15",
+            "vibesnake-agent-rules-resource-v17",
             rules.RootElement.GetProperty("contract").GetString());
         var archive = rules.RootElement.GetProperty("archive");
         Assert.Equal(
@@ -833,6 +875,83 @@ public sealed class AgentHostTests
         Assert.Contains(
             "outside the supported player Persistence assembly",
             archive.GetProperty("boundary").GetString(),
+            StringComparison.Ordinal);
+        var passports = rules.RootElement.GetProperty("passport");
+        Assert.Equal(
+            AgentPassportDocumentV1.Contract,
+            passports.GetProperty("contract").GetString());
+        Assert.Equal(
+            AgentPassportRecordV1.Contract,
+            passports.GetProperty("record_contract").GetString());
+        Assert.Equal(
+            AgentPassportWriteStatusV1.Contract,
+            passports.GetProperty("status_contract").GetString());
+        Assert.Equal(
+            AgentPassportListingV1.Contract,
+            passports.GetProperty("listing_contract").GetString());
+        Assert.Equal(
+            AgentPassportForgetStatusV1.Contract,
+            passports.GetProperty("forget_contract").GetString());
+        Assert.Equal(
+            AgentPassportIndexV1.Contract,
+            passports.GetProperty("index_contract").GetString());
+        Assert.Equal(
+            AgentPassportIndexEntryV1.Contract,
+            passports.GetProperty("index_entry_contract").GetString());
+        Assert.Equal(
+            AgentPassportDropV1.Contract,
+            passports.GetProperty("drop_contract").GetString());
+        Assert.Equal(
+            ["record_passport", "list_passports", "forget_passport"],
+            passports.GetProperty("tools").EnumerateArray()
+                .Select(value => value.GetString() ?? string.Empty)
+                .ToArray());
+        Assert.Equal(
+            AgentPassportDocumentV1.CurrentSchemaVersion,
+            passports.GetProperty("schema_version").GetInt32());
+        Assert.Equal(
+            AgentPassportDocumentV1.MaximumRecords,
+            passports.GetProperty("capacity").GetInt32());
+        Assert.Equal(
+            AgentPassportDocumentV1.MaximumRecordedReceiptsPerAgent,
+            passports.GetProperty("maximum_receipts_per_agent").GetInt32());
+        Assert.Equal(
+            AgentPassportDocumentV1.MaximumBytes,
+            passports.GetProperty("maximum_bytes").GetInt32());
+        Assert.Equal(
+            Enum.GetValues<AgentPassportWriteCode>().Length,
+            passports.GetProperty("write_codes").GetArrayLength());
+        Assert.Equal(
+            Enum.GetValues<AgentPassportForgetCode>().Length,
+            passports.GetProperty("forget_codes").GetArrayLength());
+        Assert.Equal(
+            AgentPassportMilestoneV1.All.Count,
+            passports.GetProperty("milestones").GetArrayLength());
+        Assert.Contains(
+            "without writing to it",
+            passports.GetProperty("listing").GetString(),
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "stores no display name",
+            passports.GetProperty("boundary").GetString(),
+            StringComparison.Ordinal);
+        var story = rules.RootElement.GetProperty("story");
+        Assert.Equal(
+            AgentExhibitionStoryV1.Contract,
+            story.GetProperty("contract").GetString());
+        Assert.Equal(
+            AgentExhibitionStoryReportV1.Contract,
+            story.GetProperty("report_contract").GetString());
+        Assert.Equal(
+            AgentExhibitionStoryCursorV1.Contract,
+            story.GetProperty("cursor_contract").GetString());
+        Assert.Equal("get_exhibition_story", story.GetProperty("tool").GetString());
+        Assert.Equal(
+            Enum.GetValues<AgentExhibitionStoryRefuse>().Length,
+            story.GetProperty("refuse_codes").GetArrayLength());
+        Assert.Contains(
+            "never writes",
+            story.GetProperty("boundary").GetString(),
             StringComparison.Ordinal);
         Assert.Contains(
             "quarantined beside the archive rather than repaired",
@@ -1074,11 +1193,17 @@ public sealed class AgentHostTests
             "not approval",
             identitySemantics.GetProperty("station_boundary").GetString(),
             StringComparison.Ordinal);
+        Assert.Contains(
+            "never writes a display name",
+            identitySemantics.GetProperty("persistence").GetString(),
+            StringComparison.Ordinal);
         Assert.Contains("start_match", playbook, StringComparison.Ordinal);
         Assert.Contains("start_lesson", playbook, StringComparison.Ordinal);
         Assert.Contains("play_burst", playbook, StringComparison.Ordinal);
         Assert.Contains("recommended_next_tool", playbook, StringComparison.Ordinal);
         Assert.Contains("save_verified_replay", playbook, StringComparison.Ordinal);
+        Assert.Contains("record_passport", playbook, StringComparison.Ordinal);
+        Assert.Contains("get_exhibition_story", playbook, StringComparison.Ordinal);
         Assert.Contains("vibesnake://agent/identity", playbook, StringComparison.Ordinal);
         var lessonSemantics = school.RootElement.GetProperty("evidence_semantics");
         Assert.Contains(
@@ -1328,7 +1453,7 @@ public sealed class AgentHostTests
         Assert.NotNull(host.Services);
         Assert.NotNull(defaultHost.Services);
         Assert.Equal("vibesnake-agent-host", Program.HostName);
-        Assert.Equal("0.14.0", Program.HostVersion);
+        Assert.Equal("0.16.0", Program.HostVersion);
         Assert.Throws<ArgumentNullException>(() =>
             Program.CreateHostApplicationBuilder(null!, temporary.Path));
     }
@@ -1793,6 +1918,46 @@ public sealed class AgentHostTests
             receiptBody.GetProperty("route_identity_hash").GetString(),
             unsavedArchiveJson.GetProperty("route_identity_hash").GetString());
 
+        // AA-07 passport tools over real MCP, also on routes that write nothing.
+        // The shipped host resolves the machine's real Godot user-data root.
+        var livePassportMatch = await client.CallToolAsync(
+            "start_match",
+            new Dictionary<string, object?>
+            {
+                ["modeId"] = RunModeCatalog.ClassicId,
+                ["seedVisibility"] = "open",
+            },
+            cancellationToken: timeout.Token);
+        Assert.False(livePassportMatch.IsError ?? false);
+        var livePassportHandle = Assert.IsType<JsonElement>(livePassportMatch.StructuredContent)
+            .GetProperty("match_handle")
+            .GetString();
+        var livePassport = await client.CallToolAsync(
+            "record_passport",
+            new Dictionary<string, object?> { ["matchHandle"] = livePassportHandle },
+            cancellationToken: timeout.Token);
+        Assert.False(livePassport.IsError ?? false);
+        var livePassportJson = Assert.IsType<JsonElement>(livePassport.StructuredContent);
+        Assert.Equal(
+            AgentPassportWriteStatusV1.Contract,
+            livePassportJson.GetProperty("schema").GetString());
+        Assert.False(livePassportJson.GetProperty("recorded").GetBoolean());
+        Assert.Equal(
+            "no_verified_receipt",
+            livePassportJson.GetProperty("code").GetString());
+        Assert.Equal(
+            AgentPassportDocumentV1.MaximumRecords,
+            livePassportJson.GetProperty("passports").GetProperty("capacity").GetInt32());
+        var listedPassports = await client.CallToolAsync(
+            "list_passports",
+            new Dictionary<string, object?>(),
+            cancellationToken: timeout.Token);
+        Assert.False(listedPassports.IsError ?? false);
+        var listedPassportsJson = Assert.IsType<JsonElement>(listedPassports.StructuredContent);
+        Assert.Equal(
+            AgentPassportListingV1.Contract,
+            listedPassportsJson.GetProperty("schema").GetString());
+
         var numericSeedMatch = await client.CallToolAsync(
             "start_match",
             new Dictionary<string, object?>
@@ -1880,12 +2045,16 @@ public sealed class AgentHostTests
                 "archive_exhibition",
                 "finish_match",
                 "forget_exhibition",
+                "forget_passport",
                 "get_exhibition_receipt",
+                "get_exhibition_story",
                 "get_match_result",
                 "list_exhibitions",
+                "list_passports",
                 "observe_match",
                 "play_burst",
                 "play_move",
+                "record_passport",
                 "save_verified_replay",
                 "start_lesson",
                 "start_match",
@@ -1909,7 +2078,7 @@ public sealed class AgentHostTests
             resource => resource.Uri == "vibesnake://agent/identity");
         var rulesText = Assert.IsType<TextResourceContents>(Assert.Single(rules.Contents));
         Assert.Contains(
-            "vibesnake-agent-rules-resource-v15",
+            "vibesnake-agent-rules-resource-v17",
             rulesText.Text,
             StringComparison.Ordinal);
         Assert.False(moved.IsError ?? false);
