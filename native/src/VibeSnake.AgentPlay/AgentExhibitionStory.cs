@@ -182,6 +182,8 @@ public static class AgentExhibitionStory
         }
 
         AddIntentChanges(raw, receipt);
+        AddLessonRequirementFirsts(raw, receipt, agentReplay);
+        AddStyleThresholdFirsts(raw, receipt, agentReplay);
         if (receipt.LessonOutcome is { AllRequirementsSatisfied: true })
         {
             raw.Add(Highlight(
@@ -290,7 +292,9 @@ public static class AgentExhibitionStory
             if (previous is { } && previous != relation)
             {
                 raw.Add(Highlight(
-                    AgentHighlightLane.Agent,
+                    relation == AgentScoreRelation.Behind
+                        ? AgentHighlightLane.Rival
+                        : AgentHighlightLane.Agent,
                     agentFrame.Snapshot.Tick,
                     AgentHighlightKind.LeadChange,
                     ordinal,
@@ -325,6 +329,111 @@ public static class AgentExhibitionStory
             }
 
             previous = step.DeclaredIntent;
+        }
+    }
+
+    /// <summary>
+    /// First-crossing ticks are reconstructed from the named agent tape with
+    /// the same evaluators the terminal outcomes use. Attempt-witness lesson
+    /// requirements have no tape tick, so they are not first-crossing beats.
+    /// Detail is the zero-based requirement index.
+    /// </summary>
+    private static void AddLessonRequirementFirsts(
+        List<AgentHighlightV1> raw,
+        AgentExhibitionReceiptV2 receipt,
+        RunReplay agentReplay)
+    {
+        if (receipt.LessonOutcome is null)
+        {
+            return;
+        }
+
+        var playback = new RunReplayPlayback(agentReplay);
+        var tracker = new AgentLessonEvidenceTracker(
+            receipt.LessonOutcome.LessonId,
+            playback.Configuration);
+        var reached = new HashSet<int>();
+        var ordinal = 0;
+        while (!playback.IsComplete)
+        {
+            var before = playback.CurrentSnapshot;
+            if (!playback.TryAdvance(out var frame) || frame is null)
+            {
+                break;
+            }
+
+            tracker.RecordStep(before, frame.Result, frame.Snapshot);
+            var progress = tracker.Snapshot(
+                AgentLessonEvidenceState.Live,
+                receipt.Passport.ActionProfile);
+            for (var index = 0; index < progress.Requirements.Count; index++)
+            {
+                if (reached.Contains(index) || !progress.Requirements[index].Satisfied)
+                {
+                    continue;
+                }
+
+                reached.Add(index);
+                raw.Add(Highlight(
+                    AgentHighlightLane.Agent,
+                    frame.Snapshot.Tick,
+                    AgentHighlightKind.LessonRequirementFirst,
+                    ordinal,
+                    index));
+                ordinal++;
+            }
+        }
+    }
+
+    /// <summary>
+    /// First-crossing ticks are reconstructed from the named agent tape with
+    /// the same style evaluator the terminal outcome uses. Detail is the
+    /// zero-based criterion index.
+    /// </summary>
+    private static void AddStyleThresholdFirsts(
+        List<AgentHighlightV1> raw,
+        AgentExhibitionReceiptV2 receipt,
+        RunReplay agentReplay)
+    {
+        if (receipt.StyleOutcome is null)
+        {
+            return;
+        }
+
+        var playback = new RunReplayPlayback(agentReplay);
+        var tracker = new AgentStyleEvidenceTracker(
+            receipt.StyleOutcome.ContractId,
+            receipt.Division.ModeId,
+            playback.Configuration,
+            playback.CurrentSnapshot);
+        var reached = new HashSet<int>();
+        var ordinal = 0;
+        while (!playback.IsComplete)
+        {
+            var before = playback.CurrentSnapshot;
+            if (!playback.TryAdvance(out var frame) || frame is null)
+            {
+                break;
+            }
+
+            tracker.Record(before, frame.Result, frame.Snapshot);
+            var progress = tracker.Snapshot();
+            for (var index = 0; index < progress.Criteria.Count; index++)
+            {
+                if (reached.Contains(index) || !progress.Criteria[index].ThresholdReached)
+                {
+                    continue;
+                }
+
+                reached.Add(index);
+                raw.Add(Highlight(
+                    AgentHighlightLane.Agent,
+                    frame.Snapshot.Tick,
+                    AgentHighlightKind.StyleThresholdFirst,
+                    ordinal,
+                    index));
+                ordinal++;
+            }
         }
     }
 
@@ -509,6 +618,8 @@ public static class AgentExhibitionStory
             AgentHighlightKind.LeadChange,
             AgentHighlightKind.StyleAllThresholds,
             AgentHighlightKind.LessonAllRequirements,
+            AgentHighlightKind.StyleThresholdFirst,
+            AgentHighlightKind.LessonRequirementFirst,
         };
         return raw
             .OrderBy(highlight => kept.Contains(highlight.Kind) ? 0 : 1)

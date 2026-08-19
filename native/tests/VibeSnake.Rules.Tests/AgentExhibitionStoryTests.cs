@@ -203,6 +203,142 @@ public sealed class AgentExhibitionStoryTests
     }
 
     [Fact]
+    public void A_wrap_practice_emits_first_crossing_requirement_highlights()
+    {
+        var (receipt, replay) = PlayWrapLine();
+        var story = Assert.IsType<AgentExhibitionStoryV1>(
+            AgentExhibitionStory.TryCreate(receipt, replay, null, out _));
+
+        var firstCrossings = story.Highlights
+            .Where(highlight => highlight.Kind == AgentHighlightKind.LessonRequirementFirst)
+            .OrderBy(highlight => highlight.Detail)
+            .ToArray();
+        Assert.Equal(2, firstCrossings.Length);
+        Assert.Equal(0, firstCrossings[0].Detail);
+        Assert.Equal(1, firstCrossings[1].Detail);
+        Assert.Equal(AgentHighlightLane.Agent, firstCrossings[0].Lane);
+        Assert.Contains(
+            story.Highlights,
+            highlight => highlight.Kind == AgentHighlightKind.LessonAllRequirements
+                && highlight.Tick == receipt.FinalTick);
+        AssertMontageCoversEveryTick(story);
+    }
+
+    [Fact]
+    public void Attempt_witness_requirements_are_not_tape_first_crossings()
+    {
+        var (receipt, replay) = PlayFirstTurn();
+        var story = Assert.IsType<AgentExhibitionStoryV1>(
+            AgentExhibitionStory.TryCreate(receipt, replay, null, out _));
+
+        Assert.True(receipt.LessonOutcome is { AllRequirementsSatisfied: true });
+        Assert.DoesNotContain(
+            story.Highlights,
+            highlight => highlight.Kind == AgentHighlightKind.LessonRequirementFirst);
+        Assert.Contains(
+            story.Highlights,
+            highlight => highlight.Kind == AgentHighlightKind.LessonAllRequirements);
+        AssertMontageCoversEveryTick(story);
+    }
+
+    [Fact]
+    public void A_styled_classic_run_emits_the_first_survival_threshold()
+    {
+        var session = new AgentMatchSession(new AgentMatchOptions(
+            "story-stillwater",
+            RunModeCatalog.ClassicId,
+            RunModeCatalog.CurrentModeVersion,
+            42UL,
+            AgentSeedVisibility.Open,
+            200,
+            styleContractId: AgentStyleContractCatalog.StillwaterId));
+        var observation = session.Observe();
+        AgentMatchResultV5? result = null;
+        for (var step = 0; step < 200 && result is null; step++)
+        {
+            var moved = session.SubmitAction(new AgentActionRequest(
+                "story-stillwater-" + step,
+                observation.Tick,
+                observation.StateHash,
+                AgentAction.Continue));
+            observation = moved.Observation;
+            result = moved.MatchResult;
+        }
+
+        result ??= session.Finish();
+        var receipt = Assert.IsType<AgentExhibitionReceiptV2>(session.TryCreateExhibitionReceipt());
+        var story = Assert.IsType<AgentExhibitionStoryV1>(
+            AgentExhibitionStory.TryCreate(receipt, result.VerifiedReplay, null, out _));
+
+        Assert.NotNull(receipt.StyleOutcome);
+        var firstSurvival = Assert.Single(
+            story.Highlights,
+            highlight => highlight.Kind == AgentHighlightKind.StyleThresholdFirst
+                && highlight.Detail == 0);
+        Assert.Equal(200, firstSurvival.Tick);
+        AssertMontageCoversEveryTick(story);
+    }
+
+    [Fact]
+    public void A_rival_turning_point_paints_the_rival_lane()
+    {
+        var session = new AgentMatchSession(new AgentMatchOptions(
+            "story-rival-lane",
+            RunModeCatalog.ClassicId,
+            RunModeCatalog.CurrentModeVersion,
+            91UL,
+            AgentSeedVisibility.Open,
+            200,
+            rivalPersonalityId: "optimal"));
+        var observation = session.Observe();
+        AgentMatchResultV5? result = null;
+        for (var step = 0; step < 200 && result is null; step++)
+        {
+            var moved = session.SubmitAction(new AgentActionRequest(
+                "story-rival-lane-" + step,
+                observation.Tick,
+                observation.StateHash,
+                AgentAction.Continue));
+            observation = moved.Observation;
+            result = moved.MatchResult;
+        }
+
+        result ??= session.Finish();
+        var receipt = Assert.IsType<AgentExhibitionReceiptV2>(session.TryCreateExhibitionReceipt());
+        var story = Assert.IsType<AgentExhibitionStoryV1>(
+            AgentExhibitionStory.TryCreate(
+                receipt,
+                result.VerifiedReplay,
+                result.VerifiedRivalReplay,
+                out _));
+
+        var behind = story.Highlights.Where(highlight =>
+            highlight.Kind == AgentHighlightKind.LeadChange
+            && highlight.Detail == (int)AgentScoreRelation.Behind)
+            .ToArray();
+        if (behind.Length == 0)
+        {
+            Assert.Contains(
+                story.Highlights,
+                highlight => highlight.Lane == AgentHighlightLane.Rival);
+        }
+        else
+        {
+            Assert.All(
+                behind,
+                highlight => Assert.Equal(AgentHighlightLane.Rival, highlight.Lane));
+        }
+
+        Assert.Contains(
+            story.TurningPointIndexes,
+            index => story.Highlights[index].Lane == AgentHighlightLane.Rival);
+        Assert.Contains(
+            story.Montage,
+            window => window.Lane == AgentHighlightLane.Rival);
+        AssertMontageCoversEveryTick(story);
+    }
+
+    [Fact]
     public void Building_a_story_does_not_write_player_data()
     {
         using var temporary = new StoryTemporaryDirectory();

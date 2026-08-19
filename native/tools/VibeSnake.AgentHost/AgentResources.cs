@@ -235,7 +235,11 @@ public sealed class AgentResources
                     .ToArray(),
                 definition = "A story is derived from one verified receipt plus the named lane tapes the archive already published. It invents no second identity: the story binds the receipt hashes and the verified replay payload hashes.",
                 availability = "get_exhibition_story reads an archived receipt hash. A missing archive entry, missing tape, or disagreeing payload hash is refused. Display time is ignored.",
-                pacing = "The montage covers every tick exactly once. Linger holds a turning point at half the viewer's chosen speed. Skip windows are not played; the cursor jumps to the next beat. Selected plays the beat around a turning point.",
+                pacing = "The montage covers every tick exactly once. Linger holds a turning point at half the viewer's chosen speed. Skip windows are not played; the cursor jumps to the next beat. Selected plays the beat around a turning point. A window names the lane it shows; switching lanes is a cut, not an interpolation from one snake to the other.",
+                first_crossing = "StyleThresholdFirst and LessonRequirementFirst are reconstructed from the named agent tape using the same evaluators as the terminal outcomes. Attempt-witness lesson requirements have no tape tick and are not first-crossing highlights. Detail is the zero-based criterion or requirement index.",
+                highlight_kinds = Enum.GetNames<AgentHighlightKind>()
+                    .Select(JsonNamingPolicy.SnakeCaseLower.ConvertName)
+                    .ToArray(),
                 boundary = "Building a story never writes the archive, the passport store, or any human player data.",
             },
             privacy = "Observations exclude random state, future outcomes, controller internals, profiles, progression, paths, prompts, credentials, diagnostics, and hidden reasoning.",

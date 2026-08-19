@@ -109,7 +109,7 @@
       },
       {
         "version": "0.16.0",
-        "sha256": "a86280ec21e8eeaab88fd43ba5dc4dffebb77a5b10507a36ba58eab6aa8a3f96"
+        "sha256": "22e4e0d6c791dc248e7b01c3fb312bb502b4a7531004caa0198e225fb116b3d7"
       }
     ],
     "plugin": [
@@ -183,7 +183,7 @@
       },
       {
         "version": "0.16.0",
-        "sha256": "f86b78070eaceecbc5d4e9d0ab336e48e39091e649b065740a43d6a3b93b9460"
+        "sha256": "3952b0ace2975e4355a3a4e940b2784d9ffd5bfddc5a3b89aae9e3402fb3bf20"
       }
     ]
   }

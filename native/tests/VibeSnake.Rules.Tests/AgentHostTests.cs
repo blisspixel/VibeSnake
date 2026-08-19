@@ -949,6 +949,17 @@ public sealed class AgentHostTests
         Assert.Equal(
             Enum.GetValues<AgentExhibitionStoryRefuse>().Length,
             story.GetProperty("refuse_codes").GetArrayLength());
+        Assert.Equal(
+            Enum.GetValues<AgentHighlightKind>().Length,
+            story.GetProperty("highlight_kinds").GetArrayLength());
+        Assert.Contains(
+            "StyleThresholdFirst",
+            story.GetProperty("first_crossing").GetString(),
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "cut, not an interpolation",
+            story.GetProperty("pacing").GetString(),
+            StringComparison.Ordinal);
         Assert.Contains(
             "never writes",
             story.GetProperty("boundary").GetString(),

@@ -2084,6 +2084,7 @@ public partial class Main : Node2D
 
         var before = _replayPlayback.CurrentSnapshot;
 #if AGENT_ARENA_PREVIEW
+        var previousLane = _agentExhibitionStory?.Cursor?.Lane;
         if (_agentExhibitionStory is { IsAvailable: true })
         {
             before = PresentedExhibitionSnapshot();
@@ -2092,9 +2093,16 @@ public partial class Main : Node2D
         if (_replayPlayback.TryAdvance(out var frame) && frame is not null)
         {
 #if AGENT_ARENA_PREVIEW
+            var viewedFrame = frame;
             if (_agentExhibitionStory is { IsAvailable: true })
             {
-                SyncAgentExhibitionStory();
+                var rivalFrame = AdvanceAgentExhibitionRivalLane();
+                SyncAgentExhibitionStoryCursor();
+                if (_agentExhibitionStory.Cursor!.Lane == AgentHighlightLane.Rival
+                    && rivalFrame is not null)
+                {
+                    viewedFrame = rivalFrame;
+                }
             }
 #endif
             var after = _replayPlayback.CurrentSnapshot;
@@ -2102,6 +2110,15 @@ public partial class Main : Node2D
             if (_agentExhibitionStory is { IsAvailable: true })
             {
                 after = PresentedExhibitionSnapshot();
+                if (previousLane != _agentExhibitionStory.Cursor!.Lane)
+                {
+                    _snakeMotionPresentation.Reset(after.Body);
+                    SyncVibeLevel(after.ComboCount);
+                    AdvanceFeedback(
+                        viewedFrame.Result.OrderedEvents,
+                        after.ComboCount);
+                    return;
+                }
             }
 #endif
             BeginSnakeMotion(
@@ -2113,7 +2130,11 @@ public partial class Main : Node2D
                         after.EffectiveRulesStepMilliseconds
                             / ReplayPlaybackSpeeds[_replayPlaybackSpeedIndex])));
             AdvanceFeedback(
+#if AGENT_ARENA_PREVIEW
+                viewedFrame.Result.OrderedEvents,
+#else
                 frame.Result.OrderedEvents,
+#endif
                 after.ComboCount);
         }
 
@@ -5750,12 +5771,12 @@ public partial class Main : Node2D
 
     private void SyncAgentExhibitionStory()
     {
-        if (_agentExhibitionStory is not { IsAvailable: true } report || _replayPlayback is null)
+        SyncAgentExhibitionStoryCursor();
+        if (_agentExhibitionStory is not { IsAvailable: true } || _replayPlayback is null)
         {
             return;
         }
 
-        _agentExhibitionStory = report.AtTick(_replayPlayback.StepIndex);
         if (_agentExhibitionRivalPlayback is null)
         {
             return;
@@ -5765,6 +5786,57 @@ public partial class Main : Node2D
             _agentExhibitionStory.Cursor!.Tick,
             0,
             _agentExhibitionRivalPlayback.StepCount));
+    }
+
+    private void SyncAgentExhibitionStoryCursor()
+    {
+        if (_agentExhibitionStory is not { IsAvailable: true } report || _replayPlayback is null)
+        {
+            return;
+        }
+
+        _agentExhibitionStory = report.AtTick(_replayPlayback.StepIndex);
+    }
+
+    // Sequential story playback advances the rival tape one recorded step
+    // instead of seeking, so the viewed lane can keep its events. Seeking
+    // would drop them. A lane change snaps the body; interpolating from the
+    // agent snake to the rival snake is not a move.
+    private ReplayPlaybackFrame? AdvanceAgentExhibitionRivalLane()
+    {
+        if (_agentExhibitionRivalPlayback is null || _replayPlayback is null)
+        {
+            return null;
+        }
+
+        var target = _replayPlayback.StepIndex;
+        if (_agentExhibitionRivalPlayback.StepIndex > target)
+        {
+            _agentExhibitionRivalPlayback.Seek(target);
+            return null;
+        }
+
+        if (_agentExhibitionRivalPlayback.StepIndex >= target
+            || _agentExhibitionRivalPlayback.IsComplete)
+        {
+            return null;
+        }
+
+        if (!_agentExhibitionRivalPlayback.TryAdvance(out var rivalFrame)
+            || rivalFrame is null)
+        {
+            return null;
+        }
+
+        if (_agentExhibitionRivalPlayback.StepIndex < target)
+        {
+            _agentExhibitionRivalPlayback.Seek(Math.Min(
+                target,
+                _agentExhibitionRivalPlayback.StepCount));
+            return null;
+        }
+
+        return rivalFrame;
     }
 
     private RunSnapshot PresentedExhibitionSnapshot()
@@ -11388,6 +11460,9 @@ public partial class Main : Node2D
                 + $"{ReplayPlaybackSpeeds[_replayPlaybackSpeedIndex]:0.0#}X  "
                 + (_replayHudVisible ? "HUD ON" : "HUD OFF"));
 
+        // Story overlay, prompts, and the replay-control panel are capture
+        // chrome. Clean capture hides them the same way it hides ordinary
+        // replay controls, leaving only the board.
         if (!_capturePresentation.ShowReplayControls)
         {
             return;
