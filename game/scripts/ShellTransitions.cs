@@ -26,6 +26,7 @@ internal enum ShellScreen : byte
     AgentWatch = 16,
     AgentExhibitions = 17,
     AgentQualification = 18,
+    AgentPassports = 19,
 #endif
 }
 
@@ -53,6 +54,8 @@ internal static class ShellTransitions
         (ShellScreen.Menu, ShellScreen.AgentExhibitions) => true,
         // Documented ./play.sh --agent-watch-qualification launches from Menu.
         (ShellScreen.Menu, ShellScreen.AgentQualification) => true,
+        // Documented ./play.sh --agent-watch-passports launches from Menu.
+        (ShellScreen.Menu, ShellScreen.AgentPassports) => true,
 #endif
         (ShellScreen.Running, ShellScreen.Paused) => true,
         (ShellScreen.Running, ShellScreen.Ended) => true,
@@ -124,6 +127,9 @@ internal static class ShellTransitions
         (ShellScreen.AgentQualification, ShellScreen.Menu) => true,
         (ShellScreen.AgentQualification, ShellScreen.AgentExhibitions) => true,
         (ShellScreen.AgentQualification, ShellScreen.AgentQualification) => true,
+        (ShellScreen.AgentPassports, ShellScreen.Menu) => true,
+        (ShellScreen.AgentPassports, ShellScreen.AgentExhibitions) => true,
+        (ShellScreen.AgentPassports, ShellScreen.AgentPassports) => true,
 #endif
         _ => false,
     };

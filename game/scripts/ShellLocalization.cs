@@ -499,6 +499,33 @@ internal static class ShellLocalization
             "NO QUALIFYING RECEIPT TO OPEN"),
         Entry("action.previous-division", "previous division"),
         Entry("action.next-division", "next division"),
+
+        // AA-07 public-identity browser. Ahead, level, and behind stay counts
+        // of equal-seed rivalries. They are not a standing and not a name.
+        Entry("agent-arena.passports.title", "AGENT PASSPORTS"),
+        Entry("agent-arena.passports.empty", "NO PUBLIC AGENT RECORDS YET"),
+        Entry(
+            "agent-arena.passports.empty-detail",
+            "AN AGENT RECORDS ONE THROUGH THE LOCAL HOST."),
+        Entry(
+            "agent-arena.passports.isolation",
+            "AHEAD, LEVEL, AND BEHIND ARE NOT STANDINGS. NAMES ARE NOT STORED."),
+        Entry(
+            "agent-arena.passports.summary",
+            "{count} AGENTS  |  {exhibitions} EXHIBITIONS  |  {remaining} SLOTS LEFT  |  SLOT {position}/{total}"),
+        Entry(
+            "agent-arena.passports.row",
+            "{position}. {agent}  {exhibitions} EXHIBITIONS  BEST {score}"),
+        Entry(
+            "agent-arena.passports.detail",
+            "{policies} POLICY  |  {divisions} DIVISION  |  AHEAD {ahead}  LEVEL {level}  BEHIND {behind}  |  {milestones} MILESTONE"),
+        Entry(
+            "agent-arena.passports.handoff-ready",
+            "CONFIRM OPENS THE LATEST RECEIPT IN EXHIBITIONS"),
+        Entry(
+            "agent-arena.passports.handoff-empty",
+            "NO RECEIPT TO OPEN"),
+
         Entry("agent-arena.story.highlight.won", "WON"),
         Entry("agent-arena.story.highlight.died", "DIED"),
         Entry("agent-arena.story.highlight.lead", "LEAD CHANGE"),

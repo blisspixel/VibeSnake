@@ -244,6 +244,8 @@ public partial class Main : Node2D
     private AgentExhibitionStoryReportV1? _agentExhibitionStory;
     private RunReplayPlayback? _agentExhibitionRivalPlayback;
     private AgentQualificationBrowseReportV1? _agentQualificationReport;
+    private AgentPassportStore? _agentPassportStore;
+    private AgentPassportBrowseReportV1? _agentPassportReport;
 #endif
     private IReadOnlyList<GhostSlotEntry> _ghostSlots = [];
     private int _ghostSlotCursor;
@@ -289,6 +291,7 @@ public partial class Main : Node2D
         AgentWatch,
         AgentExhibitions,
         AgentQualification,
+        AgentPassports,
 #endif
     }
 
@@ -411,6 +414,11 @@ public partial class Main : Node2D
         var agentWatchQualification = userArguments.Contains(
             "--agent-watch-qualification",
             StringComparer.Ordinal);
+        // Public identity is preview-only and reads the local passport store.
+        // Menu to AgentPassports is a legal launch transition for that flag.
+        var agentWatchPassports = userArguments.Contains(
+            "--agent-watch-passports",
+            StringComparer.Ordinal);
         // A spectator QA aid. The accessibility profile is otherwise only reachable
         // through F6 and F9, which an automated watcher cannot press, so overlay
         // legibility at maximum text scale could never be observed from outside.
@@ -422,10 +430,12 @@ public partial class Main : Node2D
             throw new ArgumentException(
                 "Agent watch accessibility requires the local viewer capability.");
         }
-        if (agentWatchExhibitions && agentWatchQualification)
+        if ((agentWatchExhibitions ? 1 : 0)
+            + (agentWatchQualification ? 1 : 0)
+            + (agentWatchPassports ? 1 : 0) > 1)
         {
             throw new ArgumentException(
-                "Agent watch exhibitions and qualification are separate launch routes.");
+                "Agent watch exhibitions, qualification, and passports are separate launch routes.");
         }
         if ((agentWatchPipe is null) != (agentWatchToken is null))
         {
@@ -480,6 +490,7 @@ public partial class Main : Node2D
         _offlineChallengeStore = new OfflineChallengeStore(userDataRoot);
 #if AGENT_ARENA_PREVIEW
         _agentExhibitionArchive = new AgentExhibitionArchiveStore(userDataRoot);
+        _agentPassportStore = new AgentPassportStore(userDataRoot);
 #endif
         _preferencesStore = new PreferencesStore(userDataRoot);
         _onboardingStore = new OnboardingStore(userDataRoot);
@@ -577,6 +588,11 @@ public partial class Main : Node2D
         {
             RefreshAgentQualification(0, 0);
             TransitionToScreen(ScreenState.AgentQualification);
+        }
+        else if (agentWatchPassports)
+        {
+            RefreshAgentPassports(0);
+            TransitionToScreen(ScreenState.AgentPassports);
         }
 #endif
         QueueRedraw();
@@ -2659,6 +2675,12 @@ public partial class Main : Node2D
             HandleAgentQualificationInput(inputEvent);
             return;
         }
+
+        if (_screenState == ScreenState.AgentPassports)
+        {
+            HandleAgentPassportsInput(inputEvent);
+            return;
+        }
 #endif
 
         if (_screenState == ScreenState.Ended)
@@ -3336,6 +3358,9 @@ public partial class Main : Node2D
                 break;
             case ScreenState.AgentQualification:
                 DrawAgentQualification();
+                break;
+            case ScreenState.AgentPassports:
+                DrawAgentPassports();
                 break;
 #endif
             case ScreenState.Menu:
@@ -4498,6 +4523,7 @@ public partial class Main : Node2D
             ScreenState.AgentWatch => ShellScreen.AgentWatch,
             ScreenState.AgentExhibitions => ShellScreen.AgentExhibitions,
             ScreenState.AgentQualification => ShellScreen.AgentQualification,
+            ScreenState.AgentPassports => ShellScreen.AgentPassports,
 #endif
             _ => throw new ArgumentOutOfRangeException(nameof(state)),
         };
@@ -12045,6 +12071,214 @@ public partial class Main : Node2D
             selectedDivisionIndex,
             selectedStandingIndex);
     }
+
+    private void HandleAgentPassportsInput(InputEvent inputEvent)
+    {
+        if (inputEvent.IsActionPressed(GameActions.Back))
+        {
+            ReturnToMenu();
+            return;
+        }
+
+        var report = _agentPassportReport;
+        if (report is null)
+        {
+            return;
+        }
+
+        if (inputEvent.IsActionPressed(GameActions.MoveUp))
+        {
+            SelectAgentPassport(report.SelectedIndex - 1);
+        }
+        else if (inputEvent.IsActionPressed(GameActions.MoveDown))
+        {
+            SelectAgentPassport(report.SelectedIndex + 1);
+        }
+        else if (inputEvent.IsActionPressed(GameActions.Confirm))
+        {
+            OpenSelectedPassportInExhibitions();
+        }
+    }
+
+    private void SelectAgentPassport(int index)
+    {
+        if (_agentPassportReport is not { } report)
+        {
+            return;
+        }
+
+        var moved = report.WithSelection(index);
+        if (moved.SelectedIndex == report.SelectedIndex)
+        {
+            return;
+        }
+
+        _agentPassportReport = moved;
+        PlayCue(AudioCue.Navigate);
+        QueueRedraw();
+    }
+
+    private void OpenSelectedPassportInExhibitions()
+    {
+        var receiptHash = _agentPassportReport?.HandoffReceiptHash;
+        if (receiptHash is null)
+        {
+            PlayCue(AudioCue.Back);
+            return;
+        }
+
+        RefreshAgentExhibitions(0);
+        var listing = _agentExhibitionReport;
+        var index = -1;
+        if (listing is not null)
+        {
+            for (var position = 0; position < listing.Entries.Count; position++)
+            {
+                if (string.Equals(
+                        listing.Entries[position].ReceiptHash,
+                        receiptHash,
+                        StringComparison.Ordinal))
+                {
+                    index = position;
+                    break;
+                }
+            }
+        }
+
+        if (index < 0)
+        {
+            PlayCue(AudioCue.Back);
+            RefreshAgentPassports(_agentPassportReport!.SelectedIndex);
+            QueueRedraw();
+            return;
+        }
+
+        RefreshAgentExhibitions(index);
+        PlayCue(AudioCue.Confirm);
+        TransitionToScreen(ScreenState.AgentExhibitions);
+    }
+
+    private void DrawAgentPassports()
+    {
+        DrawLabel(
+            Localize("agent-arena.passports.title"),
+            new Vector2(46.0f, 108.0f),
+            ScaledFontSize(32),
+            PrimaryTextColor());
+
+        var report = _agentPassportReport;
+        if (report is null || report.IsEmpty)
+        {
+            DrawLabel(
+                Localize("agent-arena.passports.empty"),
+                new Vector2(46.0f, 160.0f),
+                ScaledFontSize(20),
+                SecondaryTextColor());
+            DrawFittedLabel(
+                Localize("agent-arena.passports.empty-detail"),
+                new Vector2(46.0f, 192.0f),
+                preferredFontSize: ScaledFontSize(14),
+                minimumFontSize: 11,
+                maximumWidth: AgentExhibitionRowWidth,
+                color: ActiveShellPalette.AccentText);
+            DrawAgentPassportIsolationNote();
+            return;
+        }
+
+        DrawFittedLabel(
+            Localize(
+                "agent-arena.passports.summary",
+                ShellTextArgument.From("count", report.RecordCount),
+                ShellTextArgument.From("exhibitions", report.ExhibitionTotal),
+                ShellTextArgument.From("remaining", report.RemainingRecords),
+                ShellTextArgument.From("position", report.SelectedIndex + 1),
+                ShellTextArgument.From("total", report.RecordCount)),
+            new Vector2(46.0f, 146.0f),
+            preferredFontSize: ScaledFontSize(15),
+            minimumFontSize: 11,
+            maximumWidth: AgentExhibitionRowWidth,
+            color: SecondaryTextColor());
+
+        var first = Math.Max(
+            0,
+            Math.Min(
+                report.SelectedIndex - (AgentPassportVisibleRows / 2),
+                report.RecordCount - AgentPassportVisibleRows));
+        var last = Math.Min(report.RecordCount, first + AgentPassportVisibleRows);
+        for (var index = first; index < last; index++)
+        {
+            var entry = report.Entries[index];
+            var selected = index == report.SelectedIndex;
+            var top = 190.0f + ((index - first) * AgentExhibitionRowHeight);
+            var marker = ShellFocusPresentation.BindingPrefix(
+                selected,
+                capture: false,
+                conflict: false);
+            DrawFittedLabel(
+                marker + " " + Localize(
+                    "agent-arena.passports.row",
+                    ShellTextArgument.From("position", entry.Position + 1),
+                    ShellTextArgument.From("agent", entry.AgentId),
+                    ShellTextArgument.From("exhibitions", entry.ExhibitionCount),
+                    ShellTextArgument.From(
+                        "score",
+                        entry.BestScore.ToString("D6", CultureInfo.InvariantCulture))),
+                new Vector2(58.0f, top),
+                preferredFontSize: ScaledFontSize(16),
+                minimumFontSize: 11,
+                maximumWidth: AgentExhibitionRowWidth,
+                color: selected ? ActiveShellPalette.PrimaryText : SecondaryTextColor());
+            if (selected)
+            {
+                DrawFittedLabel(
+                    Localize(
+                        "agent-arena.passports.detail",
+                        ShellTextArgument.From("policies", entry.PolicyCount),
+                        ShellTextArgument.From("divisions", entry.DivisionCount),
+                        ShellTextArgument.From("ahead", entry.AheadCount),
+                        ShellTextArgument.From("level", entry.LevelCount),
+                        ShellTextArgument.From("behind", entry.BehindCount),
+                        ShellTextArgument.From("milestones", entry.MilestoneCount)),
+                    new Vector2(76.0f, top + 22.0f),
+                    preferredFontSize: ScaledFontSize(13),
+                    minimumFontSize: 10,
+                    maximumWidth: AgentExhibitionRowWidth - 18.0f,
+                    color: ActiveShellPalette.AccentText);
+            }
+        }
+
+        DrawFittedLabel(
+            Localize("agent-arena.passports.handoff-ready"),
+            new Vector2(46.0f, 620.0f),
+            preferredFontSize: ScaledFontSize(13),
+            minimumFontSize: 10,
+            maximumWidth: AgentExhibitionRowWidth,
+            color: SecondaryTextColor());
+        DrawAgentPassportIsolationNote();
+    }
+
+    private void DrawAgentPassportIsolationNote() =>
+        DrawFittedLabel(
+            Localize("agent-arena.passports.isolation"),
+            new Vector2(46.0f, 672.0f),
+            preferredFontSize: ScaledFontSize(13),
+            minimumFontSize: 10,
+            maximumWidth: AgentExhibitionRowWidth,
+            color: SecondaryTextColor());
+
+    private void RefreshAgentPassports(int selectedIndex)
+    {
+        var store = _agentPassportStore;
+        if (store is null)
+        {
+            _agentPassportReport = null;
+            return;
+        }
+
+        _agentPassportReport = AgentPassportBrowseReportV1.Create(
+            store.Read(),
+            selectedIndex);
+    }
 #endif
 
     private void DrawOfflineComparisons()
@@ -12433,6 +12667,7 @@ public partial class Main : Node2D
     private const float AgentExhibitionRowHeight = 54.0f;
     private const int AgentExhibitionVisibleRows = 8;
     private const int AgentQualificationVisibleRows = 6;
+    private const int AgentPassportVisibleRows = 8;
 #endif
     private const float RunHudRightMargin = 1262.0f;
 
@@ -15727,8 +15962,8 @@ public partial class Main : Node2D
 
         const int migratedRequiredFlowCount = 13;
         const double requiredExpansionRatio = 1.30;
-        var passed = ShellLocalization.All.Count == 723
-            && ShellLocalization.All.Count(entry => entry.Parameters.Count > 0) == 111
+        var passed = ShellLocalization.All.Count == 732
+            && ShellLocalization.All.Count(entry => entry.Parameters.Count > 0) == 114
             && migratedRequiredFlowCount == 13
             && minimumExpansionRatio >= requiredExpansionRatio
             && missingGlyphs.Count == 0
@@ -18479,6 +18714,7 @@ public partial class Main : Node2D
             (ShellScreen.Menu, ShellScreen.AgentWatch),
             (ShellScreen.Menu, ShellScreen.AgentExhibitions),
             (ShellScreen.Menu, ShellScreen.AgentQualification),
+            (ShellScreen.Menu, ShellScreen.AgentPassports),
 #endif
             (ShellScreen.Running, ShellScreen.Paused),
             (ShellScreen.Running, ShellScreen.Ended),
@@ -18550,6 +18786,9 @@ public partial class Main : Node2D
             (ShellScreen.AgentQualification, ShellScreen.Menu),
             (ShellScreen.AgentQualification, ShellScreen.AgentExhibitions),
             (ShellScreen.AgentQualification, ShellScreen.AgentQualification),
+            (ShellScreen.AgentPassports, ShellScreen.Menu),
+            (ShellScreen.AgentPassports, ShellScreen.AgentExhibitions),
+            (ShellScreen.AgentPassports, ShellScreen.AgentPassports),
 #endif
         ];
 
