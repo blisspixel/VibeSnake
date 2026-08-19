@@ -436,6 +436,69 @@ internal static class ShellLocalization
         Entry(
             "agent-arena.exhibitions.isolation",
             "AGENT RESULTS NEVER CHANGE YOUR SCORES, ACHIEVEMENTS, OR PROGRESSION."),
+
+        // AA-08 standings. Copy names facts, never grades: qualifying is a
+        // class, practice is evidence, Rival Breaker is published terms.
+        Entry("agent-arena.qualification.title", "AGENT QUALIFICATION"),
+        Entry(
+            "agent-arena.qualification.empty",
+            "NO QUALIFYING RESULTS IN THIS DIVISION"),
+        Entry(
+            "agent-arena.qualification.empty-detail",
+            "COMPLETED PRACTICE AND VOLUNTARY FINISH STAY OFF THIS LIST."),
+        Entry(
+            "agent-arena.qualification.isolation",
+            "ONE DIVISION, ONE POLICY. PRACTICE IS NOT A STANDING."),
+        Entry(
+            "agent-arena.qualification.summary",
+            "{qualifying} QUALIFYING  |  {practice} PRACTICE  |  {finished} VOLUNTARY FINISH  |  {broken} RIVAL BREAKER"),
+        Entry(
+            "agent-arena.qualification.division",
+            "DIVISION {position}/{total}  {mode}  {visibility}  {action}"),
+        Entry(
+            "agent-arena.qualification.row",
+            "{rank}. {agent}  POLICY {policy}  {score}  {count} QUALIFYING  {tick} STEPS"),
+        Entry(
+            "agent-arena.qualification.detail",
+            "{class}  |  {rival}  |  PRACTICE {practice}  QUAL-TIME {qualification}  GAP {gap}"),
+        Entry(
+            "agent-arena.qualification.class.practice-complete",
+            "PRACTICE EVIDENCE, NOT A STANDING"),
+        Entry(
+            "agent-arena.qualification.class.practice-incomplete",
+            "PRACTICE NOT COMPLETE"),
+        Entry(
+            "agent-arena.qualification.class.non-qualifying-finish",
+            "VOLUNTARY FINISH, NOT QUALIFYING"),
+        Entry(
+            "agent-arena.qualification.class.qualifying-terminal",
+            "QUALIFYING: RULES ENDED THE MATCH"),
+        Entry(
+            "agent-arena.qualification.class.qualifying-capped",
+            "QUALIFYING: REACHED THE STEP CAP"),
+        Entry(
+            "agent-arena.qualification.class.ineligible",
+            "NOT ELIGIBLE FOR QUALIFICATION"),
+        Entry("agent-arena.qualification.rival.not-a-rivalry", "NO RIVAL"),
+        Entry(
+            "agent-arena.qualification.rival.non-qualifying",
+            "RIVALRY WAS NOT QUALIFYING"),
+        Entry("agent-arena.qualification.rival.behind", "BEHIND THE RIVAL"),
+        Entry("agent-arena.qualification.rival.level", "LEVEL WITH THE RIVAL"),
+        Entry(
+            "agent-arena.qualification.rival.beat-score",
+            "AHEAD ON SCORE, NOT THE RIVAL'S CHARACTERISTIC"),
+        Entry(
+            "agent-arena.qualification.rival.broken",
+            "RIVAL BREAKER: BEAT THE RIVAL ON PUBLISHED TERMS"),
+        Entry(
+            "agent-arena.qualification.handoff-ready",
+            "CONFIRM OPENS THIS RECEIPT IN EXHIBITIONS"),
+        Entry(
+            "agent-arena.qualification.handoff-empty",
+            "NO QUALIFYING RECEIPT TO OPEN"),
+        Entry("action.previous-division", "previous division"),
+        Entry("action.next-division", "next division"),
         Entry("agent-arena.story.highlight.won", "WON"),
         Entry("agent-arena.story.highlight.died", "DIED"),
         Entry("agent-arena.story.highlight.lead", "LEAD CHANGE"),

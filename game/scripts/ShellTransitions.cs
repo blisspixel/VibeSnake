@@ -25,6 +25,7 @@ internal enum ShellScreen : byte
 #if AGENT_ARENA_PREVIEW
     AgentWatch = 16,
     AgentExhibitions = 17,
+    AgentQualification = 18,
 #endif
 }
 
@@ -50,6 +51,8 @@ internal static class ShellTransitions
         // Without this edge the flag is recognized and then refused, so the
         // player stays on the title screen in front of a real archive.
         (ShellScreen.Menu, ShellScreen.AgentExhibitions) => true,
+        // Documented ./play.sh --agent-watch-qualification launches from Menu.
+        (ShellScreen.Menu, ShellScreen.AgentQualification) => true,
 #endif
         (ShellScreen.Running, ShellScreen.Paused) => true,
         (ShellScreen.Running, ShellScreen.Ended) => true,
@@ -118,6 +121,9 @@ internal static class ShellTransitions
         (ShellScreen.AgentExhibitions, ShellScreen.Menu) => true,
         (ShellScreen.AgentExhibitions, ShellScreen.Running) => true,
         (ShellScreen.AgentExhibitions, ShellScreen.AgentExhibitions) => true,
+        (ShellScreen.AgentQualification, ShellScreen.Menu) => true,
+        (ShellScreen.AgentQualification, ShellScreen.AgentExhibitions) => true,
+        (ShellScreen.AgentQualification, ShellScreen.AgentQualification) => true,
 #endif
         _ => false,
     };

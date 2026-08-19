@@ -243,6 +243,7 @@ public partial class Main : Node2D
     private int _agentExhibitionCursor;
     private AgentExhibitionStoryReportV1? _agentExhibitionStory;
     private RunReplayPlayback? _agentExhibitionRivalPlayback;
+    private AgentQualificationBrowseReportV1? _agentQualificationReport;
 #endif
     private IReadOnlyList<GhostSlotEntry> _ghostSlots = [];
     private int _ghostSlotCursor;
@@ -287,6 +288,7 @@ public partial class Main : Node2D
 #if AGENT_ARENA_PREVIEW
         AgentWatch,
         AgentExhibitions,
+        AgentQualification,
 #endif
     }
 
@@ -402,6 +404,13 @@ public partial class Main : Node2D
         var agentWatchExhibitions = userArguments.Contains(
             "--agent-watch-exhibitions",
             StringComparer.Ordinal);
+        // Ranking is preview-only and reads the archive at launch, same as the
+        // exhibition browser. Menu to AgentQualification is a legal launch
+        // transition for that flag. The existing --agent-watch- Release
+        // exclusion marker covers it.
+        var agentWatchQualification = userArguments.Contains(
+            "--agent-watch-qualification",
+            StringComparer.Ordinal);
         // A spectator QA aid. The accessibility profile is otherwise only reachable
         // through F6 and F9, which an automated watcher cannot press, so overlay
         // legibility at maximum text scale could never be observed from outside.
@@ -412,6 +421,11 @@ public partial class Main : Node2D
         {
             throw new ArgumentException(
                 "Agent watch accessibility requires the local viewer capability.");
+        }
+        if (agentWatchExhibitions && agentWatchQualification)
+        {
+            throw new ArgumentException(
+                "Agent watch exhibitions and qualification are separate launch routes.");
         }
         if ((agentWatchPipe is null) != (agentWatchToken is null))
         {
@@ -558,6 +572,11 @@ public partial class Main : Node2D
             // it reads the local archive rather than a running match.
             RefreshAgentExhibitions(0);
             TransitionToScreen(ScreenState.AgentExhibitions);
+        }
+        else if (agentWatchQualification)
+        {
+            RefreshAgentQualification(0, 0);
+            TransitionToScreen(ScreenState.AgentQualification);
         }
 #endif
         QueueRedraw();
@@ -2634,6 +2653,12 @@ public partial class Main : Node2D
             HandleAgentExhibitionsInput(inputEvent);
             return;
         }
+
+        if (_screenState == ScreenState.AgentQualification)
+        {
+            HandleAgentQualificationInput(inputEvent);
+            return;
+        }
 #endif
 
         if (_screenState == ScreenState.Ended)
@@ -3308,6 +3333,9 @@ public partial class Main : Node2D
                 break;
             case ScreenState.AgentExhibitions:
                 DrawAgentExhibitions();
+                break;
+            case ScreenState.AgentQualification:
+                DrawAgentQualification();
                 break;
 #endif
             case ScreenState.Menu:
@@ -4469,6 +4497,7 @@ public partial class Main : Node2D
 #if AGENT_ARENA_PREVIEW
             ScreenState.AgentWatch => ShellScreen.AgentWatch,
             ScreenState.AgentExhibitions => ShellScreen.AgentExhibitions,
+            ScreenState.AgentQualification => ShellScreen.AgentQualification,
 #endif
             _ => throw new ArgumentOutOfRangeException(nameof(state)),
         };
@@ -11677,6 +11706,345 @@ public partial class Main : Node2D
             selectedIndex);
         _agentExhibitionCursor = _agentExhibitionReport.SelectedIndex;
     }
+
+    private void HandleAgentQualificationInput(InputEvent inputEvent)
+    {
+        if (inputEvent.IsActionPressed(GameActions.Back))
+        {
+            ReturnToMenu();
+            return;
+        }
+
+        var report = _agentQualificationReport;
+        if (report is null)
+        {
+            return;
+        }
+
+        if (inputEvent.IsActionPressed(GameActions.MoveLeft))
+        {
+            SelectAgentQualificationDivision(report.SelectedDivisionIndex - 1);
+        }
+        else if (inputEvent.IsActionPressed(GameActions.MoveRight))
+        {
+            SelectAgentQualificationDivision(report.SelectedDivisionIndex + 1);
+        }
+        else if (inputEvent.IsActionPressed(GameActions.MoveUp))
+        {
+            SelectAgentQualificationStanding(report.SelectedStandingIndex - 1);
+        }
+        else if (inputEvent.IsActionPressed(GameActions.MoveDown))
+        {
+            SelectAgentQualificationStanding(report.SelectedStandingIndex + 1);
+        }
+        else if (inputEvent.IsActionPressed(GameActions.Confirm))
+        {
+            OpenSelectedQualificationInExhibitions();
+        }
+    }
+
+    private void SelectAgentQualificationDivision(int index)
+    {
+        if (_agentQualificationReport is not { } report)
+        {
+            return;
+        }
+
+        var moved = report.WithDivision(index);
+        if (moved.SelectedDivisionIndex == report.SelectedDivisionIndex)
+        {
+            return;
+        }
+
+        _agentQualificationReport = moved;
+        PlayCue(AudioCue.Navigate);
+        QueueRedraw();
+    }
+
+    private void SelectAgentQualificationStanding(int index)
+    {
+        if (_agentQualificationReport is not { } report)
+        {
+            return;
+        }
+
+        var moved = report.WithStanding(index);
+        if (moved.SelectedStandingIndex == report.SelectedStandingIndex)
+        {
+            return;
+        }
+
+        _agentQualificationReport = moved;
+        PlayCue(AudioCue.Navigate);
+        QueueRedraw();
+    }
+
+    private void OpenSelectedQualificationInExhibitions()
+    {
+        var receiptHash = _agentQualificationReport?.HandoffReceiptHash;
+        if (receiptHash is null)
+        {
+            PlayCue(AudioCue.Back);
+            return;
+        }
+
+        RefreshAgentExhibitions(0);
+        var listing = _agentExhibitionReport;
+        var index = -1;
+        if (listing is not null)
+        {
+            for (var position = 0; position < listing.Entries.Count; position++)
+            {
+                if (string.Equals(
+                        listing.Entries[position].ReceiptHash,
+                        receiptHash,
+                        StringComparison.Ordinal))
+                {
+                    index = position;
+                    break;
+                }
+            }
+        }
+
+        if (index < 0)
+        {
+            PlayCue(AudioCue.Back);
+            RefreshAgentQualification(
+                _agentQualificationReport!.SelectedDivisionIndex,
+                _agentQualificationReport.SelectedStandingIndex);
+            QueueRedraw();
+            return;
+        }
+
+        RefreshAgentExhibitions(index);
+        PlayCue(AudioCue.Confirm);
+        TransitionToScreen(ScreenState.AgentExhibitions);
+    }
+
+    private void DrawAgentQualification()
+    {
+        DrawLabel(
+            Localize("agent-arena.qualification.title"),
+            new Vector2(46.0f, 108.0f),
+            ScaledFontSize(32),
+            PrimaryTextColor());
+
+        var report = _agentQualificationReport;
+        if (report is null)
+        {
+            DrawLabel(
+                Localize("agent-arena.qualification.empty"),
+                new Vector2(46.0f, 160.0f),
+                ScaledFontSize(20),
+                SecondaryTextColor());
+            DrawAgentQualificationIsolationNote();
+            return;
+        }
+
+        DrawFittedLabel(
+            Localize(
+                "agent-arena.qualification.summary",
+                ShellTextArgument.From("qualifying", report.QualifyingCount),
+                ShellTextArgument.From("practice", report.PracticeCompleteCount),
+                ShellTextArgument.From("finished", report.NonQualifyingFinishCount),
+                ShellTextArgument.From("broken", report.RivalBrokenCount)),
+            new Vector2(46.0f, 146.0f),
+            preferredFontSize: ScaledFontSize(15),
+            minimumFontSize: 11,
+            maximumWidth: AgentExhibitionRowWidth,
+            color: SecondaryTextColor());
+
+        var division = report.SelectedDivision;
+        DrawFittedLabel(
+            Localize(
+                "agent-arena.qualification.division",
+                ShellTextArgument.From("position", division.Position + 1),
+                ShellTextArgument.From("total", report.Divisions.Count),
+                ShellTextArgument.From("mode", division.Division.ModeId.ToUpperInvariant()),
+                ShellTextArgument.From(
+                    "visibility",
+                    division.Division.SeedVisibility.ToString().ToUpperInvariant()),
+                ShellTextArgument.From(
+                    "action",
+                    ShortAgentActionProfile(division.Division.ActionProfile))),
+            new Vector2(46.0f, 174.0f),
+            preferredFontSize: ScaledFontSize(15),
+            minimumFontSize: 11,
+            maximumWidth: AgentExhibitionRowWidth,
+            color: ActiveShellPalette.AccentText);
+
+        if (division.IsEmpty)
+        {
+            DrawLabel(
+                Localize("agent-arena.qualification.empty"),
+                new Vector2(46.0f, 220.0f),
+                ScaledFontSize(20),
+                SecondaryTextColor());
+            DrawFittedLabel(
+                Localize("agent-arena.qualification.empty-detail"),
+                new Vector2(46.0f, 252.0f),
+                preferredFontSize: ScaledFontSize(14),
+                minimumFontSize: 11,
+                maximumWidth: AgentExhibitionRowWidth,
+                color: ActiveShellPalette.AccentText);
+            DrawFittedLabel(
+                Localize("agent-arena.qualification.handoff-empty"),
+                new Vector2(46.0f, 284.0f),
+                preferredFontSize: ScaledFontSize(13),
+                minimumFontSize: 10,
+                maximumWidth: AgentExhibitionRowWidth,
+                color: SecondaryTextColor());
+            DrawAgentQualificationPrompts();
+            DrawAgentQualificationIsolationNote();
+            return;
+        }
+
+        var first = Math.Max(
+            0,
+            Math.Min(
+                report.SelectedStandingIndex - (AgentQualificationVisibleRows / 2),
+                division.StandingCount - AgentQualificationVisibleRows));
+        var last = Math.Min(division.StandingCount, first + AgentQualificationVisibleRows);
+        for (var index = first; index < last; index++)
+        {
+            var standing = division.Standings[index];
+            var selected = index == report.SelectedStandingIndex;
+            var top = 214.0f + ((index - first) * AgentExhibitionRowHeight);
+            var marker = ShellFocusPresentation.BindingPrefix(
+                selected,
+                capture: false,
+                conflict: false);
+            DrawFittedLabel(
+                marker + " " + Localize(
+                    "agent-arena.qualification.row",
+                    ShellTextArgument.From("rank", standing.Rank),
+                    ShellTextArgument.From("agent", standing.AgentId),
+                    ShellTextArgument.From("policy", standing.PolicyVersion),
+                    ShellTextArgument.From(
+                        "score",
+                        standing.BestScore.ToString("D6", CultureInfo.InvariantCulture)),
+                    ShellTextArgument.From("count", standing.QualifyingCount),
+                    ShellTextArgument.From("tick", standing.BestFinalTick)),
+                new Vector2(58.0f, top),
+                preferredFontSize: ScaledFontSize(16),
+                minimumFontSize: 11,
+                maximumWidth: AgentExhibitionRowWidth,
+                color: selected ? ActiveShellPalette.PrimaryText : SecondaryTextColor());
+            if (selected)
+            {
+                DrawFittedLabel(
+                    AgentQualificationStandingDetail(standing),
+                    new Vector2(76.0f, top + 22.0f),
+                    preferredFontSize: ScaledFontSize(13),
+                    minimumFontSize: 10,
+                    maximumWidth: AgentExhibitionRowWidth - 18.0f,
+                    color: ActiveShellPalette.AccentText);
+            }
+        }
+
+        DrawFittedLabel(
+            Localize("agent-arena.qualification.handoff-ready"),
+            new Vector2(46.0f, 620.0f),
+            preferredFontSize: ScaledFontSize(13),
+            minimumFontSize: 10,
+            maximumWidth: AgentExhibitionRowWidth,
+            color: SecondaryTextColor());
+        DrawAgentQualificationPrompts();
+        DrawAgentQualificationIsolationNote();
+    }
+
+    private void DrawAgentQualificationPrompts()
+    {
+        var nextX = DrawActionPromptSegment(
+            "move_left",
+            Localize("action.previous-division"),
+            new Vector2(46.0f, 648.0f),
+            ScaledFontSize(13),
+            SecondaryTextColor());
+        nextX = DrawActionPromptSegment(
+            "move_right",
+            Localize("action.next-division"),
+            new Vector2(nextX, 648.0f),
+            ScaledFontSize(13),
+            SecondaryTextColor());
+        DrawActionPromptSegment(
+            "back",
+            Localize("action.return-menu"),
+            new Vector2(nextX, 648.0f),
+            ScaledFontSize(13),
+            SecondaryTextColor());
+    }
+
+    private void DrawAgentQualificationIsolationNote() =>
+        DrawFittedLabel(
+            Localize("agent-arena.qualification.isolation"),
+            new Vector2(46.0f, 672.0f),
+            preferredFontSize: ScaledFontSize(13),
+            minimumFontSize: 10,
+            maximumWidth: AgentExhibitionRowWidth,
+            color: SecondaryTextColor());
+
+    private string AgentQualificationStandingDetail(
+        AgentQualificationStandingViewV1 standing) =>
+        Localize(
+            "agent-arena.qualification.detail",
+            ShellTextArgument.From(
+                "class",
+                Localize(AgentQualificationClassId(standing.BestClass))),
+            ShellTextArgument.From(
+                "rival",
+                Localize(AgentQualificationRivalId(standing.RivalBreakerKind))),
+            ShellTextArgument.From("practice", standing.PracticeCompleteCount),
+            ShellTextArgument.From("qualification", standing.QualificationTimeCompleteCount),
+            ShellTextArgument.From("gap", standing.GeneralizationGap));
+
+    private static string AgentQualificationClassId(AgentQualificationClass classKind) =>
+        classKind switch
+        {
+            AgentQualificationClass.PracticeComplete =>
+                "agent-arena.qualification.class.practice-complete",
+            AgentQualificationClass.PracticeIncomplete =>
+                "agent-arena.qualification.class.practice-incomplete",
+            AgentQualificationClass.NonQualifyingFinish =>
+                "agent-arena.qualification.class.non-qualifying-finish",
+            AgentQualificationClass.QualifyingTerminal =>
+                "agent-arena.qualification.class.qualifying-terminal",
+            AgentQualificationClass.QualifyingCapped =>
+                "agent-arena.qualification.class.qualifying-capped",
+            _ => "agent-arena.qualification.class.ineligible",
+        };
+
+    private static string AgentQualificationRivalId(AgentRivalBreakerKind kind) =>
+        kind switch
+        {
+            AgentRivalBreakerKind.NonQualifying =>
+                "agent-arena.qualification.rival.non-qualifying",
+            AgentRivalBreakerKind.Behind => "agent-arena.qualification.rival.behind",
+            AgentRivalBreakerKind.Level => "agent-arena.qualification.rival.level",
+            AgentRivalBreakerKind.BeatScore => "agent-arena.qualification.rival.beat-score",
+            AgentRivalBreakerKind.Broken => "agent-arena.qualification.rival.broken",
+            _ => "agent-arena.qualification.rival.not-a-rivalry",
+        };
+
+    private static string ShortAgentActionProfile(string actionProfile) =>
+        actionProfile.Contains("burst", StringComparison.Ordinal)
+            ? "BURST"
+            : "STEP";
+
+    private void RefreshAgentQualification(int selectedDivisionIndex, int selectedStandingIndex)
+    {
+        var store = _agentExhibitionArchive;
+        if (store is null)
+        {
+            _agentQualificationReport = null;
+            return;
+        }
+
+        _agentQualificationReport = AgentQualificationBrowseReportV1.Create(
+            store.Read().Entries,
+            selectedDivisionIndex,
+            selectedStandingIndex);
+    }
 #endif
 
     private void DrawOfflineComparisons()
@@ -12064,6 +12432,7 @@ public partial class Main : Node2D
     private const float AgentExhibitionRowWidth = 1188.0f;
     private const float AgentExhibitionRowHeight = 54.0f;
     private const int AgentExhibitionVisibleRows = 8;
+    private const int AgentQualificationVisibleRows = 6;
 #endif
     private const float RunHudRightMargin = 1262.0f;
 
@@ -15358,8 +15727,8 @@ public partial class Main : Node2D
 
         const int migratedRequiredFlowCount = 13;
         const double requiredExpansionRatio = 1.30;
-        var passed = ShellLocalization.All.Count == 699
-            && ShellLocalization.All.Count(entry => entry.Parameters.Count > 0) == 107
+        var passed = ShellLocalization.All.Count == 723
+            && ShellLocalization.All.Count(entry => entry.Parameters.Count > 0) == 111
             && migratedRequiredFlowCount == 13
             && minimumExpansionRatio >= requiredExpansionRatio
             && missingGlyphs.Count == 0
@@ -18109,6 +18478,7 @@ public partial class Main : Node2D
 #if AGENT_ARENA_PREVIEW
             (ShellScreen.Menu, ShellScreen.AgentWatch),
             (ShellScreen.Menu, ShellScreen.AgentExhibitions),
+            (ShellScreen.Menu, ShellScreen.AgentQualification),
 #endif
             (ShellScreen.Running, ShellScreen.Paused),
             (ShellScreen.Running, ShellScreen.Ended),
@@ -18177,6 +18547,9 @@ public partial class Main : Node2D
             (ShellScreen.AgentExhibitions, ShellScreen.Menu),
             (ShellScreen.AgentExhibitions, ShellScreen.Running),
             (ShellScreen.AgentExhibitions, ShellScreen.AgentExhibitions),
+            (ShellScreen.AgentQualification, ShellScreen.Menu),
+            (ShellScreen.AgentQualification, ShellScreen.AgentExhibitions),
+            (ShellScreen.AgentQualification, ShellScreen.AgentQualification),
 #endif
         ];
 
