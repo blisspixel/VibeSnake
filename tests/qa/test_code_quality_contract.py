@@ -191,6 +191,7 @@ def test_ci_runs_the_documented_quality_and_dependency_gates() -> None:
         "dotnet format native/VibeSnake.slnx --verify-no-changes --no-restore",
         "./scripts/test_native_coverage.ps1",
         "./scripts/package_agent_plugin.ps1 -OutputRoot TestResults/agent-plugin -Force",
+        "./scripts/package_agent_host.ps1 -OutputRoot TestResults/agent-host -Force",
         "VIBESNAKE_AGENT_PLUGIN_ROOT:",
         "python scripts/check_agent_interop.py",
     ):

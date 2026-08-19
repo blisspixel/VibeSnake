@@ -211,7 +211,15 @@ Create the framework-dependent preview package with:
 ./scripts/package_agent_plugin.ps1
 ```
 
-The output is `dist/agent-plugins/portable/vibesnake-agent/`. It contains the published host, root `plugin.json` and `mcp.json`, the skill, license files, and a complete `SHA256SUMS`. Packaged validation requires every component, exact checksum coverage, one executable command token, the declared contained host argument, and the package-root working directory. It requires a compatible .NET 10 runtime. Distribution signing, per-platform self-contained packages, SBOMs, artifact qualification, and installation UX remain release responsibilities because the format does not define them.
+The output is `dist/agent-plugins/portable/vibesnake-agent/`. It contains the published host, root `plugin.json` and `mcp.json`, the skill, license files, and a complete `SHA256SUMS`. Packaged validation requires every component, exact checksum coverage, one executable command token, the declared contained host argument, and the package-root working directory. It requires a compatible .NET 10 runtime.
+
+Create the current-RID self-contained host package with:
+
+```powershell
+./scripts/package_agent_host.ps1
+```
+
+The output is `dist/agent-host/<rid>/`. It contains a self-contained `VibeSnake.AgentHost` executable, license files, `INSTALL.txt`, `host-manifest.json`, and a complete `SHA256SUMS`. The manifest stays `publication_eligible: false` and `signing: unsigned`. The host speaks MCP over stdio and writes preview data under the Godot user-data root, not beside the package. Validate with `python scripts/validate_agent_host_package.py dist/agent-host/<rid>`. CI builds this package on Windows, macOS, and Linux. Signing, SBOMs, installers, update, rollback, and supported publication remain later AA-10 work.
 
 The floating `player-latest` release is a source and reference channel. Its source ZIP contains the checked-in plugin manifest and skill, MCP host source, packaging script, and generated knowledge bundle so a developer can reproduce this assembly. It does not contain the generated `mcp.json` or claim to be a standalone supported Agent Plugin. CI assembles that generated form into an isolated output, validates it with `--require-mcp`, and discards it after qualification until AA-10 defines supported cross-platform plugin artifacts.
 

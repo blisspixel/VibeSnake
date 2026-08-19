@@ -5,6 +5,7 @@
     <TargetFramework>net10.0</TargetFramework>
     <Description>Local stdio MCP host for deterministic Vibe Snake agent matches.</Description>
     <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+    <RuntimeIdentifiers>win-x64;linux-x64;osx-x64;osx-arm64</RuntimeIdentifiers>
   </PropertyGroup>
 
   <ItemGroup>

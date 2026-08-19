@@ -90,6 +90,7 @@ jobs:
           python scripts/generate_agent_knowledge.py --check
           ./scripts/package_agent_plugin.ps1 -OutputRoot TestResults/agent-plugin
           python scripts/validate_agent_plugin.py TestResults/agent-plugin/portable/vibesnake-agent --require-mcp
+          ./scripts/package_agent_host.ps1 -OutputRoot TestResults/agent-host -Force
 
       - name: Check product version alignment
         run: python scripts/check_product_version.py
@@ -233,6 +234,7 @@ jobs:
         run: |
           ./scripts/package_agent_plugin.ps1 -OutputRoot TestResults/agent-plugin -Force
           python scripts/validate_agent_plugin.py TestResults/agent-plugin/portable/vibesnake-agent --require-mcp
+          ./scripts/package_agent_host.ps1 -OutputRoot TestResults/agent-host -Force
 
       - name: Test native rules with coverage floor
         shell: pwsh

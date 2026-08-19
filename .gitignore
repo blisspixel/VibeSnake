@@ -163,6 +163,7 @@ artifacts/
 /game/export/
 /native/export/
 /dist/agent-plugins/
+/dist/agent-host/
 
 # Repository-local .NET SDK and native build output
 .dotnet/
