@@ -35,7 +35,7 @@ public static class Program
         });
 
         var resolvedUserDataRoot = userDataRoot
-            ?? AgentHostDataPaths.ResolveGodotUserDataRoot();
+            ?? AgentHostDataPaths.ResolveUserDataRoot();
         var replayStore = new ReplayStore(resolvedUserDataRoot);
         var registry = new AgentSessionRegistry(
             replayStore,

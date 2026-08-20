@@ -1389,6 +1389,37 @@ public sealed class AgentHostTests
     }
 
     [Fact]
+    public void Isolated_user_data_override_stays_outside_the_host_package()
+    {
+        using var temporary = new AgentHostTemporaryDirectory();
+        var isolated = Path.Combine(temporary.Path, "user-data");
+        var package = Path.Combine(temporary.Path, "package");
+        var nested = Path.Combine(package, "nested");
+        Directory.CreateDirectory(isolated);
+        Directory.CreateDirectory(nested);
+
+        Assert.Equal(
+            Path.GetFullPath(isolated),
+            AgentHostDataPaths.ResolveUserDataRoot(isolated, package));
+        Assert.Equal(
+            AgentHostDataPaths.ResolveGodotUserDataRoot(),
+            AgentHostDataPaths.ResolveUserDataRoot(null, package));
+        Assert.Equal(
+            AgentHostDataPaths.ResolveGodotUserDataRoot(),
+            AgentHostDataPaths.ResolveUserDataRoot(" ", package));
+        Assert.Throws<InvalidOperationException>(() =>
+            AgentHostDataPaths.ResolveUserDataRoot("relative", package));
+        Assert.Throws<InvalidOperationException>(() =>
+            AgentHostDataPaths.ResolveUserDataRoot(
+                Path.Combine(temporary.Path, "missing"),
+                package));
+        Assert.Throws<InvalidOperationException>(() =>
+            AgentHostDataPaths.ResolveUserDataRoot(package, package));
+        Assert.Throws<InvalidOperationException>(() =>
+            AgentHostDataPaths.ResolveUserDataRoot(nested, package));
+    }
+
+    [Fact]
     public void Signal_school_publishes_exact_canonical_route_interaction_evidence()
     {
         using var temporary = new AgentHostTemporaryDirectory();

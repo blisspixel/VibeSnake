@@ -240,6 +240,7 @@ jobs:
         shell: pwsh
         env:
           VIBESNAKE_AGENT_PLUGIN_ROOT: ${{ github.workspace }}/TestResults/agent-plugin/portable/vibesnake-agent
+          VIBESNAKE_AGENT_HOST_ROOT: ${{ github.workspace }}/TestResults/agent-host
         run: ./scripts/test_native_coverage.ps1
 
       - name: Upload native parity divergence evidence

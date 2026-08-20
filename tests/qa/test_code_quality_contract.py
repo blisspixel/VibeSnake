@@ -193,6 +193,7 @@ def test_ci_runs_the_documented_quality_and_dependency_gates() -> None:
         "./scripts/package_agent_plugin.ps1 -OutputRoot TestResults/agent-plugin -Force",
         "./scripts/package_agent_host.ps1 -OutputRoot TestResults/agent-host -Force",
         "VIBESNAKE_AGENT_PLUGIN_ROOT:",
+        "VIBESNAKE_AGENT_HOST_ROOT:",
         "python scripts/check_agent_interop.py",
     ):
         assert required in workflow
