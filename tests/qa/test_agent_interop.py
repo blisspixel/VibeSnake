@@ -39,6 +39,7 @@ REQUIRED_FILES = (
     Path("native/src/VibeSnake.Rules/CosmeticSetCatalog.cs"),
     Path("native/src/VibeSnake.Rules/StationIdentityCatalog.cs"),
     Path("native/tools/VibeSnake.AgentHost/AgentHostContracts.cs"),
+    Path("native/tools/VibeSnake.AgentHost/AgentHostDataPaths.cs"),
     Path("native/tools/VibeSnake.AgentHost/AgentResources.cs"),
     Path("native/tools/VibeSnake.AgentHost/AgentSessionRegistry.cs"),
     Path("native/tools/VibeSnake.AgentHost/AgentToolArgumentFilter.cs"),
