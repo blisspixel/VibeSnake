@@ -530,14 +530,25 @@ try {
         throw "Godot headless import reported an error, warning, or leaked object."
     }
 
+    $hostPackageRoot = Join-Path $repositoryRoot "TestResults/agent-host"
+    & (Join-Path $PSScriptRoot "package_agent_host.ps1") -OutputRoot $hostPackageRoot -Force
+
     $agentViewerGodotVariable = "VIBESNAKE_AGENT_VIEWER_GODOT_EXECUTABLE"
+    $agentHostRootVariable = "VIBESNAKE_AGENT_HOST_ROOT"
     $previousAgentViewerGodot = [Environment]::GetEnvironmentVariable(
         $agentViewerGodotVariable,
+        [EnvironmentVariableTarget]::Process)
+    $previousAgentHostRoot = [Environment]::GetEnvironmentVariable(
+        $agentHostRootVariable,
         [EnvironmentVariableTarget]::Process)
     try {
         [Environment]::SetEnvironmentVariable(
             $agentViewerGodotVariable,
             $resolvedGodotExecutable,
+            [EnvironmentVariableTarget]::Process)
+        [Environment]::SetEnvironmentVariable(
+            $agentHostRootVariable,
+            $hostPackageRoot,
             [EnvironmentVariableTarget]::Process)
         Invoke-Dotnet -CommandArguments @(
             "test",
@@ -547,13 +558,17 @@ try {
             "--no-build",
             "--no-restore",
             "--filter",
-            "FullyQualifiedName~Godot_watch_screen_receives_real_host_frame_when_qualified"
+            "FullyQualifiedName~Godot_watch_screen"
         )
     }
     finally {
         [Environment]::SetEnvironmentVariable(
             $agentViewerGodotVariable,
             $previousAgentViewerGodot,
+            [EnvironmentVariableTarget]::Process)
+        [Environment]::SetEnvironmentVariable(
+            $agentHostRootVariable,
+            $previousAgentHostRoot,
             [EnvironmentVariableTarget]::Process)
     }
 

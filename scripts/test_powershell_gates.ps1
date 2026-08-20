@@ -285,6 +285,15 @@ try {
             throw "Native coverage consumer does not invoke the shared coverage gate."
         }
     }
+    foreach ($requiredPackagedHostFragment in @(
+        "package_agent_host.ps1",
+        "VIBESNAKE_AGENT_HOST_ROOT",
+        "FullyQualifiedName~Godot_watch_screen"
+    )) {
+        if (-not $nativeTestScript.Contains($requiredPackagedHostFragment, [StringComparison]::Ordinal)) {
+            throw "Godot packaged-host viewer qualification is missing: $requiredPackagedHostFragment"
+        }
+    }
     foreach ($requiredCoverageFragment in @(
         "-p:Threshold=90%2c85",
         "-p:ThresholdType=line%2cbranch",

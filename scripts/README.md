@@ -26,7 +26,7 @@ This directory contains explicit command-line tools. Runtime code belongs under 
 | `native_artifact_policy.ps1` | Shared prohibited-path rules for native bundles |
 | `platform_path_policy.ps1` | Absolute environment-path validation for tooling |
 | `test_powershell_gates.ps1` | Executable-spoofing, artifact-path, and ordinary-CI credential-boundary regression checks |
-| `test_native.ps1` | Native rules, coverage, balance, reliability, fault/triage, localization, and capture-sharing evidence, format, Godot import, and scene smoke |
+| `test_native.ps1` | Native rules, coverage, balance, reliability, fault/triage, localization, and capture-sharing evidence, format, Godot import, scene smoke, and Godot watch against the packaged Agent Host |
 | `test_native_coverage.ps1` | Shared local/CI native test and coverage gate with validated module floors and one clean rebuild retry for truncated Coverlet streams |
 | `write_dependency_inventory.ps1` | Lock-derived NuGet/Python dependency inventory and source-revision provenance |
 | `check_candidate_freeze.py` | Validate the inactive V090-01 policy and, after every prerequisite passes, prepare its deterministic frozen-surface SHA-256 baseline |

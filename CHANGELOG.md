@@ -4,7 +4,9 @@ Notable player-facing and engineering changes are recorded here. The project is 
 
 ## Unreleased
 
-- Qualified the unsigned Agent Host package as a live viewer. Native rules CI launches the current-RID self-contained executable, opens a watch-enabled match, and requires a `vibesnake-agent-viewer-frame-v9` stream without writing preview data into the package. `VIBESNAKE_AGENT_USER_DATA_ROOT` isolates that data to an existing fully qualified directory and refuses the package folder. Host and plugin remain `0.17.0`. Signing, installers, update, rollback, exported-player watching, and supported publication remain later AA-10 work. Native contracts are now **1,226**.
+- Pointed the Godot watch smoke at the packaged Agent Host. `test_native.ps1` now assembles the current-RID self-contained host, then `Godot_watch_screen_receives_packaged_host_frame_when_qualified` launches the real headless watch route against that executable's viewer pipe. The in-process Godot watch smoke remains. A supported Release export still compiles the watch route out. Host and plugin remain `0.17.0`. Signing, installers, update, rollback, and supported publication remain later AA-10 work. Native contracts are now **1,227**.
+
+- Qualified the unsigned Agent Host package as a live viewer. Native rules CI launches the current-RID self-contained executable, opens a watch-enabled match, and requires a `vibesnake-agent-viewer-frame-v9` stream without writing preview data into the package. `VIBESNAKE_AGENT_USER_DATA_ROOT` isolates that data to an existing fully qualified directory and refuses the package folder. Host and plugin remain `0.17.0`. Native contracts are now **1,226**.
 
 - Retried Windows Coverlet hit-stream truncation after a green native test run. All 1,223 tests can pass while Coverlet still fails with "Unable to read beyond the end of the stream"; that is now treated as a coverage-report failure and gets the existing one rebuild retry instead of being mistaken for a test failure.
 
