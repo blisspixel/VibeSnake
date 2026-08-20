@@ -59,9 +59,11 @@ The complete player-facing behavior is in the [player guide](docs/guides/PLAYER_
 
 The immediate goal is the first reproducible native alpha, not more feature surface. The dependency order is:
 
-1. Retain and review one exact Release-mode Windows, macOS, and Linux build.
-2. Complete physical input, audio-device, display, accessibility, recovery, and declared-hardware checks against those exact bytes.
-3. Listen to the technically passing `the_bureau` review set, approve or reject exact source replacements, then assemble the smallest core content set and optional radio pack with full decode, loudness, credits, hashes, and size evidence.
+The exact unsigned review build is retained from [Release run 32421705560](https://github.com/blisspixel/VibeSnake/actions/runs/32421705560) at revision `e87db6e`. Its Windows x64, macOS Universal, and Linux x64 packages passed the cross-bound Release matrix, 300 clean launches, 600,000 reliability comparisons, 300 spectator restarts, 21 injected faults, accessibility and performance evidence, and detached manifest provenance.
+
+1. Complete physical input, audio-device, display, accessibility, recovery, and declared-hardware checks against those exact retained bytes.
+2. Listen to the technically passing `the_bureau` review set, approve or reject exact source replacements, then assemble the smallest core content set and optional radio pack with full decode, loudness, credits, hashes, and size evidence.
+3. Fix any review findings and rerun every affected automated and physical gate without expanding feature scope.
 4. Publish `v0.3.0-alpha.1` only after the reviewed revision, hosted CI, artifacts, provenance, content, and disclosures agree.
 
 The [current status](docs/release/STATUS.md) records verified evidence and open gates. The [roadmap](ROADMAP.md#what-is-next-ordered-and-why) explains why this work precedes later milestones.
