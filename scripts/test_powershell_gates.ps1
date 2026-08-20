@@ -285,6 +285,9 @@ try {
             throw "Native coverage consumer does not invoke the shared coverage gate."
         }
     }
+    if (-not $nativeTestScript.Contains('"ExportRelease"', [StringComparison]::Ordinal)) {
+        throw "Ordinary native qualification must compile the supported ExportRelease configuration."
+    }
     foreach ($requiredPackagedHostFragment in @(
         "package_agent_host.ps1",
         "VIBESNAKE_AGENT_HOST_ROOT",

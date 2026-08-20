@@ -74,6 +74,12 @@ try {
         "--no-restore"
     )
     Invoke-Dotnet -CommandArguments @(
+        "build",
+        "game/VibeSnake.Game.csproj",
+        "--configuration",
+        "ExportRelease"
+    )
+    Invoke-Dotnet -CommandArguments @(
         "format",
         "native/VibeSnake.slnx",
         "--verify-no-changes",

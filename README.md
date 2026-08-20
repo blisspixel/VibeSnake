@@ -50,10 +50,21 @@ These are direct 1280 by 720 captures from the current Godot renderer. Their has
 - Idle pointer hiding, focus-safe pausing, reduced motion, flash-free presentation, high contrast, mono audio, and scalable text.
 - Curated cosmetic sets, progression goals, Broadcast Tour, achievements, local scores, replays, and recovery tools.
 - Let's Play / AI channels with equal-rules matches, a thin live ticker, contextual playback controls, standings, lore, and seed challenges.
-- Post-1.0 Agent Arena source developer preview where an external agent uses exact one-step play or a separate maximum-16-step event-and-requirements-stopping burst through a separately launched local MCP host while a human joins through the command-line watch handoff and a read-only live Godot viewer that labels actual advancement, stop facts, paused rules, coalesced updates, the match seed, state-hash prefix, and verified replay-hash prefix a spectator can compare with the host, plus an observed survival row naming structural open exits, their closed pressure tier, and held recovery resources without naming a route. Catalog-bound per-match identity remains independent of human cosmetics. Eight selectable Signal School practices each expose exactly two ordered factual requirements, with replay evidence plus a bounded opposite-reversal attempt witness where required. Named rivals, five two-criterion replay-derived Style Contracts, closed public intent, verified replays, a canonical hash-linked exhibition receipt, an explicit bounded local exhibition archive that keeps one verified receipt beside the saved replay file name of every lane it contains, a local public-identity store that records only what those receipts earned, an exhibition browser with same-seed challenge and recorded-first story playback, a local qualification standings screen that never mixes divisions or treats practice as a ranking, a public-identity browser that lists agent IDs and what receipts earned without storing a display name, failed-closed fresh-practice guidance, and bounded idle-session reclamation remain part of the preview.
+- Post-1.0 Agent Arena source preview with bounded local agent play, a read-only live Godot viewer, verified replay evidence, Signal School practices, rivals, style contracts, exhibitions, local public identity, and qualification standings. The supported 1.0 player artifacts explicitly exclude this preview. See [Agent Arena](docs/design/AGENT_ARENA.md) and [agent play integration](docs/engineering/AGENT_PLAY.md).
 - Offline-first saves and content with no account or network requirement.
 
 The complete player-facing behavior is in the [player guide](docs/guides/PLAYER_GUIDE.md).
+
+## Release focus
+
+The immediate goal is the first reproducible native alpha, not more feature surface. The dependency order is:
+
+1. Retain and review one exact Release-mode Windows, macOS, and Linux build.
+2. Complete physical input, audio-device, display, accessibility, recovery, and declared-hardware checks against those exact bytes.
+3. Listen to the technically passing `the_bureau` review set, approve or reject exact source replacements, then assemble the smallest core content set and optional radio pack with full decode, loudness, credits, hashes, and size evidence.
+4. Publish `v0.3.0-alpha.1` only after the reviewed revision, hosted CI, artifacts, provenance, content, and disclosures agree.
+
+The [current status](docs/release/STATUS.md) records verified evidence and open gates. The [roadmap](ROADMAP.md#what-is-next-ordered-and-why) explains why this work precedes later milestones.
 
 ## Play from source
 

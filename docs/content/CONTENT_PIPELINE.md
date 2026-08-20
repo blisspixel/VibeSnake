@@ -91,6 +91,24 @@ The current automatic checks verify:
 
 This is an inventory-integrity screen, not full media qualification. Approved audio also needs complete decode, duration, channel, sample-rate, loudness, true-peak, clipping, silence, repetition, and listening checks. Approved images need complete decode, color-space, dimension, readability, and visual review. Rights clearance remains a human and legal provenance decision represented by policy, never inferred from a filename or hash.
 
+Run the local full-decode and loudness admission pass with FFmpeg before listening review:
+
+```powershell
+python scripts/manual/analyze_radio_audio.py
+```
+
+The ignored `TestResults/radio-audio/radio_audio_qualification.json` output binds every result to the inventory, curation plan, source SHA-256, decoder versions, and operating-system class. It uses a provisional offline-radio admission band of `-18 LUFS` plus or minus `2 LU` and a `-1 dBTP` ceiling, based on EBU R 128 loudness and true-peak measurement with the EBU R 128 S2 interim streaming level. It reports normalization gain and predicted post-gain peak without rewriting any source byte. The campaign rehashes all 95 files after concurrent work, including files whose decoder failed, so a source mutation cannot hide behind a missing measurement row. A passing report is technical evidence only. It cannot change curation decisions, export eligibility, or human listening status.
+
+Prepare one complete station for listening only after the current full-library analysis exists:
+
+```powershell
+python scripts/manual/prepare_radio_review_copies.py --station the_bureau
+```
+
+The ignored `TestResults/radio-review/the_bureau/` set contains lossless FLAC copies and `review-copy-manifest.json`. The tool trims only measured edge silence, runs FFmpeg's file-oriented two-pass `loudnorm` filter at the provisional target, preserves source channels and sample rate, removes inherited metadata, fully decodes and remeasures the output, and rehashes the complete source set before atomically publishing the station. A post-normalization edge miss permits at most two additional measured corrections; each removes only the policy excess plus a 0.1-second margin and reruns both passes. See the official [FFmpeg loudnorm and silenceremove filter documentation](https://ffmpeg.org/ffmpeg-filters.html).
+
+The first local `the_bureau` campaign produces 12 of 12 technically passing copies totaling 219,715,853 bytes. Integrated loudness measures from `-18.0` to `-17.9 LUFS`, maximum true peak is `-1.5 dBTP`, maximum leading/trailing/internal silence is `1.9`/`0.0`/`4.152608` seconds, all twelve second passes remain linear, and a complete second campaign reproduces all twelve output SHA-256 values exactly. The manifest still fixes `releaseApproved`, `sourceReplacementApproved`, and `exportEligibilityChanged` to false and `humanListeningStatus` to pending. These copies are a listening queue, not source replacements or a pack.
+
 ## Commands
 
 Verify that policy, bytes, and the checked-in inventory agree:

@@ -2,18 +2,18 @@
 
 [Current status](STATUS.md) | [Roadmap](../../ROADMAP.md) | [Support](../../SUPPORT.md) | [Recovery](../guides/RECOVERY.md)
 
-Status: pre-candidate alpha issues as of 2026-08-11. Replace this page from the exact candidate review before release.
+Status: pre-candidate alpha issues as of 2026-08-20. Replace this page from the exact candidate review before release.
 
 ## Player-facing limitations
 
 - There is no versioned public native alpha or later release candidate yet. The root launchers run the native Godot source build; the optional Python player is a frozen behavior reference and does not contain every native feature.
-- No radio or optional-content pack is export eligible. The public source inventory contains candidates, but player artifacts must exclude them until manifest, provenance, media, listening, credit, and rights gates pass.
-- Hosted Windows x64, macOS Universal, and Linux x64 Debug exports pass automated outside-checkout qualification, and a Windows x64 Release export passes locally. A retained three-platform Release run, exact artifact review, signing, notarization, Linux runtime-baseline review, and storefront delivery are pending.
+- No radio or optional-content pack is export eligible. All 95 radio candidates fully decode without source changes, but zero pass the complete provisional loudness, true-peak, and silence policy as-is. Twelve lossless `the_bureau` review copies now pass that technical policy and reproduce byte-for-byte, but they remain ignored listening candidates with approval and export flags false. Player artifacts must exclude the source library until exact replacements pass listening review and regenerated manifests, provenance, credits, and rights evidence agree.
+- Hosted Windows x64, macOS Universal, and Linux x64 Debug exports pass automated outside-checkout qualification. The first clean three-platform Release dispatch passed Python and native rules, then every platform found the same `ExportRelease` compilation defect after the Agent Arena preview assembly was correctly removed. The fix and ordinary-CI regression gate are implemented, and the exact local Windows Release campaign passes export, packaged smoke, inspection, deterministic packaging, lifecycle, 100 fresh-profile launches, reliability, and fault evidence. A passing retained hosted three-platform rerun, exact cross-platform artifact review, signing, notarization, Linux runtime-baseline review, and storefront delivery remain pending.
 - Keyboard, mouse, D-pad, stick, Xbox-layout, and PlayStation-layout routes have automated coverage. Physical controller families, hot-plug combinations, pointer focus, and complete platform flows still need retained human evidence.
 - Accessibility settings and structural layout gates are implemented, but visible focus, readability, photosensitivity, physical input, and accessibility-user review remain open.
 - Performance evidence from shared headless runners is diagnostic only. Minimum and recommended hardware, target operating-system versions, both target resolutions, and long-session thermal and memory evidence are not yet published.
-- Procedural fallback cues are complete and rights-clear. Authored production music, SFX, loudness, mix, listening, speaker, headphone, and physical audio-device review remain open.
-- Public support, issue, and conduct intake routes are not yet open and tested. Private vulnerability reporting is enabled, but its end-to-end acknowledgement and response flow still needs a controlled test. Do not publish private or security-sensitive information in a public channel.
+- Procedural fallback cues are complete and rights-clear. Authored production music and SFX remediation, mix, listening, speaker, headphone, and physical audio-device review remain open.
+- Public support, issue, discussion, play-feedback, and enhancement intake is intentionally closed, and the matching GitHub features are disabled. Private vulnerability reporting is enabled, but its end-to-end acknowledgement and response flow still needs a controlled test. Do not publish private or security-sensitive information in a public channel.
 
 ## Qualification flakiness
 
