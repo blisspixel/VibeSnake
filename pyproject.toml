@@ -30,7 +30,7 @@ vibesnake = "vibesnake.__main__:main"
 [project.urls]
 Homepage = "https://github.com/blisspixel/VibeSnake"
 Documentation = "https://github.com/blisspixel/VibeSnake/tree/main/docs"
-Issues = "https://github.com/blisspixel/VibeSnake/issues"
+Support = "https://github.com/blisspixel/VibeSnake/blob/main/SUPPORT.md"
 Repository = "https://github.com/blisspixel/VibeSnake.git"
 
 [tool.setuptools.packages.find]

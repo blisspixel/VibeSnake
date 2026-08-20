@@ -15323,6 +15323,14 @@ public partial class Main : Node2D
 
         string Pseudo(string id, params ShellTextArgument[] arguments) =>
             ShellLocalization.Format(id, ShellLocale.Pseudo, arguments);
+        var runningAgentCandidateExits = Enum.GetValues<RulesDirection>().Length - 1;
+#if AGENT_ARENA_PREVIEW
+        if (runningAgentCandidateExits != AgentSurvivalStateV1.RunningCandidateExits)
+        {
+            throw new InvalidOperationException(
+                "Agent survival candidate exits drifted from the rules direction catalog.");
+        }
+#endif
         var longestOperation = Pseudo(
             "agent-arena.operation.burst",
             ShellTextArgument.From("steps", 16),
@@ -15387,8 +15395,8 @@ public partial class Main : Node2D
             ("survival",
                 Pseudo(
                 "agent-arena.survival",
-                ShellTextArgument.From("open", AgentSurvivalStateV1.RunningCandidateExits),
-                ShellTextArgument.From("candidate", AgentSurvivalStateV1.RunningCandidateExits),
+                ShellTextArgument.From("open", runningAgentCandidateExits),
+                ShellTextArgument.From("candidate", runningAgentCandidateExits),
                 ShellTextArgument.From("pressure", longestPressure),
                 ShellTextArgument.From("shield", longestRecoveryValue),
                 ShellTextArgument.From("phase", longestRecoveryValue),
@@ -15618,10 +15626,10 @@ public partial class Main : Node2D
                     ShellLocale.English,
                     ShellTextArgument.From(
                         "open",
-                        AgentSurvivalStateV1.RunningCandidateExits),
+                        runningAgentCandidateExits),
                     ShellTextArgument.From(
                         "candidate",
-                        AgentSurvivalStateV1.RunningCandidateExits),
+                        runningAgentCandidateExits),
                     ShellTextArgument.From("pressure", LongestEnglish(pressureCopyIds)),
                     ShellTextArgument.From("shield", longestEnglishRecoveryValue),
                     ShellTextArgument.From("phase", longestEnglishRecoveryValue),

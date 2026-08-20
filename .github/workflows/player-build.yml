@@ -90,7 +90,10 @@ jobs:
             dist/VibeSnake-player-source.zip
             dist/SHA256SUMS.txt
           if-no-files-found: error
-          retention-days: 14
+          # This is an inter-job handoff. The publish job copies the same bytes
+          # into the floating release, so a long-lived duplicate only consumes
+          # Actions artifact storage.
+          retention-days: 1
 
   publish:
     name: Publish qualified source build
