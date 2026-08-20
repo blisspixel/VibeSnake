@@ -72,6 +72,7 @@ HOST_CONTRACT_PATHS = (
     Path("native/tools/VibeSnake.AgentHost/AgentViewerServer.cs"),
     Path("native/tools/VibeSnake.AgentHost/AgentToolArgumentFilter.cs"),
     Path("native/tools/VibeSnake.AgentHost/AgentHostContracts.cs"),
+    Path("native/tools/VibeSnake.AgentHost/AgentHostDataPaths.cs"),
     Path("native/tools/VibeSnake.AgentHost/AgentResources.cs"),
     Path("native/tools/VibeSnake.AgentHost/AgentSessionRegistry.cs"),
     Path("native/tools/VibeSnake.AgentHost/McpAgentTools.cs"),
