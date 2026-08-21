@@ -477,9 +477,16 @@ public static class RepositoryCheckCommand
     {
         ArgumentNullException.ThrowIfNull(standardOutput);
         ArgumentNullException.ThrowIfNull(standardError);
+        if (arguments is not null
+            && arguments.Count > 0
+            && arguments[0] == "freeze-baseline")
+        {
+            return RunFreezeBaseline(arguments, standardOutput, standardError);
+        }
+
         if (arguments is null
             || arguments.Count is < 1 or > 2
-            || arguments[0] is not ("all" or "docs" or "version"))
+            || arguments[0] is not ("all" or "docs" or "freeze" or "source" or "version"))
         {
             WriteUsage(standardError);
             return 2;
@@ -500,11 +507,15 @@ public static class RepositoryCheckCommand
         var results = arguments[0] switch
         {
             "docs" => new[] { DocumentationCheck.Inspect(repositoryRoot) },
+            "freeze" => new[] { CandidateFreezeCheck.Inspect(repositoryRoot) },
+            "source" => new[] { SourcePolicyCheck.Inspect(repositoryRoot) },
             "version" => new[] { ProductVersionCheck.Inspect(repositoryRoot) },
             _ => new[]
             {
                 ProductVersionCheck.Inspect(repositoryRoot),
                 DocumentationCheck.Inspect(repositoryRoot),
+                CandidateFreezeCheck.Inspect(repositoryRoot),
+                SourcePolicyCheck.Inspect(repositoryRoot),
             },
         };
 
@@ -528,7 +539,67 @@ public static class RepositoryCheckCommand
         return passed ? 0 : 1;
     }
 
-    private static void WriteUsage(TextWriter writer) =>
-        writer.WriteLine("Usage: RepositoryChecks <all|docs|version> [repository-root]");
+    private static int RunFreezeBaseline(
+        IReadOnlyList<string> arguments,
+        TextWriter standardOutput,
+        TextWriter standardError)
+    {
+        if (arguments.Count is < 3 or > 5)
+        {
+            WriteUsage(standardError);
+            return 2;
+        }
+
+        string repositoryRoot;
+        string? outputPath = null;
+        try
+        {
+            repositoryRoot = Path.GetFullPath(arguments.Count >= 4 ? arguments[3] : ".");
+            if (arguments.Count == 5)
+            {
+                outputPath = Path.GetFullPath(
+                    Path.IsPathRooted(arguments[4])
+                        ? arguments[4]
+                        : Path.Combine(repositoryRoot, arguments[4]));
+            }
+        }
+        catch (Exception exception) when (
+            exception is ArgumentException or NotSupportedException)
+        {
+            standardError.WriteLine("Repository root or baseline output is invalid.");
+            return 2;
+        }
+
+        try
+        {
+            var count = CandidateFreezeCheck.WriteBaseline(
+                repositoryRoot,
+                arguments[1],
+                arguments[2],
+                outputPath);
+            standardOutput.WriteLine(
+                $"Prepared candidate freeze baseline with {count} files.");
+            return 0;
+        }
+        catch (Exception exception) when (
+            exception is IOException
+                or UnauthorizedAccessException
+                or InvalidDataException)
+        {
+            standardError.WriteLine(
+                "Candidate freeze baseline preparation failed: "
+                + exception.Message.Replace('\r', ' ').Replace('\n', ' ').Trim());
+            return 1;
+        }
+    }
+
+    private static void WriteUsage(TextWriter writer)
+    {
+        writer.WriteLine(
+            "Usage: RepositoryChecks <all|docs|freeze|source|version> [repository-root]");
+        writer.WriteLine(
+            "       RepositoryChecks freeze-baseline <revision> <generated-utc> "
+            + "[repository-root] [output]");
+    }
 
 }

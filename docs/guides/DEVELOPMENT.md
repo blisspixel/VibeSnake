@@ -121,9 +121,8 @@ python -m pip_audit --strict --disable-pip --require-hashes --requirement requir
 python -m pip_audit --strict --disable-pip --require-hashes --requirement requirements-runtime.lock
 python -m ruff format --check src tests scripts
 python -m ruff check src tests scripts
-python scripts/check_source_policy.py
+dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- source .
 dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- all .
-python scripts/check_candidate_freeze.py
 python scripts/validate_agent_plugin.py integrations/vibesnake-agent-plugin
 python scripts/check_agent_interop.py
 python scripts/generate_agent_knowledge.py --check

@@ -38,7 +38,7 @@ src/vibesnake/
 |-- input/                  Keyboard, mouse, and gamepad routing
 |-- powerups/               Base class, manager, and nine types
 |-- content/                Asset inventory, pack validation, compatibility, and release blockers
-|-- qa/                     Simulation, invariants, reports, dependency lock, source policy, and CLI
+|-- qa/                     Simulation, invariants, reports, dependency lock, shared fixtures, and CLI
 |-- rendering/              HUD, menus, adaptive display, theme, backgrounds, and effects
 `-- utils/                  Logging setup
 ```
@@ -88,7 +88,7 @@ native/
 |-- src/VibeSnake.AgentPlay/  Transport-neutral step and bounded-burst external-agent sessions, public observations, experience contracts, and verified replay ownership
 |-- src/VibeSnake.AgentViewer/  Read-only same-user pipe client and public snapshot projection
 |-- tools/VibeSnake.AgentHost/  Local stateless-era stdio MCP adapter, capacity and idle-bounded session registry, replay save, and read-only viewer server
-|-- tools/RepositoryChecks/  Native documentation and product-version qualification command
+|-- tools/RepositoryChecks/  Native documentation, product-version, and source-policy qualification command
 |-- tools/ValidateCreatorContent/  Data-only personality and canonical pack-set validation command
 `-- tests/VibeSnake.Rules.Tests/  xUnit parity, restore, replay, storage, and generated state-machine contracts
 
@@ -110,7 +110,6 @@ Progression-specific native ownership:
 
 ```text
 scripts/
-|-- check_source_policy.py      Enforce executable anti-slop rules
 |-- content_inventory.py        Generate or verify the source asset inventory
 |-- content_packs.py            Qualify canonical core and optional pack manifests
 |-- assemble_radio_pack.py      Build one approved deterministic radio archive

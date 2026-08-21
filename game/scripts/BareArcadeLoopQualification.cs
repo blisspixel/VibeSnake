@@ -102,20 +102,16 @@ internal static class BareArcadeLoopQualification
     internal const double MaximumSmokeFrameMilliseconds = 100.0;
     internal const int RequiredWarmupFrameSamples = 30;
     internal const int RequiredLiveFrameSamples = 40;
-    internal const int MaximumSharedHostMeasurementAttempts = 2;
+    internal const int RequiredSharedHostReplicateCount = 3;
 
-    public static bool ShouldRetrySharedHostTail(
-        PresentationFrameSummary summary,
-        int completedAttemptCount)
+    public static bool RequiresReplicatedSharedHostMeasurement(
+        PresentationFrameSummary summary)
     {
-        ArgumentOutOfRangeException.ThrowIfLessThan(completedAttemptCount, 1);
-
-        return completedAttemptCount < MaximumSharedHostMeasurementAttempts
-            && summary.SampleCount >= RequiredLiveFrameSamples
-            && summary.AverageMilliseconds
-                <= PerformanceQualification.SharedHostMaximumAverageMilliseconds
-            && summary.P95Milliseconds > MaximumSmokeP95Milliseconds
-            && summary.MaxMilliseconds <= MaximumSmokeFrameMilliseconds;
+        return summary.SampleCount >= RequiredLiveFrameSamples
+            && (summary.AverageMilliseconds
+                    > PerformanceQualification.SharedHostMaximumAverageMilliseconds
+                || summary.P95Milliseconds > MaximumSmokeP95Milliseconds
+                || summary.MaxMilliseconds > MaximumSmokeFrameMilliseconds);
     }
 
     public static BareArcadeLoopQualificationEvidence Run(

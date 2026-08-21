@@ -2,7 +2,7 @@
 
 [Current status](STATUS.md) | [Roadmap](../../ROADMAP.md) | [Support](../../SUPPORT.md) | [Recovery](../guides/RECOVERY.md)
 
-Status: pre-candidate alpha issues as of 2026-08-20. Replace this page from the exact candidate review before release.
+Status: pre-candidate alpha issues as of 2026-08-21. Replace this page from the exact candidate review before release.
 
 ## Player-facing limitations
 
@@ -17,7 +17,7 @@ Status: pre-candidate alpha issues as of 2026-08-20. Replace this page from the 
 
 ## Qualification flakiness
 
-- The `bare-arcade-loop` frame-pacing budget measures real p95 and maximum frame milliseconds on hosted runners. It has failed intermittently on `macos-latest` and then passed for the same commit on an unchanged concurrent run or a fresh-runner retry. A shared-runner stall can therefore exceed the 60 ms p95 or 100 ms maximum budget without a product regression. The budget remains deliberately unchanged because it guards a real player-facing promise. One bounded tail-only resample occurs inside the smoke, and any final failure names the exact budget and measured values. Consider a runner-aware measurement design if another recurrence blocks clean qualification; do not silently loosen the product budget.
+- The `bare-arcade-loop` frame-pacing budget measures real average, p95, and maximum frame milliseconds on hosted runners. One unchanged `macos-latest` run passed at 48.43 ms p95 while three others recorded 64.27 ms, 60.80 ms, and 62.11 ms. A first-envelope miss now captures three identical bursts and uses the per-frame minimum to remove one-sided scheduler delay before applying the unchanged 25 ms average, 60 ms p95, and 100 ms maximum gates. Every raw burst summary is retained, and a regression present across replicates remains fatal. Shared-runner evidence still cannot replace named-hardware acceptance.
 
 ## Data safety
 
