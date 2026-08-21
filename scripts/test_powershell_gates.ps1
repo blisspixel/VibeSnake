@@ -346,7 +346,11 @@ try {
         }
     }
     foreach ($requiredPresentationBudgetFragment in @(
+        '($presentationFrameEvidence.measurementPolicy -ne "bounded-pointwise-minimum-v1")',
+        '($presentationFrameEvidence.requiredReplicateCount -ne 3)',
+        '($presentationFrameEvidence.attemptCount -notin @(1, 3))',
         '($presentationFrameEvidence.sampleCount -lt 40)',
+        '($presentationFrameEvidence.averageMilliseconds -gt 25.0)',
         '($presentationFrameEvidence.p95Milliseconds -gt 60.0)',
         '($presentationFrameEvidence.maxMilliseconds -gt 100.0)'
     )) {

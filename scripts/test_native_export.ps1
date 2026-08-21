@@ -672,6 +672,10 @@ try {
         ConvertFrom-Json
     if (($presentationFrameEvidence.schemaVersion -ne 1) -or
         ($presentationFrameEvidence.kind -ne "presentation-frame-evidence-v1") -or
+        ($presentationFrameEvidence.measurementPolicy -ne "bounded-pointwise-minimum-v1") -or
+        ($presentationFrameEvidence.requiredReplicateCount -ne 3) -or
+        ($presentationFrameEvidence.attemptCount -notin @(1, 3)) -or
+        (@($presentationFrameEvidence.attempts).Count -ne $presentationFrameEvidence.attemptCount) -or
         ($presentationFrameEvidence.sampleCount -lt 40) -or
         ($presentationFrameEvidence.averageMilliseconds -gt 25.0) -or
         ($presentationFrameEvidence.p50Milliseconds -gt
@@ -683,6 +687,30 @@ try {
         ($presentationFrameEvidence.p95Milliseconds -gt 60.0) -or
         ($presentationFrameEvidence.maxMilliseconds -gt 100.0)) {
         throw "The exported player presentation frame evidence failed its closed summary gate."
+    }
+    foreach ($attempt in @($presentationFrameEvidence.attempts)) {
+        if (($attempt.attempt -lt 1) -or
+            ($attempt.attempt -gt $presentationFrameEvidence.attemptCount) -or
+            ($attempt.sampleCount -ne 40) -or
+            ($attempt.averageMilliseconds -le 0.0) -or
+            ($attempt.p50Milliseconds -gt $attempt.p95Milliseconds) -or
+            ($attempt.p95Milliseconds -gt $attempt.p99Milliseconds) -or
+            ($attempt.p99Milliseconds -gt $attempt.maxMilliseconds)) {
+            throw "The exported player presentation replicate evidence is malformed."
+        }
+    }
+    if ($presentationFrameEvidence.attemptCount -eq 3) {
+        $minimumAttemptAverage = (@($presentationFrameEvidence.attempts) |
+            Measure-Object -Property averageMilliseconds -Minimum).Minimum
+        $minimumAttemptP95 = (@($presentationFrameEvidence.attempts) |
+            Measure-Object -Property p95Milliseconds -Minimum).Minimum
+        $minimumAttemptMaximum = (@($presentationFrameEvidence.attempts) |
+            Measure-Object -Property maxMilliseconds -Minimum).Minimum
+        if (($presentationFrameEvidence.averageMilliseconds -gt $minimumAttemptAverage) -or
+            ($presentationFrameEvidence.p95Milliseconds -gt $minimumAttemptP95) -or
+            ($presentationFrameEvidence.maxMilliseconds -gt $minimumAttemptMaximum)) {
+            throw "The exported player presentation replicate reduction is not pointwise-minimum evidence."
+        }
     }
 
     $bareLoopEvidencePath = Join-Path `

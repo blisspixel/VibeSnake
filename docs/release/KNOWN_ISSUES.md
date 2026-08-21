@@ -17,7 +17,7 @@ Status: pre-candidate alpha issues as of 2026-08-21. Replace this page from the 
 
 ## Qualification flakiness
 
-- The `bare-arcade-loop` frame-pacing budget measures real p95 and maximum frame milliseconds on hosted runners. One unchanged `macos-latest` run passed at 48.43 ms p95 while two others recorded 64.27 ms and 60.80 ms below the 100 ms hard-frame limit. A complete p95 miss that preserves that hard limit now receives one fresh focused burst. The final burst must pass the unchanged 60 ms p95 and 100 ms maximum budgets; incomplete evidence, a hard-frame violation, or a repeated miss remains fatal. Shared-runner evidence still cannot replace named-hardware acceptance.
+- The `bare-arcade-loop` frame-pacing budget measures real average, p95, and maximum frame milliseconds on hosted runners. One unchanged `macos-latest` run passed at 48.43 ms p95 while three others recorded 64.27 ms, 60.80 ms, and 62.11 ms. A first-envelope miss now captures three identical bursts and uses the per-frame minimum to remove one-sided scheduler delay before applying the unchanged 25 ms average, 60 ms p95, and 100 ms maximum gates. Every raw burst summary is retained, and a regression present across replicates remains fatal. Shared-runner evidence still cannot replace named-hardware acceptance.
 
 ## Data safety
 

@@ -39,6 +39,66 @@ internal sealed class PresentationFrameSampler
             MaxMilliseconds: ordered[^1]);
     }
 
+    public double[] SnapshotSamples() => [.. _frameMilliseconds];
+
+    /// <summary>
+    /// Estimates the intrinsic frame distribution from identical replicates.
+    /// Shared-host scheduling can add elapsed time but cannot reduce it, so the
+    /// pointwise minimum removes only one-sided external delay. A rendering cost
+    /// present at the same workload position in every replicate remains.
+    /// </summary>
+    public static PresentationFrameSummary SummarizePointwiseMinimum(
+        IReadOnlyList<IReadOnlyList<double>> replicates)
+    {
+        ArgumentNullException.ThrowIfNull(replicates);
+        if (replicates.Count == 0)
+        {
+            throw new ArgumentException(
+                "At least one presentation replicate is required.",
+                nameof(replicates));
+        }
+
+        var sampleCount = replicates[0]?.Count
+            ?? throw new ArgumentException(
+                "Presentation replicates cannot contain null samples.",
+                nameof(replicates));
+        if (sampleCount == 0)
+        {
+            throw new ArgumentException(
+                "Presentation replicates cannot be empty.",
+                nameof(replicates));
+        }
+
+        var reduced = new PresentationFrameSampler();
+        for (var sampleIndex = 0; sampleIndex < sampleCount; sampleIndex++)
+        {
+            var minimum = double.PositiveInfinity;
+            foreach (var replicate in replicates)
+            {
+                if (replicate is null || replicate.Count != sampleCount)
+                {
+                    throw new ArgumentException(
+                        "Presentation replicates must have identical sample counts.",
+                        nameof(replicates));
+                }
+
+                var sample = replicate[sampleIndex];
+                if (!double.IsFinite(sample) || sample < 0.0)
+                {
+                    throw new ArgumentOutOfRangeException(
+                        nameof(replicates),
+                        "Presentation replicate samples must be finite and non-negative.");
+                }
+
+                minimum = Math.Min(minimum, sample);
+            }
+
+            reduced.RecordFrameMilliseconds(minimum);
+        }
+
+        return reduced.Summarize();
+    }
+
     private static double Percentile(double[] orderedAscending, double percentile)
     {
         if (orderedAscending.Length == 1)
@@ -71,3 +131,7 @@ internal readonly record struct PresentationFrameSummary(
     double P95Milliseconds,
     double P99Milliseconds,
     double MaxMilliseconds);
+
+internal sealed record PresentationFrameBurst(
+    IReadOnlyList<double> Samples,
+    PresentationFrameSummary Summary);
