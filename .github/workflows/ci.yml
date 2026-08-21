@@ -56,11 +56,6 @@ jobs:
           python -m pip install --require-hashes --only-binary=:all: -r requirements-ci.lock
           python -m pip install --no-deps --no-build-isolation .
 
-      - name: Verify dependency lock freshness
-        run: |
-          python scripts/lock_python_dependencies.py
-          python scripts/lock_python_dependencies.py --profile runtime
-
       - name: Lint
         run: python -m ruff check src tests scripts
 

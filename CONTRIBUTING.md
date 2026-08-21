@@ -35,8 +35,7 @@ A change is complete when:
 Run the local CI equivalent before handing off a change:
 
 ```powershell
-python scripts/lock_python_dependencies.py
-python scripts/lock_python_dependencies.py --profile runtime
+dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- locks .
 python -m pip_audit --strict --disable-pip --require-hashes --requirement requirements-ci.lock
 python -m pip_audit --strict --disable-pip --require-hashes --requirement requirements-runtime.lock
 python -m ruff format --check src tests scripts

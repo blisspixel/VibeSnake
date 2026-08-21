@@ -88,7 +88,7 @@ native/
 |-- src/VibeSnake.AgentPlay/  Transport-neutral step and bounded-burst external-agent sessions, public observations, experience contracts, and verified replay ownership
 |-- src/VibeSnake.AgentViewer/  Read-only same-user pipe client and public snapshot projection
 |-- tools/VibeSnake.AgentHost/  Local stateless-era stdio MCP adapter, capacity and idle-bounded session registry, replay save, and read-only viewer server
-|-- tools/RepositoryChecks/  Native documentation, product-version, and source-policy qualification command
+|-- tools/RepositoryChecks/  Native repository-policy and dependency-lock qualification command
 |-- tools/ValidateCreatorContent/  Data-only personality and canonical pack-set validation command
 `-- tests/VibeSnake.Rules.Tests/  xUnit parity, restore, replay, storage, and generated state-machine contracts
 
@@ -114,7 +114,6 @@ scripts/
 |-- content_packs.py            Qualify canonical core and optional pack manifests
 |-- assemble_radio_pack.py      Build one approved deterministic radio archive
 |-- assemble_unsigned_preview.py  Join the qualified players, provenance, and radio pack
-|-- lock_python_dependencies.py Verify or regenerate the hash-locked Python graph
 |-- install_player.ps1/.sh      Legacy frozen-Python reference bootstrap
 |-- assert_godot_toolchain.ps1  Checksum-bound pinned editor-build gate
 |-- native_artifact_policy.ps1  Shared prohibited native-bundle path rules

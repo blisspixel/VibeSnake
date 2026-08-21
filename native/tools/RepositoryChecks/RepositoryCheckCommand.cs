@@ -473,7 +473,24 @@ public static class RepositoryCheckCommand
     public static int Run(
         IReadOnlyList<string>? arguments,
         TextWriter standardOutput,
-        TextWriter standardError)
+        TextWriter standardError) =>
+        RunCore(arguments, standardOutput, standardError, resolver: null);
+
+    internal static int Run(
+        IReadOnlyList<string>? arguments,
+        TextWriter standardOutput,
+        TextWriter standardError,
+        IDependencyResolverProcess resolver)
+    {
+        ArgumentNullException.ThrowIfNull(resolver);
+        return RunCore(arguments, standardOutput, standardError, resolver);
+    }
+
+    private static int RunCore(
+        IReadOnlyList<string>? arguments,
+        TextWriter standardOutput,
+        TextWriter standardError,
+        IDependencyResolverProcess? resolver)
     {
         ArgumentNullException.ThrowIfNull(standardOutput);
         ArgumentNullException.ThrowIfNull(standardError);
@@ -484,9 +501,16 @@ public static class RepositoryCheckCommand
             return RunFreezeBaseline(arguments, standardOutput, standardError);
         }
 
+        if (arguments is not null
+            && arguments.Count > 0
+            && arguments[0] == "lock-write")
+        {
+            return RunLockWrite(arguments, standardOutput, standardError, resolver);
+        }
+
         if (arguments is null
             || arguments.Count is < 1 or > 2
-            || arguments[0] is not ("all" or "docs" or "freeze" or "source" or "version"))
+            || arguments[0] is not ("all" or "docs" or "freeze" or "locks" or "source" or "version"))
         {
             WriteUsage(standardError);
             return 2;
@@ -508,6 +532,7 @@ public static class RepositoryCheckCommand
         {
             "docs" => new[] { DocumentationCheck.Inspect(repositoryRoot) },
             "freeze" => new[] { CandidateFreezeCheck.Inspect(repositoryRoot) },
+            "locks" => new[] { DependencyLockCheck.Inspect(repositoryRoot) },
             "source" => new[] { SourcePolicyCheck.Inspect(repositoryRoot) },
             "version" => new[] { ProductVersionCheck.Inspect(repositoryRoot) },
             _ => new[]
@@ -515,6 +540,7 @@ public static class RepositoryCheckCommand
                 ProductVersionCheck.Inspect(repositoryRoot),
                 DocumentationCheck.Inspect(repositoryRoot),
                 CandidateFreezeCheck.Inspect(repositoryRoot),
+                DependencyLockCheck.Inspect(repositoryRoot),
                 SourcePolicyCheck.Inspect(repositoryRoot),
             },
         };
@@ -537,6 +563,52 @@ public static class RepositoryCheckCommand
         }
 
         return passed ? 0 : 1;
+    }
+
+    private static int RunLockWrite(
+        IReadOnlyList<string> arguments,
+        TextWriter standardOutput,
+        TextWriter standardError,
+        IDependencyResolverProcess? resolver)
+    {
+        if (arguments.Count is < 2 or > 3
+            || arguments[1] is not ("ci" or "runtime"))
+        {
+            WriteUsage(standardError);
+            return 2;
+        }
+
+        string repositoryRoot;
+        try
+        {
+            repositoryRoot = Path.GetFullPath(arguments.Count == 3 ? arguments[2] : ".");
+        }
+        catch (Exception exception) when (
+            exception is ArgumentException or NotSupportedException)
+        {
+            standardError.WriteLine("Repository root is invalid.");
+            return 2;
+        }
+
+        try
+        {
+            var count = resolver is null
+                ? DependencyLockCheck.WriteProfile(repositoryRoot, arguments[1])
+                : DependencyLockCheck.WriteProfile(repositoryRoot, arguments[1], resolver);
+            standardOutput.WriteLine(
+                $"Python {arguments[1]} dependency lock written: packages={count}");
+            return 0;
+        }
+        catch (Exception exception) when (
+            exception is IOException
+                or UnauthorizedAccessException
+                or InvalidDataException)
+        {
+            standardError.WriteLine(
+                "Dependency lock generation failed: "
+                + exception.Message.Replace('\r', ' ').Replace('\n', ' ').Trim());
+            return 1;
+        }
     }
 
     private static int RunFreezeBaseline(
@@ -596,10 +668,12 @@ public static class RepositoryCheckCommand
     private static void WriteUsage(TextWriter writer)
     {
         writer.WriteLine(
-            "Usage: RepositoryChecks <all|docs|freeze|source|version> [repository-root]");
+            "Usage: RepositoryChecks <all|docs|freeze|locks|source|version> [repository-root]");
         writer.WriteLine(
             "       RepositoryChecks freeze-baseline <revision> <generated-utc> "
             + "[repository-root] [output]");
+        writer.WriteLine(
+            "       RepositoryChecks lock-write <ci|runtime> [repository-root]");
     }
 
 }

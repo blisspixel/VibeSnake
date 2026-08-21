@@ -2,6 +2,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using System.Text.RegularExpressions;
 using RepositoryChecks;
 
 namespace VibeSnake.Rules.Tests;
@@ -960,6 +961,371 @@ public sealed class RepositoryChecksTests
     }
 
     [Fact]
+    public void Dependency_lock_digest_is_path_content_order_sensitive_and_contained()
+    {
+        WithTemporaryDirectory(root =>
+        {
+            WriteFile(root, "requirements.txt", "runtime>=1\n");
+            WriteFile(root, "requirements-dev.txt", "-r requirements.txt\ntest>=2\n");
+            List<string> inputs = ["requirements.txt", "requirements-dev.txt"];
+
+            var original = DependencyLockCheck.ComputeInputDigest(root, inputs);
+            WriteFile(root, "requirements-dev.txt", "-r requirements.txt\ntest>=3\n");
+
+            Assert.NotEqual(original, DependencyLockCheck.ComputeInputDigest(root, inputs));
+            Assert.NotEqual(
+                original,
+                DependencyLockCheck.ComputeInputDigest(root, inputs.AsEnumerable().Reverse().ToArray()));
+            Assert.Throws<InvalidDataException>(
+                () => DependencyLockCheck.ComputeInputDigest(root, ["../outside.txt"]));
+            Assert.Throws<InvalidDataException>(
+                () => DependencyLockCheck.ComputeInputDigest(root, ["missing.txt"]));
+            Assert.Throws<InvalidDataException>(
+                () => DependencyLockCheck.ComputeInputDigest(root, [Path.GetFullPath("absolute.txt")]));
+        });
+    }
+
+    [Fact]
+    public void Dependency_lock_validation_requires_current_lf_pinned_hashed_content()
+    {
+        WithTemporaryDirectory(root =>
+        {
+            WriteDependencyLockInputs(root);
+            var valid = RenderDependencyLock(root, "ci");
+
+            Assert.Equal(2, DependencyLockCheck.ValidateLockText(valid, root));
+
+            var failures = new (string Source, string Message)[]
+            {
+                (valid.TrimEnd('\n'), "end with a newline"),
+                (valid.Replace("\n", "\r\n", StringComparison.Ordinal), "LF line endings"),
+                (valid.Replace("# Generator: RepositoryChecks", "# Generator: unknown", StringComparison.Ordinal), "generator header"),
+                (Regex.Replace(valid, "# Inputs-SHA256: [a-f0-9]{64}", "# Inputs-SHA256: " + new string('0', 64)), "stale"),
+                (valid.Replace("runtime==1.2.3", "runtime>=1.2.3", StringComparison.Ordinal), "exactly pinned"),
+                (valid.Replace("    --hash=sha256:" + new string('a', 64) + "\n", string.Empty, StringComparison.Ordinal), "no SHA-256 hash"),
+                (valid.Replace(new string('a', 64), new string('A', 64), StringComparison.Ordinal), "no SHA-256 hash"),
+            };
+            foreach (var (source, message) in failures)
+            {
+                var exception = Assert.Throws<InvalidDataException>(
+                    () => DependencyLockCheck.ValidateLockText(source, root));
+                Assert.Contains(message, exception.Message, StringComparison.Ordinal);
+            }
+
+            var headerOnly = valid[..valid.IndexOf("runtime==", StringComparison.Ordinal)];
+            var empty = Assert.Throws<InvalidDataException>(
+                () => DependencyLockCheck.ValidateLockText(headerOnly, root));
+            Assert.Contains("no requirements", empty.Message, StringComparison.Ordinal);
+            Assert.Throws<InvalidDataException>(
+                () => DependencyLockCheck.ValidateLockText(valid, root, "unknown"));
+        });
+    }
+
+    [Fact]
+    public void Dependency_lock_rendering_removes_uv_header_and_normalizes_crlf()
+    {
+        WithTemporaryDirectory(root =>
+        {
+            WriteDependencyLockInputs(root);
+            var digest = DependencyLockCheck.ComputeInputDigest(
+                root,
+                ["pyproject.toml", "requirements.txt", "requirements-dev.txt"]);
+            var raw = "# uv header\r\n\r\nruntime==1.2.3 \\\r\n"
+                + $"    --hash=sha256:{new string('a', 64)}\r\n";
+
+            var rendered = DependencyLockCheck.RenderGeneratedLock(raw, digest, "ci");
+
+            Assert.DoesNotContain("uv header", rendered, StringComparison.Ordinal);
+            Assert.DoesNotContain('\r', rendered);
+            Assert.StartsWith("# Generator: RepositoryChecks\n", rendered, StringComparison.Ordinal);
+            Assert.Equal(1, DependencyLockCheck.ValidateLockText(rendered, root));
+
+            Assert.Throws<InvalidDataException>(
+                () => DependencyLockCheck.RenderGeneratedLock("# comments only\n", digest, "ci"));
+            Assert.Throws<InvalidDataException>(
+                () => DependencyLockCheck.RenderGeneratedLock("package==1\rbroken\n", digest, "ci"));
+        });
+    }
+
+    [Fact]
+    public void Dependency_lock_inspection_reports_profiles_independently_and_strict_utf8()
+    {
+        WithTemporaryDirectory(root =>
+        {
+            WriteDependencyLockFixture(root);
+
+            var valid = DependencyLockCheck.Inspect(root);
+
+            Assert.True(valid.Passed, string.Join(Environment.NewLine, valid.Failures));
+            Assert.Equal(
+                "Python dependency locks verified: ci packages=2, runtime packages=2",
+                valid.SuccessMessage);
+
+            File.WriteAllBytes(Path.Combine(root, "requirements-ci.lock"), [0xff]);
+            File.Delete(Path.Combine(root, "requirements-runtime.lock"));
+            var invalid = DependencyLockCheck.Inspect(root);
+            Assert.False(invalid.Passed);
+            Assert.Equal(2, invalid.Failures.Count);
+            Assert.StartsWith("ci: dependency lock is unreadable", invalid.Failures[0], StringComparison.Ordinal);
+            Assert.StartsWith("runtime: dependency lock is unreadable", invalid.Failures[1], StringComparison.Ordinal);
+        });
+    }
+
+    [Fact]
+    public void Dependency_lock_generation_uses_exact_contract_and_atomic_replacement()
+    {
+        WithTemporaryDirectory(root =>
+        {
+            WriteDependencyLockInputs(root);
+            WriteFile(root, "requirements-ci.lock", "old\n");
+            var resolver = new FakeDependencyResolverProcess();
+
+            var count = DependencyLockCheck.WriteProfile(root, "ci", resolver);
+
+            Assert.Equal(2, count);
+            Assert.Equal(2, resolver.Calls.Count);
+            Assert.Equal(["--version"], resolver.Calls[0].Arguments);
+            Assert.Equal(TimeSpan.FromSeconds(10), resolver.Calls[0].Timeout);
+            Assert.Equal(
+                [
+                    "pip",
+                    "compile",
+                    "requirements-dev.txt",
+                    "--universal",
+                    "--python-version",
+                    "3.11",
+                    "--generate-hashes",
+                    "--output-file",
+                ],
+                resolver.Calls[1].Arguments[..^1]);
+            Assert.Equal(TimeSpan.FromSeconds(180), resolver.Calls[1].Timeout);
+            Assert.Equal(
+                2,
+                DependencyLockCheck.CheckProfile(root, "ci"));
+            Assert.Empty(Directory.EnumerateFiles(root, ".requirements-ci.lock.*.tmp"));
+        });
+    }
+
+    [Theory]
+    [InlineData("wrong", 0, false, "uv 0.12.5\n", "is required")]
+    [InlineData("missing", 0, false, "", "no version reported")]
+    [InlineData("exit", 2, false, "uv 0.11.33\n", "unable to verify")]
+    [InlineData("timeout", 0, true, "uv 0.11.33\n", "timed out after 10 seconds")]
+    public void Dependency_lock_generation_rejects_unqualified_resolver_versions(
+        string standardError,
+        int exitCode,
+        bool timedOut,
+        string standardOutput,
+        string expectedMessage)
+    {
+        WithTemporaryDirectory(root =>
+        {
+            WriteDependencyLockInputs(root);
+            var resolver = new FakeDependencyResolverProcess
+            {
+                Results =
+                {
+                    new ResolverProcessResult(exitCode, standardOutput, standardError, timedOut),
+                },
+            };
+
+            var exception = Assert.Throws<InvalidDataException>(
+                () => DependencyLockCheck.WriteProfile(root, "ci", resolver));
+
+            Assert.Contains(expectedMessage, exception.Message, StringComparison.Ordinal);
+        });
+    }
+
+    [Theory]
+    [InlineData("warning: unstable", 0, false, "emitted a warning")]
+    [InlineData("resolution failed", 2, false, "resolution failed")]
+    [InlineData("", 0, true, "timed out after 180 seconds")]
+    public void Dependency_lock_generation_rejects_resolution_failures(
+        string standardError,
+        int exitCode,
+        bool timedOut,
+        string expectedMessage)
+    {
+        WithTemporaryDirectory(root =>
+        {
+            WriteDependencyLockInputs(root);
+            var resolver = new FakeDependencyResolverProcess
+            {
+                Results =
+                {
+                    new ResolverProcessResult(0, "uv 0.11.33\n", string.Empty),
+                    new ResolverProcessResult(exitCode, string.Empty, standardError, timedOut),
+                },
+            };
+
+            var exception = Assert.Throws<InvalidDataException>(
+                () => DependencyLockCheck.WriteProfile(root, "runtime", resolver));
+
+            Assert.Contains(expectedMessage, exception.Message, StringComparison.Ordinal);
+        });
+    }
+
+    [Fact]
+    public void Dependency_lock_generation_reports_resolver_and_output_failures()
+    {
+        WithTemporaryDirectory(root =>
+        {
+            WriteDependencyLockInputs(root);
+            var missing = new FakeDependencyResolverProcess
+            {
+                ResolveException = new FileNotFoundException("resolver absent"),
+            };
+            Assert.Contains(
+                "resolver absent",
+                Assert.Throws<InvalidDataException>(
+                    () => DependencyLockCheck.WriteProfile(root, "ci", missing)).Message,
+                StringComparison.Ordinal);
+
+            var launchFailure = new FakeDependencyResolverProcess
+            {
+                RunException = new IOException("launch failed"),
+            };
+            Assert.Contains(
+                "unable to verify uv version",
+                Assert.Throws<InvalidDataException>(
+                    () => DependencyLockCheck.WriteProfile(root, "ci", launchFailure)).Message,
+                StringComparison.Ordinal);
+
+            var empty = new FakeDependencyResolverProcess { RawLock = "# comments only\n" };
+            Assert.Contains(
+                "empty dependency lock",
+                Assert.Throws<InvalidDataException>(
+                    () => DependencyLockCheck.WriteProfile(root, "ci", empty)).Message,
+                StringComparison.Ordinal);
+
+            var invalidUtf8 = new FakeDependencyResolverProcess { WriteInvalidUtf8 = true };
+            Assert.Contains(
+                "generated dependency lock is unreadable",
+                Assert.Throws<InvalidDataException>(
+                    () => DependencyLockCheck.WriteProfile(root, "ci", invalidUtf8)).Message,
+                StringComparison.Ordinal);
+        });
+    }
+
+    [Fact]
+    public void System_dependency_resolver_prefers_checkout_then_path_and_fails_closed()
+    {
+        WithTemporaryDirectory(root =>
+        {
+            var localRelative = OperatingSystem.IsWindows()
+                ? ".venv/Scripts/uv.exe"
+                : ".venv/bin/uv";
+            WriteFile(root, localRelative, string.Empty);
+            var resolver = new SystemDependencyResolverProcess(string.Empty);
+
+            Assert.Equal(
+                Path.GetFullPath(Path.Combine(root, localRelative)),
+                resolver.ResolveExecutable(root));
+
+            File.Delete(Path.Combine(root, localRelative));
+            var pathRoot = Path.Combine(root, "path");
+            var executableName = OperatingSystem.IsWindows() ? "uv.exe" : "uv";
+            WriteFile(root, "path/" + executableName, string.Empty);
+            resolver = new SystemDependencyResolverProcess(pathRoot);
+            Assert.Equal(
+                Path.Combine(pathRoot, executableName),
+                resolver.ResolveExecutable(root));
+            resolver = new SystemDependencyResolverProcess(string.Empty);
+            Assert.Throws<FileNotFoundException>(() => resolver.ResolveExecutable(root));
+        });
+    }
+
+    [Fact]
+    public void System_dependency_resolver_process_captures_output_exit_and_timeout()
+    {
+        var resolver = new SystemDependencyResolverProcess();
+        string executable;
+        string[] outputArguments;
+        string[] timeoutArguments;
+        if (OperatingSystem.IsWindows())
+        {
+            executable = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.System),
+                "WindowsPowerShell",
+                "v1.0",
+                "powershell.exe");
+            outputArguments = ["-NoProfile", "-Command", "Write-Output output; [Console]::Error.WriteLine('error'); exit 7"];
+            timeoutArguments = ["-NoProfile", "-Command", "Start-Sleep -Seconds 5"];
+        }
+        else
+        {
+            executable = "/bin/sh";
+            outputArguments = ["-c", "printf output; printf error >&2; exit 7"];
+            timeoutArguments = ["-c", "sleep 5"];
+        }
+
+        var completed = resolver.Run(
+            executable,
+            outputArguments,
+            Directory.GetCurrentDirectory(),
+            TimeSpan.FromSeconds(5));
+        var timedOut = resolver.Run(
+            executable,
+            timeoutArguments,
+            Directory.GetCurrentDirectory(),
+            TimeSpan.FromMilliseconds(100));
+
+        Assert.Equal(7, completed.ExitCode);
+        Assert.Contains("output", completed.StandardOutput, StringComparison.Ordinal);
+        Assert.Contains("error", completed.StandardError, StringComparison.Ordinal);
+        Assert.False(completed.TimedOut);
+        Assert.True(timedOut.TimedOut);
+        Assert.ThrowsAny<Exception>(() => resolver.Run(
+            Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N")),
+            [],
+            Directory.GetCurrentDirectory(),
+            TimeSpan.FromSeconds(1)));
+    }
+
+    [Fact]
+    public void Dependency_lock_write_command_has_success_failure_and_usage_paths()
+    {
+        WithTemporaryDirectory(root =>
+        {
+            WriteDependencyLockInputs(root);
+            var output = new StringWriter();
+            var error = new StringWriter();
+
+            var success = RepositoryCheckCommand.Run(
+                ["lock-write", "ci", root],
+                output,
+                error,
+                new FakeDependencyResolverProcess());
+
+            Assert.Equal(0, success);
+            Assert.Equal(string.Empty, error.ToString());
+            Assert.Contains("packages=2", output.ToString(), StringComparison.Ordinal);
+
+            output = new StringWriter();
+            error = new StringWriter();
+            var failure = RepositoryCheckCommand.Run(
+                ["lock-write", "runtime", root],
+                output,
+                error,
+                new FakeDependencyResolverProcess { ResolveException = new IOException("unavailable") });
+            Assert.Equal(1, failure);
+            Assert.Equal(string.Empty, output.ToString());
+            Assert.Contains("generation failed", error.ToString(), StringComparison.OrdinalIgnoreCase);
+
+            output = new StringWriter();
+            error = new StringWriter();
+            Assert.Equal(
+                2,
+                RepositoryCheckCommand.Run(
+                    ["lock-write", "unknown", root],
+                    output,
+                    error,
+                    new FakeDependencyResolverProcess()));
+            Assert.Contains("lock-write <ci|runtime>", error.ToString(), StringComparison.Ordinal);
+        });
+    }
+
+    [Fact]
     public void Command_has_stable_usage_and_combined_success_paths()
     {
         var invalidOutput = new StringWriter();
@@ -969,13 +1335,14 @@ public sealed class RepositoryChecksTests
 
         Assert.Equal(2, invalidCode);
         Assert.Equal(string.Empty, invalidOutput.ToString());
-        Assert.Contains("RepositoryChecks <all|docs|freeze|source|version>", invalidError.ToString());
+        Assert.Contains("RepositoryChecks <all|docs|freeze|locks|source|version>", invalidError.ToString());
 
         WithTemporaryDirectory(root =>
         {
             WriteVersionFixture(root);
             WriteDocumentationFixture(root);
             WriteCandidateFreezeFixture(root);
+            WriteDependencyLockFixture(root);
             var output = new StringWriter();
             var error = new StringWriter();
 
@@ -986,6 +1353,7 @@ public sealed class RepositoryChecksTests
             Assert.Contains("Product versions aligned", output.ToString());
             Assert.Contains("Documentation link check passed", output.ToString());
             Assert.Contains("Candidate freeze policy check passed", output.ToString());
+            Assert.Contains("Python dependency locks verified", output.ToString());
             Assert.Contains("Source policy check passed", output.ToString());
         });
     }
@@ -993,6 +1361,7 @@ public sealed class RepositoryChecksTests
     [Theory]
     [InlineData("docs")]
     [InlineData("freeze")]
+    [InlineData("locks")]
     [InlineData("source")]
     [InlineData("version")]
     public void Command_runs_each_individual_check(string command)
@@ -1002,6 +1371,7 @@ public sealed class RepositoryChecksTests
             WriteVersionFixture(root);
             WriteDocumentationFixture(root);
             WriteCandidateFreezeFixture(root);
+            WriteDependencyLockFixture(root);
             var output = new StringWriter();
             var error = new StringWriter();
 
@@ -1022,6 +1392,7 @@ public sealed class RepositoryChecksTests
             ["all", ".", "extra"],
             ["unknown"],
             ["freeze-baseline", "revision"],
+            ["lock-write"],
         })
         {
             var output = new StringWriter();
@@ -1073,11 +1444,15 @@ public sealed class RepositoryChecksTests
         var version = ProductVersionCheck.Inspect(root);
         var docs = DocumentationCheck.Inspect(root);
         var freeze = CandidateFreezeCheck.Inspect(root);
+        var locks = DependencyLockCheck.Inspect(root);
         var source = SourcePolicyCheck.Inspect(root);
 
         Assert.True(version.Passed, string.Join(Environment.NewLine, version.Failures));
         Assert.True(docs.Passed, string.Join(Environment.NewLine, docs.Failures));
         Assert.True(freeze.Passed, string.Join(Environment.NewLine, freeze.Failures));
+        Assert.True(locks.Passed, string.Join(Environment.NewLine, locks.Failures));
+        Assert.Equal(52, DependencyLockCheck.CheckProfile(root, "ci"));
+        Assert.Equal(4, DependencyLockCheck.CheckProfile(root, "runtime"));
         Assert.True(source.Passed, string.Join(Environment.NewLine, source.Failures));
     }
 
@@ -1217,6 +1592,39 @@ public sealed class RepositoryChecksTests
         WriteFile(root, "src/vibesnake/__init__.py", "__version__ = \"0.3.0a1\"\n");
     }
 
+    private static void WriteDependencyLockInputs(string root)
+    {
+        if (!File.Exists(Path.Combine(root, "pyproject.toml")))
+        {
+            WriteFile(root, "pyproject.toml", "[project]\nname = \"fixture\"\n");
+        }
+
+        WriteFile(root, "requirements.txt", "runtime>=1\n");
+        WriteFile(root, "requirements-dev.txt", "-r requirements.txt\ntest>=2\n");
+        WriteFile(root, "requirements-runtime.txt", "-r requirements.txt\n");
+    }
+
+    private static string RenderDependencyLock(string root, string profile)
+    {
+        var inputs = profile == "ci"
+            ? new[] { "pyproject.toml", "requirements.txt", "requirements-dev.txt" }
+            : ["pyproject.toml", "requirements.txt", "requirements-runtime.txt"];
+        var digest = DependencyLockCheck.ComputeInputDigest(root, inputs);
+        var raw = "# uv generated header\n"
+            + "runtime==1.2.3 \\\n"
+            + $"    --hash=sha256:{new string('a', 64)}\n"
+            + "test==2.4.0 ; python_version >= '3.11' \\\n"
+            + $"    --hash=sha256:{new string('b', 64)}\n";
+        return DependencyLockCheck.RenderGeneratedLock(raw, digest, profile);
+    }
+
+    private static void WriteDependencyLockFixture(string root)
+    {
+        WriteDependencyLockInputs(root);
+        WriteFile(root, "requirements-ci.lock", RenderDependencyLock(root, "ci"));
+        WriteFile(root, "requirements-runtime.lock", RenderDependencyLock(root, "runtime"));
+    }
+
     private static void WriteDocumentationFixture(string root)
     {
         string[] rootDocuments =
@@ -1267,6 +1675,83 @@ public sealed class RepositoryChecksTests
         finally
         {
             Directory.Delete(root, true);
+        }
+    }
+
+    private sealed record ResolverCall(
+        string Executable,
+        string[] Arguments,
+        string WorkingDirectory,
+        TimeSpan Timeout);
+
+    private sealed class FakeDependencyResolverProcess : IDependencyResolverProcess
+    {
+        public List<ResolverCall> Calls { get; } = [];
+
+        public List<ResolverProcessResult> Results { get; } = [];
+
+        public Exception? ResolveException { get; init; }
+
+        public Exception? RunException { get; init; }
+
+        public bool WriteInvalidUtf8 { get; init; }
+
+        public string RawLock { get; init; } =
+            "# uv generated header\n"
+            + "runtime==1.2.3 \\\n"
+            + "    --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n"
+            + "test==2.4.0 \\\n"
+            + "    --hash=sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\n";
+
+        public string ResolveExecutable(string repositoryRoot)
+        {
+            if (ResolveException is not null)
+            {
+                throw ResolveException;
+            }
+
+            return Path.Combine(repositoryRoot, "fake-uv");
+        }
+
+        public ResolverProcessResult Run(
+            string executable,
+            IReadOnlyList<string> arguments,
+            string workingDirectory,
+            TimeSpan timeout)
+        {
+            if (RunException is not null)
+            {
+                throw RunException;
+            }
+
+            var copiedArguments = arguments.ToArray();
+            Calls.Add(new ResolverCall(executable, copiedArguments, workingDirectory, timeout));
+            if (copiedArguments.Length > 0 && copiedArguments[0] == "pip")
+            {
+                var outputIndex = Array.IndexOf(copiedArguments, "--output-file") + 1;
+                if (WriteInvalidUtf8)
+                {
+                    File.WriteAllBytes(copiedArguments[outputIndex], [0xff]);
+                }
+                else
+                {
+                    File.WriteAllText(
+                        copiedArguments[outputIndex],
+                        RawLock,
+                        new UTF8Encoding(false));
+                }
+            }
+
+            if (Results.Count > 0)
+            {
+                var result = Results[0];
+                Results.RemoveAt(0);
+                return result;
+            }
+
+            return copiedArguments.Length == 1 && copiedArguments[0] == "--version"
+                ? new ResolverProcessResult(0, "uv 0.11.33\n", string.Empty)
+                : new ResolverProcessResult(0, string.Empty, string.Empty);
         }
     }
 

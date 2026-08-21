@@ -115,8 +115,6 @@ This command installs the checksum-bound editor and matching export templates wh
 ## Local quality loop
 
 ```powershell
-python scripts/lock_python_dependencies.py
-python scripts/lock_python_dependencies.py --profile runtime
 python -m pip_audit --strict --disable-pip --require-hashes --requirement requirements-ci.lock
 python -m pip_audit --strict --disable-pip --require-hashes --requirement requirements-runtime.lock
 python -m ruff format --check src tests scripts
@@ -154,14 +152,15 @@ SHA-256 hashes. After an intentional input change, regenerate and recheck the
 affected profile with:
 
 ```powershell
-python scripts/lock_python_dependencies.py --write
-python scripts/lock_python_dependencies.py
-python scripts/lock_python_dependencies.py --profile runtime --write
-python scripts/lock_python_dependencies.py --profile runtime
+dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- lock-write ci .
+dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- lock-write runtime .
+dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- locks .
 ```
 
 Regeneration requires exactly `uv 0.11.33`; ordinary installation and CI do
-not. Each lock header records that resolver version. Both freshness identities
+not. The native writer prefers the checkout `.venv` resolver and refuses an
+incompatible version instead of silently falling back. Each lock header records
+that resolver version. Both freshness identities
 include `pyproject.toml` plus their ordered requirement inputs. A stale
 resolution or changed build contract therefore fails before tests. Local Git
 checkouts can install the repository-owned hooks with `pre-commit install`; CI

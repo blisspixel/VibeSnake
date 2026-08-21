@@ -18,12 +18,7 @@ repos:
         pass_filenames: false
       - id: dependency-lock
         name: dependency lock freshness
-        entry: python scripts/lock_python_dependencies.py
-        language: system
-        pass_filenames: false
-      - id: runtime-dependency-lock
-        name: runtime dependency lock freshness
-        entry: python scripts/lock_python_dependencies.py --profile runtime
+        entry: dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- locks .
         language: system
         pass_filenames: false
       - id: documentation

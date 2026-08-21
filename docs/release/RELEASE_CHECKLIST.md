@@ -139,8 +139,6 @@ The current development revision does not meet this checklist. See [STATUS.md](S
 ## Final commands
 
 ```powershell
-python scripts/lock_python_dependencies.py
-python scripts/lock_python_dependencies.py --profile runtime
 python -m pip_audit --strict --disable-pip --require-hashes --requirement requirements-ci.lock
 python -m pip_audit --strict --disable-pip --require-hashes --requirement requirements-runtime.lock
 python -m ruff format --check src tests scripts
