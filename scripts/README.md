@@ -30,7 +30,9 @@ This directory contains explicit command-line tools. Runtime code belongs under 
 | `test_native_coverage.ps1` | Shared local/CI native test and coverage gate with validated module floors and one clean rebuild retry for truncated Coverlet streams |
 | `write_dependency_inventory.ps1` | Lock-derived NuGet/Python dependency inventory and source-revision provenance |
 | `check_candidate_freeze.py` | Validate the inactive V090-01 policy and, after every prerequisite passes, prepare its deterministic frozen-surface SHA-256 baseline |
-| `check_manual_product_matrix.py` | Validate the exact V090-07 handoff and fail closed when retained sessions omit platform flows, devices, settings profiles, candidate identity, or safe evidence |
+| `check_manual_product_matrix.py` | Validate the exact V090-07 protocol, Release-derived candidate record, and retained sessions; fail closed on missing or mismatched artifact identity, platform flows, devices, settings profiles, or safe evidence |
+| `manual/prepare_product_review.py` | Independently recompute retained three-platform Release evidence and prepare a deterministic, intentionally incomplete four-row physical-review workspace |
+| `manual/review_radio_copies.py` | Rehash exact lossless review copies, prepare a pending headphone/speaker record, and validate explicit per-track listening decisions without changing approval state |
 | `check_external_validation.py` | Validate the V090-08 controlled-participant handoff, exact clean-candidate chain, retained report files, comprehension results, finding closure, and affected-gate reruns |
 | `check_release_materials.py` | Validate the V090-09 document foundation and exact candidate OS, size, input, media, notice, support, and evidence-bound marketing record |
 | `check_release_rehearsal.py` | Validate the V090-10 staged artifact, update, rollback, removal, withdrawal, protected-data, retained-file, and operational-authority record |

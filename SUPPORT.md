@@ -8,11 +8,11 @@ Vibe Snake is an alpha under active development.
 - Review the [privacy statement](PRIVACY.md) before sharing logs or diagnostics.
 - Report vulnerabilities only through [SECURITY.md](SECURITY.md).
 
-Public support, issue, play-feedback, and enhancement intake is currently closed
-with external contributions. Keep GitHub Issues and Discussions disabled until
-the private security and conduct-reporting routes are configured and tested.
-Opening those routes, publishing submission templates, and updating this file
-must be one reviewed repository-administration change.
+Public support, issue, play-feedback, enhancement, and external contribution
+intake is currently closed. Keep GitHub Issues, Discussions, and pull requests
+disabled until the private security and conduct-reporting routes are configured
+and tested. Opening those routes, publishing submission templates, and updating
+this file must be one reviewed repository-administration change.
 
 Future reports should include the game revision, operating system, launch path,
 input device, relevant logs, and concise reproduction steps. Usernames, local

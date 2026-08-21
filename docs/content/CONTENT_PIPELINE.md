@@ -109,6 +109,30 @@ The ignored `TestResults/radio-review/the_bureau/` set contains lossless FLAC co
 
 The first local `the_bureau` campaign produces 12 of 12 technically passing copies totaling 219,715,853 bytes. Integrated loudness measures from `-18.0` to `-17.9 LUFS`, maximum true peak is `-1.5 dBTP`, maximum leading/trailing/internal silence is `1.9`/`0.0`/`4.152608` seconds, all twelve second passes remain linear, and a complete second campaign reproduces all twelve output SHA-256 values exactly. The manifest still fixes `releaseApproved`, `sourceReplacementApproved`, and `exportEligibilityChanged` to false and `humanListeningStatus` to pending. These copies are a listening queue, not source replacements or a pack.
 
+Verify those exact copies and prepare the intentionally incomplete listening record:
+
+```powershell
+python scripts/manual/review_radio_copies.py `
+  TestResults/radio-review/the_bureau `
+  --verify-inputs `
+  --output TestResults/radio-review/the_bureau/listening-handoff.json
+
+python scripts/manual/review_radio_copies.py `
+  TestResults/radio-review/the_bureau `
+  --prepare-template TestResults/radio-review/the_bureau/listening-review.json.template
+```
+
+The verifier rehashes every FLAC and binds the template to the exact review-copy manifest. For every track, the reviewer must record full playback, clipping or distortion, start and end quality, relative level, station identity, and sustained comfort on both headphones and speakers. Copy the template to `listening-review.json`, replace every placeholder, and validate the completed record:
+
+```powershell
+python scripts/manual/review_radio_copies.py `
+  TestResults/radio-review/the_bureau `
+  --review-record TestResults/radio-review/the_bureau/listening-review.json `
+  --output TestResults/radio-review/the_bureau/listening-decision.json
+```
+
+An honest rejection is a complete listening record but cannot approve source replacement. `--require-approved` is the fail-closed gate for the later source-replacement workflow. The command never changes source, curation, release approval, or export eligibility.
+
 ## Commands
 
 Verify that policy, bytes, and the checked-in inventory agree:
