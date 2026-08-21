@@ -97,6 +97,8 @@ Before ending dual-runtime for a subsystem:
 
 The end state is one product and one implementation stack: Godot plus .NET. Shell launchers may remain for platform bootstrap, but neither gameplay, release qualification, fixture generation, nor CI should require a Python environment.
 
+The first bounded validator slice is complete. Native `RepositoryChecks` owns documentation discovery and links, changelog contract-release uniqueness, canonical product-version parsing and package mapping, and cross-file alignment. Its 35 focused contracts cover malformed inputs and deterministic results, CI runs it on Windows, macOS, and Linux, tagged-alpha assembly uses its version route after locked restore, and the two superseded Python command files are gone. The shared Python version helper remains temporarily because later release-assembly scripts still import it.
+
 Retirement proceeds in this order:
 
 1. Keep the existing Python behavior and checked-in parity fixtures frozen while native replacement work lands. Defect corrections are allowed only when they protect migration or release evidence.

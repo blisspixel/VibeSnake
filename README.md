@@ -131,7 +131,7 @@ The native quality loop builds the Godot project, runs the C# contract suite wit
 ./scripts/test_native.ps1
 ```
 
-Python reference and cross-runtime checks remain temporarily in CI while their authoritative validators and fixture generators move to .NET. They are test-only scaffolding, not a second product path. The ordered removal gates, full command set, dependency locks, screenshot workflow, and packaged-player qualification are documented in the [migration map](docs/engineering/MIGRATION_MAP.md#repository-wide-python-retirement) and [development guide](docs/guides/DEVELOPMENT.md). Contribution requirements are in [CONTRIBUTING.md](CONTRIBUTING.md).
+Python reference and cross-runtime checks remain temporarily in CI while their authoritative validators and fixture generators move to .NET. Documentation and product-version qualification now run through native `RepositoryChecks`; the remaining Python tools are explicit migration work. They are test-only scaffolding, not a second product path. The ordered removal gates, full command set, dependency locks, screenshot workflow, and packaged-player qualification are documented in the [migration map](docs/engineering/MIGRATION_MAP.md#repository-wide-python-retirement) and [development guide](docs/guides/DEVELOPMENT.md). Contribution requirements are in [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 

@@ -21,6 +21,7 @@ $nugetLockPaths = @(
     "native/src/VibeSnake.Persistence/packages.lock.json",
     "native/src/VibeSnake.Rules/packages.lock.json",
     "native/tests/VibeSnake.Rules.Tests/packages.lock.json",
+    "native/tools/RepositoryChecks/packages.lock.json",
     "native/tools/ValidateArtifactManifest/packages.lock.json",
     "native/tools/ValidateCreatorContent/packages.lock.json",
     "native/tools/VibeSnake.AgentHost/packages.lock.json"

@@ -28,7 +28,7 @@ repos:
         pass_filenames: false
       - id: documentation
         name: documentation links
-        entry: python scripts/check_docs.py
+        entry: dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- docs .
         language: system
         pass_filenames: false
       - id: readme-screenshots

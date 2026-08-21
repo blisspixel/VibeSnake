@@ -23,8 +23,8 @@ A change is complete when:
 - `python -m ruff check src tests scripts` passes.
 - `python scripts/check_source_policy.py` passes.
 - `python scripts/content_inventory.py --check` passes.
-- `python scripts/check_docs.py` passes.
-- `python scripts/check_product_version.py` and `python scripts/check_candidate_freeze.py` pass.
+- `dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- all .` passes.
+- `python scripts/check_candidate_freeze.py` passes.
 - The source and assembled Agent Plugin, interoperability baseline, and generated OKF bundle pass their drift and containment gates.
 - `python scripts/capture_readme_screenshots.py --check` passes.
 - `python scripts/visual_generate_badges.py --check` passes.
@@ -44,8 +44,7 @@ python -m pip_audit --strict --disable-pip --require-hashes --requirement requir
 python -m ruff format --check src tests scripts
 python -m ruff check src tests scripts
 python scripts/check_source_policy.py
-python scripts/check_docs.py
-python scripts/check_product_version.py
+dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- all .
 python scripts/check_candidate_freeze.py
 python scripts/validate_agent_plugin.py integrations/vibesnake-agent-plugin
 python scripts/check_agent_interop.py

@@ -494,7 +494,7 @@ try {
         $dependencyInventory.lockSetSha256 -notmatch "^[0-9a-f]{64}$") {
         throw "Dependency inventory provenance fields are invalid."
     }
-    if (@($dependencyInventory.sources).Count -ne 11 -or
+    if (@($dependencyInventory.sources).Count -ne 12 -or
         @($dependencyInventory.packages).Count -lt 60) {
         throw "Dependency inventory is missing lock sources or expected packages."
     }

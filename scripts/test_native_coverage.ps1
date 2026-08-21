@@ -26,6 +26,7 @@ function Assert-NativeCoverageReport {
 
     [xml]$coverage = Get-Content -LiteralPath $coveragePath -Raw
     foreach ($requiredModule in @(
+        "RepositoryChecks",
         "VibeSnake.Rules",
         "VibeSnake.Persistence",
         "VibeSnake.AgentPlay",
