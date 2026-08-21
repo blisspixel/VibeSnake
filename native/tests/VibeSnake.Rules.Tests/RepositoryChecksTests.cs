@@ -1259,21 +1259,22 @@ public sealed class RepositoryChecksTests
             timeoutArguments = ["-c", "sleep 5"];
         }
 
+        // Hosted Windows Coverlet runs can spend several seconds starting powershell.exe.
         var completed = resolver.Run(
             executable,
             outputArguments,
             Directory.GetCurrentDirectory(),
-            TimeSpan.FromSeconds(5));
+            TimeSpan.FromSeconds(30));
         var timedOut = resolver.Run(
             executable,
             timeoutArguments,
             Directory.GetCurrentDirectory(),
             TimeSpan.FromMilliseconds(100));
 
+        Assert.False(completed.TimedOut);
         Assert.Equal(7, completed.ExitCode);
         Assert.Contains("output", completed.StandardOutput, StringComparison.Ordinal);
         Assert.Contains("error", completed.StandardError, StringComparison.Ordinal);
-        Assert.False(completed.TimedOut);
         Assert.True(timedOut.TimedOut);
         Assert.ThrowsAny<Exception>(() => resolver.Run(
             Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N")),

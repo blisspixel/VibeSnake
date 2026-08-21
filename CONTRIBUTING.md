@@ -22,7 +22,7 @@ A change is complete when:
 - `python -m ruff format --check src tests scripts` passes.
 - `python -m ruff check src tests scripts` passes.
 - `python scripts/content_inventory.py --check` passes.
-- `dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- all .` passes for documentation, product-version, source, and candidate-freeze policy.
+- `dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- all .` passes for documentation, product-version, source, candidate-freeze, and dependency-lock policy.
 - The source and assembled Agent Plugin, interoperability baseline, and generated OKF bundle pass their drift and containment gates.
 - `python scripts/capture_readme_screenshots.py --check` passes.
 - `python scripts/visual_generate_badges.py --check` passes.
