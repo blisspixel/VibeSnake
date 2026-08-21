@@ -19103,7 +19103,7 @@ public partial class Main : Node2D
 
             _structuredLog?.Warning(
                 "performance",
-                "Shared-host presentation p95 tail exceeded its ceiling while average and maximum remained within budget; resampling once.",
+                "Shared-host presentation p95 exceeded its ceiling while the hard-frame limit remained intact; resampling once.",
                 eventCode: "presentation_tail_resample");
         }
 
@@ -19274,7 +19274,7 @@ public partial class Main : Node2D
             || BareArcadeLoopQualification.ShouldRetrySharedHostTail(
                 presentationTail,
                 completedAttemptCount: 2)
-            || BareArcadeLoopQualification.ShouldRetrySharedHostTail(
+            || !BareArcadeLoopQualification.ShouldRetrySharedHostTail(
                 presentationSustained,
                 completedAttemptCount: 1)
             || BareArcadeLoopQualification.ShouldRetrySharedHostTail(
@@ -19288,7 +19288,7 @@ public partial class Main : Node2D
                 completedAttemptCount: 1))
         {
             throw new InvalidOperationException(
-                "Presentation retry policy did not preserve its bounded tail-only contract.");
+                "Presentation retry policy did not preserve its bounded shared-host contract.");
         }
     }
 

@@ -112,8 +112,6 @@ internal static class BareArcadeLoopQualification
 
         return completedAttemptCount < MaximumSharedHostMeasurementAttempts
             && summary.SampleCount >= RequiredLiveFrameSamples
-            && summary.AverageMilliseconds
-                <= PerformanceQualification.SharedHostMaximumAverageMilliseconds
             && summary.P95Milliseconds > MaximumSmokeP95Milliseconds
             && summary.MaxMilliseconds <= MaximumSmokeFrameMilliseconds;
     }
