@@ -12,7 +12,7 @@ This directory contains authored project inputs and generated content authority.
 | `balance_baseline_v1.json` | Hash-locked AI simulation baseline with no human target ranges |
 | `balance_experiments_v1.json` | Target-first, one-family experiment guard; intentionally empty until human review establishes ranges |
 | `qa_human_playtest_protocol.json` | Closed V070-06 cohorts, stages, scenarios, observation fields, privacy rules, and automated handoff allowlist |
-| `qa_manual_product_matrix_v1.json` | Exact V090-07 platform, flow, input, settings-profile, session, and release-acceptance contract |
+| `qa_manual_product_matrix_v1.json` | Exact V090-07 Release-derived candidate, platform artifact, flow, input, settings-profile, session, and release-acceptance contract |
 | `qa_external_validation_v1.json` | Exact V090-08 controlled distribution, cohort, comprehension, report, clean-candidate, finding, repair, and privacy contract |
 | `release_materials_v1.json` | Exact V090-09 required documents, platform and input disclosures, candidate media roles, claim identities, retained hashes, and publication rules |
 | `release_rehearsal_v1.json` | Exact V090-10 staged artifacts, 33 platform-operation cells, withdrawal, user-data preservation, retained hashes, and release-authority contract |

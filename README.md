@@ -61,8 +61,10 @@ The immediate goal is the first reproducible native alpha, not more feature surf
 
 The exact unsigned review build is retained from [Release run 32421705560](https://github.com/blisspixel/VibeSnake/actions/runs/32421705560) at revision `e87db6e`. Its Windows x64, macOS Universal, and Linux x64 packages passed the cross-bound Release matrix, 300 clean launches, 600,000 reliability comparisons, 300 spectator restarts, 21 injected faults, accessibility and performance evidence, and detached manifest provenance.
 
-1. Complete physical input, audio-device, display, accessibility, recovery, and declared-hardware checks against those exact retained bytes.
-2. Listen to the technically passing `the_bureau` review set, approve or reject exact source replacements, then assemble the smallest core content set and optional radio pack with full decode, loudness, credits, hashes, and size evidence.
+The physical-review tooling independently recomputes that Release evidence before creating a candidate record and four intentionally incomplete platform-session templates. Retained sessions cannot validate unless their revision, version, and package SHA-256 match that candidate exactly. The radio-listening tooling similarly rehashes all 12 `the_bureau` FLAC review copies and prepares per-track headphone and speaker criteria without changing any approval or export flag.
+
+1. Fill the prepared physical-review sessions with input, audio-device, display, accessibility, recovery, retained-pixel, and declared-hardware observations against those exact retained bytes.
+2. Fill the prepared `the_bureau` listening record, approve or reject every exact source replacement, then assemble the smallest core content set and optional radio pack with full decode, loudness, credits, hashes, and size evidence.
 3. Fix any review findings and rerun every affected automated and physical gate without expanding feature scope.
 4. Publish `v0.3.0-alpha.1` only after the reviewed revision, hosted CI, artifacts, provenance, content, and disclosures agree.
 

@@ -91,6 +91,29 @@
     "maximum-text-scale",
     "missing-optional-content"
   ],
+  "requiredCandidateFields": [
+    "schemaVersion",
+    "kind",
+    "releaseRunId",
+    "releaseRunUrl",
+    "releaseMatrixSha256",
+    "candidateRevision",
+    "appVersion",
+    "buildMode",
+    "artifactRows",
+    "humanReviewStatus",
+    "releaseAcceptance",
+    "publicationEligible"
+  ],
+  "requiredCandidateArtifactFields": [
+    "platformRowId",
+    "artifactPlatform",
+    "architecture",
+    "fileName",
+    "sha256",
+    "bytes",
+    "artifactManifestSha256"
+  ],
   "requiredSessionFields": [
     "schemaVersion",
     "kind",
@@ -118,6 +141,7 @@
     "blocked"
   ],
   "releaseRules": [
+    "Every retained session must match an exact candidate record projected from independently verified Release matrix evidence.",
     "Every required flow must pass on every platform row using the exact candidate artifact.",
     "Keyboard, mouse, Xbox-layout controller, and PlayStation-layout controller coverage must be retained.",
     "Every required settings profile must be observed at least once and on every platform where the behavior is platform-dependent.",

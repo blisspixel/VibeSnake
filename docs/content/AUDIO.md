@@ -126,21 +126,25 @@ the public source graph. Historical production scripts and their dependency
 lock are preserved only in the ignored local archive because they do not meet
 the current safety, cost, reproducibility, media-analysis, or evidence contract.
 
-The next public audio-admission tool must be one narrow command that defaults to
-read-only analysis, requires an explicit execution flag for paid work, enforces
-a declared cost ceiling, writes only to an ignored candidate workspace,
-preserves source bytes, pins every decoder and normalizer build, produces
-machine-readable measurements and provenance, and cannot approve content by
-itself. Human rights and listening decisions remain separate signed records.
+The public admission chain is now deliberately narrow. The full-library analyzer
+is read-only. The review-copy preparer writes only to an ignored workspace,
+preserves and rehashes every source byte, records the exact FFmpeg and FFprobe
+builds, and produces machine-readable measurements. The listening-record tool
+then rehashes every prepared FLAC and requires explicit per-track decisions on
+headphones and speakers. None of these tools can approve rights, replace source,
+change curation, enable export, or publish a release. Paid or credentialed audio
+generation remains outside the public dependency graph and would require a
+separate declared cost ceiling and execution decision.
 
 ## Safe production workflow
 
 1. Work on copies or generated candidates in an ignored directory outside the public asset tree.
 2. Record source, generator, model or service, prompt version, license, duration, loudness, and checksum.
-3. Normalize and listen on headphones and speakers.
-4. Check station fit and duplicate content.
-5. Move only rights-cleared and quality-approved runtime files into the canonical asset tree.
-6. Run radio tests and the full suite.
-7. Update this inventory table if counts change.
+3. Normalize into an ignored review set and verify every exact output hash.
+4. Complete the hash-bound full-track record on headphones and speakers.
+5. Record station fit, relative-level, comfort, distortion, edge, and duplicate-content decisions.
+6. Move only rights-cleared and explicitly approved runtime files into the canonical asset tree.
+7. Run source admission, radio tests, pack assembly, and the full suite.
+8. Update this inventory table if counts change.
 
 Never store API keys in `.py`, JSON inventories, reports, prompts, or documentation.

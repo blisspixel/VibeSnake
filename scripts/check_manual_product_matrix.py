@@ -7,6 +7,7 @@ import hashlib
 import json
 import re
 import sys
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -16,6 +17,9 @@ CONTRACT_PATH = ROOT / "config" / "qa_manual_product_matrix_v1.json"
 REVISION_PATTERN = re.compile(r"[0-9a-f]{40}")
 SHA256_PATTERN = re.compile(r"[0-9a-f]{64}")
 UTC_PATTERN = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z")
+SESSION_ID_PATTERN = re.compile(r"product-matrix-[0-9]{3}")
+RELEASE_RUN_URL_PATTERN = re.compile(r"https://github\.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+/actions/runs/([1-9][0-9]*)")
+MAXIMUM_JSON_BYTES = 4 * 1024 * 1024
 PLATFORM_ROWS = (
     ("windows-x64", "windows-x64", "x86_64"),
     ("macos-universal-apple-silicon", "macos-universal", "arm64"),
@@ -94,7 +98,31 @@ SESSION_FIELDS = (
 )
 RESULT_FIELDS = ("flowId", "result", "evidencePaths")
 RESULT_VALUES = ("pass", "fail", "blocked")
+CANDIDATE_FIELDS = (
+    "schemaVersion",
+    "kind",
+    "releaseRunId",
+    "releaseRunUrl",
+    "releaseMatrixSha256",
+    "candidateRevision",
+    "appVersion",
+    "buildMode",
+    "artifactRows",
+    "humanReviewStatus",
+    "releaseAcceptance",
+    "publicationEligible",
+)
+CANDIDATE_ARTIFACT_FIELDS = (
+    "platformRowId",
+    "artifactPlatform",
+    "architecture",
+    "fileName",
+    "sha256",
+    "bytes",
+    "artifactManifestSha256",
+)
 RELEASE_RULES = (
+    "Every retained session must match an exact candidate record projected from independently verified Release matrix evidence.",
     "Every required flow must pass on every platform row using the exact candidate artifact.",
     "Keyboard, mouse, Xbox-layout controller, and PlayStation-layout controller coverage must be retained.",
     "Every required settings profile must be observed at least once and on every platform where the behavior is platform-dependent.",
@@ -103,13 +131,33 @@ RELEASE_RULES = (
 )
 
 
+def _unique_json_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    value: dict[str, Any] = {}
+    for key, item in pairs:
+        if key in value:
+            raise ValueError(f"duplicate JSON field: {key}")
+        value[key] = item
+    return value
+
+
+def _reject_json_constant(value: str) -> None:
+    raise ValueError(f"non-finite JSON number: {value}")
+
+
 def _read_json(path: Path, label: str, errors: list[str]) -> Any | None:
-    if not path.is_file():
+    if not path.is_file() or path.is_symlink():
         errors.append(f"missing {label}: {path}")
         return None
     try:
-        return json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as exc:
+        if path.stat().st_size > MAXIMUM_JSON_BYTES:
+            errors.append(f"{label} exceeds the {MAXIMUM_JSON_BYTES}-byte limit: {path}")
+            return None
+        return json.loads(
+            path.read_text(encoding="utf-8"),
+            object_pairs_hook=_unique_json_object,
+            parse_constant=_reject_json_constant,
+        )
+    except (OSError, UnicodeError, ValueError) as exc:
         errors.append(f"unreadable {label}: {path}: {exc}")
         return None
 
@@ -136,6 +184,16 @@ def _nonempty_string(value: Any, label: str, errors: list[str]) -> bool:
     return valid
 
 
+def _valid_utc(value: Any) -> bool:
+    if not isinstance(value, str) or UTC_PATTERN.fullmatch(value) is None:
+        return False
+    try:
+        datetime.strptime(value, "%Y-%m-%dT%H:%M:%SZ")
+    except ValueError:
+        return False
+    return True
+
+
 def _safe_relative_path(value: Any) -> bool:
     if not isinstance(value, str) or not value or "\\" in value:
         return False
@@ -156,6 +214,8 @@ def validate_contract(contract_path: Path = CONTRACT_PATH) -> tuple[list[str], d
         "requiredFlows",
         "inputDevices",
         "settingsProfiles",
+        "requiredCandidateFields",
+        "requiredCandidateArtifactFields",
         "requiredSessionFields",
         "requiredResultFields",
         "resultValues",
@@ -196,6 +256,18 @@ def validate_contract(contract_path: Path = CONTRACT_PATH) -> tuple[list[str], d
         errors,
     )
     _exact(
+        contract["requiredCandidateFields"],
+        list(CANDIDATE_FIELDS),
+        "contract.requiredCandidateFields",
+        errors,
+    )
+    _exact(
+        contract["requiredCandidateArtifactFields"],
+        list(CANDIDATE_ARTIFACT_FIELDS),
+        "contract.requiredCandidateArtifactFields",
+        errors,
+    )
+    _exact(
         contract["requiredSessionFields"],
         list(SESSION_FIELDS),
         "contract.requiredSessionFields",
@@ -212,6 +284,73 @@ def validate_contract(contract_path: Path = CONTRACT_PATH) -> tuple[list[str], d
     return errors, contract
 
 
+def validate_candidate(candidate_path: Path) -> tuple[list[str], dict[str, Any] | None]:
+    """Validate the exact Release candidate identity used by retained manual sessions."""
+    errors: list[str] = []
+    candidate = _read_json(candidate_path, "manual product matrix candidate", errors)
+    if not _strict_keys(candidate, set(CANDIDATE_FIELDS), "candidate", errors):
+        return errors, candidate if isinstance(candidate, dict) else None
+    _exact(candidate["schemaVersion"], 1, "candidate.schemaVersion", errors)
+    _exact(candidate["kind"], "vibesnake-manual-product-matrix-candidate-v1", "candidate.kind", errors)
+    run_id = candidate["releaseRunId"]
+    if type(run_id) is not int or run_id <= 0:
+        errors.append("candidate.releaseRunId must be a positive integer")
+    run_url_match = RELEASE_RUN_URL_PATTERN.fullmatch(str(candidate["releaseRunUrl"]))
+    if run_url_match is None or type(run_id) is not int or run_url_match.group(1) != str(run_id):
+        errors.append("candidate.releaseRunUrl must be a GitHub Actions URL for releaseRunId")
+    if not SHA256_PATTERN.fullmatch(str(candidate["releaseMatrixSha256"])):
+        errors.append("candidate.releaseMatrixSha256 must be a SHA-256 digest")
+    if not REVISION_PATTERN.fullmatch(str(candidate["candidateRevision"])):
+        errors.append("candidate.candidateRevision must be a lowercase 40-character revision")
+    _nonempty_string(candidate["appVersion"], "candidate.appVersion", errors)
+    _exact(candidate["buildMode"], "Release", "candidate.buildMode", errors)
+    _exact(candidate["humanReviewStatus"], "pending", "candidate.humanReviewStatus", errors)
+    _exact(candidate["releaseAcceptance"], False, "candidate.releaseAcceptance", errors)
+    _exact(candidate["publicationEligible"], False, "candidate.publicationEligible", errors)
+
+    rows = candidate["artifactRows"]
+    if not isinstance(rows, list) or len(rows) != len(PLATFORM_ROWS):
+        errors.append(f"candidate.artifactRows must contain exactly {len(PLATFORM_ROWS)} rows")
+    else:
+        for index, expected in enumerate(PLATFORM_ROWS):
+            row = rows[index]
+            label = f"candidate.artifactRows[{index}]"
+            if not _strict_keys(row, set(CANDIDATE_ARTIFACT_FIELDS), label, errors):
+                continue
+            platform_row_id, artifact_platform, architecture = expected
+            _exact(row["platformRowId"], platform_row_id, f"{label}.platformRowId", errors)
+            _exact(row["artifactPlatform"], artifact_platform, f"{label}.artifactPlatform", errors)
+            _exact(row["architecture"], architecture, f"{label}.architecture", errors)
+            file_name = row["fileName"]
+            if (
+                not isinstance(file_name, str)
+                or not file_name
+                or "/" in file_name
+                or "\\" in file_name
+                or file_name in {".", ".."}
+            ):
+                errors.append(f"{label}.fileName must be a safe file name")
+            if not SHA256_PATTERN.fullmatch(str(row["sha256"])):
+                errors.append(f"{label}.sha256 must be a SHA-256 digest")
+            if not SHA256_PATTERN.fullmatch(str(row["artifactManifestSha256"])):
+                errors.append(f"{label}.artifactManifestSha256 must be a SHA-256 digest")
+            if type(row["bytes"]) is not int or row["bytes"] <= 0:
+                errors.append(f"{label}.bytes must be a positive integer")
+        apple_silicon = rows[1]
+        intel = rows[2]
+        if isinstance(apple_silicon, dict) and isinstance(intel, dict):
+            universal_identity_fields = (
+                "artifactPlatform",
+                "fileName",
+                "sha256",
+                "bytes",
+                "artifactManifestSha256",
+            )
+            if any(apple_silicon.get(field) != intel.get(field) for field in universal_identity_fields):
+                errors.append("candidate macOS architecture rows must identify one identical Universal artifact")
+    return errors, candidate
+
+
 def _validate_session(
     session: Any,
     path: Path,
@@ -226,8 +365,8 @@ def _validate_session(
     revision = session["candidateRevision"]
     artifact_sha = session["artifactSha256"]
     platform = session["platformRowId"]
-    if not _nonempty_string(session_id, f"{label}.sessionId", errors):
-        return None
+    if not SESSION_ID_PATTERN.fullmatch(str(session_id)):
+        errors.append(f"{label}.sessionId must match product-matrix-[0-9]{{3}}")
     if not REVISION_PATTERN.fullmatch(str(revision)):
         errors.append(f"{label}.candidateRevision must be a lowercase 40-character revision")
     if not SHA256_PATTERN.fullmatch(str(artifact_sha)):
@@ -236,13 +375,14 @@ def _validate_session(
         errors.append(f"{label}.platformRowId is unsupported: {platform!r}")
     for field in ("appVersion", "operatingSystemVersion", "hardwareClass", "renderer"):
         _nonempty_string(session[field], f"{label}.{field}", errors)
-    if not UTC_PATTERN.fullmatch(str(session["executedUtc"])):
+    if not _valid_utc(session["executedUtc"]):
         errors.append(f"{label}.executedUtc must use YYYY-MM-DDTHH:MM:SSZ")
 
     input_devices = session["inputDeviceIds"]
     if (
         not isinstance(input_devices, list)
         or not input_devices
+        or not all(isinstance(item, str) for item in input_devices)
         or len(input_devices) != len(set(input_devices))
         or not set(input_devices) <= {item[0] for item in INPUT_DEVICES}
     ):
@@ -251,6 +391,7 @@ def _validate_session(
     profiles = session["settingsProfileIds"]
     if (
         not isinstance(profiles, list)
+        or not all(isinstance(item, str) for item in profiles)
         or len(profiles) != len(set(profiles))
         or not set(profiles) <= set(SETTINGS_PROFILES)
     ):
@@ -306,11 +447,29 @@ def _validate_session(
 def validate_manual_product_matrix(
     contract_path: Path = CONTRACT_PATH,
     sessions_directory: Path | None = None,
+    candidate_path: Path | None = None,
 ) -> tuple[list[str], dict[str, Any]]:
     """Validate the handoff and, when supplied, the retained manual sessions."""
     contract_errors, contract = validate_contract(contract_path)
     errors = list(contract_errors)
     contract_sha = hashlib.sha256(contract_path.read_bytes()).hexdigest() if contract_path.is_file() else None
+    candidate_errors: list[str] = []
+    candidate: dict[str, Any] | None = None
+    candidate_sha: str | None = None
+    if candidate_path is not None:
+        candidate_errors, candidate = validate_candidate(candidate_path)
+        errors.extend(candidate_errors)
+        if candidate_path.is_file():
+            candidate_sha = hashlib.sha256(candidate_path.read_bytes()).hexdigest()
+    if sessions_directory is not None and candidate_path is None:
+        errors.append("retained manual sessions require an exact candidate record")
+    candidate_rows = (
+        {str(row["platformRowId"]): row for row in candidate["artifactRows"]}
+        if candidate is not None
+        and isinstance(candidate.get("artifactRows"), list)
+        and all(isinstance(row, dict) and "platformRowId" in row for row in candidate["artifactRows"])
+        else {}
+    )
     session_paths = (
         sorted(sessions_directory.glob("*.json"))
         if sessions_directory is not None and sessions_directory.is_dir()
@@ -341,6 +500,14 @@ def validate_manual_product_matrix(
         platform = str(session["platformRowId"])
         if platform in platform_passes:
             artifact_hashes[platform].add(artifact_sha)
+            candidate_row = candidate_rows.get(platform)
+            if candidate is not None and candidate_row is not None:
+                if revision != candidate.get("candidateRevision"):
+                    errors.append(f"session {session_id} revision does not match the exact candidate")
+                if artifact_sha != candidate_row.get("sha256"):
+                    errors.append(f"session {session_id} artifact SHA-256 does not match the exact candidate")
+                if session.get("appVersion") != candidate.get("appVersion"):
+                    errors.append(f"session {session_id} application version does not match the exact candidate")
             for flow_id, result in results.items():
                 if result == "pass":
                     platform_passes[platform].add(flow_id)
@@ -378,6 +545,10 @@ def validate_manual_product_matrix(
         "passed": not errors if sessions_directory is not None else not errors and contract is not None,
         "protocolQualified": not contract_errors,
         "contractSha256": contract_sha,
+        "candidateQualified": candidate_path is not None and not candidate_errors and candidate is not None,
+        "candidateSha256": candidate_sha,
+        "candidateRevision": candidate.get("candidateRevision") if candidate is not None else None,
+        "candidateReleaseRunId": candidate.get("releaseRunId") if candidate is not None else None,
         "platformRowCount": len(PLATFORM_ROWS),
         "requiredFlowCount": len(REQUIRED_FLOWS),
         "requiredPlatformFlowCellCount": len(PLATFORM_ROWS) * len(REQUIRED_FLOWS),
@@ -385,6 +556,8 @@ def validate_manual_product_matrix(
         "settingsProfileCount": len(SETTINGS_PROFILES),
         "requiredSessionFieldCount": len(SESSION_FIELDS),
         "requiredResultFieldCount": len(RESULT_FIELDS),
+        "requiredCandidateFieldCount": len(CANDIDATE_FIELDS),
+        "requiredCandidateArtifactFieldCount": len(CANDIDATE_ARTIFACT_FIELDS),
         "manualSessionCount": len(session_paths),
         "completedPlatformFlowCellCount": completed_cells,
         "observedInputDevices": sorted(observed_devices),
@@ -410,12 +583,14 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--contract", type=Path, default=CONTRACT_PATH)
     parser.add_argument("--sessions", type=Path)
+    parser.add_argument("--candidate", type=Path)
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args(argv)
 
     errors, evidence = validate_manual_product_matrix(
         args.contract.resolve(),
         args.sessions.resolve() if args.sessions is not None else None,
+        args.candidate.resolve() if args.candidate is not None else None,
     )
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(evidence, indent=2) + "\n", encoding="utf-8")

@@ -2,7 +2,7 @@
 
 Vibe Snake is in alpha. Changes should improve the playable experience while keeping source behavior, documentation, and tests aligned.
 
-External contribution intake is currently closed until the repository has tested private security and conduct-reporting routes. Public source review is welcome, but maintainers must not accept pull requests or operate official community spaces before both confidential channels are available and documented.
+External contribution intake is currently closed until the repository has tested private security and conduct-reporting routes. Public source review is welcome, but maintainers must not accept pull requests or operate official community spaces before both confidential channels are available and documented. Keep the GitHub pull-request feature disabled while this policy is in force.
 
 ## Before changing code
 
