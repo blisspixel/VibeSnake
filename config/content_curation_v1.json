@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "planId": "vibesnake-content-curation-v1",
-  "inventoryPolicySha256": "6cf7e862a88d6eac01bce065319d2913c3cdcefb90dd6ead23d2f38fe7ef13ab",
+  "inventoryPolicySha256": "4558a80014964eadee25de55ca71af1453b22de11bc485eb174cce4822a69934",
   "decisionStatus": "pending-human-listening-review",
   "coreMusic": {
     "pendingAssetIds": [],
