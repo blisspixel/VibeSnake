@@ -17,7 +17,7 @@ Status: pre-candidate alpha issues as of 2026-08-20. Replace this page from the 
 
 ## Qualification flakiness
 
-- The `bare-arcade-loop` frame-pacing budget measures real p95 and maximum frame milliseconds on hosted runners. It has failed once on `macos-latest` and passed on an unchanged rerun, so a shared-runner stall can exceed the 60 ms p95 or 100 ms maximum budget without any product regression. The budget is deliberately not loosened, because it guards a real player-facing promise. The failure now names the exact budget and prints the measured values against their limits, so a recurrence is diagnosable from one log line rather than requiring a bisect on the only runner that reproduces it. Track recurrences before considering a runner-aware allowance.
+- The `bare-arcade-loop` frame-pacing budget measures real p95 and maximum frame milliseconds on hosted runners. It has failed intermittently on `macos-latest` and then passed for the same commit on an unchanged concurrent run or a fresh-runner retry. A shared-runner stall can therefore exceed the 60 ms p95 or 100 ms maximum budget without a product regression. The budget remains deliberately unchanged because it guards a real player-facing promise. One bounded tail-only resample occurs inside the smoke, and any final failure names the exact budget and measured values. Consider a runner-aware measurement design if another recurrence blocks clean qualification; do not silently loosen the product budget.
 
 ## Data safety
 
