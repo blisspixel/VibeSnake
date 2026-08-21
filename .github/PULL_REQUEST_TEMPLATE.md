@@ -10,7 +10,7 @@ Describe the player or engineering outcome and the evidence that motivates it.
 
 ## Validation
 
-- [ ] Python format, lint, and source policy gates pass.
+- [ ] Python format and lint plus native source-policy gates pass.
 - [ ] Python tests pass with at least 80 percent meaningful coverage.
 - [ ] CI and runtime dependency locks are current and audit clean.
 - [ ] Native build, format, tests, and coverage pass when native code changes.

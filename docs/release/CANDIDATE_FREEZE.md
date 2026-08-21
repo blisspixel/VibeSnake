@@ -13,7 +13,7 @@ V090-01 freezes six player and creator contract surfaces:
 5. Input defaults.
 6. Accessibility defaults.
 
-The machine-readable authority is [`config/candidate_freeze_policy_v1.json`](../../config/candidate_freeze_policy_v1.json). CI resolves every declared pattern and rejects missing, empty, unsafe, reordered, or broadened policy fields. The current state is `pre-freeze`, so no baseline exists and no freeze is being claimed.
+The machine-readable authority is [`config/candidate_freeze_policy_v1.json`](../../config/candidate_freeze_policy_v1.json). Native `RepositoryChecks freeze` resolves every declared pattern and rejects missing, empty, unsafe, reordered, broadened, duplicate, malformed, or non-UTF-8 policy data. The combined native repository check runs this route on Windows, macOS, and Linux. The current state is `pre-freeze`, so no baseline exists and no freeze is being claimed.
 
 Once active, CI also requires a closed `candidate-freeze-baseline-v1` manifest. Every resolved file is bound to its contract IDs and SHA-256 digest. An added, removed, renamed, or modified frozen file fails the check until the candidate decision record and reviewed baseline are intentionally updated.
 
@@ -26,7 +26,7 @@ Once active, CI also requires a closed `candidate-freeze-baseline-v1` manifest. 
 5. Prepare the baseline with an exact lowercase 40-character revision and second-precision UTC timestamp:
 
    ```powershell
-   python scripts/check_candidate_freeze.py --prepare-baseline --revision <revision> --generated-utc <YYYY-MM-DDTHH:MM:SSZ>
+   dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- freeze-baseline <revision> <YYYY-MM-DDTHH:MM:SSZ> .
    ```
 
 6. Review the baseline, set the policy state to `frozen`, and copy the revision, timestamp, manifest path, and manifest SHA-256 into the activation record.

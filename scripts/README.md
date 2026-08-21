@@ -6,7 +6,6 @@ This directory contains explicit command-line tools. Runtime code belongs under 
 
 | Tool | Ownership |
 | --- | --- |
-| `check_source_policy.py` | Executable anti-slop, Unicode, Python placeholder, and signing-material exclusion policy |
 | `lock_python_dependencies.py` | CI and player-runtime hash-lock freshness checks and explicit regeneration |
 | `check_agent_interop.py` | Validate the closed machine-readable MCP, Agent Plugins, Agent Skill, MCP Apps, and OKF baseline, canonical UTC lifecycle metadata, absolute review dates, source alignment, version-bound public-contract digests, documentation pins, and optional read-only integrity of pinned Agent Plugins specification and schema bytes |
 | `generate_agent_knowledge.py` | Deterministically render and freshness-check the Open Knowledge Format 0.2 bundle from canonical sources and the interoperability baseline |
@@ -27,7 +26,6 @@ This directory contains explicit command-line tools. Runtime code belongs under 
 | `test_native.ps1` | Native rules, coverage, balance, reliability, fault/triage, localization, and capture-sharing evidence, format, Godot import, scene smoke, and Godot watch against the packaged Agent Host |
 | `test_native_coverage.ps1` | Shared local/CI native test and coverage gate with validated module floors and one clean rebuild retry for truncated Coverlet streams |
 | `write_dependency_inventory.ps1` | Lock-derived NuGet/Python dependency inventory and source-revision provenance |
-| `check_candidate_freeze.py` | Validate the inactive V090-01 policy and, after every prerequisite passes, prepare its deterministic frozen-surface SHA-256 baseline |
 | `check_manual_product_matrix.py` | Validate the exact V090-07 protocol, Release-derived candidate record, and retained sessions; fail closed on missing or mismatched artifact identity, platform flows, devices, settings profiles, or safe evidence |
 | `manual/prepare_product_review.py` | Independently recompute retained three-platform Release evidence and prepare a deterministic, intentionally incomplete four-row physical-review workspace |
 | `manual/review_radio_copies.py` | Rehash exact lossless review copies, prepare a pending headphone/speaker record, and validate explicit per-track listening decisions without changing approval state |
@@ -44,7 +42,7 @@ This directory contains explicit command-line tools. Runtime code belongs under 
 
 These entry points are kept at `scripts/` root because README, CI, and release documentation invoke them directly.
 
-The native `RepositoryChecks` command owns canonical documentation discovery, relative-link validation, changelog contract-release uniqueness, and product-version alignment. Run `dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- all .` from the repository root.
+The native `RepositoryChecks` command owns canonical documentation discovery, relative-link validation, changelog contract-release uniqueness, product-version alignment, source policy, candidate-freeze validation, and deterministic freeze-baseline preparation. Run `dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- all .` from the repository root.
 
 `ValidateArtifactManifest` also builds deterministic qualification-only release archives after validating the manifest and signing-readiness policy. It writes `release_output_plan.json` and `SHA256SUMS` beside the versioned package and never marks that unsigned output publishable.
 

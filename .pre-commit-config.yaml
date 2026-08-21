@@ -3,7 +3,7 @@ repos:
     hooks:
       - id: source-policy
         name: source policy
-        entry: python scripts/check_source_policy.py
+        entry: dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- source .
         language: system
         pass_filenames: false
       - id: ruff

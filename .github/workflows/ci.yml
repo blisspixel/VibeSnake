@@ -67,9 +67,6 @@ jobs:
       - name: Check formatting
         run: python -m ruff format --check src tests scripts
 
-      - name: Enforce source policy
-        run: python scripts/check_source_policy.py
-
       - name: Audit Python dependencies
         if: matrix.python-version == '3.14'
         run: python -m pip_audit --strict --disable-pip --require-hashes --requirement requirements-ci.lock
@@ -88,9 +85,6 @@ jobs:
           ./scripts/package_agent_plugin.ps1 -OutputRoot TestResults/agent-plugin
           python scripts/validate_agent_plugin.py TestResults/agent-plugin/portable/vibesnake-agent --require-mcp
           ./scripts/package_agent_host.ps1 -OutputRoot TestResults/agent-host -Force
-
-      - name: Check candidate freeze policy
-        run: python scripts/check_candidate_freeze.py
 
       - name: Qualify manual product matrix handoff
         if: matrix.python-version == '3.14'
