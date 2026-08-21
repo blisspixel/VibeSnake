@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "assetRoot": "assets",
   "policyPath": "config/content_policy.json",
-  "policySha256": "6cf7e862a88d6eac01bce065319d2913c3cdcefb90dd6ead23d2f38fe7ef13ab",
+  "policySha256": "4558a80014964eadee25de55ca71af1453b22de11bc485eb174cce4822a69934",
   "fileCount": 114,
   "totalBytes": 340378770,
   "summary": {
@@ -2452,7 +2452,7 @@
         "source": "Preferred handcrafted Vibe Snake brand mark retained from the Snakev2 asset lineage and released by blisspixel",
         "license": "Apache-2.0",
         "attribution": "Copyright 2025-2026 blisspixel contributors",
-        "reviewNote": "Canonical 1024x1024 PNG bytes are hash-gated by scripts/visual_generate_logo.py; final brand, accessibility, and release-pack review remain required"
+        "reviewNote": "Canonical 1024x1024 PNG bytes are hash-gated by native RepositoryChecks -- logo; final brand, accessibility, and release-pack review remain required"
       },
       "policyRule": "reference-logo",
       "duplicateOf": null

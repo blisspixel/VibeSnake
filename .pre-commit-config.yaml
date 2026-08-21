@@ -38,7 +38,7 @@ repos:
         pass_filenames: false
       - id: project-logo
         name: deterministic project logo
-        entry: python scripts/visual_generate_logo.py --check
+        entry: dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- logo .
         language: system
         pass_filenames: false
       - id: content-inventory

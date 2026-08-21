@@ -30,5 +30,5 @@ The project logo is the preferred handcrafted 1024 by 1024 brand mark. Verify it
 with:
 
 ```powershell
-python scripts/visual_generate_logo.py --check
+dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- logo .
 ```

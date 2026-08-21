@@ -510,7 +510,7 @@ public static class RepositoryCheckCommand
 
         if (arguments is null
             || arguments.Count is < 1 or > 2
-            || arguments[0] is not ("all" or "docs" or "freeze" or "locks" or "source" or "version"))
+            || arguments[0] is not ("all" or "docs" or "freeze" or "locks" or "logo" or "source" or "version"))
         {
             WriteUsage(standardError);
             return 2;
@@ -533,6 +533,7 @@ public static class RepositoryCheckCommand
             "docs" => new[] { DocumentationCheck.Inspect(repositoryRoot) },
             "freeze" => new[] { CandidateFreezeCheck.Inspect(repositoryRoot) },
             "locks" => new[] { DependencyLockCheck.Inspect(repositoryRoot) },
+            "logo" => new[] { ProjectLogoCheck.Inspect(repositoryRoot) },
             "source" => new[] { SourcePolicyCheck.Inspect(repositoryRoot) },
             "version" => new[] { ProductVersionCheck.Inspect(repositoryRoot) },
             _ => new[]
@@ -541,6 +542,7 @@ public static class RepositoryCheckCommand
                 DocumentationCheck.Inspect(repositoryRoot),
                 CandidateFreezeCheck.Inspect(repositoryRoot),
                 DependencyLockCheck.Inspect(repositoryRoot),
+                ProjectLogoCheck.Inspect(repositoryRoot),
                 SourcePolicyCheck.Inspect(repositoryRoot),
             },
         };
@@ -668,7 +670,7 @@ public static class RepositoryCheckCommand
     private static void WriteUsage(TextWriter writer)
     {
         writer.WriteLine(
-            "Usage: RepositoryChecks <all|docs|freeze|locks|source|version> [repository-root]");
+            "Usage: RepositoryChecks <all|docs|freeze|locks|logo|source|version> [repository-root]");
         writer.WriteLine(
             "       RepositoryChecks freeze-baseline <revision> <generated-utc> "
             + "[repository-root] [output]");

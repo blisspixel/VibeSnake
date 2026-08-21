@@ -1,3 +1,4 @@
+using System.Buffers.Binary;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -1327,6 +1328,93 @@ public sealed class RepositoryChecksTests
     }
 
     [Fact]
+    public void Project_logo_check_covers_missing_malformed_dimension_and_hash_failures()
+    {
+        WithTemporaryDirectory(root =>
+        {
+            var missing = ProjectLogoCheck.Inspect(root);
+            Assert.False(missing.Passed);
+            Assert.Equal("logo is missing: assets/images/logo.png", missing.Failures.Single());
+
+            Directory.CreateDirectory(Path.Combine(root, "assets", "images", "logo.png"));
+            var directory = ProjectLogoCheck.Inspect(root);
+            Assert.False(directory.Passed);
+            Assert.Equal("logo is missing: assets/images/logo.png", directory.Failures.Single());
+            Directory.Delete(Path.Combine(root, "assets", "images", "logo.png"));
+
+            WritePngFixture(root, 1024, 1024, extra: [0x00], truncateTo: 8);
+            var truncated = ProjectLogoCheck.Inspect(root);
+            Assert.False(truncated.Passed);
+            Assert.Equal("not a supported PNG logo: assets/images/logo.png", truncated.Failures.Single());
+
+            WritePngFixture(root, 1024, 1024, extra: "not a png"u8);
+            OverwriteLogoPrefix(root, "NOTPNG!!"u8);
+            var signature = ProjectLogoCheck.Inspect(root);
+            Assert.False(signature.Passed);
+            Assert.Equal("not a supported PNG logo: assets/images/logo.png", signature.Failures.Single());
+
+            WritePngFixture(root, 1024, 1024, extra: [], ihdrType: "IHDX"u8);
+            var ihdr = ProjectLogoCheck.Inspect(root);
+            Assert.False(ihdr.Passed);
+            Assert.Equal("not a supported PNG logo: assets/images/logo.png", ihdr.Failures.Single());
+
+            WritePngFixture(root, 1024, 1023, extra: [0x00]);
+            var dimensions = ProjectLogoCheck.Inspect(root);
+            Assert.False(dimensions.Passed);
+            Assert.Equal("logo dimensions must be 1024x1024, got 1024x1023", dimensions.Failures.Single());
+
+            WritePngFixture(root, 1024, 1024, extra: [0x00]);
+            var hash = ProjectLogoCheck.Inspect(root);
+            Assert.False(hash.Passed);
+            Assert.Equal(
+                "logo bytes do not match the preferred brand mark; "
+                + "restore assets/images/logo.png from the approved Snakev2 mark",
+                hash.Failures.Single());
+
+            CopyApprovedLogo(root);
+            var trailingPath = Path.Combine(root, "assets", "images", "logo.png");
+            File.WriteAllBytes(trailingPath, [.. File.ReadAllBytes(trailingPath), 0x00]);
+            var trailing = ProjectLogoCheck.Inspect(root);
+            Assert.False(trailing.Passed);
+            Assert.Equal(
+                "logo bytes do not match the preferred brand mark; "
+                + "restore assets/images/logo.png from the approved Snakev2 mark",
+                trailing.Failures.Single());
+        });
+    }
+
+    [Fact]
+    public void Project_logo_command_is_isolated_from_other_checks()
+    {
+        WithTemporaryDirectory(root =>
+        {
+            WriteDocumentationFixture(root);
+            var docsOutput = new StringWriter();
+            var docsError = new StringWriter();
+            Assert.Equal(0, RepositoryCheckCommand.Run(["docs", root], docsOutput, docsError));
+            Assert.DoesNotContain("Project logo", docsOutput.ToString(), StringComparison.Ordinal);
+            Assert.Equal(string.Empty, docsError.ToString());
+
+            WriteVersionFixture(root);
+            WriteCandidateFreezeFixture(root);
+            WriteDependencyLockFixture(root);
+            var allOutput = new StringWriter();
+            var allError = new StringWriter();
+            Assert.Equal(1, RepositoryCheckCommand.Run(["all", root], allOutput, allError));
+            Assert.Contains("Project logo check failed:", allError.ToString(), StringComparison.Ordinal);
+            Assert.Contains("logo is missing: assets/images/logo.png", allError.ToString(), StringComparison.Ordinal);
+
+            CopyApprovedLogo(root);
+            var logoOutput = new StringWriter();
+            var logoError = new StringWriter();
+            Assert.Equal(0, RepositoryCheckCommand.Run(["logo", root], logoOutput, logoError));
+            Assert.Equal("Project logo check passed." + Environment.NewLine, logoOutput.ToString());
+            Assert.Equal(string.Empty, logoError.ToString());
+            Assert.DoesNotContain("Product versions aligned", logoOutput.ToString(), StringComparison.Ordinal);
+        });
+    }
+
+    [Fact]
     public void Command_has_stable_usage_and_combined_success_paths()
     {
         var invalidOutput = new StringWriter();
@@ -1336,7 +1424,7 @@ public sealed class RepositoryChecksTests
 
         Assert.Equal(2, invalidCode);
         Assert.Equal(string.Empty, invalidOutput.ToString());
-        Assert.Contains("RepositoryChecks <all|docs|freeze|locks|source|version>", invalidError.ToString());
+        Assert.Contains("RepositoryChecks <all|docs|freeze|locks|logo|source|version>", invalidError.ToString());
 
         WithTemporaryDirectory(root =>
         {
@@ -1344,6 +1432,7 @@ public sealed class RepositoryChecksTests
             WriteDocumentationFixture(root);
             WriteCandidateFreezeFixture(root);
             WriteDependencyLockFixture(root);
+            CopyApprovedLogo(root);
             var output = new StringWriter();
             var error = new StringWriter();
 
@@ -1355,6 +1444,7 @@ public sealed class RepositoryChecksTests
             Assert.Contains("Documentation link check passed", output.ToString());
             Assert.Contains("Candidate freeze policy check passed", output.ToString());
             Assert.Contains("Python dependency locks verified", output.ToString());
+            Assert.Contains("Project logo check passed.", output.ToString());
             Assert.Contains("Source policy check passed", output.ToString());
         });
     }
@@ -1363,6 +1453,7 @@ public sealed class RepositoryChecksTests
     [InlineData("docs")]
     [InlineData("freeze")]
     [InlineData("locks")]
+    [InlineData("logo")]
     [InlineData("source")]
     [InlineData("version")]
     public void Command_runs_each_individual_check(string command)
@@ -1373,6 +1464,7 @@ public sealed class RepositoryChecksTests
             WriteDocumentationFixture(root);
             WriteCandidateFreezeFixture(root);
             WriteDependencyLockFixture(root);
+            CopyApprovedLogo(root);
             var output = new StringWriter();
             var error = new StringWriter();
 
@@ -1446,6 +1538,7 @@ public sealed class RepositoryChecksTests
         var docs = DocumentationCheck.Inspect(root);
         var freeze = CandidateFreezeCheck.Inspect(root);
         var locks = DependencyLockCheck.Inspect(root);
+        var logo = ProjectLogoCheck.Inspect(root);
         var source = SourcePolicyCheck.Inspect(root);
 
         Assert.True(version.Passed, string.Join(Environment.NewLine, version.Failures));
@@ -1454,6 +1547,7 @@ public sealed class RepositoryChecksTests
         Assert.True(locks.Passed, string.Join(Environment.NewLine, locks.Failures));
         Assert.Equal(52, DependencyLockCheck.CheckProfile(root, "ci"));
         Assert.Equal(4, DependencyLockCheck.CheckProfile(root, "runtime"));
+        Assert.True(logo.Passed, string.Join(Environment.NewLine, logo.Failures));
         Assert.True(source.Passed, string.Join(Environment.NewLine, source.Failures));
     }
 
@@ -1663,6 +1757,53 @@ public sealed class RepositoryChecksTests
         var path = Path.Combine(root, relativePath.Replace('/', Path.DirectorySeparatorChar));
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
         File.WriteAllText(path, source, new UTF8Encoding(false));
+    }
+
+    private static void CopyApprovedLogo(string root)
+    {
+        var destination = Path.Combine(root, "assets", "images", "logo.png");
+        Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
+        File.Copy(
+            Path.Combine(ResolveRepositoryRoot(), "assets", "images", "logo.png"),
+            destination,
+            overwrite: true);
+    }
+
+    private static void WritePngFixture(
+        string root,
+        uint width,
+        uint height,
+        ReadOnlySpan<byte> extra,
+        ReadOnlySpan<byte> ihdrType = default,
+        int? truncateTo = null)
+    {
+        var path = Path.Combine(root, "assets", "images", "logo.png");
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        var bytes = new byte[24 + extra.Length];
+        ReadOnlySpan<byte> signature = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A];
+        signature.CopyTo(bytes);
+        BinaryPrimitives.WriteUInt32BigEndian(bytes.AsSpan(8), 13);
+        if (ihdrType.IsEmpty)
+        {
+            "IHDR"u8.CopyTo(bytes.AsSpan(12));
+        }
+        else
+        {
+            ihdrType.CopyTo(bytes.AsSpan(12));
+        }
+
+        BinaryPrimitives.WriteUInt32BigEndian(bytes.AsSpan(16), width);
+        BinaryPrimitives.WriteUInt32BigEndian(bytes.AsSpan(20), height);
+        extra.CopyTo(bytes.AsSpan(24));
+        File.WriteAllBytes(path, truncateTo is null ? bytes : bytes.AsSpan(0, truncateTo.Value).ToArray());
+    }
+
+    private static void OverwriteLogoPrefix(string root, ReadOnlySpan<byte> prefix)
+    {
+        var path = Path.Combine(root, "assets", "images", "logo.png");
+        var bytes = File.ReadAllBytes(path);
+        prefix.CopyTo(bytes);
+        File.WriteAllBytes(path, bytes);
     }
 
     private static void WithTemporaryDirectory(Action<string> action)

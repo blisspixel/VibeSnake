@@ -118,10 +118,6 @@ jobs:
         if: matrix.python-version == '3.14'
         run: python scripts/visual_generate_badges.py --check
 
-      - name: Verify deterministic project logo
-        if: matrix.python-version == '3.14'
-        run: python scripts/visual_generate_logo.py --check
-
       - name: Verify deterministic content inventory
         if: matrix.python-version == '3.14'
         run: python scripts/content_inventory.py --check

@@ -140,7 +140,7 @@ Verify that policy, bytes, and the checked-in inventory agree:
 ```powershell
 python scripts/content_inventory.py --check
 python scripts/visual_generate_badges.py --check
-python scripts/visual_generate_logo.py --check
+dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- logo .
 ```
 
 Regenerate after an intentional asset or policy change:

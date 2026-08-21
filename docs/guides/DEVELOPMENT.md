@@ -129,7 +129,7 @@ python scripts/validate_agent_plugin.py TestResults/agent-plugin/portable/vibesn
 ./scripts/package_agent_host.ps1 -OutputRoot TestResults/agent-host -Force
 python scripts/capture_readme_screenshots.py --check
 python scripts/visual_generate_badges.py --check
-python scripts/visual_generate_logo.py --check
+dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- logo .
 python scripts/content_inventory.py --check
 python -m vibesnake.qa.shared_traces --check
 python -m vibesnake.qa.shared_rule_traces --check

@@ -14,7 +14,7 @@ This directory contains explicit command-line tools. Runtime code belongs under 
 | `validate_agent_host_package.py` | Enforce the AA-10 host-package manifest, inventory, provenance, isolation, and checksum contract |
 | `capture_readme_screenshots.py` | Isolated current-build README screenshot capture and freshness verification |
 | `visual_generate_badges.py` | Deterministic radio-station badge generation and byte verification |
-| `visual_generate_logo.py` | Preferred brand-logo hash and dimension verification |
+
 | `content_inventory.py` | Deterministic source-content inventory and release blocker report |
 | `content_packs.py` | Core and optional pack manifest qualification |
 | `assemble_radio_pack.py` | Deterministic, fail-closed assembly of one approved optional radio pack with manifest, checksums, and curation evidence |
@@ -41,7 +41,7 @@ This directory contains explicit command-line tools. Runtime code belongs under 
 
 These entry points are kept at `scripts/` root because README, CI, and release documentation invoke them directly.
 
-The native `RepositoryChecks` command owns canonical documentation discovery, relative-link validation, changelog contract-release uniqueness, product-version alignment, source policy, candidate-freeze validation, deterministic freeze-baseline preparation, and CI/runtime dependency-lock validation and generation. Run `dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- all .` from the repository root.
+The native `RepositoryChecks` command owns canonical documentation discovery, relative-link validation, changelog contract-release uniqueness, product-version alignment, source policy, candidate-freeze validation, deterministic freeze-baseline preparation, CI/runtime dependency-lock validation and generation, and project-logo PNG signature, dimension, and SHA-256 identity. Run `dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- all .` from the repository root.
 
 `ValidateArtifactManifest` also builds deterministic qualification-only release archives after validating the manifest and signing-readiness policy. It writes `release_output_plan.json` and `SHA256SUMS` beside the versioned package and never marks that unsigned output publishable.
 
@@ -64,8 +64,8 @@ vibesnake version
 ## Visual production
 
 `visual_generate_badges.py` is deterministic and enforced by CI using project-owned
-pixel glyphs. `visual_generate_logo.py` hash-checks the preferred handcrafted brand
-mark under `assets/images/logo.png`.
+pixel glyphs. Native `RepositoryChecks -- logo` hash-checks the preferred handcrafted
+brand mark under `assets/images/logo.png`.
 `capture_readme_screenshots.py` builds the native game, asks Godot to render four
 staged product screens with isolated user data, and checks exact committed bytes,
 dimensions, README references, and native presentation-source freshness.
