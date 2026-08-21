@@ -416,6 +416,9 @@
           "xunit.extensibility.core": "[2.9.3]"
         }
       },
+      "repositorychecks": {
+        "type": "Project"
+      },
       "validatecreatorcontent": {
         "type": "Project",
         "dependencies": {

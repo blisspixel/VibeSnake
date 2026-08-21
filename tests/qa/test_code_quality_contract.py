@@ -46,7 +46,7 @@ def test_dotnet_quality_contract_is_explicit_and_stable() -> None:
     assert toolchain["dotnetSdk"]["version"] == global_config["sdk"]["version"]
 
     workflow = (REPOSITORY_ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
-    assert workflow.count("dotnet-version: 10.0.303") == 3
+    assert workflow.count("dotnet-version: 10.0.303") == 4
     validator_installs = re.findall(
         r"python -m pip install --require-hashes --only-binary=:all:\s+-r requirements-ci\.lock",
         workflow,
@@ -63,9 +63,12 @@ def test_dotnet_quality_contract_is_explicit_and_stable() -> None:
         for path in REPOSITORY_ROOT.rglob("packages.lock.json")
         if not {".tools", "TestResults"}.intersection(path.relative_to(REPOSITORY_ROOT).parts)
     }
-    assert len(committed_lock_paths) == 9
+    assert len(committed_lock_paths) == 10
     for lock_path in committed_lock_paths:
         assert f'"{lock_path}"' in inventory_script
+
+    native_test_script = (REPOSITORY_ROOT / "scripts" / "test_native.ps1").read_text(encoding="utf-8")
+    assert "@($dependencyInventory.sources).Count -ne 12" in native_test_script
 
     host_project = ET.parse(
         REPOSITORY_ROOT / "native" / "tools" / "VibeSnake.AgentHost" / "VibeSnake.AgentHost.csproj"
@@ -189,6 +192,7 @@ def test_ci_runs_the_documented_quality_and_dependency_gates() -> None:
         "dotnet restore native/VibeSnake.slnx --locked-mode",
         "dotnet build native/VibeSnake.slnx --configuration Release --no-restore",
         "dotnet format native/VibeSnake.slnx --verify-no-changes --no-restore",
+        "dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj",
         "./scripts/test_native_coverage.ps1",
         "./scripts/package_agent_plugin.ps1 -OutputRoot TestResults/agent-plugin -Force",
         "./scripts/package_agent_host.ps1 -OutputRoot TestResults/agent-host -Force",
@@ -197,6 +201,13 @@ def test_ci_runs_the_documented_quality_and_dependency_gates() -> None:
         "python scripts/check_agent_interop.py",
     ):
         assert required in workflow
+
+    assert "python scripts/check_docs.py" not in workflow
+    assert "python scripts/check_product_version.py" not in workflow
+
+    pre_commit = (REPOSITORY_ROOT / ".pre-commit-config.yaml").read_text(encoding="utf-8")
+    assert "dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- docs ." in pre_commit
+    assert "python scripts/check_docs.py" not in pre_commit
 
     complete = parsed["jobs"]["ci-complete"]
     assert complete["name"] == "CI complete"

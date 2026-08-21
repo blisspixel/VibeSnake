@@ -110,4 +110,4 @@ Documentation has three trust levels:
 
 Only canonical documents may claim current feature status, supported versions, test counts, coverage, or release readiness. Every material implementation or quality-gate change updates [status](release/STATUS.md) and [changelog](../CHANGELOG.md). Priority changes update the [roadmap](../ROADMAP.md) without erasing acceptance evidence.
 
-Canonical links must be relative, resolvable, and checked by `python scripts/check_docs.py`. New documents belong in the narrowest existing category. Add a new category only when the document cannot be owned clearly by an existing one. Do not add loose planning or status files at project root.
+Canonical links must be relative, resolvable, and checked by `dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- docs .`. New documents belong in the narrowest existing category. Add a new category only when the document cannot be owned clearly by an existing one. Do not add loose planning or status files at project root.

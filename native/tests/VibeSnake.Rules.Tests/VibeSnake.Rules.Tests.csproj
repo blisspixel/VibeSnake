@@ -38,6 +38,7 @@
     <ProjectReference Include="..\..\src\VibeSnake.Persistence\VibeSnake.Persistence.csproj" />
     <ProjectReference Include="..\..\src\VibeSnake.Rules\VibeSnake.Rules.csproj" />
     <ProjectReference Include="..\..\tools\VibeSnake.AgentHost\VibeSnake.AgentHost.csproj" />
+    <ProjectReference Include="..\..\tools\RepositoryChecks\RepositoryChecks.csproj" />
     <ProjectReference Include="..\..\tools\ValidateCreatorContent\ValidateCreatorContent.csproj" />
   </ItemGroup>
 

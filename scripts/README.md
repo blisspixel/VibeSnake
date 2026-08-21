@@ -8,8 +8,6 @@ This directory contains explicit command-line tools. Runtime code belongs under 
 | --- | --- |
 | `check_source_policy.py` | Executable anti-slop, Unicode, Python placeholder, and signing-material exclusion policy |
 | `lock_python_dependencies.py` | CI and player-runtime hash-lock freshness checks and explicit regeneration |
-| `check_docs.py` | Canonical documentation discovery and relative-link validation |
-| `check_product_version.py` | Align canonical `VERSION`, native `ProductIdentity.AppVersion`, and the equivalent PEP 440 package version |
 | `check_agent_interop.py` | Validate the closed machine-readable MCP, Agent Plugins, Agent Skill, MCP Apps, and OKF baseline, canonical UTC lifecycle metadata, absolute review dates, source alignment, version-bound public-contract digests, documentation pins, and optional read-only integrity of pinned Agent Plugins specification and schema bytes |
 | `generate_agent_knowledge.py` | Deterministically render and freshness-check the Open Knowledge Format 0.2 bundle from canonical sources and the interoperability baseline |
 | `close_agent_preview.py` | One-command Agent Arena preview close-out: patch public-contract digests, regenerate knowledge, check interop and docs, run focused native tests. Invoked by root `close-agent-preview.cmd` so cmd.exe can set the repo SDK before any .NET global tool starts. |
@@ -45,6 +43,8 @@ This directory contains explicit command-line tools. Runtime code belongs under 
 | `install_godot_templates.ps1` | Checksum-verified export-template bootstrap |
 
 These entry points are kept at `scripts/` root because README, CI, and release documentation invoke them directly.
+
+The native `RepositoryChecks` command owns canonical documentation discovery, relative-link validation, changelog contract-release uniqueness, and product-version alignment. Run `dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- all .` from the repository root.
 
 `ValidateArtifactManifest` also builds deterministic qualification-only release archives after validating the manifest and signing-readiness policy. It writes `release_output_plan.json` and `SHA256SUMS` beside the versioned package and never marks that unsigned output publishable.
 

@@ -78,9 +78,6 @@ jobs:
         if: matrix.python-version == '3.14'
         run: python -m pip_audit --strict --disable-pip --require-hashes --requirement requirements-runtime.lock
 
-      - name: Check documentation links
-        run: python scripts/check_docs.py
-
       - name: Qualify agent interoperability artifacts
         if: matrix.python-version == '3.14'
         shell: pwsh
@@ -91,9 +88,6 @@ jobs:
           ./scripts/package_agent_plugin.ps1 -OutputRoot TestResults/agent-plugin
           python scripts/validate_agent_plugin.py TestResults/agent-plugin/portable/vibesnake-agent --require-mcp
           ./scripts/package_agent_host.ps1 -OutputRoot TestResults/agent-host -Force
-
-      - name: Check product version alignment
-        run: python scripts/check_product_version.py
 
       - name: Check candidate freeze policy
         run: python scripts/check_candidate_freeze.py
@@ -206,6 +200,7 @@ jobs:
             native/src/VibeSnake.Persistence/packages.lock.json
             native/src/VibeSnake.Rules/packages.lock.json
             native/tests/VibeSnake.Rules.Tests/packages.lock.json
+            native/tools/RepositoryChecks/packages.lock.json
             native/tools/ValidateArtifactManifest/packages.lock.json
             native/tools/ValidateCreatorContent/packages.lock.json
             native/tools/VibeSnake.AgentHost/packages.lock.json
@@ -225,6 +220,11 @@ jobs:
 
       - name: Build native solution
         run: dotnet build native/VibeSnake.slnx --configuration Release --no-restore
+
+      - name: Run native repository checks
+        run: >-
+          dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj
+          --configuration Release --no-build -- all .
 
       - name: Check C# formatting and analyzers
         run: dotnet format native/VibeSnake.slnx --verify-no-changes --no-restore
@@ -506,11 +506,23 @@ jobs:
         with:
           python-version: "3.14"
 
+      - name: Set up .NET
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: 10.0.303
+
+      - name: Restore native repository checks
+        run: >-
+          dotnet restore native/tools/RepositoryChecks/RepositoryChecks.csproj
+          --locked-mode
+
       - name: Require approved release content
         run: python scripts/content_inventory.py --check --release-ready
 
       - name: Check exact product and tag version
-        run: python scripts/check_product_version.py
+        run: >-
+          dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj
+          --configuration Release --no-restore -- version .
 
       - name: Download qualified channel-shape packages
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1

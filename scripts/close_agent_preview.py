@@ -122,7 +122,18 @@ def main() -> int:
     print("interop check passed", flush=True)
 
     print("4. documentation links", flush=True)
-    if _run([sys.executable, str(SCRIPTS / "check_docs.py")], env=env):
+    if _run(
+        [
+            str(_repo_dotnet()),
+            "run",
+            "--project",
+            str(ROOT / "native" / "tools" / "RepositoryChecks" / "RepositoryChecks.csproj"),
+            "--",
+            "docs",
+            str(ROOT),
+        ],
+        env=env,
+    ):
         return 1
 
     print("5. focused native tests", flush=True)
