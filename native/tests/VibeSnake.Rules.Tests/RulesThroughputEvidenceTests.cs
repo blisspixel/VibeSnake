@@ -8,6 +8,7 @@ namespace VibeSnake.Rules.Tests;
 /// These numbers are host-dependent and do not claim presentation frame times,
 /// declared-hardware p95, or product-feel acceptance.
 /// </summary>
+[Collection(RulesThroughputIntegrationGroup.Name)]
 public sealed class RulesThroughputEvidenceTests
 {
     private const int StepBudget = 50_000;

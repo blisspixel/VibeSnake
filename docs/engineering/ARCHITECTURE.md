@@ -66,7 +66,7 @@ Extra cores are already used where work is independent:
 - Godot owns rendering, audio, and platform callbacks off the rules step.
 - The shell runs one persistence or verification operation at a time on a worker so the main thread stays responsive.
 - Agent Host sessions serialize per match and may run beside each other.
-- xUnit runs separate test classes in parallel; Agent Host process tests stay in a non-parallel collection.
+- xUnit runs separate test classes in parallel; Agent Host process tests and the host-dependent rules-throughput measurement use dedicated non-parallel collections.
 - Independent AI league, observed-baseline, and balance-laboratory simulations use a bounded worker set (`Environment.ProcessorCount`) and reduce results in input order so evidence hashes do not depend on scheduling.
 
 Do not move the live player step, ghost lane, or accumulating reliability hash onto workers. Those campaigns are one ordered comparison. Hosted CI already fans out across operating-system jobs; that is the other intended use of extra machines.

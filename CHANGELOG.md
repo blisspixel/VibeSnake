@@ -4,6 +4,8 @@ Notable player-facing and engineering changes are recorded here. The project is 
 
 ## Unreleased
 
+- Isolated the host-dependent rules-throughput contract from every other xUnit collection. Independent simulation campaigns may still use all available cores, but they can no longer overlap the 750-step-per-second measurement and turn shared-runner CPU contention into a false regression.
+
 - Last Stand HUD and offer copy now distinguish its automatically triggered save from the three-second recovery the player still steers. Power-decision qualification now uses an odd-by-odd board so geodesic preference is not exhausted by even-grid antipodes.
 
 - Product Vibe power spawns now prefer cells off the wrap-Manhattan food geodesic from the reserved next head, so walking the shortest food route cannot collect the offer by accident. The flag defaults off and is omitted from canonical config like the offer-policy gate, the `vibe@1` factory enables it, and a tight board falls back to ordinary occupancy. Compatibility Shield-only occupancy, Classic, and shared fixtures stay on the default-off path. Replay verification charges the extra occupancy pass when the flag is on. Signal School `power-route` now allows 440 steps so a detour after the 300-tick spawn still fits; Vibe lesson locks and host qualification measurements were regenerated. The observed-balance baseline hash moved with Vibe only; Classic distributions are unchanged. Native contracts are now **1,331**.
