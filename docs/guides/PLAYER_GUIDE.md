@@ -106,7 +106,7 @@ The starvation indicator begins escalating after 20 seconds without food. A lega
 
 ## Power-ups
 
-Nine collectible power-ups alter movement, routing, growth, food placement, or survival. Shield blocks one crash, Phase Shift crosses occupied cells, Gluttony scores without growth, and Last Stand can rescue either collision or starvation. Bait affects the next food spawn, while Segment Detach creates temporary walls from your own tail. The exact durations, tradeoffs, and collision precedence are in [POWERUPS.md](../design/POWERUPS.md).
+Nine collectible power-ups alter movement, routing, growth, food placement, or survival. In Vibe, a pickup appears off the shortest path to food, so collecting it is a detour rather than an accident on the default route. Shield blocks one crash, Phase Shift crosses occupied cells, and Gluttony scores without growth. Last Stand triggers when a collision or starvation would end the run, then gives you a three-second recovery window to steer. Bait affects the next food spawn, while Segment Detach creates temporary walls from your own tail. Durations, tradeoffs, and collision precedence are in [POWERUPS.md](../design/POWERUPS.md).
 
 ## Progression
 

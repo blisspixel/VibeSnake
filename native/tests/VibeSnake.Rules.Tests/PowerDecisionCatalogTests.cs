@@ -29,6 +29,12 @@ public sealed class PowerDecisionCatalogTests
         Assert.Equal(
             [PowerKind.SegmentDetach],
             Family(PowerTacticalFamily.Geometry));
+
+        var lastStand = PowerDecisionCatalog.Get(PowerKind.LastStand);
+        Assert.Equal(PowerStatePresentation.Held, lastStand.StatePresentation);
+        Assert.Equal("HELD COIL", lastStand.OfferTelegraph);
+        Assert.Contains("automatic save", lastStand.IntendedQuestion, StringComparison.Ordinal);
+        Assert.Contains("still steer", lastStand.IntendedQuestion, StringComparison.Ordinal);
     }
 
     [Fact]

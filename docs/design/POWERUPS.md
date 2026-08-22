@@ -13,7 +13,7 @@ All nine power-ups are connected to normal runs in both the Python reference and
 | Phase Shift | 5 seconds | Allows the snake to cross its own body and active detached-segment obstacles. Screen edges already wrap and do not need phasing. |
 | Gluttony | 5 seconds | Food still resets starvation, awards score, advances progression, and respawns, but the snake does not grow. |
 | Bait | Next food respawn | Records the collection cell and uses inverse-square Manhattan-distance weighting to pull the next food spawn toward it. The marker is then consumed. |
-| Last Stand | Held until used | Prevents one collision or starvation death, keeps the score, shrinks the snake to half length rounded up, resets starvation, and grants three seconds of collision recovery. |
+| Last Stand | Held until used | Automatically triggers when a collision or starvation would end the run, keeps the score, shrinks the snake to half length rounded up, resets starvation, and grants three seconds of collision recovery the player still steers. The HUD labels the unused resource as a held coil. |
 | Segment Detach | Instant, obstacles last 10 seconds | Removes up to five oldest tail cells while preserving the head. Those cells become drawn collision obstacles, block food and power-up spawns, and expire together after ten seconds. |
 
 ## Collision precedence
@@ -55,7 +55,7 @@ Automatic selection is deterministic and enum ordered before the gameplay RNG ch
 
 ## Decision readability and local evidence
 
-A spawned pickup reserves the immediate movement destination, so its typed spawn event, stable on-board letter and outline, audio cue, family label, effect text, and remaining visibility appear at least one rules boundary before collection is possible. Product `vibe@1` also excludes every wrap-Manhattan geodesic cell from the reserved destination to food, so walking the shortest food route cannot collect the offer; collection is a detour. If that preferred set is empty, spawn falls back to ordinary occupancy so a tight board still receives an offer. Compatibility configs omit the flag and retain legacy occupancy. The HUD keeps the offer line visible beside existing active states instead of hiding it. Every timed state shows seconds, Last Stand and Bait use explicit held language, and Segment Detach shows both obstacle count and remaining time.
+A spawned pickup reserves the immediate movement destination, so its typed spawn event, stable on-board letter and outline, audio cue, family label, effect text, and remaining visibility appear at least one rules boundary before collection is possible. Product `vibe@1` also excludes every wrap-Manhattan geodesic cell from the reserved destination to food, so walking the shortest food route cannot collect the offer; collection is a detour. If that preferred set is empty, spawn falls back to ordinary occupancy so a tight board still receives an offer. On even-by-even boards a pair of antipodal cells can put every remaining cell on some shortest wrap path; the factory 64 by 33 board has an odd height, so that total covering cannot occur. Compatibility configs omit the flag and retain legacy occupancy. The HUD keeps the offer line visible beside existing active states instead of hiding it. Every timed state shows seconds, Last Stand and Bait use explicit held language, and Segment Detach shows both obstacle count and remaining time.
 
 Opted-in local playtest summary schema 2 stores nine aggregate-only power rows. Each row counts `offered`, `detoursObserved`, `collected`, `activated`, `expired`, `consumed`, `saved`, and `deathAdjacent`. A detour is counted once when a direction change moves closer to the live offer. A save is a typed collision-prevention event. Death adjacency uses the last related power event within 20 rules ticks. No raw input event, input time, device identity, path, or free text is retained. Schema 1 summaries migrate with zeroed power rows because they never recorded this evidence.
 
@@ -90,7 +90,7 @@ Slow-Mo and Boost are pure cadence modifiers on the rules snapshot. They do not 
 
 The pure C# rules kernel implements Last Stand as a held recovery resource:
 
-- Collection marks `LastStandHeld` without a duration timer until consumption.
+- Collection marks `LastStandHeld` without a duration timer until consumption. Presentation copy distinguishes the held coil, automatic fatal-event trigger, and player-steered three-second recovery.
 - Collision precedence: Phase Shift, recovery immunity, Shield, held Last Stand revive, then death.
 - Revive keeps score, shrinks body to half length rounded up (`max(1, (n + 1) / 2)`), resets hunger, and grants recovery immunity for the configured recovery ticks (default 60 ticks / 3 seconds).
 - Recovery immunity blocks self-collision without moving the body and advances each rules step.

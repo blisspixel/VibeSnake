@@ -133,7 +133,7 @@ A promising autonomy mechanic is an occasional two-choice Mutation Fork. Two pow
 | Bait plus Boost | Predict a nearby respawn, then convert it quickly | Spawn preview must make the plan learnable |
 | Gluttony plus Magnet | Score and timer recovery without body growth | Score category and duration remain explicit |
 | Segment Detach plus protection | Trade body relief for a temporary obstacle field | Obstacles need a countdown and distinct silhouette |
-| Last Stand after a long combo | Dramatic recovery instead of a flat death | Recovery state must be controllable and never feel automatic or random |
+| Last Stand after a long combo | Dramatic recovery instead of a flat death | Held-coil copy must distinguish the automatic trigger from the three-second recovery the player controls |
 
 Anti-synergies should be intentional, visible, and rare. The spawn director should not silently waste a player's opportunity.
 

@@ -93,8 +93,10 @@ internal static class PowerDecisionQualification
         var geodesicOffersOffPath = true;
         var spawnConfig = vibe with
         {
-            Width = 8,
-            Height = 6,
+            // Avoid double-antipode layouts where every cell can lie on a
+            // shortest wrap path and the documented fallback is required.
+            Width = 9,
+            Height = 7,
             StarvationTicks = 100,
             StarvationWarningTicks = 0,
             PowerSpawnIntervalTicks = 1,
@@ -189,7 +191,9 @@ internal static class PowerDecisionQualification
             "[G] GLUTTONY", "[T] BAIT ARMED", "[D] DETACH x1", "CADENCE 2/2",
         ];
         var allHeldAndDurationStatesReadable = stateTokens.All(token =>
-            readableStatus.Contains(token, StringComparison.Ordinal));
+            readableStatus.Contains(token, StringComparison.Ordinal))
+            && PowerFeedbackCatalog.Find(PowerKind.LastStand).StatePresentation == "held coil"
+            && PowerFeedbackCatalog.Find(PowerKind.LastStand).PickupTelegraph == "HELD COIL READY";
         var boostOnlyStatus = PowerPresentation.DescribeStatus(
             Snapshot(
                 tick: 1,

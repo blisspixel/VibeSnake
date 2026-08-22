@@ -50,25 +50,23 @@ These are direct 1280 by 720 captures from the current Godot renderer. Their has
 - Idle pointer hiding, focus-safe pausing, reduced motion, flash-free presentation, high contrast, mono audio, and scalable text.
 - Curated cosmetic sets, progression goals, Broadcast Tour, achievements, local scores, replays, and recovery tools.
 - Let's Play / AI channels with equal-rules matches, a thin live ticker, contextual playback controls, standings, lore, and seed challenges.
-- Post-1.0 Agent Arena source preview with bounded local agent play, a read-only live Godot viewer, verified replay evidence, Signal School practices, rivals, style contracts, exhibitions, local public identity, and qualification standings. The supported 1.0 player artifacts explicitly exclude this preview. See [Agent Arena](docs/design/AGENT_ARENA.md) and [agent play integration](docs/engineering/AGENT_PLAY.md).
+- Post-1.0 Agent Arena source preview. Supported 1.0 player artifacts exclude it. See [Agent Arena](docs/design/AGENT_ARENA.md).
 - Offline-first saves and content with no account or network requirement.
 
 The complete player-facing behavior is in the [player guide](docs/guides/PLAYER_GUIDE.md).
 
 ## Release focus
 
-The immediate goal is the first reproducible native alpha, not more feature surface. The dependency order is:
+The immediate goal is the first reproducible native alpha, not more feature surface.
 
-The exact unsigned review build is retained from [Release run 32421705560](https://github.com/blisspixel/VibeSnake/actions/runs/32421705560) at revision `e87db6e`. Its Windows x64, macOS Universal, and Linux x64 packages passed the cross-bound Release matrix, 300 clean launches, 600,000 reliability comparisons, 300 spectator restarts, 21 injected faults, accessibility and performance evidence, and detached manifest provenance.
+Unsigned Windows, macOS, and Linux review packages are retained from [Release run 32421705560](https://github.com/blisspixel/VibeSnake/actions/runs/32421705560) at `e87db6e`. Physical-session templates and the 12-track `the_bureau` listening record are bound to those exact bytes. Execution is still 0 of 144 cells and 0 of 12 listening decisions. Evidence, hashes, and open gates live in [current status](docs/release/STATUS.md).
 
-The physical-review tooling independently recomputes that Release evidence before creating a candidate record and four intentionally incomplete platform-session templates. Retained sessions cannot validate unless their revision, version, and package SHA-256 match that candidate exactly. The radio-listening tooling similarly rehashes all 12 `the_bureau` FLAC review copies and prepares per-track headphone and speaker criteria without changing any approval or export flag.
+1. Fill the prepared physical-review sessions against those retained packages.
+2. Complete `the_bureau` listening, then approve the first export-eligible core and radio set.
+3. Repair findings and rerun every affected gate without expanding feature scope.
+4. Publish `v0.3.0-alpha.1` only when the reviewed revision, hosted CI, artifacts, content, and disclosures agree.
 
-1. Fill the prepared physical-review sessions with input, audio-device, display, accessibility, recovery, retained-pixel, and declared-hardware observations against those exact retained bytes.
-2. Fill the prepared `the_bureau` listening record, approve or reject every exact source replacement, then assemble the smallest core content set and optional radio pack with full decode, loudness, credits, hashes, and size evidence.
-3. Fix any review findings and rerun every affected automated and physical gate without expanding feature scope.
-4. Publish `v0.3.0-alpha.1` only after the reviewed revision, hosted CI, artifacts, provenance, content, and disclosures agree.
-
-The [current status](docs/release/STATUS.md) records verified evidence and open gates. The [roadmap](ROADMAP.md#what-is-next-ordered-and-why) explains why this work precedes later milestones.
+The [roadmap](ROADMAP.md#what-is-next-ordered-and-why) explains why this work precedes later milestones.
 
 ## Play from source
 

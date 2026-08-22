@@ -87,7 +87,7 @@ public static class PowerDecisionCatalog
     [
         Entry(PowerKind.Shield, "shield", PowerTacticalFamily.Protection, PowerStatePresentation.Timed, "How aggressively can I route while one collision block is ready?", "ONE COLLISION BLOCK"),
         Entry(PowerKind.PhaseShift, "phase-shift", PowerTacticalFamily.Protection, PowerStatePresentation.Timed, "Can I route through a dangerous body knot before the timer ends?", "BODY PASS WINDOW"),
-        Entry(PowerKind.LastStand, "last-stand", PowerTacticalFamily.Protection, PowerStatePresentation.Held, "Should I preserve an automatic rescue for a high-value route?", "HELD AUTO-RESCUE"),
+        Entry(PowerKind.LastStand, "last-stand", PowerTacticalFamily.Protection, PowerStatePresentation.Held, "Should I hold an automatic save with three seconds of recovery I still steer?", "HELD COIL"),
         Entry(PowerKind.SlowMo, "slow-mo", PowerTacticalFamily.Tempo, PowerStatePresentation.Timed, "Do I want a longer control window?", "HALF STEP RATE"),
         Entry(PowerKind.Boost, "boost", PowerTacticalFamily.Tempo, PowerStatePresentation.Timed, "Do I want speed pressure for a more aggressive conversion?", "DOUBLE STEP RATE"),
         Entry(PowerKind.Magnet, "magnet", PowerTacticalFamily.Harvest, PowerStatePresentation.Timed, "Can food pull shorten a safe recovery route?", "FOOD PULL"),

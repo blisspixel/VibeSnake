@@ -157,7 +157,7 @@ internal static class PowerFeedbackCatalog
     [
         Entry(PowerKind.Shield, 'S', "SHIELD", "timed protection", AudioCue.ShieldActivate, true, "1 COLLISION BLOCK READY"),
         Entry(PowerKind.PhaseShift, 'P', "PHASE", "timed body pass", AudioCue.PhaseShiftActivate, true, "BODY PASS PROTECTION READY"),
-        Entry(PowerKind.LastStand, 'L', "LAST STAND", "held rescue", AudioCue.LastStandActivate, true, "AUTO-RESCUE READY"),
+        Entry(PowerKind.LastStand, 'L', "LAST STAND", "held coil", AudioCue.LastStandActivate, true, "HELD COIL READY"),
         Entry(PowerKind.SlowMo, 'W', "SLOW-MO", "timed cadence", AudioCue.SlowMoActivate, false, "HALF STEP RATE"),
         Entry(PowerKind.Boost, 'B', "BOOST", "timed cadence", AudioCue.BoostActivate, false, "DOUBLE STEP RATE"),
         Entry(PowerKind.Magnet, 'M', "MAGNET", "timed food pull", AudioCue.MagnetActivate, false, "FOOD PULL READY"),
@@ -185,7 +185,7 @@ internal static class PowerFeedbackCatalog
 
         if (snapshot.LastStandHeld)
         {
-            parts.Add("[L] AUTO-RESCUE READY");
+            parts.Add("[L] LAST STAND HELD");
         }
 
         if (snapshot.HasShield)
