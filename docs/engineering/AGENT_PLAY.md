@@ -36,7 +36,7 @@ Godot read-only watch screen
 
 Rules, observation, action, replay, viewer-frame, MCP, plugin, skill, and knowledge identities remain independent. The interoperability baseline was last reviewed on 2026-08-15. Review it at least quarterly and whenever an upstream specification, schema, SDK release, or security advisory changes. A standards update is handled as an isolated compatibility change with locked dependency restore, source and assembled-package validation, generated-knowledge drift checks, exact-protocol transcripts, and full CI. Every client named as supported also requires an independent cross-client smoke. Vibe Snake does not fetch a remote schema while loading a plugin or silently reinterpret scored behavior when an ecosystem format changes. Bump the host version when MCP behavior or its public tool and resource contract changes. Bump the plugin version when packaged discovery, launch, or skill behavior changes.
 
-The current host and Agent Plugin package versions are both `0.17.0`. The `0.16.0` minor release added `get_exhibition_story` with rules resource v17. The `0.17.0` minor release adds the seventeenth tool `get_qualification_report` and the eighth resource `vibesnake://agent/qualification`, and advances the rules resource to v18 to publish the qualification block. Gameplay, observation, action, result, lesson, style, receipt, viewer frame, replay, passport, and story schemas remain unchanged. The machine-readable [interoperability baseline](../../integrations/agent-interop-baseline.json) owns these pins, the Agent Plugins status discrepancy, immutable normative-source commit, official specification and schema digests, reviewed date, next review date, and versioned public-contract digests. Normal CI validates internal alignment, canonical timestamps, freshness, and host/plugin contract history without network access. A scheduled read-only job checks byte integrity for the pinned normative specification and two schema URLs. It does not discover newly released ecosystem versions or re-evaluate the mutable website status; those remain quarterly and release-triggered review work. A public contract change fails until its SemVer and digest-history entry advance together.
+The current Agent Host version is `0.17.0`, and the Agent Plugin package version is `0.17.1`. Host `0.17.0` added the seventeenth tool `get_qualification_report`, the eighth resource `vibesnake://agent/qualification`, and rules resource v18. Plugin `0.17.1` moves its source and package validation surface to native `RepositoryChecks` with stricter required metadata and bounded containment; host behavior and every gameplay, observation, action, result, lesson, style, receipt, viewer frame, replay, passport, story, and resource schema remain unchanged. The machine-readable [interoperability baseline](../../integrations/agent-interop-baseline.json) owns these pins, the Agent Plugins status discrepancy, immutable normative-source commit, official specification and schema digests, reviewed date, next review date, and versioned public-contract digests. Normal CI validates internal alignment, canonical timestamps, freshness, and host/plugin contract history without network access. A scheduled read-only job checks byte integrity for the pinned normative specification and two schema URLs. It does not discover newly released ecosystem versions or re-evaluate the mutable website status; those remain quarterly and release-triggered review work. A public contract change fails until its SemVer and digest-history entry advance together.
 
 ### Agentic playtester feedback
 
@@ -200,10 +200,10 @@ Visual-input divisions, remote transport, and hosted tournaments remain future w
 The checked-in source bundle under `integrations/vibesnake-agent-plugin/` pins Agent Plugins 1.0.0 and contains a minimal Agent Skill. The normative versioned repository labels 1.0.0 Published while the public website still says Working Draft, so packaging remains preview-only. The discrepancy is machine-recorded and re-reviewed quarterly; weekly automation verifies the pinned normative specification and schema bytes rather than treating the mutable website as a conformance oracle. Validate its source form with:
 
 ```powershell
-python scripts/validate_agent_plugin.py integrations/vibesnake-agent-plugin
+dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- plugin integrations/vibesnake-agent-plugin
 ```
 
-This validator enforces Vibe Snake's intentionally narrow stdio producer profile, local containment rules, and assembled-package invariants. It is not a general Agent Plugins client conformance suite or a complete Agent Skills validator.
+The native validator enforces Vibe Snake's intentionally narrow stdio producer profile, required manifest metadata, bounded strict UTF-8 input, local containment rules, and assembled-package invariants. It is not a general Agent Plugins client conformance suite or a complete Agent Skills validator.
 
 Create the framework-dependent preview package with:
 
@@ -239,7 +239,7 @@ Focused tests cover deterministic sessions, step-equivalent bursts, fixed event 
 ```powershell
 dotnet test native/tests/VibeSnake.Rules.Tests/VibeSnake.Rules.Tests.csproj --filter "FullyQualifiedName~Agent"
 ./scripts/test_native_coverage.ps1
-python -m pytest tests/qa/test_agent_plugin.py tests/qa/test_agent_knowledge.py
+python -m pytest tests/qa/test_agent_knowledge.py
 python scripts/generate_agent_knowledge.py --check
 ```
 

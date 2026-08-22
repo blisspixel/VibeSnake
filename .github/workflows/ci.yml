@@ -49,6 +49,7 @@ jobs:
             native/src/VibeSnake.AgentPlay/packages.lock.json
             native/src/VibeSnake.Persistence/packages.lock.json
             native/src/VibeSnake.Rules/packages.lock.json
+            native/tools/RepositoryChecks/packages.lock.json
             native/tools/VibeSnake.AgentHost/packages.lock.json
 
       - name: Install hash-locked project and development tools
@@ -74,11 +75,10 @@ jobs:
         if: matrix.python-version == '3.14'
         shell: pwsh
         run: |
-          python scripts/validate_agent_plugin.py integrations/vibesnake-agent-plugin
+          dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj --configuration Release -- plugin integrations/vibesnake-agent-plugin
           python scripts/check_agent_interop.py
           python scripts/generate_agent_knowledge.py --check
           ./scripts/package_agent_plugin.ps1 -OutputRoot TestResults/agent-plugin
-          python scripts/validate_agent_plugin.py TestResults/agent-plugin/portable/vibesnake-agent --require-mcp
           ./scripts/package_agent_host.ps1 -OutputRoot TestResults/agent-host -Force
 
       - name: Qualify manual product matrix handoff
@@ -190,15 +190,10 @@ jobs:
             native/tools/ValidateCreatorContent/packages.lock.json
             native/tools/VibeSnake.AgentHost/packages.lock.json
 
-      - name: Set up Python for Agent Plugin validation
+      - name: Set up Python for remaining Agent Host package validation
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.14"
-
-      - name: Install hash-locked Agent Plugin validator
-        run: >-
-          python -m pip install --require-hashes --only-binary=:all:
-          -r requirements-ci.lock
 
       - name: Restore locked dependencies
         run: dotnet restore native/VibeSnake.slnx --locked-mode
@@ -218,7 +213,6 @@ jobs:
         shell: pwsh
         run: |
           ./scripts/package_agent_plugin.ps1 -OutputRoot TestResults/agent-plugin -Force
-          python scripts/validate_agent_plugin.py TestResults/agent-plugin/portable/vibesnake-agent --require-mcp
           ./scripts/package_agent_host.ps1 -OutputRoot TestResults/agent-host -Force
 
       - name: Test native rules with coverage floor

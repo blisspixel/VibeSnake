@@ -10,7 +10,7 @@ Set-StrictMode -Version Latest
 $repositoryRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot ".."))
 $sourceRoot = Join-Path $repositoryRoot "integrations/vibesnake-agent-plugin"
 $hostProject = Join-Path $repositoryRoot "native/tools/VibeSnake.AgentHost/VibeSnake.AgentHost.csproj"
-$validator = Join-Path $repositoryRoot "scripts/validate_agent_plugin.py"
+$validatorProject = Join-Path $repositoryRoot "native/tools/RepositoryChecks/RepositoryChecks.csproj"
 if ([string]::IsNullOrWhiteSpace($OutputRoot)) {
     $OutputRoot = Join-Path $repositoryRoot "dist/agent-plugins"
 }
@@ -86,7 +86,10 @@ $checksumLines = Get-ChildItem -LiteralPath $target -File -Recurse |
     $checksumLines,
     [System.Text.UTF8Encoding]::new($false))
 
-python $validator $target --require-mcp
+dotnet run `
+    --project $validatorProject `
+    --configuration Release `
+    -- plugin $target --require-mcp
 if ($LASTEXITCODE -ne 0) {
     throw "The assembled Agent Plugin failed producer validation."
 }

@@ -51,7 +51,13 @@ def test_dotnet_quality_contract_is_explicit_and_stable() -> None:
         r"python -m pip install --require-hashes --only-binary=:all:\s+-r requirements-ci\.lock",
         workflow,
     )
-    assert len(validator_installs) == 2
+    assert len(validator_installs) == 1
+    native_rules_job = workflow.split("  native-rules:", 1)[1].split("  godot-smoke:", 1)[0]
+    assert "Set up Python for remaining Agent Host package validation" in native_rules_job
+    assert 'python-version: "3.14"' in native_rules_job
+    assert "pip install" not in native_rules_job
+    assert "validate_agent_plugin.py" not in workflow
+    assert "RepositoryChecks/RepositoryChecks.csproj --configuration Release -- plugin" in workflow
     for script_name in ("write_dependency_inventory.ps1", "inspect_native_artifact.ps1"):
         script = (REPOSITORY_ROOT / "scripts" / script_name).read_text(encoding="utf-8")
         assert "dotnet --version" in script

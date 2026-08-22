@@ -1398,6 +1398,7 @@ public sealed class RepositoryChecksTests
             WriteVersionFixture(root);
             WriteCandidateFreezeFixture(root);
             WriteDependencyLockFixture(root);
+            WriteAgentPluginFixture(root);
             var allOutput = new StringWriter();
             var allError = new StringWriter();
             Assert.Equal(1, RepositoryCheckCommand.Run(["all", root], allOutput, allError));
@@ -1432,6 +1433,7 @@ public sealed class RepositoryChecksTests
             WriteDocumentationFixture(root);
             WriteCandidateFreezeFixture(root);
             WriteDependencyLockFixture(root);
+            WriteAgentPluginFixture(root);
             CopyApprovedLogo(root);
             var output = new StringWriter();
             var error = new StringWriter();
@@ -1446,6 +1448,7 @@ public sealed class RepositoryChecksTests
             Assert.Contains("Python dependency locks verified", output.ToString());
             Assert.Contains("Project logo check passed.", output.ToString());
             Assert.Contains("Source policy check passed", output.ToString());
+            Assert.Contains("Agent Plugin source profile passed", output.ToString());
         });
     }
 
@@ -1540,6 +1543,8 @@ public sealed class RepositoryChecksTests
         var locks = DependencyLockCheck.Inspect(root);
         var logo = ProjectLogoCheck.Inspect(root);
         var source = SourcePolicyCheck.Inspect(root);
+        var plugin = AgentPluginCheck.Inspect(
+            Path.Combine(root, "integrations", "vibesnake-agent-plugin"));
 
         Assert.True(version.Passed, string.Join(Environment.NewLine, version.Failures));
         Assert.True(docs.Passed, string.Join(Environment.NewLine, docs.Failures));
@@ -1549,6 +1554,7 @@ public sealed class RepositoryChecksTests
         Assert.Equal(4, DependencyLockCheck.CheckProfile(root, "runtime"));
         Assert.True(logo.Passed, string.Join(Environment.NewLine, logo.Failures));
         Assert.True(source.Passed, string.Join(Environment.NewLine, source.Failures));
+        Assert.True(plugin.Passed, string.Join(Environment.NewLine, plugin.Failures));
     }
 
     private static void WriteCandidateFreezeFixture(
@@ -1750,6 +1756,32 @@ public sealed class RepositoryChecksTests
         }
 
         WriteFile(root, "docs/guide.md", "# Guide\n");
+    }
+
+    private static void WriteAgentPluginFixture(string root)
+    {
+        WriteFile(
+            root,
+            "integrations/vibesnake-agent-plugin/plugin.json",
+            """
+            {
+              "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+              "name": "vibesnake-agent",
+              "version": "0.17.0",
+              "description": "Play deterministic Vibe Snake matches through the local MCP host."
+            }
+            """ + "\n");
+        WriteFile(
+            root,
+            "integrations/vibesnake-agent-plugin/skills/play-vibesnake/SKILL.md",
+            """
+            ---
+            name: play-vibesnake
+            description: Play deterministic Vibe Snake matches through the local MCP host.
+            ---
+
+            # Play Vibe Snake
+            """ + "\n");
     }
 
     private static void WriteFile(string root, string relativePath, string source)

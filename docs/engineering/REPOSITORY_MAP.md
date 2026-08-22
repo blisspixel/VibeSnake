@@ -122,10 +122,9 @@ scripts/
 |-- install_godot.ps1             Checksum-verified editor bootstrap
 |-- install_godot_templates.ps1   Selective checksum-verified export-template bootstrap
 |-- test_native.ps1               Rules, coverage, balance/AI evidence, import, and scene smoke
-|-- package_agent_plugin.ps1      Assemble and checksum the framework-dependent preview Agent Plugin
+|-- package_agent_plugin.ps1      Assemble, checksum, and natively validate the framework-dependent preview Agent Plugin
 |-- package_agent_host.ps1        Assemble the current-RID unsigned self-contained Agent Host package
 |-- validate_agent_host_package.py Enforce the AA-10 host-package manifest, inventory, provenance, and checksum contract
-|-- validate_agent_plugin.py      Validate source and packaged Agent Plugins 1.0.0 manifests, launch containment, completeness, and checksums
 |-- generate_agent_knowledge.py   Generate or drift-check the Open Knowledge Format 0.2 bundle
 |-- test_native_export.ps1        Outside-checkout packaged-player smoke
 `-- inspect_native_artifact.ps1   Payload, portability, and SHA-256 manifest gate

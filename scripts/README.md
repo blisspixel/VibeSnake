@@ -9,7 +9,6 @@ This directory contains explicit command-line tools. Runtime code belongs under 
 | `check_agent_interop.py` | Validate the closed machine-readable MCP, Agent Plugins, Agent Skill, MCP Apps, and OKF baseline, canonical UTC lifecycle metadata, absolute review dates, source alignment, version-bound public-contract digests, documentation pins, and optional read-only integrity of pinned Agent Plugins specification and schema bytes |
 | `generate_agent_knowledge.py` | Deterministically render and freshness-check the Open Knowledge Format 0.2 bundle from canonical sources and the interoperability baseline |
 | `close_agent_preview.py` | One-command Agent Arena preview close-out: patch public-contract digests, regenerate knowledge, check interop and docs, run focused native tests. Invoked by root `close-agent-preview.cmd` so cmd.exe can set the repo SDK before any .NET global tool starts. |
-| `validate_agent_plugin.py` | Enforce Vibe Snake's intentionally narrow Agent Plugins stdio producer and containment profile, exact packaged launch declaration, required components, and complete checksums |
 | `package_agent_host.ps1` | Assemble the current-RID unsigned self-contained Agent Host package with closed manifest, lock-derived inventory, unsigned provenance, checksums, and isolated user-data policy |
 | `validate_agent_host_package.py` | Enforce the AA-10 host-package manifest, inventory, provenance, isolation, and checksum contract |
 | `capture_readme_screenshots.py` | Isolated current-build README screenshot capture and freshness verification |
@@ -41,7 +40,7 @@ This directory contains explicit command-line tools. Runtime code belongs under 
 
 These entry points are kept at `scripts/` root because README, CI, and release documentation invoke them directly.
 
-The native `RepositoryChecks` command owns canonical documentation discovery, relative-link validation, changelog contract-release uniqueness, product-version alignment, source policy, candidate-freeze validation, deterministic freeze-baseline preparation, CI/runtime dependency-lock validation and generation, and project-logo PNG signature, dimension, and SHA-256 identity. Run `dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- all .` from the repository root.
+The native `RepositoryChecks` command owns canonical documentation discovery, relative-link validation, changelog contract-release uniqueness, product-version alignment, source policy, candidate-freeze validation, deterministic freeze-baseline preparation, CI/runtime dependency-lock validation and generation, project-logo PNG identity, and source and packaged Agent Plugin validation. Run `dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- all .` from the repository root. Use its `plugin <plugin-root> [--require-mcp]` route for an isolated plugin tree.
 
 `ValidateArtifactManifest` also builds deterministic qualification-only release archives after validating the manifest and signing-readiness policy. It writes `release_output_plan.json` and `SHA256SUMS` beside the versioned package and never marks that unsigned output publishable.
 

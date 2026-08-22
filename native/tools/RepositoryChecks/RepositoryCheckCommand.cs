@@ -508,6 +508,13 @@ public static class RepositoryCheckCommand
             return RunLockWrite(arguments, standardOutput, standardError, resolver);
         }
 
+        if (arguments is not null
+            && arguments.Count > 0
+            && arguments[0] == "plugin")
+        {
+            return RunPlugin(arguments, standardOutput, standardError);
+        }
+
         if (arguments is null
             || arguments.Count is < 1 or > 2
             || arguments[0] is not ("all" or "docs" or "freeze" or "locks" or "logo" or "source" or "version"))
@@ -544,6 +551,8 @@ public static class RepositoryCheckCommand
                 DependencyLockCheck.Inspect(repositoryRoot),
                 ProjectLogoCheck.Inspect(repositoryRoot),
                 SourcePolicyCheck.Inspect(repositoryRoot),
+                AgentPluginCheck.Inspect(
+                    Path.Combine(repositoryRoot, "integrations", "vibesnake-agent-plugin")),
             },
         };
 
@@ -565,6 +574,47 @@ public static class RepositoryCheckCommand
         }
 
         return passed ? 0 : 1;
+    }
+
+    private static int RunPlugin(
+        IReadOnlyList<string> arguments,
+        TextWriter standardOutput,
+        TextWriter standardError)
+    {
+        if (arguments.Count is < 2 or > 3
+            || (arguments.Count == 3 && arguments[2] != "--require-mcp"))
+        {
+            WriteUsage(standardError);
+            return 2;
+        }
+
+        RepositoryCheckResult result;
+        try
+        {
+            result = AgentPluginCheck.Inspect(
+                Path.GetFullPath(arguments[1]),
+                requireMcp: arguments.Count == 3);
+        }
+        catch (Exception exception) when (
+            exception is ArgumentException or NotSupportedException or PathTooLongException)
+        {
+            standardError.WriteLine("Agent Plugin root is invalid.");
+            return 2;
+        }
+
+        if (result.Passed)
+        {
+            standardOutput.WriteLine(result.SuccessMessage);
+            return 0;
+        }
+
+        standardError.WriteLine(result.Name + " check failed:");
+        foreach (var failure in result.Failures)
+        {
+            standardError.WriteLine("  " + failure);
+        }
+
+        return 1;
     }
 
     private static int RunLockWrite(
@@ -676,6 +726,8 @@ public static class RepositoryCheckCommand
             + "[repository-root] [output]");
         writer.WriteLine(
             "       RepositoryChecks lock-write <ci|runtime> [repository-root]");
+        writer.WriteLine(
+            "       RepositoryChecks plugin <plugin-root> [--require-mcp]");
     }
 
 }

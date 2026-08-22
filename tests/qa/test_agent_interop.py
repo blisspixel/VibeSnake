@@ -68,10 +68,10 @@ def test_checked_in_interoperability_baseline_is_aligned_and_fresh() -> None:
         "session_model": "stateless",
     }
     assert baseline["agent_plugins"]["spec_version"] == "1.0.0"
-    assert baseline["agent_plugins"]["plugin_version"] == "0.17.0"
+    assert baseline["agent_plugins"]["plugin_version"] == "0.17.1"
     assert baseline["okf"]["spec_version"] == "0.2"
     assert baseline["public_contract_history"]["host"][-1]["version"] == "0.17.0"
-    assert baseline["public_contract_history"]["plugin"][-1]["version"] == "0.17.0"
+    assert baseline["public_contract_history"]["plugin"][-1]["version"] == "0.17.1"
 
 
 def test_interoperability_baseline_rejects_staleness_and_source_drift(tmp_path: Path) -> None:

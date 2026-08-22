@@ -145,11 +145,11 @@ python -m ruff format --check src tests scripts
 python -m ruff check src tests scripts
 dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- source .
 dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- all .
-python scripts/validate_agent_plugin.py integrations/vibesnake-agent-plugin
+dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- plugin integrations/vibesnake-agent-plugin
 python scripts/check_agent_interop.py
 python scripts/generate_agent_knowledge.py --check
 ./scripts/package_agent_plugin.ps1 -OutputRoot TestResults/agent-plugin -Force
-python scripts/validate_agent_plugin.py TestResults/agent-plugin/portable/vibesnake-agent --require-mcp
+dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- plugin TestResults/agent-plugin/portable/vibesnake-agent --require-mcp
 ./scripts/package_agent_host.ps1 -OutputRoot TestResults/agent-host -Force
 python scripts/capture_readme_screenshots.py --check
 python scripts/visual_generate_badges.py --check
