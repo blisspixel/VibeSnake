@@ -114,7 +114,7 @@ The nine working powers are enough for 1.0. The missing ingredient is not anothe
 
 1. Telegraph a spawn before it becomes collectible, using a grid-safe shape and sound.
 2. Make its type and remaining visibility legible before the player commits to a detour.
-3. Place it so collection is a route decision, not an accidental reward on the default path.
+3. Place it so collection is a route decision, not an accidental reward on the default path. Product Vibe excludes the wrap-Manhattan food geodesic from power occupancy and falls back only when that set is empty.
 4. Show activation, duration, expiry, and consumption with one shared visual grammar.
 5. Explain the effect in onboarding and the pause glossary without requiring lore knowledge.
 6. Record offered, collected, activated, expired, consumed, and death-adjacent events in local run summaries.

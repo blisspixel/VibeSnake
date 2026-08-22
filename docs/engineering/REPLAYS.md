@@ -209,7 +209,7 @@ silently treating every failure as corruption.
 Verification has a deterministic 16,000,000 work-unit budget in addition to the
 size and step caps. It rejects an impossible body-size and step-count product
 before executing it, then charges actual body hashing, every potential full-grid
-food scan, and both potential full-grid power-spawn passes before each step.
+food scan, and the potential full-grid power-spawn occupancy and selection passes before each step, plus a geodesic-fallback occupancy pass when product placement is enabled.
 Godot runs save, selected-browser-file, latest-file, and dropped-file operations
 as one background operation at a time, while the main thread remains responsive.
 Replay work gates new runs, a terminal save is retained behind any active

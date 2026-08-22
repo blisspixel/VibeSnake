@@ -4,6 +4,8 @@ Notable player-facing and engineering changes are recorded here. The project is 
 
 ## Unreleased
 
+- Product Vibe power spawns now prefer cells off the wrap-Manhattan food geodesic from the reserved next head, so walking the shortest food route cannot collect the offer by accident. The flag defaults off and is omitted from canonical config like the offer-policy gate, the `vibe@1` factory enables it, and a tight board falls back to ordinary occupancy. Compatibility Shield-only occupancy, Classic, and shared fixtures stay on the default-off path. Replay verification charges the extra occupancy pass when the flag is on. Signal School `power-route` now allows 440 steps so a detour after the 300-tick spawn still fits; Vibe lesson locks and host qualification measurements were regenerated. The observed-balance baseline hash moved with Vibe only; Classic distributions are unchanged. Native contracts are now **1,331**.
+
 - Hunger, protection, and power-status timers now convert remaining rules ticks through the live cadence interval, so Boost halves displayed seconds and Slow-Mo doubles them while rules ticks stay unchanged. Combined Slow-Mo plus Boost still shows base-cadence seconds. The readable run-HUD gate walks Boost, base, and Slow-Mo intervals, and power-decision qualification asserts the halved and doubled labels.
 
 - Independent AI league, observed-balance baseline, and balance-laboratory simulations now run on a bounded worker set equal to the host processor count and reduce results in input order. One SnakeRun remains single-threaded. Live player steps, ghost lanes, and accumulating reliability hashes stay sequential. Architecture and quality standards record that extra cores are for independent work, not for splitting a scored run.

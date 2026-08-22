@@ -242,6 +242,7 @@ public sealed class PowerDecisionCatalogTests
         run.Step();
 
         Assert.False(config.EnablePowerDecisionOffers);
+        Assert.False(config.AvoidFoodGeodesicPowerOffers);
         Assert.Equal(PowerKind.Shield, Assert.IsType<PowerPickup>(run.PowerPickup).Kind);
     }
 

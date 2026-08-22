@@ -120,6 +120,7 @@ public sealed class RunConfigTests
         Assert.Contains("\"enableAdaptation\":false", json);
         Assert.Contains("\"adaptivePolicyId\":\"none\"", json);
         Assert.DoesNotContain("enablePowerDecisionOffers", json, StringComparison.Ordinal);
+        Assert.DoesNotContain("avoidFoodGeodesicPowerOffers", json, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -168,6 +169,9 @@ public sealed class RunConfigTests
         Assert.NotEqual(
             vibe.ComputeConfigHash(),
             (vibe with { EnablePowerDecisionOffers = false }).ComputeConfigHash());
+        Assert.NotEqual(
+            vibe.ComputeConfigHash(),
+            (vibe with { AvoidFoodGeodesicPowerOffers = false }).ComputeConfigHash());
     }
 
     [Theory]
@@ -204,6 +208,8 @@ public sealed class RunConfigTests
             () => (classic with { EnableNearMiss = true }).Validate());
         Assert.Throws<ArgumentException>(
             () => (classic with { PowerSpawnIntervalTicks = 300 }).Validate());
+        Assert.Throws<ArgumentException>(
+            () => (classic with { AvoidFoodGeodesicPowerOffers = true }).Validate());
         Assert.Throws<ArgumentException>(
             () => new RunConfig(ModeId: RunModeCatalog.ClassicId).Validate());
     }

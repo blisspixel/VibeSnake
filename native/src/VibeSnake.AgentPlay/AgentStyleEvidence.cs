@@ -69,22 +69,8 @@ internal static class AgentStyleEvidenceMath
         GridPoint left,
         GridPoint right,
         int width,
-        int height)
-    {
-        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(width);
-        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(height);
-        var deltaX = Math.Abs(left.X - right.X);
-        var deltaY = Math.Abs(left.Y - right.Y);
-        if (deltaX >= width || deltaY >= height)
-        {
-            throw new ArgumentOutOfRangeException(
-                nameof(right),
-                "Distance points must be inside the wrapped board.");
-        }
-
-        return Math.Min(deltaX, width - deltaX)
-            + Math.Min(deltaY, height - deltaY);
-    }
+        int height) =>
+        GridPoint.WrapManhattanDistance(left, right, width, height);
 }
 
 internal readonly record struct AgentStyleEvidenceFacts(

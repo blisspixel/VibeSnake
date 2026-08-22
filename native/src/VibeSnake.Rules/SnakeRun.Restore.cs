@@ -157,7 +157,10 @@ public sealed partial class SnakeRun
                 AdaptiveDifficultyPolicy.DisabledPolicyId),
             EnablePowerDecisionOffers: ReadOptionalBoolean(
                 configElement,
-                "enablePowerDecisionOffers"));
+                "enablePowerDecisionOffers"),
+            AvoidFoodGeodesicPowerOffers: ReadOptionalBoolean(
+                configElement,
+                "avoidFoodGeodesicPowerOffers"));
         config.Validate();
 
         var randomElement = RequireObject(root.GetProperty("random"), "random");

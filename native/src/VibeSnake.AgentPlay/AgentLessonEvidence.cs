@@ -221,7 +221,7 @@ public static class AgentSignalSchoolCatalog
                 "Collect and activate the same visible power kind.",
                 RunModeCatalog.VibeId,
                 32_452_843UL,
-                320,
+                440,
                 Requirement(
                     "power_collected",
                     "Power collected",

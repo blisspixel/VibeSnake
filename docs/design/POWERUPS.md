@@ -51,11 +51,11 @@ The manager schedules spawns, excludes the snake, food, detached obstacles, and 
 | Harvest | Magnet, Bait, Gluttony | Exact duplicates are suppressed; cross-kind harvest combinations remain available. |
 | Geometry | Segment Detach | A new detach is suppressed while detached obstacles remain. |
 
-Automatic selection is deterministic and enum ordered before the gameplay RNG chooses among eligible kinds. The product `vibe@1` factory enables the policy and can reach all nine kinds. Classic disables power spawning. Default `RunConfig` leaves the policy off and retains the frozen Shield-only random path for shared dual-runtime fixtures and old canonical states. The enabled flag is part of config, replay, and score identity, and an enabled canonical state restores it explicitly.
+Automatic selection is deterministic and enum ordered before the gameplay RNG chooses among eligible kinds. The product `vibe@1` factory enables the policy and geodesic placement and can reach all nine kinds. Classic disables power spawning. Default `RunConfig` leaves both flags off and retains the frozen Shield-only random path and legacy occupancy for shared dual-runtime fixtures and old canonical states. Enabled flags are part of config, replay, and score identity, and an enabled canonical state restores them explicitly.
 
 ## Decision readability and local evidence
 
-A spawned pickup reserves the immediate movement destination, so its typed spawn event, stable on-board letter and outline, audio cue, family label, effect text, and remaining visibility appear at least one rules boundary before collection is possible. The HUD keeps the offer line visible beside existing active states instead of hiding it. Every timed state shows seconds, Last Stand and Bait use explicit held language, and Segment Detach shows both obstacle count and remaining time.
+A spawned pickup reserves the immediate movement destination, so its typed spawn event, stable on-board letter and outline, audio cue, family label, effect text, and remaining visibility appear at least one rules boundary before collection is possible. Product `vibe@1` also excludes every wrap-Manhattan geodesic cell from the reserved destination to food, so walking the shortest food route cannot collect the offer; collection is a detour. If that preferred set is empty, spawn falls back to ordinary occupancy so a tight board still receives an offer. Compatibility configs omit the flag and retain legacy occupancy. The HUD keeps the offer line visible beside existing active states instead of hiding it. Every timed state shows seconds, Last Stand and Bait use explicit held language, and Segment Detach shows both obstacle count and remaining time.
 
 Opted-in local playtest summary schema 2 stores nine aggregate-only power rows. Each row counts `offered`, `detoursObserved`, `collected`, `activated`, `expired`, `consumed`, `saved`, and `deathAdjacent`. A detour is counted once when a direction change moves closer to the live offer. A save is a typed collision-prevention event. Death adjacency uses the last related power event within 20 rules ticks. No raw input event, input time, device identity, path, or free text is retained. Schema 1 summaries migrate with zeroed power rows because they never recorded this evidence.
 
@@ -130,6 +130,7 @@ Eight generated Python-to-C# cases compare normalized state and ordered power ev
 - In the Python oracle, `powerups.enabled`, `powerups.spawn_interval`, and `powerups.visible_duration` retain the reference manager behavior.
 - In native rules, `PowerSpawnIntervalTicks` and `PowerVisibleTicks` own cadence and visibility.
 - Native `EnablePowerDecisionOffers` defaults false for compatibility and is true in the Vibe product factory.
+- Native `AvoidFoodGeodesicPowerOffers` defaults false for compatibility and is true in the Vibe product factory. The false value is omitted from canonical config and state JSON.
 - `config/power_decision_contract_v1.json` locks families, lifecycle evidence, six scenarios, and the default-off Mutation Fork gate.
 
 See [CONFIGURATION.md](../guides/CONFIGURATION.md).

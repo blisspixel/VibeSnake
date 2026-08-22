@@ -351,9 +351,14 @@ public sealed partial class SnakeRun
             && !pickupRemainsAfterLifecycle
             && !shieldRemainsAfterLifecycle)
         {
-            // SpawnPower makes one complete occupancy pass, then at most one
-            // complete selection pass. Charge both before either scan begins.
+            // SpawnPower makes one occupancy pass and one selection pass.
+            // Geodesic preference can miss, then a full occupancy fallback
+            // still runs before selection. Charge the worst case first.
             workUnits += 2L * gridCells;
+            if (_config.AvoidFoodGeodesicPowerOffers)
+            {
+                workUnits += gridCells;
+            }
         }
 
         var nextDirection = Direction;
@@ -995,6 +1000,11 @@ public sealed partial class SnakeRun
             if (_config.EnablePowerDecisionOffers)
             {
                 writer.WriteBoolean("enablePowerDecisionOffers", true);
+            }
+
+            if (_config.AvoidFoodGeodesicPowerOffers)
+            {
+                writer.WriteBoolean("avoidFoodGeodesicPowerOffers", true);
             }
 
             writer.WriteEndObject();
@@ -1771,24 +1781,61 @@ public sealed partial class SnakeRun
             offerKind = eligibleOffers[_random.NextInt(eligibleOffers.Count)];
         }
 
-        var freeCellCount = 0;
+        var avoidFoodGeodesic = _config.AvoidFoodGeodesicPowerOffers && Food is not null;
+        var preferredCount = CountPowerSpawnCells(reservedDestination, avoidFoodGeodesic);
+        if (preferredCount > 0)
+        {
+            return SelectPowerSpawnCell(
+                reservedDestination,
+                avoidFoodGeodesic,
+                preferredCount,
+                offerKind);
+        }
+
+        if (avoidFoodGeodesic)
+        {
+            var fallbackCount = CountPowerSpawnCells(
+                reservedDestination,
+                avoidFoodGeodesic: false);
+            if (fallbackCount > 0)
+            {
+                return SelectPowerSpawnCell(
+                    reservedDestination,
+                    avoidFoodGeodesic: false,
+                    fallbackCount,
+                    offerKind);
+            }
+        }
+
+        return null;
+    }
+
+    private int CountPowerSpawnCells(GridPoint reservedDestination, bool avoidFoodGeodesic)
+    {
+        var count = 0;
         for (var y = 0; y < _config.Height; y++)
         {
             for (var x = 0; x < _config.Width; x++)
             {
-                var candidate = new GridPoint(x, y);
-                if (!IsPowerSpawnCellBlocked(candidate, reservedDestination))
+                if (!IsPowerSpawnCellBlocked(
+                    new GridPoint(x, y),
+                    reservedDestination,
+                    avoidFoodGeodesic))
                 {
-                    freeCellCount++;
+                    count++;
                 }
             }
         }
 
-        if (freeCellCount == 0)
-        {
-            return null;
-        }
+        return count;
+    }
 
+    private PowerPickup SelectPowerSpawnCell(
+        GridPoint reservedDestination,
+        bool avoidFoodGeodesic,
+        int freeCellCount,
+        PowerKind offerKind)
+    {
         var targetFreeCell = _random.NextInt(freeCellCount);
         var freeCellIndex = 0;
         for (var y = 0; y < _config.Height; y++)
@@ -1796,7 +1843,7 @@ public sealed partial class SnakeRun
             for (var x = 0; x < _config.Width; x++)
             {
                 var candidate = new GridPoint(x, y);
-                if (IsPowerSpawnCellBlocked(candidate, reservedDestination))
+                if (IsPowerSpawnCellBlocked(candidate, reservedDestination, avoidFoodGeodesic))
                 {
                     continue;
                 }
@@ -1869,11 +1916,27 @@ public sealed partial class SnakeRun
 
     private bool IsPowerSpawnCellBlocked(
         GridPoint candidate,
-        GridPoint reservedDestination) =>
-        _occupied.Contains(candidate)
-        || _detachedOccupied.Contains(candidate)
-        || Food == candidate
-        || reservedDestination == candidate;
+        GridPoint reservedDestination,
+        bool avoidFoodGeodesic)
+    {
+        if (
+            _occupied.Contains(candidate)
+            || _detachedOccupied.Contains(candidate)
+            || Food == candidate
+            || reservedDestination == candidate)
+        {
+            return true;
+        }
+
+        return avoidFoodGeodesic
+            && Food is { } food
+            && GridPoint.LiesOnWrapManhattanGeodesic(
+                reservedDestination,
+                candidate,
+                food,
+                _config.Width,
+                _config.Height);
+    }
 
     private bool IsInBounds(GridPoint point) =>
         point.X >= 0 && point.X < _config.Width && point.Y >= 0 && point.Y < _config.Height;

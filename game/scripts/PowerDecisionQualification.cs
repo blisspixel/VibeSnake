@@ -77,14 +77,20 @@ internal static class PowerDecisionQualification
         var vibe = RunModeCatalog.CreateConfig(RunModeCatalog.Vibe, enableAdaptation: false);
         var classic = RunModeCatalog.CreateConfig(RunModeCatalog.Classic);
         var compatibility = new RunConfig();
-        var productVibeEnabled = vibe.EnablePowerDecisionOffers;
+        var productVibeEnabled = vibe.EnablePowerDecisionOffers
+            && vibe.AvoidFoodGeodesicPowerOffers;
         var classicAndCompatibilityDisabled = !classic.EnablePowerDecisionOffers
-            && !compatibility.EnablePowerDecisionOffers;
+            && !compatibility.EnablePowerDecisionOffers
+            && !classic.AvoidFoodGeodesicPowerOffers
+            && !compatibility.AvoidFoodGeodesicPowerOffers;
         var configIdentitySeparated = vibe.ComputeConfigHash()
-            != (vibe with { EnablePowerDecisionOffers = false }).ComputeConfigHash();
+            != (vibe with { EnablePowerDecisionOffers = false }).ComputeConfigHash()
+            && vibe.ComputeConfigHash()
+            != (vibe with { AvoidFoodGeodesicPowerOffers = false }).ComputeConfigHash();
 
         var automaticKinds = new HashSet<PowerKind>();
         var automaticOffersDeterministic = true;
+        var geodesicOffersOffPath = true;
         var spawnConfig = vibe with
         {
             Width = 8,
@@ -98,6 +104,10 @@ internal static class PowerDecisionQualification
         {
             var first = SnakeRun.Create(seed, spawnConfig);
             var second = SnakeRun.Create(seed, spawnConfig);
+            var reservedDestination = first.Head
+                .Add(first.Direction.Offset())
+                .Wrap(spawnConfig.Width, spawnConfig.Height);
+            var foodBeforeStep = first.Food;
             var firstResult = first.Step();
             var secondResult = second.Step();
             automaticOffersDeterministic &= firstResult == secondResult
@@ -105,6 +115,17 @@ internal static class PowerDecisionQualification
             if (first.PowerPickup is { } pickup)
             {
                 automaticKinds.Add(pickup.Kind);
+                if (
+                    foodBeforeStep is { } food
+                    && GridPoint.LiesOnWrapManhattanGeodesic(
+                        reservedDestination,
+                        pickup.Position,
+                        food,
+                        spawnConfig.Width,
+                        spawnConfig.Height))
+                {
+                    geodesicOffersOffPath = false;
+                }
             }
         }
 
@@ -236,6 +257,7 @@ internal static class PowerDecisionQualification
             && configIdentitySeparated
             && allNineAutomaticOffersReachable
             && automaticOffersDeterministic
+            && geodesicOffersOffPath
             && protectionRedundancySuppressed
             && tempoRedundancySuppressed
             && harvestSynergiesRetained

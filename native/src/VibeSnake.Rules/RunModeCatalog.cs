@@ -178,7 +178,8 @@ public static class RunModeCatalog
                 EnableLengthScoreBonus: false,
                 EnableAdaptation: false,
                 AdaptivePolicyId: AdaptiveDifficultyPolicy.DisabledPolicyId,
-                EnablePowerDecisionOffers: false),
+                EnablePowerDecisionOffers: false,
+                AvoidFoodGeodesicPowerOffers: false),
             VibeId => new RunConfig(
                 Width: canonical.BoardWidth,
                 Height: canonical.BoardHeight,
@@ -189,7 +190,8 @@ public static class RunModeCatalog
                 AdaptivePolicyId: adaptationEnabled
                     ? AdaptiveDifficultyPolicy.CurrentPolicyId
                     : AdaptiveDifficultyPolicy.DisabledPolicyId,
-                EnablePowerDecisionOffers: true),
+                EnablePowerDecisionOffers: true,
+                AvoidFoodGeodesicPowerOffers: true),
             _ => throw new InvalidOperationException("Unknown catalog run mode."),
         };
     }

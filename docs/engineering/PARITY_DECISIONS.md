@@ -148,3 +148,13 @@ The `vibe@1` product factory enables `power-decisions-v1`; Classic remains power
 The opted-in local summary schema 2 and Godot HUD observe the enabled product path without entering pure rules state. The Mutation Fork prototype is pure, explicit, and default off; it is not part of product spawning or score identity unless a later reviewed decision enables it.
 
 Player consequence: Vibe runs can now receive all nine readable power offers without silently relabeling legacy, shared-fixture, Classic, or restored compatibility behavior.
+
+## PD-012: Food-geodesic power occupancy stays native product-gated
+
+Status: Resolved as an intentional native product gate
+
+Power occupancy already excluded the snake, detached obstacles, food, and the immediate movement destination. Product Vibe still allowed a pickup to land on a shortest wrap-Manhattan path to food, so following the default food route could collect it by accident. `RunConfig.AvoidFoodGeodesicPowerOffers` therefore defaults false. Default and shared-fixture config hashes remain byte stable because the false value is omitted from canonical config and state JSON. An enabled config writes explicit `avoidFoodGeodesicPowerOffers: true`, receives a distinct config hash under `sha256-canonical-runconfig-v3`, restores the flag, prefers cells off the reserved-destination-to-food geodesic, and falls back to ordinary occupancy when that preferred set is empty.
+
+The `vibe@1` product factory enables the placement rule; Classic remains power-free. This is a native-only post-port extension, so no shared Python trace was regenerated and `vibesnake-core@4` compatibility fixtures continue to use the default-off path. Replay verification charges one extra full-grid occupancy pass when the flag is on because a missed preferred set still performs the fallback scan.
+
+Player consequence: collecting a Vibe power is a detour from the current food geodesic, not a reward for staying on the shortest route.

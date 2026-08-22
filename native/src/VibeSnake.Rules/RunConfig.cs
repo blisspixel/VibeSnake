@@ -36,7 +36,8 @@ public sealed record RunConfig(
     bool EnableLengthScoreBonus = true,
     bool EnableAdaptation = false,
     string AdaptivePolicyId = AdaptiveDifficultyPolicy.DisabledPolicyId,
-    bool EnablePowerDecisionOffers = false)
+    bool EnablePowerDecisionOffers = false,
+    bool AvoidFoodGeodesicPowerOffers = false)
 {
     /// <summary>
     /// Algorithm id for <see cref="ComputeConfigHash"/>. Distinct from the run
@@ -102,6 +103,7 @@ public sealed record RunConfig(
                 || EnableComboExpiredEvent
                 || EnableAchievementCandidates
                 || EnablePowerDecisionOffers
+                || AvoidFoodGeodesicPowerOffers
                 || PowerSpawnIntervalTicks != 0)
             {
                 throw new ArgumentException(
@@ -348,6 +350,10 @@ public sealed record RunConfig(
             if (EnablePowerDecisionOffers)
             {
                 writer.WriteBoolean("enablePowerDecisionOffers", true);
+            }
+            if (AvoidFoodGeodesicPowerOffers)
+            {
+                writer.WriteBoolean("avoidFoodGeodesicPowerOffers", true);
             }
             writer.WriteEndObject();
         }

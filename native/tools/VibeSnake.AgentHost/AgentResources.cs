@@ -45,14 +45,14 @@ public sealed class AgentResources
         new("hunger-route", AgentPassportV4.FourDirectionBurstActionProfile, 3, 649, 16_387, 17_036),
         new("exit-route", AgentPassportV4.FourDirectionActionProfile, 9, 1_478, 37_630, 39_108),
         new("exit-route", AgentPassportV4.FourDirectionBurstActionProfile, 9, 1_695, 38_271, 39_966),
-        new("power-route", AgentPassportV4.FourDirectionActionProfile, 316, 50_378, 1_140_927, 1_191_305),
-        new("power-route", AgentPassportV4.FourDirectionBurstActionProfile, 106, 19_440, 400_089, 419_529),
-        new("recover-route", AgentPassportV4.FourDirectionActionProfile, 346, 56_518, 1_291_982, 1_348_500),
-        new("recover-route", AgentPassportV4.FourDirectionBurstActionProfile, 116, 21_685, 449_207, 470_892),
+        new("power-route", AgentPassportV4.FourDirectionActionProfile, 316, 50_378, 1_140_988, 1_191_366),
+        new("power-route", AgentPassportV4.FourDirectionBurstActionProfile, 103, 18_888, 388_686, 407_574),
+        new("recover-route", AgentPassportV4.FourDirectionActionProfile, 317, 51_762, 1_179_603, 1_231_365),
+        new("recover-route", AgentPassportV4.FourDirectionBurstActionProfile, 115, 21_493, 444_883, 466_376),
         new("combo-route", AgentPassportV4.FourDirectionActionProfile, 80, 12_706, 287_505, 300_211),
         new("combo-route", AgentPassportV4.FourDirectionBurstActionProfile, 40, 7_359, 150_197, 157_556),
         new("death-read", AgentPassportV4.FourDirectionActionProfile, 139, 21_810, 520_505, 542_315),
-        new("death-read", AgentPassportV4.FourDirectionBurstActionProfile, 89, 16_033, 348_781, 364_814),
+        new("death-read", AgentPassportV4.FourDirectionBurstActionProfile, 89, 16_033, 348_798, 364_831),
     ];
     private static readonly JsonSerializerOptions JsonOptions = new()
     {

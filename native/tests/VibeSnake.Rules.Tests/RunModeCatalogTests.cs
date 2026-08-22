@@ -89,6 +89,10 @@ public sealed class RunModeCatalogTests
         Assert.True(vibe.EnableAdaptation);
         Assert.Equal(AdaptiveDifficultyPolicy.CurrentPolicyId, vibe.AdaptivePolicyId);
         Assert.True(vibe.PowerSpawnIntervalTicks > 0);
+        Assert.True(vibe.EnablePowerDecisionOffers);
+        Assert.True(vibe.AvoidFoodGeodesicPowerOffers);
+        Assert.False(classic.EnablePowerDecisionOffers);
+        Assert.False(classic.AvoidFoodGeodesicPowerOffers);
         Assert.NotEqual(classic.ComputeConfigHash(), vibe.ComputeConfigHash());
     }
 
