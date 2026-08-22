@@ -99,6 +99,14 @@ public sealed class TempoPowerTests
         Assert.Equal(100, RulesCadenceClock.StepIntervalMilliseconds(2, 1));
         Assert.Equal(25, RulesCadenceClock.StepIntervalMilliseconds(1, 2));
         Assert.Equal(50, RulesCadenceClock.StepIntervalMilliseconds(2, 2));
+        Assert.Equal(30.0, RulesCadenceClock.RemainingWallClockSeconds(600, 50));
+        Assert.Equal(15.0, RulesCadenceClock.RemainingWallClockSeconds(600, 25));
+        Assert.Equal(60.0, RulesCadenceClock.RemainingWallClockSeconds(600, 100));
+        Assert.Equal(0.0, RulesCadenceClock.RemainingWallClockSeconds(0, 25));
+        Assert.Throws<ArgumentOutOfRangeException>(
+            () => RulesCadenceClock.RemainingWallClockSeconds(-1, 50));
+        Assert.Throws<ArgumentOutOfRangeException>(
+            () => RulesCadenceClock.RemainingWallClockSeconds(1, 0));
     }
 
     [Fact]

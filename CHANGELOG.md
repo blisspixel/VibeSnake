@@ -4,6 +4,8 @@ Notable player-facing and engineering changes are recorded here. The project is 
 
 ## Unreleased
 
+- Hunger, protection, and power-status timers now convert remaining rules ticks through the live cadence interval, so Boost halves displayed seconds and Slow-Mo doubles them while rules ticks stay unchanged. Combined Slow-Mo plus Boost still shows base-cadence seconds. The readable run-HUD gate walks Boost, base, and Slow-Mo intervals, and power-decision qualification asserts the halved and doubled labels.
+
 - Independent AI league, observed-balance baseline, and balance-laboratory simulations now run on a bounded worker set equal to the host processor count and reduce results in input order. One SnakeRun remains single-threaded. Live player steps, ghost lanes, and accumulating reliability hashes stay sequential. Architecture and quality standards record that extra cores are for independent work, not for splitting a scored run.
 
 - Completed the fifth bounded V030-13 validator-retirement slice. Native `RepositoryChecks` now verifies the committed 1024 by 1024 brand logo by PNG signature, IHDR dimensions, and the approved SHA-256 identity, using POSIX-relative diagnostics and no image library. Three new contracts cover missing and directory paths, truncated and non-PNG headers, wrong IHDR type, dimension order, body and trailing-byte hash drift, current-checkout success, command isolation, and combined-route failure. CI and pre-commit run the native `logo` command; the superseded Python verifier was removed. The combined native check is now **1,309** contracts. Player and asset bytes are unchanged.

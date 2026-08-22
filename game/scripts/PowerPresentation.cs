@@ -34,14 +34,15 @@ internal static class PowerPresentation
         ArgumentNullException.ThrowIfNull(snapshot);
         var parts = new List<string>(8);
 
+        var interval = snapshot.EffectiveRulesStepMilliseconds;
         if (snapshot.HasShield)
         {
-            parts.Add(ActiveTimer(PowerKind.Shield, snapshot.ShieldTicksRemaining));
+            parts.Add(ActiveTimer(PowerKind.Shield, snapshot.ShieldTicksRemaining, interval));
         }
 
         if (snapshot.HasPhaseShift)
         {
-            parts.Add(ActiveTimer(PowerKind.PhaseShift, snapshot.PhaseShiftTicksRemaining));
+            parts.Add(ActiveTimer(PowerKind.PhaseShift, snapshot.PhaseShiftTicksRemaining, interval));
         }
 
         if (snapshot.LastStandHeld)
@@ -55,27 +56,28 @@ internal static class PowerPresentation
                 ActiveTimer(
                     PowerKind.LastStand,
                     snapshot.LastStandRecoveryTicksRemaining,
+                    interval,
                     "RECOVERY IMMUNITY"));
         }
 
         if (snapshot.HasSlowMo)
         {
-            parts.Add(ActiveTimer(PowerKind.SlowMo, snapshot.SlowMoTicksRemaining));
+            parts.Add(ActiveTimer(PowerKind.SlowMo, snapshot.SlowMoTicksRemaining, interval));
         }
 
         if (snapshot.HasBoost)
         {
-            parts.Add(ActiveTimer(PowerKind.Boost, snapshot.BoostTicksRemaining));
+            parts.Add(ActiveTimer(PowerKind.Boost, snapshot.BoostTicksRemaining, interval));
         }
 
         if (snapshot.HasMagnet)
         {
-            parts.Add(ActiveTimer(PowerKind.Magnet, snapshot.MagnetTicksRemaining));
+            parts.Add(ActiveTimer(PowerKind.Magnet, snapshot.MagnetTicksRemaining, interval));
         }
 
         if (snapshot.HasGluttony)
         {
-            parts.Add(ActiveTimer(PowerKind.Gluttony, snapshot.GluttonyTicksRemaining));
+            parts.Add(ActiveTimer(PowerKind.Gluttony, snapshot.GluttonyTicksRemaining, interval));
         }
 
         if (snapshot.HasBait && snapshot.BaitPosition is { } bait)
@@ -89,6 +91,7 @@ internal static class PowerPresentation
                 ActiveTimer(
                     PowerKind.SegmentDetach,
                     snapshot.DetachedObstacleTicksRemaining,
+                    interval,
                     $"DETACH x{snapshot.DetachedObstacles.Count}"));
         }
 
@@ -96,7 +99,7 @@ internal static class PowerPresentation
         {
             var definition = PowerFeedbackCatalog.Find(pickup.Kind);
             var decision = PowerDecisionCatalog.Get(pickup.Kind);
-            var seconds = Seconds(pickup.VisibilityTicksRemaining);
+            var seconds = Seconds(pickup.VisibilityTicksRemaining, interval);
             parts.Add(
                 $"OFFER {decision.Family.ToString().ToUpperInvariant()} "
                     + $"[{definition.StableIcon}] {definition.Name} {seconds:0.0}s "
@@ -122,9 +125,10 @@ internal static class PowerPresentation
     private static string ActiveTimer(
         PowerKind kind,
         int ticksRemaining,
+        int stepIntervalMilliseconds,
         string? label = null) =>
-        $"[{Marker(kind)}] {label ?? ShortName(kind)} {Seconds(ticksRemaining):0.0}s";
+        $"[{Marker(kind)}] {label ?? ShortName(kind)} {Seconds(ticksRemaining, stepIntervalMilliseconds):0.0}s";
 
-    private static double Seconds(int ticksRemaining) =>
-        ticksRemaining * RunConfig.RulesTickMilliseconds / 1000.0;
+    private static double Seconds(int ticksRemaining, int stepIntervalMilliseconds) =>
+        RulesCadenceClock.RemainingWallClockSeconds(ticksRemaining, stepIntervalMilliseconds);
 }

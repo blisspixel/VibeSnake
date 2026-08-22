@@ -34,9 +34,11 @@ internal static class HungerFeedback
     public static HungerFeedbackState Describe(
         int remainingTicks,
         int maximumTicks = DefaultMaximumTicks,
-        int warningTicks = RunConfig.DefaultStarvationWarningTicks)
+        int warningTicks = RunConfig.DefaultStarvationWarningTicks,
+        int stepIntervalMilliseconds = RunConfig.RulesTickMilliseconds)
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(maximumTicks);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(stepIntervalMilliseconds);
 
         if (remainingTicks < 0 || remainingTicks > maximumTicks)
         {
@@ -57,7 +59,9 @@ internal static class HungerFeedback
             _ when warningEnabled && remainingTicks <= warningTicks => HungerPhase.Warning,
             _ => HungerPhase.Safe,
         };
-        var seconds = remainingTicks * RunConfig.RulesTickMilliseconds / 1000.0;
+        var seconds = RulesCadenceClock.RemainingWallClockSeconds(
+            remainingTicks,
+            stepIntervalMilliseconds);
         var filledSegments = remainingTicks == 0
             ? 0
             : Math.Max(
@@ -171,10 +175,12 @@ internal static class PowerFeedbackCatalog
     public static string DescribeProtection(RunSnapshot snapshot)
     {
         ArgumentNullException.ThrowIfNull(snapshot);
+        var interval = snapshot.EffectiveRulesStepMilliseconds;
         var parts = new List<string>(4);
         if (snapshot.HasLastStandRecovery)
         {
-            parts.Add($"[L] RECOVERY IMMUNITY {Seconds(snapshot.LastStandRecoveryTicksRemaining):0.0}s");
+            parts.Add(
+                $"[L] RECOVERY IMMUNITY {Seconds(snapshot.LastStandRecoveryTicksRemaining, interval):0.0}s");
         }
 
         if (snapshot.LastStandHeld)
@@ -184,12 +190,12 @@ internal static class PowerFeedbackCatalog
 
         if (snapshot.HasShield)
         {
-            parts.Add($"[S] 1 BLOCK READY {Seconds(snapshot.ShieldTicksRemaining):0.0}s");
+            parts.Add($"[S] 1 BLOCK READY {Seconds(snapshot.ShieldTicksRemaining, interval):0.0}s");
         }
 
         if (snapshot.HasPhaseShift)
         {
-            parts.Add($"[P] BODY PASS {Seconds(snapshot.PhaseShiftTicksRemaining):0.0}s");
+            parts.Add($"[P] BODY PASS {Seconds(snapshot.PhaseShiftTicksRemaining, interval):0.0}s");
         }
 
         return parts.Count == 0
@@ -207,8 +213,8 @@ internal static class PowerFeedbackCatalog
         string telegraph) =>
         new(kind, icon, name, statePresentation, activationCue, protection, telegraph);
 
-    private static double Seconds(int ticksRemaining) =>
-        ticksRemaining * RunConfig.RulesTickMilliseconds / 1000.0;
+    private static double Seconds(int ticksRemaining, int stepIntervalMilliseconds) =>
+        RulesCadenceClock.RemainingWallClockSeconds(ticksRemaining, stepIntervalMilliseconds);
 }
 
 internal readonly record struct DeathFeedbackState(

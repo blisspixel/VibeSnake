@@ -106,7 +106,7 @@ The nine working powers are enough for 1.0. The missing ingredient is not anothe
 | Tactical family | Powers | Intended question |
 | --- | --- | --- |
 | Protection | Shield, Last Stand, Phase Shift | How aggressively can I route while protected? |
-| Tempo | Slow-Mo, Boost | Do I want control or score-pressure speed? |
+| Tempo | Slow-Mo, Boost | Do I want control or score-pressure speed? Remaining hunger, combo, and power times show wall-clock at the current cadence so Boost cannot look like unused extra seconds. |
 | Harvest | Magnet, Bait, Gluttony | How do I reshape the next food sequence? |
 | Geometry | Segment Detach | Is immediate freedom worth creating temporary hazards? |
 

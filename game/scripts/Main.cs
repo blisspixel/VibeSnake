@@ -12782,7 +12782,8 @@ public partial class Main : Node2D
         var hunger = HungerFeedback.Describe(
             snapshot.HungerTicksRemaining,
             snapshot.HungerMaximumTicks,
-            snapshot.HungerWarningTicks);
+            snapshot.HungerWarningTicks,
+            snapshot.EffectiveRulesStepMilliseconds);
         var combo = ComboFeedback.Describe(
             snapshot.ComboCount,
             snapshot.ComboMultiplier,
@@ -15849,17 +15850,27 @@ public partial class Main : Node2D
         // Walk every reachable hunger tick of every shipped mode instead of
         // sampling phase boundaries, so a later starvation-budget change cannot
         // silently widen this cell past its neighbour.
+        int[] cadenceIntervals =
+        [
+            RulesCadenceClock.StepIntervalMilliseconds(1, 1),
+            RulesCadenceClock.StepIntervalMilliseconds(1, 2),
+            RulesCadenceClock.StepIntervalMilliseconds(2, 1),
+        ];
         foreach (var mode in RunModeCatalog.All)
         {
             var config = RunModeCatalog.CreateConfig(mode);
-            for (var ticks = 0; ticks <= config.StarvationTicks; ticks++)
+            foreach (var interval in cadenceIntervals)
             {
-                RequireRunHudCell(
-                    RunHudHungerCell,
-                    HungerFeedback.Describe(
-                        ticks,
-                        config.StarvationTicks,
-                        config.StarvationWarningTicks).Label);
+                for (var ticks = 0; ticks <= config.StarvationTicks; ticks++)
+                {
+                    RequireRunHudCell(
+                        RunHudHungerCell,
+                        HungerFeedback.Describe(
+                            ticks,
+                            config.StarvationTicks,
+                            config.StarvationWarningTicks,
+                            interval).Label);
+                }
             }
         }
 

@@ -20,6 +20,19 @@ public static class RulesCadenceClock
     }
 
     /// <summary>
+    /// Remaining rules ticks converted to wall-clock seconds at the current step interval.
+    /// Presentation uses this so Boost and Slow-Mo do not lie about remaining time.
+    /// </summary>
+    public static double RemainingWallClockSeconds(
+        int remainingTicks,
+        int stepIntervalMilliseconds)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegative(remainingTicks);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(stepIntervalMilliseconds);
+        return remainingTicks * (stepIntervalMilliseconds / 1000.0);
+    }
+
+    /// <summary>
     /// Accumulates real time and returns how many rules steps to advance.
     /// The interval callback is re-evaluated after each counted step so tempo
     /// powers that expire mid-burst change the next interval immediately.

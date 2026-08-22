@@ -169,6 +169,27 @@ internal static class PowerDecisionQualification
         ];
         var allHeldAndDurationStatesReadable = stateTokens.All(token =>
             readableStatus.Contains(token, StringComparison.Ordinal));
+        var boostOnlyStatus = PowerPresentation.DescribeStatus(
+            Snapshot(
+                tick: 1,
+                direction: Direction.Right,
+                head: new GridPoint(1, 1),
+                shieldTicks: 8,
+                boostTicks: 4));
+        var slowOnlyStatus = PowerPresentation.DescribeStatus(
+            Snapshot(
+                tick: 1,
+                direction: Direction.Right,
+                head: new GridPoint(1, 1),
+                shieldTicks: 8,
+                slowMoTicks: 5));
+        var cadenceAwareDurations =
+            boostOnlyStatus.Contains("[S] SHIELD 0.2s", StringComparison.Ordinal)
+            && boostOnlyStatus.Contains("[B] BOOST 0.1s", StringComparison.Ordinal)
+            && boostOnlyStatus.Contains("CADENCE 1/2", StringComparison.Ordinal)
+            && slowOnlyStatus.Contains("[S] SHIELD 0.8s", StringComparison.Ordinal)
+            && slowOnlyStatus.Contains("[W] SLOW-MO 0.5s", StringComparison.Ordinal)
+            && slowOnlyStatus.Contains("CADENCE 2/1", StringComparison.Ordinal);
 
         var trace = BuildCompleteTrace();
         var traceCounts = trace.Snapshot();
@@ -222,6 +243,7 @@ internal static class PowerDecisionQualification
             && offerPrecedesCollection
             && typeFamilyAndVisibilityReadableBesideActiveState
             && allHeldAndDurationStatesReadable
+            && cadenceAwareDurations
             && lifecycleTraceComplete
             && localSummaryAggregateOnly
             && mutationForkPrototypeGated
