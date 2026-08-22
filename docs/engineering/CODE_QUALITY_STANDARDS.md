@@ -47,6 +47,7 @@ One rules step accepts explicit state and logical commands, then produces the ne
 - Include every behavior-affecting field in canonical restoration and hashing.
 - Reject unknown, missing, inconsistent, non-canonical, or future incompatible state without partial mutation.
 - Keep presentation-only data out of state hashes and replay outcomes.
+- Keep one rules run on one thread. Independent simulations, hashing, and I/O may use a bounded worker set when results are reduced in a deterministic order.
 
 ### Godot shell
 

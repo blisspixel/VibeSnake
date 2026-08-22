@@ -13,26 +13,33 @@ public sealed class BalanceLaboratoryTests
         var (corpora, corpusHash) = BalanceLaboratoryReport.ReadSeedCorpora(repositoryRoot);
         var seeds = corpora.SelectMany(corpus => corpus.Seeds).ToArray();
         var variants = CreateVariants();
-        var traces = new List<BalanceRunTrace>();
-        BalanceFirstDivergence? firstDivergence = null;
-        var comparedSteps = 0;
-
+        var jobs = new List<BalanceLaboratoryJob>();
         foreach (var variant in variants)
         {
             foreach (var policy in BalancePolicyCatalog.All)
             {
                 foreach (var seed in seeds)
                 {
-                    var execution = RunOne(
+                    jobs.Add(new BalanceLaboratoryJob(
                         variant.Id,
                         variant.Configuration,
                         policy,
-                        seed);
-                    traces.Add(execution.Trace);
-                    comparedSteps += execution.ComparedSteps;
-                    firstDivergence ??= execution.FirstDivergence;
+                        seed));
                 }
             }
+        }
+
+        var executions = IndependentWork.Map(
+            jobs,
+            job => RunOne(job.VariantId, job.Configuration, job.Policy, job.Seed));
+        var traces = new List<BalanceRunTrace>(executions.Length);
+        BalanceFirstDivergence? firstDivergence = null;
+        var comparedSteps = 0;
+        foreach (var execution in executions)
+        {
+            traces.Add(execution.Trace);
+            comparedSteps += execution.ComparedSteps;
+            firstDivergence ??= execution.FirstDivergence;
         }
 
         var scenarios = RunScenarioMatrix();
@@ -118,6 +125,12 @@ public sealed class BalanceLaboratoryTests
         Assert.Equal(2, divergence.CommandPrefix.Count);
         Assert.NotEqual(divergence.ExpectedStateHash, divergence.ActualStateHash);
     }
+
+    private readonly record struct BalanceLaboratoryJob(
+        string VariantId,
+        RunConfig Configuration,
+        BalancePolicyDefinition Policy,
+        ulong Seed);
 
     private static BalanceRunExecution RunOne(
         string variantId,

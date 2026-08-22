@@ -13,21 +13,7 @@ public sealed class AiLeagueTests
         var repositoryRoot = BalanceLaboratoryReport.ResolveRepositoryRoot();
         var (corpora, corpusHash) = BalanceLaboratoryReport.ReadSeedCorpora(repositoryRoot);
         var config = RunModeCatalog.CreateConfig(RunModeCatalog.Vibe);
-        var executions = new List<AiLeagueExecution>();
-
-        for (var personalityIndex = 0;
-             personalityIndex < AiPersonalityCatalog.BuiltIn.Count;
-             personalityIndex++)
-        {
-            var personality = AiPersonalityCatalog.BuiltIn[personalityIndex];
-            foreach (var corpus in corpora)
-            {
-                foreach (var seed in corpus.Seeds)
-                {
-                    executions.Add(RunOne(corpus.Id, personalityIndex, personality, seed, config));
-                }
-            }
-        }
+        var executions = RunLeague(corpora, config);
 
         var runs = executions.Select(execution => execution.Run).ToArray();
         var distributions = BuildDistributions(runs);
@@ -109,7 +95,19 @@ public sealed class AiLeagueTests
         var repositoryRoot = BalanceLaboratoryReport.ResolveRepositoryRoot();
         var (corpora, _) = BalanceLaboratoryReport.ReadSeedCorpora(repositoryRoot);
         var config = RunModeCatalog.CreateConfig(RunModeCatalog.Vibe);
-        var executions = new List<AiLeagueExecution>();
+        var executions = RunLeague(corpora, config);
+        var runs = executions.Select(execution => execution.Run).ToArray();
+        return new AiReviewedQualification(
+            BuildDistributions(runs),
+            BuildSensitivities(executions),
+            executions.Sum(execution => execution.ComparedSteps));
+    }
+
+    private static AiLeagueExecution[] RunLeague(
+        IReadOnlyList<BalanceSeedCorpus> corpora,
+        RunConfig config)
+    {
+        var jobs = new List<AiLeagueJob>();
         for (var personalityIndex = 0;
              personalityIndex < AiPersonalityCatalog.BuiltIn.Count;
              personalityIndex++)
@@ -119,17 +117,21 @@ public sealed class AiLeagueTests
             {
                 foreach (var seed in corpus.Seeds)
                 {
-                    executions.Add(RunOne(corpus.Id, personalityIndex, personality, seed, config));
+                    jobs.Add(new AiLeagueJob(corpus.Id, personalityIndex, personality, seed));
                 }
             }
         }
 
-        var runs = executions.Select(execution => execution.Run).ToArray();
-        return new AiReviewedQualification(
-            BuildDistributions(runs),
-            BuildSensitivities(executions),
-            executions.Sum(execution => execution.ComparedSteps));
+        return IndependentWork.Map(
+            jobs,
+            job => RunOne(job.CorpusId, job.PersonalityIndex, job.Personality, job.Seed, config));
     }
+
+    private readonly record struct AiLeagueJob(
+        string CorpusId,
+        int PersonalityIndex,
+        AiPersonality Personality,
+        ulong Seed);
 
     private static AiLeagueExecution RunOne(
         string corpusId,

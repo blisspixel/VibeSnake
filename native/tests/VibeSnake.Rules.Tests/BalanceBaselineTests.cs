@@ -13,19 +13,22 @@ public sealed class BalanceBaselineTests
         var (seeds, seedCorpusHash) = BalanceBaselineReport.ReadSeeds(repositoryRoot);
         var expected = BalanceBaselineReport.ReadExpectedBaseline(repositoryRoot);
         var variants = CreateVariants();
-        var runs = new List<BalanceBaselineRunSummary>(
+        var jobs = new List<BalanceBaselineJob>(
             variants.Count * BalancePolicyCatalog.All.Count * seeds.Count);
-
         foreach (var variant in variants)
         {
             foreach (var policy in BalancePolicyCatalog.All)
             {
                 foreach (var seed in seeds)
                 {
-                    runs.Add(RunOne(variant, policy, seed));
+                    jobs.Add(new BalanceBaselineJob(variant, policy, seed));
                 }
             }
         }
+
+        var runs = IndependentWork.Map(
+            jobs,
+            job => RunOne(job.Variant, job.Policy, job.Seed)).ToList();
 
         var distributions = BuildDistributions(variants, runs);
         var observedJson = BalanceBaselineReport.SerializeDistributions(distributions);
@@ -80,6 +83,11 @@ public sealed class BalanceBaselineTests
         Assert.True(baselineMatched);
         Assert.True(passed);
     }
+
+    private readonly record struct BalanceBaselineJob(
+        BalanceBaselineVariant Variant,
+        BalancePolicyDefinition Policy,
+        ulong Seed);
 
     private static BalanceBaselineRunSummary RunOne(
         BalanceBaselineVariant variant,
