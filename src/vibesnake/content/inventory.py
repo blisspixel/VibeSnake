@@ -1,4 +1,8 @@
-"""Build and validate the deterministic source-asset inventory."""
+"""Frozen Python parity helpers for source-content pack tooling.
+
+The native RepositoryChecks command is the authoritative inventory generator
+and validator. This module remains temporarily for Python pack-tool parity.
+"""
 
 from __future__ import annotations
 
@@ -7,9 +11,11 @@ from copy import deepcopy
 from dataclasses import dataclass
 import hashlib
 import json
+import os
 from pathlib import Path, PurePosixPath
 import re
 import struct
+import tempfile
 from typing import Any
 import zlib
 
@@ -749,7 +755,7 @@ def write_inventory(
     policy_path: Path | None = None,
     inventory_path: Path | None = None,
 ) -> dict[str, Any]:
-    """Regenerate the checked-in inventory from source files and policy."""
+    """Build a Python parity fixture and replace its output atomically."""
     repository_root = repository_root.resolve()
     if inventory_path is None:
         inventory_path = repository_root / "config" / "content_inventory.json"
@@ -757,7 +763,20 @@ def write_inventory(
     _repository_relative(repository_root, inventory_path, "content inventory")
     inventory = build_inventory(repository_root, policy_path)
     inventory_path.parent.mkdir(parents=True, exist_ok=True)
-    inventory_path.write_text(render_inventory(inventory), encoding="utf-8", newline="\n")
+    descriptor, temporary_name = tempfile.mkstemp(
+        dir=inventory_path.parent,
+        prefix=f".{inventory_path.name}.",
+        suffix=".tmp",
+    )
+    temporary_path = Path(temporary_name)
+    try:
+        with os.fdopen(descriptor, "w", encoding="utf-8", newline="\n") as output:
+            output.write(render_inventory(inventory))
+            output.flush()
+            os.fsync(output.fileno())
+        os.replace(temporary_path, inventory_path)
+    finally:
+        temporary_path.unlink(missing_ok=True)
     return inventory
 
 
@@ -780,7 +799,11 @@ def check_inventory(
     except (OSError, UnicodeError) as error:
         raise ContentInventoryError(f"content inventory is unreadable: {inventory_path}: {error}") from error
     if actual_text != render_inventory(expected):
-        raise ContentInventoryError("content inventory is stale; run python scripts/content_inventory.py --write")
+        raise ContentInventoryError(
+            "content inventory is stale; run "
+            "dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj "
+            "-- inventory-write ."
+        )
     return expected
 
 

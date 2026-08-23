@@ -25,7 +25,8 @@ This directory contains authored project inputs and generated content authority.
 | `snake_news_segments.json` | Authored Bureau segment concepts and generation parameters |
 
 Historical track-production state belongs in the ignored local audio workspace,
-not in this public configuration directory. Regenerate or verify the source
-inventory with `python scripts/content_inventory.py`. Normal runtime settings use
+not in this public configuration directory. Regenerate the source inventory with
+`RepositoryChecks -- inventory-write .` or verify it with
+`RepositoryChecks -- inventory .`. Normal runtime settings use
 `assets/config/config.json`, while player choices use the operating system's
 user-data directory.

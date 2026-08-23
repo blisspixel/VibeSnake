@@ -12,7 +12,6 @@ This directory contains explicit command-line tools. Runtime code belongs under 
 | `package_agent_host.ps1` | Assemble the current-RID unsigned self-contained Agent Host package with closed manifest, lock-derived inventory, unsigned provenance, checksums, and isolated user-data policy |
 | `validate_agent_host_package.py` | Enforce the AA-10 host-package manifest, inventory, provenance, isolation, and checksum contract |
 | `capture_readme_screenshots.py` | Isolated current-build README screenshot capture and freshness verification |
-| `content_inventory.py` | Deterministic source-content inventory and release blocker report |
 | `content_packs.py` | Core and optional pack manifest qualification |
 | `assemble_radio_pack.py` | Deterministic, fail-closed assembly of one approved optional radio pack with manifest, checksums, and curation evidence |
 | `assert_godot_toolchain.ps1` | SHA-512 archive, extracted editor SHA-256, and exact build identity verification |
@@ -38,7 +37,7 @@ This directory contains explicit command-line tools. Runtime code belongs under 
 
 These entry points are kept at `scripts/` root because README, CI, and release documentation invoke them directly.
 
-The native `RepositoryChecks` command owns canonical documentation discovery, relative-link validation, changelog contract-release uniqueness, product-version alignment, source policy, candidate-freeze validation, deterministic freeze-baseline preparation, CI/runtime dependency-lock validation and generation, project-logo PNG identity, deterministic station-badge generation and exact-byte freshness, and source and packaged Agent Plugin validation. Run `dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- all .` from the repository root. Use `badge-write [repository-root]` only after an intentional badge-definition change, and use its `plugin <plugin-root> [--require-mcp]` route for an isolated plugin tree.
+The native `RepositoryChecks` command owns canonical documentation discovery, relative-link validation, changelog contract-release uniqueness, product-version alignment, source policy, candidate-freeze validation, deterministic freeze-baseline preparation, CI/runtime dependency-lock validation and generation, project-logo PNG identity, deterministic station-badge generation and exact-byte freshness, deterministic content-inventory generation and release readiness, and source and packaged Agent Plugin validation. Run `dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- all .` from the repository root. Use `badge-write [repository-root]` or `inventory-write [repository-root]` only after an intentional source change, use `inventory-release [repository-root]` for the fail-closed release route, and use `plugin <plugin-root> [--require-mcp]` for an isolated plugin tree.
 
 `ValidateArtifactManifest` also builds deterministic qualification-only release archives after validating the manifest and signing-readiness policy. It writes `release_output_plan.json` and `SHA256SUMS` beside the versioned package and never marks that unsigned output publishable.
 

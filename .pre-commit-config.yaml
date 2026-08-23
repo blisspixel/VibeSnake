@@ -43,7 +43,7 @@ repos:
         pass_filenames: false
       - id: content-inventory
         name: content inventory freshness
-        entry: python scripts/content_inventory.py --check
+        entry: dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- inventory .
         language: system
         pass_filenames: false
       - id: shared-traces

@@ -1427,7 +1427,7 @@ public sealed class RepositoryChecksTests
         Assert.Equal(2, invalidCode);
         Assert.Equal(string.Empty, invalidOutput.ToString());
         Assert.Contains(
-            "RepositoryChecks <all|badges|docs|freeze|locks|logo|source|version>",
+            "RepositoryChecks <all|badges|docs|freeze|inventory|inventory-release|locks|logo|source|version>",
             invalidError.ToString());
 
         WithTemporaryDirectory(root =>
@@ -1439,6 +1439,7 @@ public sealed class RepositoryChecksTests
             WriteAgentPluginFixture(root);
             CopyApprovedLogo(root);
             WriteStationBadgeFixture(root);
+            WriteContentInventoryFixture(root);
             var output = new StringWriter();
             var error = new StringWriter();
 
@@ -1449,6 +1450,7 @@ public sealed class RepositoryChecksTests
             Assert.Contains("Product versions aligned", output.ToString());
             Assert.Contains("Documentation link check passed", output.ToString());
             Assert.Contains("Candidate freeze policy check passed", output.ToString());
+            Assert.Contains("Content inventory verified", output.ToString());
             Assert.Contains("Python dependency locks verified", output.ToString());
             Assert.Contains("Project logo check passed.", output.ToString());
             Assert.Contains("Station badges verified", output.ToString());
@@ -1461,6 +1463,8 @@ public sealed class RepositoryChecksTests
     [InlineData("docs")]
     [InlineData("badges")]
     [InlineData("freeze")]
+    [InlineData("inventory")]
+    [InlineData("inventory-release")]
     [InlineData("locks")]
     [InlineData("logo")]
     [InlineData("source")]
@@ -1475,6 +1479,7 @@ public sealed class RepositoryChecksTests
             WriteDependencyLockFixture(root);
             CopyApprovedLogo(root);
             WriteStationBadgeFixture(root);
+            WriteContentInventoryFixture(root);
             var output = new StringWriter();
             var error = new StringWriter();
 
@@ -1495,6 +1500,7 @@ public sealed class RepositoryChecksTests
             ["all", ".", "extra"],
             ["unknown"],
             ["freeze-baseline", "revision"],
+            ["inventory-write", ".", "extra"],
             ["lock-write"],
         })
         {
@@ -1518,6 +1524,56 @@ public sealed class RepositoryChecksTests
         Assert.Equal(2, invalidRootCode);
         Assert.Equal(string.Empty, invalidRootOutput.ToString());
         Assert.Contains("Repository root is invalid.", invalidRootError.ToString());
+    }
+
+    [Fact]
+    public void Command_writes_inventory_and_reports_generation_failures()
+    {
+        WithTemporaryDirectory(root =>
+        {
+            WriteFile(root, "assets/file.txt", "value");
+            var policy = new JsonObject
+            {
+                ["schemaVersion"] = 1,
+                ["assetRoot"] = "assets",
+                ["rules"] = new JsonArray(
+                    new JsonObject
+                    {
+                        ["id"] = "text",
+                        ["patterns"] = new JsonArray("file.txt"),
+                        ["role"] = "fixture",
+                        ["packId"] = "fixture",
+                        ["runtimeUse"] = "required",
+                        ["shipStatus"] = "approved",
+                        ["rights"] = new JsonObject
+                        {
+                            ["status"] = "cleared",
+                            ["source"] = "fixture",
+                            ["license"] = "MIT",
+                            ["attribution"] = "none",
+                            ["reviewNote"] = "approved fixture",
+                        },
+                    }),
+            };
+            WriteFile(root, "config/content_policy.json", RenderJson(policy));
+            var output = new StringWriter();
+            var error = new StringWriter();
+
+            var code = RepositoryCheckCommand.Run(["inventory-write", root], output, error);
+
+            Assert.Equal(0, code);
+            Assert.Contains("Content inventory written", output.ToString(), StringComparison.Ordinal);
+            Assert.Equal(string.Empty, error.ToString());
+
+            Directory.Delete(Path.Combine(root, "assets"), recursive: true);
+            output = new StringWriter();
+            error = new StringWriter();
+            code = RepositoryCheckCommand.Run(["inventory-write", root], output, error);
+
+            Assert.Equal(1, code);
+            Assert.Equal(string.Empty, output.ToString());
+            Assert.Contains("Content inventory generation failed:", error.ToString(), StringComparison.Ordinal);
+        });
     }
 
     [Fact]
@@ -1547,6 +1603,7 @@ public sealed class RepositoryChecksTests
         var version = ProductVersionCheck.Inspect(root);
         var docs = DocumentationCheck.Inspect(root);
         var freeze = CandidateFreezeCheck.Inspect(root);
+        var inventory = ContentInventoryCheck.Inspect(root);
         var locks = DependencyLockCheck.Inspect(root);
         var logo = ProjectLogoCheck.Inspect(root);
         var source = SourcePolicyCheck.Inspect(root);
@@ -1557,6 +1614,7 @@ public sealed class RepositoryChecksTests
         Assert.True(version.Passed, string.Join(Environment.NewLine, version.Failures));
         Assert.True(docs.Passed, string.Join(Environment.NewLine, docs.Failures));
         Assert.True(freeze.Passed, string.Join(Environment.NewLine, freeze.Failures));
+        Assert.True(inventory.Passed, string.Join(Environment.NewLine, inventory.Failures));
         Assert.True(locks.Passed, string.Join(Environment.NewLine, locks.Failures));
         Assert.Equal(52, DependencyLockCheck.CheckProfile(root, "ci"));
         Assert.Equal(4, DependencyLockCheck.CheckProfile(root, "runtime"));
@@ -1796,6 +1854,53 @@ public sealed class RepositoryChecksTests
     private static void WriteStationBadgeFixture(string root)
     {
         var result = StationBadgeCheck.Write(root);
+        Assert.True(result.Passed, string.Join(Environment.NewLine, result.Failures));
+    }
+
+    private static void WriteContentInventoryFixture(string root)
+    {
+        var policy = new JsonObject
+        {
+            ["schemaVersion"] = 1,
+            ["assetRoot"] = "assets",
+            ["rules"] = new JsonArray(
+                new JsonObject
+                {
+                    ["id"] = "images",
+                    ["patterns"] = new JsonArray("images/*.png", "images/**/*.png"),
+                    ["role"] = "fixture-image",
+                    ["packId"] = "fixture-pack",
+                    ["runtimeUse"] = "required",
+                    ["shipStatus"] = "approved",
+                    ["rights"] = new JsonObject
+                    {
+                        ["status"] = "cleared",
+                        ["source"] = "repository check fixture",
+                        ["license"] = "Apache-2.0",
+                        ["attribution"] = "fixture",
+                        ["reviewNote"] = "fixture assets are approved",
+                    },
+                },
+                new JsonObject
+                {
+                    ["id"] = "documentation",
+                    ["patterns"] = new JsonArray("*.md", "ai/*.md"),
+                    ["role"] = "fixture-documentation",
+                    ["packId"] = "fixture-development",
+                    ["runtimeUse"] = "none",
+                    ["shipStatus"] = "excluded",
+                    ["rights"] = new JsonObject
+                    {
+                        ["status"] = "cleared",
+                        ["source"] = "repository check fixture",
+                        ["license"] = "Apache-2.0",
+                        ["attribution"] = "fixture",
+                        ["reviewNote"] = "fixture documentation is excluded",
+                    },
+                }),
+        };
+        WriteFile(root, "config/content_policy.json", RenderJson(policy));
+        var result = ContentInventoryCheck.Write(root);
         Assert.True(result.Passed, string.Join(Environment.NewLine, result.Failures));
     }
 

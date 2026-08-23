@@ -154,7 +154,7 @@ dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- pl
 python scripts/capture_readme_screenshots.py --check
 dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- badges .
 dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- logo .
-python scripts/content_inventory.py --check --release-ready
+dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- inventory-release .
 python -m vibesnake.qa.shared_traces --check
 python -m vibesnake.qa.shared_rule_traces --check
 python -m vibesnake.qa.shared_power_traces --check

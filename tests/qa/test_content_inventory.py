@@ -10,6 +10,7 @@ import zlib
 
 import pytest
 
+import vibesnake.content.inventory as inventory_module
 from vibesnake.content.inventory import (
     CONTENT_INVENTORY_SCHEMA_VERSION,
     ContentInventoryError,
@@ -152,6 +153,29 @@ def test_write_and_check_require_exact_current_inventory(tmp_path: Path) -> None
     asset.write_text('{"changed": true}', encoding="utf-8")
     with pytest.raises(ContentInventoryError, match="stale"):
         check_inventory(tmp_path, policy_path, inventory_path)
+
+
+def test_write_failure_preserves_inventory_and_cleans_temporary_file(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    assets = tmp_path / "assets"
+    assets.mkdir()
+    (assets / "config.json").write_text("{}", encoding="utf-8")
+    policy_path = _write_policy(tmp_path, [_rule("config", "config.json")])
+    inventory_path = tmp_path / "config" / "content_inventory.json"
+    inventory_path.write_text("original\n", encoding="utf-8")
+
+    def reject_replace(source: Path, target: Path) -> None:
+        raise OSError(f"replace rejected: {source.name} -> {target.name}")
+
+    monkeypatch.setattr(inventory_module.os, "replace", reject_replace)
+
+    with pytest.raises(OSError, match="replace rejected"):
+        write_inventory(tmp_path, policy_path, inventory_path)
+
+    assert inventory_path.read_text(encoding="utf-8") == "original\n"
+    assert list(inventory_path.parent.glob(f".{inventory_path.name}.*.tmp")) == []
 
 
 def test_check_reports_missing_inventory(tmp_path: Path) -> None:

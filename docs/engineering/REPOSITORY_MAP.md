@@ -88,7 +88,7 @@ native/
 |-- src/VibeSnake.AgentPlay/  Transport-neutral step and bounded-burst external-agent sessions, public observations, experience contracts, and verified replay ownership
 |-- src/VibeSnake.AgentViewer/  Read-only same-user pipe client and public snapshot projection
 |-- tools/VibeSnake.AgentHost/  Local stateless-era stdio MCP adapter, capacity and idle-bounded session registry, replay save, and read-only viewer server
-|-- tools/RepositoryChecks/  Native repository-policy and dependency-lock qualification command
+|-- tools/RepositoryChecks/  Native repository-policy, content-inventory, and dependency-lock qualification command
 |-- tools/ValidateCreatorContent/  Data-only personality and canonical pack-set validation command
 `-- tests/VibeSnake.Rules.Tests/  xUnit parity, restore, replay, storage, and generated state-machine contracts
 
@@ -110,7 +110,6 @@ Progression-specific native ownership:
 
 ```text
 scripts/
-|-- content_inventory.py        Generate or verify the source asset inventory
 |-- content_packs.py            Qualify canonical core and optional pack manifests
 |-- assemble_radio_pack.py      Build one approved deterministic radio archive
 |-- assemble_unsigned_preview.py  Join the qualified players, provenance, and radio pack

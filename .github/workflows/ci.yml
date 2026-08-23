@@ -114,10 +114,6 @@ jobs:
       - name: Verify current README screenshots
         run: python scripts/capture_readme_screenshots.py --check
 
-      - name: Verify deterministic content inventory
-        if: matrix.python-version == '3.14'
-        run: python scripts/content_inventory.py --check
-
       - name: Verify shared Python-to-C# traces
         run: |
           python -m vibesnake.qa.shared_traces --check
@@ -492,7 +488,9 @@ jobs:
           --locked-mode
 
       - name: Require approved release content
-        run: python scripts/content_inventory.py --check --release-ready
+        run: >-
+          dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj
+          --configuration Release --no-restore -- inventory-release .
 
       - name: Check exact product and tag version
         run: >-

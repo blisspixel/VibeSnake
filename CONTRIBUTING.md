@@ -21,8 +21,7 @@ A change is complete when:
 - The dependency-lock checks confirm the CI and runtime graphs match their requirement inputs.
 - `python -m ruff format --check src tests scripts` passes.
 - `python -m ruff check src tests scripts` passes.
-- `python scripts/content_inventory.py --check` passes.
-- `dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- all .` passes for documentation, product-version, source, candidate-freeze, dependency-lock, project-logo, station-badge, and Agent Plugin policy.
+- `dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- all .` passes for documentation, product-version, source, candidate-freeze, dependency-lock, project-logo, station-badge, content-inventory, and Agent Plugin policy.
 - The source and assembled Agent Plugin, interoperability baseline, and generated OKF bundle pass their drift and containment gates.
 - `python scripts/capture_readme_screenshots.py --check` passes.
 - `dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- badges .` passes.
@@ -50,7 +49,7 @@ dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- pl
 python scripts/capture_readme_screenshots.py --check
 dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- badges .
 dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- logo .
-python scripts/content_inventory.py --check
+dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- inventory .
 python -m vibesnake.qa.shared_traces --check
 python -m vibesnake.qa.shared_rule_traces --check
 python -m vibesnake.qa.shared_power_traces --check

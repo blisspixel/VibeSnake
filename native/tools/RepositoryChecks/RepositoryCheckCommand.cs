@@ -522,9 +522,16 @@ public static class RepositoryCheckCommand
             return RunBadgeWrite(arguments, standardOutput, standardError);
         }
 
+        if (arguments is not null
+            && arguments.Count > 0
+            && arguments[0] == "inventory-write")
+        {
+            return RunInventoryWrite(arguments, standardOutput, standardError);
+        }
+
         if (arguments is null
             || arguments.Count is < 1 or > 2
-            || arguments[0] is not ("all" or "badges" or "docs" or "freeze" or "locks" or "logo" or "source" or "version"))
+            || arguments[0] is not ("all" or "badges" or "docs" or "freeze" or "inventory" or "inventory-release" or "locks" or "logo" or "source" or "version"))
         {
             WriteUsage(standardError);
             return 2;
@@ -547,6 +554,8 @@ public static class RepositoryCheckCommand
             "badges" => new[] { StationBadgeCheck.Inspect(repositoryRoot) },
             "docs" => new[] { DocumentationCheck.Inspect(repositoryRoot) },
             "freeze" => new[] { CandidateFreezeCheck.Inspect(repositoryRoot) },
+            "inventory" => new[] { ContentInventoryCheck.Inspect(repositoryRoot) },
+            "inventory-release" => new[] { ContentInventoryCheck.Inspect(repositoryRoot, requireReleaseReady: true) },
             "locks" => new[] { DependencyLockCheck.Inspect(repositoryRoot) },
             "logo" => new[] { ProjectLogoCheck.Inspect(repositoryRoot) },
             "source" => new[] { SourcePolicyCheck.Inspect(repositoryRoot) },
@@ -556,6 +565,7 @@ public static class RepositoryCheckCommand
                 ProductVersionCheck.Inspect(repositoryRoot),
                 DocumentationCheck.Inspect(repositoryRoot),
                 CandidateFreezeCheck.Inspect(repositoryRoot),
+                ContentInventoryCheck.Inspect(repositoryRoot),
                 DependencyLockCheck.Inspect(repositoryRoot),
                 ProjectLogoCheck.Inspect(repositoryRoot),
                 StationBadgeCheck.Inspect(repositoryRoot),
@@ -583,6 +593,34 @@ public static class RepositoryCheckCommand
         }
 
         return passed ? 0 : 1;
+    }
+
+    private static int RunInventoryWrite(
+        IReadOnlyList<string> arguments,
+        TextWriter standardOutput,
+        TextWriter standardError)
+    {
+        if (arguments.Count > 2)
+        {
+            WriteUsage(standardError);
+            return 2;
+        }
+
+        var result = ContentInventoryCheck.Write(
+            arguments.Count == 2 ? arguments[1] : ".");
+        if (result.Passed)
+        {
+            standardOutput.WriteLine(result.SuccessMessage);
+            return 0;
+        }
+
+        standardError.WriteLine(result.Name + " generation failed:");
+        foreach (var failure in result.Failures)
+        {
+            standardError.WriteLine("  " + failure);
+        }
+
+        return 1;
     }
 
     private static int RunBadgeWrite(
@@ -756,10 +794,12 @@ public static class RepositoryCheckCommand
     private static void WriteUsage(TextWriter writer)
     {
         writer.WriteLine(
-            "Usage: RepositoryChecks <all|badges|docs|freeze|locks|logo|source|version> "
+            "Usage: RepositoryChecks <all|badges|docs|freeze|inventory|inventory-release|locks|logo|source|version> "
             + "[repository-root]");
         writer.WriteLine(
             "       RepositoryChecks badge-write [repository-root]");
+        writer.WriteLine(
+            "       RepositoryChecks inventory-write [repository-root]");
         writer.WriteLine(
             "       RepositoryChecks freeze-baseline <revision> <generated-utc> "
             + "[repository-root] [output]");

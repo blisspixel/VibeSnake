@@ -12,16 +12,16 @@ The current foundation inventories every canonical source asset, records its exa
 | --- | --- |
 | [content_policy.json](../../config/content_policy.json) | Human-reviewed classification, pack intent, runtime use, shipping state, and rights status |
 | [content_inventory.json](../../config/content_inventory.json) | Generated file-level paths, logical IDs, media types, sizes, SHA-256 hashes, integrity results, duplicate links, and policy metadata |
-| [inventory.py](../../src/vibesnake/content/inventory.py) | Strict policy, inventory, integrity, duplication, and release-blocker rules |
-| [content_inventory.py](../../scripts/content_inventory.py) | Check, regeneration, and release-readiness command |
-| [test_content_inventory.py](../../tests/qa/test_content_inventory.py) | Normal, stale, malformed, ambiguous, unsafe, corrupt, duplicate, and release-blocker contracts |
+| [ContentInventoryCheck.cs](../../native/tools/RepositoryChecks/ContentInventoryCheck.cs) | Authoritative strict policy, deterministic inventory, bounded integrity, duplication, freshness, generation, and release-blocker rules |
+| [ContentInventoryCheckTests.cs](../../native/tests/VibeSnake.Rules.Tests/ContentInventoryCheckTests.cs) | Exact snapshots plus malformed, ambiguous, unsafe, corrupt, duplicate, bounded-input, atomic-write, and release-blocker contracts |
+| [inventory.py](../../src/vibesnake/content/inventory.py) | Frozen parity helper retained temporarily by Python pack assembly tooling; it is not the authoritative command |
 | [CONTENT_PACKS.md](CONTENT_PACKS.md) | Executable core and optional-radio manifest schema, compatibility rules, allowlists, and failure isolation |
 
 Edit the policy. Do not hand-edit the generated inventory.
 
 ## Current measured inventory
 
-The 2026-08-04 public inventory contains 114 rights-cleared files totaling
+The 2026-08-22 public inventory contains 114 rights-cleared files totaling
 342,510,815 bytes, including 95 radio MP3 tracks under `assets/audio/radio/`.
 
 | Classification | Files | Current meaning |
@@ -138,7 +138,7 @@ An honest rejection is a complete listening record but cannot approve source rep
 Verify that policy, bytes, and the checked-in inventory agree:
 
 ```powershell
-python scripts/content_inventory.py --check
+dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- inventory .
 dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- badges .
 dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- logo .
 ```
@@ -157,17 +157,23 @@ the complete output set before reporting success.
 Regenerate the inventory after any intentional asset or policy change:
 
 ```powershell
-python scripts/content_inventory.py --write
-python scripts/content_inventory.py --check
+dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- inventory-write .
+dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- inventory .
 ```
+
+The native writer validates the fixed policy and asset tree, computes the exact
+schema-1 document, flushes a temporary sibling, replaces the inventory
+atomically, and then verifies freshness. Its readers reject links, invalid
+UTF-8, duplicate JSON properties, unsafe patterns, unsupported media, oversized
+inputs, media-container corruption, incomplete PNG streams, and asset-tree drift.
 
 Exercise the future release gate:
 
 ```powershell
-python scripts/content_inventory.py --check --release-ready
+dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- inventory-release .
 ```
 
-The last command currently fails by design. It reports every runtime candidate that remains blocked plus any invalid runtime file or approved duplicate. CI runs `--check` so no asset or classification can change silently. Release qualification must eventually run `--release-ready` against the selected core and optional-pack inputs.
+The last command currently fails by design. It reports every runtime candidate that remains blocked plus any invalid runtime file or approved duplicate. The combined native CI route runs the freshness check on Windows, macOS, and Linux so no asset or classification can change silently. Tagged-alpha qualification runs `inventory-release` against the selected core and optional-pack inputs.
 
 ## Adding or changing an asset
 
