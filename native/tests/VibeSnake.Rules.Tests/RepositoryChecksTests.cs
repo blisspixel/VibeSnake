@@ -1399,6 +1399,7 @@ public sealed class RepositoryChecksTests
             WriteCandidateFreezeFixture(root);
             WriteDependencyLockFixture(root);
             WriteAgentPluginFixture(root);
+            WriteStationBadgeFixture(root);
             var allOutput = new StringWriter();
             var allError = new StringWriter();
             Assert.Equal(1, RepositoryCheckCommand.Run(["all", root], allOutput, allError));
@@ -1425,7 +1426,9 @@ public sealed class RepositoryChecksTests
 
         Assert.Equal(2, invalidCode);
         Assert.Equal(string.Empty, invalidOutput.ToString());
-        Assert.Contains("RepositoryChecks <all|docs|freeze|locks|logo|source|version>", invalidError.ToString());
+        Assert.Contains(
+            "RepositoryChecks <all|badges|docs|freeze|locks|logo|source|version>",
+            invalidError.ToString());
 
         WithTemporaryDirectory(root =>
         {
@@ -1435,6 +1438,7 @@ public sealed class RepositoryChecksTests
             WriteDependencyLockFixture(root);
             WriteAgentPluginFixture(root);
             CopyApprovedLogo(root);
+            WriteStationBadgeFixture(root);
             var output = new StringWriter();
             var error = new StringWriter();
 
@@ -1447,6 +1451,7 @@ public sealed class RepositoryChecksTests
             Assert.Contains("Candidate freeze policy check passed", output.ToString());
             Assert.Contains("Python dependency locks verified", output.ToString());
             Assert.Contains("Project logo check passed.", output.ToString());
+            Assert.Contains("Station badges verified", output.ToString());
             Assert.Contains("Source policy check passed", output.ToString());
             Assert.Contains("Agent Plugin source profile passed", output.ToString());
         });
@@ -1454,6 +1459,7 @@ public sealed class RepositoryChecksTests
 
     [Theory]
     [InlineData("docs")]
+    [InlineData("badges")]
     [InlineData("freeze")]
     [InlineData("locks")]
     [InlineData("logo")]
@@ -1468,6 +1474,7 @@ public sealed class RepositoryChecksTests
             WriteCandidateFreezeFixture(root);
             WriteDependencyLockFixture(root);
             CopyApprovedLogo(root);
+            WriteStationBadgeFixture(root);
             var output = new StringWriter();
             var error = new StringWriter();
 
@@ -1543,6 +1550,7 @@ public sealed class RepositoryChecksTests
         var locks = DependencyLockCheck.Inspect(root);
         var logo = ProjectLogoCheck.Inspect(root);
         var source = SourcePolicyCheck.Inspect(root);
+        var badges = StationBadgeCheck.Inspect(root);
         var plugin = AgentPluginCheck.Inspect(
             Path.Combine(root, "integrations", "vibesnake-agent-plugin"));
 
@@ -1554,6 +1562,7 @@ public sealed class RepositoryChecksTests
         Assert.Equal(4, DependencyLockCheck.CheckProfile(root, "runtime"));
         Assert.True(logo.Passed, string.Join(Environment.NewLine, logo.Failures));
         Assert.True(source.Passed, string.Join(Environment.NewLine, source.Failures));
+        Assert.True(badges.Passed, string.Join(Environment.NewLine, badges.Failures));
         Assert.True(plugin.Passed, string.Join(Environment.NewLine, plugin.Failures));
     }
 
@@ -1782,6 +1791,12 @@ public sealed class RepositoryChecksTests
 
             # Play Vibe Snake
             """ + "\n");
+    }
+
+    private static void WriteStationBadgeFixture(string root)
+    {
+        var result = StationBadgeCheck.Write(root);
+        Assert.True(result.Passed, string.Join(Environment.NewLine, result.Failures));
     }
 
     private static void WriteFile(string root, string relativePath, string source)

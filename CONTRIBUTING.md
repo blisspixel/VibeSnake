@@ -22,10 +22,10 @@ A change is complete when:
 - `python -m ruff format --check src tests scripts` passes.
 - `python -m ruff check src tests scripts` passes.
 - `python scripts/content_inventory.py --check` passes.
-- `dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- all .` passes for documentation, product-version, source, candidate-freeze, dependency-lock, and project-logo policy.
+- `dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- all .` passes for documentation, product-version, source, candidate-freeze, dependency-lock, project-logo, station-badge, and Agent Plugin policy.
 - The source and assembled Agent Plugin, interoperability baseline, and generated OKF bundle pass their drift and containment gates.
 - `python scripts/capture_readme_screenshots.py --check` passes.
-- `python scripts/visual_generate_badges.py --check` passes.
+- `dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- badges .` passes.
 - `dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- logo .` passes.
 - `./scripts/test_native.ps1` passes.
 - User-facing behavior and known limitations are reflected in the canonical docs.
@@ -41,14 +41,14 @@ python -m pip_audit --strict --disable-pip --require-hashes --requirement requir
 python -m ruff format --check src tests scripts
 python -m ruff check src tests scripts
 dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- all .
-python scripts/validate_agent_plugin.py integrations/vibesnake-agent-plugin
+dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- plugin integrations/vibesnake-agent-plugin
 python scripts/check_agent_interop.py
 python scripts/generate_agent_knowledge.py --check
 ./scripts/package_agent_plugin.ps1 -OutputRoot TestResults/agent-plugin -Force
 ./scripts/package_agent_host.ps1 -OutputRoot TestResults/agent-host -Force
-python scripts/validate_agent_plugin.py TestResults/agent-plugin/portable/vibesnake-agent --require-mcp
+dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- plugin TestResults/agent-plugin/portable/vibesnake-agent --require-mcp
 python scripts/capture_readme_screenshots.py --check
-python scripts/visual_generate_badges.py --check
+dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- badges .
 dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- logo .
 python scripts/content_inventory.py --check
 python -m vibesnake.qa.shared_traces --check

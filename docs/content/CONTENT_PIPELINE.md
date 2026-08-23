@@ -22,7 +22,7 @@ Edit the policy. Do not hand-edit the generated inventory.
 ## Current measured inventory
 
 The 2026-08-04 public inventory contains 114 rights-cleared files totaling
-340,378,770 bytes, including 95 radio MP3 tracks under `assets/audio/radio/`.
+342,510,815 bytes, including 95 radio MP3 tracks under `assets/audio/radio/`.
 
 | Classification | Files | Current meaning |
 | --- | ---: | --- |
@@ -139,11 +139,22 @@ Verify that policy, bytes, and the checked-in inventory agree:
 
 ```powershell
 python scripts/content_inventory.py --check
-python scripts/visual_generate_badges.py --check
+dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- badges .
 dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- logo .
 ```
 
-Regenerate after an intentional asset or policy change:
+Regenerate badges after an intentional station-definition change:
+
+```powershell
+dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- badge-write .
+```
+
+The native badge route owns the eight station definitions, project-owned 5x7
+glyphs, integer-only rendering, canonical RGB PNG encoding, bounded tree checks,
+and exact-byte freshness. Its writer replaces each badge atomically and verifies
+the complete output set before reporting success.
+
+Regenerate the inventory after any intentional asset or policy change:
 
 ```powershell
 python scripts/content_inventory.py --write

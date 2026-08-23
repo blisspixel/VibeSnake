@@ -53,6 +53,6 @@ review record, and pack credit before it enters the repository or a player build
 A filename, generator log, or verbal assumption is not enough evidence for a
 third-party asset.
 
-The checked-in station badges use project-owned 5x7 pixel glyphs so PNG bytes
-match across platforms. [NOTICE](../../NOTICE) retains the project attribution
-for generated artwork.
+The checked-in station badges use project-owned 5x7 pixel glyphs, integer-only
+drawing, and a closed native PNG encoder so exact PNG bytes match across platforms.
+[NOTICE](../../NOTICE) retains the project attribution for generated artwork.

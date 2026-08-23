@@ -128,7 +128,7 @@ python scripts/generate_agent_knowledge.py --check
 dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- plugin TestResults/agent-plugin/portable/vibesnake-agent --require-mcp
 ./scripts/package_agent_host.ps1 -OutputRoot TestResults/agent-host -Force
 python scripts/capture_readme_screenshots.py --check
-python scripts/visual_generate_badges.py --check
+dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- badges .
 dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- logo .
 python scripts/content_inventory.py --check
 python -m vibesnake.qa.shared_traces --check

@@ -33,7 +33,7 @@ repos:
         pass_filenames: false
       - id: station-badges
         name: deterministic station badges
-        entry: python scripts/visual_generate_badges.py --check
+        entry: dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- badges .
         language: system
         pass_filenames: false
       - id: project-logo
