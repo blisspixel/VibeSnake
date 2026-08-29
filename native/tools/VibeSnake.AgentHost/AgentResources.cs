@@ -69,7 +69,7 @@ public sealed class AgentResources
     public static string GetRules() => JsonSerializer.Serialize(
         new
         {
-            contract = "vibesnake-agent-rules-resource-v18",
+            contract = "vibesnake-agent-rules-resource-v19",
             ruleset_id = RulesetIdentity.CurrentId,
             rules_version = RulesetIdentity.CurrentVersion,
             observation_schema = AgentObservationV5.Contract,
@@ -131,7 +131,7 @@ public sealed class AgentResources
                 requirement_satisfied = "A lesson requirement's satisfied flag reports that its closed evidence exists. It is a factual observation, not a grade, score, or claim about mastery.",
                 recommended_next_tool = "recommended_next_tool is factual guidance derived from live progress. The caller keeps explicit control and may keep playing instead.",
             },
-            argument_binding = "Tool arguments use the exact discovered camelCase names and JSON types. Missing, unexpected, and wrong-typed argument names are named before the tool runs, list the required and optional fields, and change no match state. gameplaySeed is a quoted decimal string, never a JSON number. A rejected request carries no observation because it never entered match code; observe_match separately proves the unchanged tick and state hash.",
+            argument_binding = "Tool arguments use the exact discovered camelCase names, JSON types, and closed values. Missing, unexpected, wrong-typed, and out-of-contract argument values are named before the tool runs, list the required and optional fields, and change no match state. An out-of-contract value names the accepted vocabulary or range, the resource that publishes it, and the value that was received, so an unknown lesson, mode, style, rival, action profile, action, intent, handle, key, identity, seed, or step count is a recoverable argument rejection rather than an application error. A tool that accepts one of two alternative sources says so when neither or both arrive. gameplaySeed is a quoted decimal string, never a JSON number. A rejected request carries no observation because it never entered match code; observe_match separately proves the unchanged tick and state hash.",
             stale_action_guard = StaleActionGuards,
             seed_divisions = SeedDivisions,
             maximum_steps = AgentMatchOptions.MaximumAllowedSteps,

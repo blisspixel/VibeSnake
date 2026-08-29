@@ -313,7 +313,7 @@ try {
         }
     }
     foreach ($requiredLocalizationFragment in @(
-        "ShellLocalization.All.Count == 732",
+        "ShellLocalization.All.Count == 734",
         "entry.Parameters.Count > 0) == 114",
         'AgentActionRejection.WrongActionProfile =>',
         '"agent-arena.action.rejected-wrong-profile"',
@@ -335,7 +335,7 @@ try {
         }
     }
     foreach ($requiredLocalizationFragment in @(
-        '($localizationEvidence.stringCount -ne 732)',
+        '($localizationEvidence.stringCount -ne 734)',
         '($localizationEvidence.parameterizedStringCount -ne 114)',
         '(-not $localizationEvidence.runHudTitleLayoutPassed)',
         '(-not $localizationEvidence.runHudRowLayoutPassed)',

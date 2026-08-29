@@ -422,6 +422,9 @@ internal static class ShellLocalization
         Entry("agent-arena.exhibitions.route", "ROUTE {route}  RECEIPT {receipt}"),
         Entry("agent-arena.exhibitions.watch-ready", "WATCH AVAILABLE"),
         Entry(
+            "agent-arena.exhibitions.watch-selected",
+            "CONFIRM PLAYS THE RECORDED STORY"),
+        Entry(
             "agent-arena.exhibitions.watch-missing-agent",
             "CANNOT WATCH: THE AGENT REPLAY FILE WAS REMOVED"),
         Entry(
@@ -829,6 +832,7 @@ internal static class ShellLocalization
         Entry("action.or", "or"),
         Entry("action.delete-one-replay", "permanently delete one replay"),
         Entry("action.play-pause", "play/pause"),
+        Entry("action.play-recorded-story", "play the recorded story"),
         Entry("action.prepare-delete", "prepare delete"),
         Entry("action.previous-category", "previous category"),
         Entry("action.previous-page", "previous page"),

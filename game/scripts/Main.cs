@@ -11483,7 +11483,7 @@ public partial class Main : Node2D
                 maximumWidth: AgentExhibitionRowWidth,
                 color: selected ? ActiveShellPalette.PrimaryText : SecondaryTextColor());
             DrawFittedLabel(
-                AgentExhibitionRowDetail(entry),
+                AgentExhibitionRowDetail(entry, selected),
                 new Vector2(76.0f, top + 22.0f),
                 preferredFontSize: ScaledFontSize(13),
                 minimumFontSize: 10,
@@ -11493,7 +11493,33 @@ public partial class Main : Node2D
                     : ActiveShellPalette.WarningText);
         }
 
+        DrawAgentExhibitionPrompts();
         DrawAgentExhibitionIsolationNote();
+    }
+
+    // The list is the only Agent Arena screen that offers two different actions
+    // on one row, so it states both bindings rather than leaving the recorded
+    // story to be discovered from the integration guide.
+    private void DrawAgentExhibitionPrompts()
+    {
+        var nextX = DrawActionPromptSegment(
+            "confirm",
+            Localize("action.play-recorded-story"),
+            new Vector2(46.0f, 648.0f),
+            ScaledFontSize(13),
+            SecondaryTextColor());
+        nextX = DrawActionPromptSegment(
+            "replay",
+            Localize("action.seed-challenge"),
+            new Vector2(nextX, 648.0f),
+            ScaledFontSize(13),
+            SecondaryTextColor());
+        DrawActionPromptSegment(
+            "back",
+            Localize("action.return-menu"),
+            new Vector2(nextX, 648.0f),
+            ScaledFontSize(13),
+            SecondaryTextColor());
     }
 
     private void DrawAgentExhibitionIsolationNote() =>
@@ -11684,8 +11710,12 @@ public partial class Main : Node2D
         };
 
     // The row detail answers the two questions a person actually has: what was
-    // this, and what can I do with it right now.
-    private string AgentExhibitionRowDetail(AgentExhibitionBrowseEntryV1 entry)
+    // this, and what can I do with it right now. Playtest round 6 found that
+    // WATCH AVAILABLE never says the archive holds a recorded story, so the
+    // selected row names the action that plays it instead of only its state.
+    private string AgentExhibitionRowDetail(
+        AgentExhibitionBrowseEntryV1 entry,
+        bool selected)
     {
         var what = entry.LessonId is { } lesson
             ? Localize(
@@ -11707,7 +11737,10 @@ public partial class Main : Node2D
                 Localize("agent-arena.exhibitions.watch-missing-agent"),
             AgentExhibitionWatchBlock.RivalReplayMissing =>
                 Localize("agent-arena.exhibitions.watch-missing-rival"),
-            _ => Localize("agent-arena.exhibitions.watch-ready"),
+            _ => Localize(
+                selected
+                    ? "agent-arena.exhibitions.watch-selected"
+                    : "agent-arena.exhibitions.watch-ready"),
         };
         var challenge = entry.RematchAvailable
             ? Localize("agent-arena.exhibitions.challenge-ready")
@@ -15986,7 +16019,7 @@ public partial class Main : Node2D
 
         const int migratedRequiredFlowCount = 13;
         const double requiredExpansionRatio = 1.30;
-        var passed = ShellLocalization.All.Count == 732
+        var passed = ShellLocalization.All.Count == 734
             && ShellLocalization.All.Count(entry => entry.Parameters.Count > 0) == 114
             && migratedRequiredFlowCount == 13
             && minimumExpansionRatio >= requiredExpansionRatio
