@@ -1479,6 +1479,8 @@ internal sealed record LocalizationQualificationEvidence(
     int RemainingDirectStatusLiteralCount,
     int RemainingComposedStatusLiteralCount,
     int RemainingDomainStatusExpressionCount,
+    int PromptActionCount,
+    int UnboundPromptActionCount,
     string MigrationStatus)
 {
     private static readonly JsonSerializerOptions SerializerOptions = new()

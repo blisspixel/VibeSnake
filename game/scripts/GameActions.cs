@@ -98,6 +98,39 @@ internal static class GameActions
             ["cycle_radio"] = CycleRadio,
         };
 
+    /// <summary>
+    /// Prompt tokens for the actions this shell binds itself rather than
+    /// exposing through the remappable bindings document. Without them a
+    /// prompt naming one of these resolves to Unbound and tells a person a
+    /// working control does not exist. Values mirror <see cref="EnsureDefaults"/>
+    /// and the localization smoke fails when a prompt names an action absent
+    /// from both this table and the bindings document.
+    /// </summary>
+    public static IReadOnlyDictionary<string, FixedPromptBinding> FixedPromptBindings { get; } =
+        new Dictionary<string, FixedPromptBinding>(StringComparer.Ordinal)
+        {
+            ["replay"] = new("key:r", "button:north"),
+            ["quit"] = new("key:q", null),
+            ["toggle_master_mute"] = new("key:f7", null),
+            ["toggle_high_contrast"] = new("key:f9", null),
+            ["toggle_reduced_motion"] = new("key:f10", null),
+            ["toggle_fullscreen"] = new("key:f11", null),
+            ["volume_up"] = new("key:equal", null),
+            ["volume_down"] = new("key:minus", null),
+            ["text_scale_up"] = new("key:f6", null),
+            ["text_scale_down"] = new("key:f5", null),
+            ["toggle_flash_free"] = new("key:f4", null),
+            ["open_diagnostics"] = new("key:f12", null),
+            ["browse_achievements"] = new("key:u", "button:left_shoulder"),
+            ["browse_scores"] = new("key:v", null),
+            ["browse_bindings"] = new("key:b", "button:right_shoulder"),
+            ["browse_content_packs"] = new("key:c", "button:west"),
+            ["browse_settings"] = new("key:f1", "button:start"),
+            ["browse_spectator"] = new("key:l", null),
+            ["help"] = new("key:h", "button:left_stick"),
+            ["cycle_radio"] = new("key:j", "button:right_stick"),
+        };
+
     private static readonly HashSet<string> RuntimeActions = [];
 
     public static void EnsureDefaults()
@@ -1157,3 +1190,11 @@ internal static class GameActions
             _ => null,
         };
 }
+
+/// <summary>
+/// The fixed keyboard and optional controller prompt tokens for one shell
+/// action that the remappable bindings document does not carry.
+/// </summary>
+internal readonly record struct FixedPromptBinding(
+    string KeyboardToken,
+    string? ControllerToken);

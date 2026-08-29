@@ -3203,6 +3203,12 @@ public partial class Main : Node2D
         }
     }
 
+    // The bindings document carries eight actions, so it is not the whole
+    // truth about what is bound. Playtest round 7 read a prompt row that said [Unbound] for a
+    // control that has always been bound to R, because a shell-owned action was
+    // looked up in a document that never carries it. The shell's own defaults
+    // answer for those, and a prompt naming an action neither source knows
+    // still says Unbound because that is then the honest answer.
     private (string Token, InputPromptFamily Family) ResolveActionPrompt(
         string logicalAction)
     {
@@ -3210,9 +3216,23 @@ public partial class Main : Node2D
         var document = family == InputPromptFamily.Keyboard
             ? _keyboardBindings
             : _controllerBindings;
-        return document.ActionToBinding.TryGetValue(logicalAction, out var token)
-            ? (token, family)
-            : ("unbound", family);
+        if (document.ActionToBinding.TryGetValue(logicalAction, out var token))
+        {
+            return (token, family);
+        }
+
+        if (GameActions.FixedPromptBindings.TryGetValue(logicalAction, out var fixedBinding))
+        {
+            var fixedToken = family == InputPromptFamily.Keyboard
+                ? fixedBinding.KeyboardToken
+                : fixedBinding.ControllerToken;
+            if (fixedToken is not null)
+            {
+                return (fixedToken, family);
+            }
+        }
+
+        return ("unbound", family);
     }
 
     private (string Token, InputPromptFamily Family) ResolveStaticPrompt(
@@ -15939,6 +15959,8 @@ public partial class Main : Node2D
         var sourcePath = System.IO.Path.GetFullPath(
             ProjectSettings.GlobalizePath("res://scripts/Main.cs"));
         var sourceAuditPerformed = System.IO.File.Exists(sourcePath);
+        var promptActionCount = 0;
+        var unboundPromptActions = new List<string>();
         var remainingDirectDrawLabelLiteralCount = 0;
         var remainingDirectPromptLiteralCount = 0;
         var remainingDirectStatusLiteralCount = 0;
@@ -15947,6 +15969,23 @@ public partial class Main : Node2D
         if (sourceAuditPerformed)
         {
             var source = System.IO.File.ReadAllText(sourcePath);
+
+            // A prompt row is a promise that a key exists. Every logical action
+            // the shell draws a prompt for must resolve through the remappable
+            // bindings document or the shell's own fixed defaults.
+            var promptActions = System.Text.RegularExpressions.Regex.Matches(
+                    source,
+                    "DrawActionPromptSegment\\s*\\(\\s*\"([^\"]+)\"")
+                .Cast<System.Text.RegularExpressions.Match>()
+                .Select(match => match.Groups[1].Value)
+                .Distinct(StringComparer.Ordinal)
+                .Order(StringComparer.Ordinal)
+                .ToArray();
+            promptActionCount = promptActions.Length;
+            unboundPromptActions.AddRange(promptActions.Where(action =>
+                !InputBindingsDocument.CreateKeyboardDefaults()
+                    .ActionToBinding.ContainsKey(action)
+                && !GameActions.FixedPromptBindings.ContainsKey(action)));
             remainingDirectDrawLabelLiteralCount =
                 System.Text.RegularExpressions.Regex.Count(
                     source,
@@ -16039,7 +16078,9 @@ public partial class Main : Node2D
             && remainingDirectPromptLiteralCount == 0
             && remainingDirectStatusLiteralCount == 0
             && remainingComposedStatusLiteralCount == 0
-            && remainingDomainStatusExpressionCount == 0;
+            && remainingDomainStatusExpressionCount == 0
+            && (!sourceAuditPerformed || promptActionCount > 0)
+            && unboundPromptActions.Count == 0;
         if (!passed)
         {
             throw new InvalidOperationException(
@@ -16065,7 +16106,9 @@ public partial class Main : Node2D
                 + $"remainingDomainStatuses={remainingDomainStatusExpressionCount}, "
                 + $"rulesCopyIdsResolved={rulesCopyIdsResolved}, "
                 + $"feedbackCopyIds={feedbackCopyIdCount}, "
-                + $"broadcastCopyIdsResolved={broadcastCopyIdsResolved}.");
+                + $"broadcastCopyIdsResolved={broadcastCopyIdsResolved}, "
+                + $"promptActions={promptActionCount}, "
+                + $"unboundPromptActions=[{string.Join(",", unboundPromptActions)}].");
         }
 
         var evidence = new LocalizationQualificationEvidence(
@@ -16102,6 +16145,8 @@ public partial class Main : Node2D
             RemainingDirectStatusLiteralCount: remainingDirectStatusLiteralCount,
             RemainingComposedStatusLiteralCount: remainingComposedStatusLiteralCount,
             RemainingDomainStatusExpressionCount: remainingDomainStatusExpressionCount,
+            PromptActionCount: promptActionCount,
+            UnboundPromptActionCount: unboundPromptActions.Count,
             MigrationStatus: sourceAuditPerformed
                 ? "shell-and-audited-domain-presentation-copy-complete"
                 : "packaged-runtime-catalog-layout-complete");

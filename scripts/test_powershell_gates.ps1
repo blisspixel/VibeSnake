@@ -328,7 +328,9 @@ try {
         'RunModeTitleText(mode.DisplayName, statusText)',
         'private void DrawRunHudCell(',
         'private readonly record struct RunHudCell(',
-        'previous.RightEdge + RunHudCellGutter > next.Left'
+        'previous.RightEdge + RunHudCellGutter > next.Left',
+        'GameActions.FixedPromptBindings.ContainsKey(action)',
+        'UnboundPromptActionCount: unboundPromptActions.Count'
     )) {
         if (-not $gameMainScript.Contains($requiredLocalizationFragment, [StringComparison]::Ordinal)) {
             throw "Godot localization evidence is missing catalog count: $requiredLocalizationFragment"
@@ -339,7 +341,8 @@ try {
         '($localizationEvidence.parameterizedStringCount -ne 114)',
         '(-not $localizationEvidence.runHudTitleLayoutPassed)',
         '(-not $localizationEvidence.runHudRowLayoutPassed)',
-        '($localizationEvidence.runHudRowMinimumFontSize -lt 14)'
+        '($localizationEvidence.runHudRowMinimumFontSize -lt 14)',
+        '($localizationEvidence.unboundPromptActionCount -ne 0)'
     )) {
         if (-not $nativeTestScript.Contains($requiredLocalizationFragment, [StringComparison]::Ordinal)) {
             throw "Native localization gate is missing catalog count: $requiredLocalizationFragment"

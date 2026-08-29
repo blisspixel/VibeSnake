@@ -688,6 +688,8 @@ try {
         ($localizationEvidence.remainingDirectStatusLiteralCount -ne 0) -or
         ($localizationEvidence.remainingComposedStatusLiteralCount -ne 0) -or
         ($localizationEvidence.remainingDomainStatusExpressionCount -ne 0) -or
+        ($localizationEvidence.promptActionCount -le 0) -or
+        ($localizationEvidence.unboundPromptActionCount -ne 0) -or
         ($localizationEvidence.migrationStatus -ne "shell-and-audited-domain-presentation-copy-complete")) {
         throw "Localization evidence failed catalog, pseudo-locale, glyph, layout, or migration gates."
     }
