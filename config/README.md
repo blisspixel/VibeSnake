@@ -18,6 +18,7 @@ This directory contains authored project inputs and generated content authority.
 | `release_materials_acceptance_v1.json` | Exact externally approved V090-09 transition from structural completion through manifest reconciliation, claim approval, visible-image review, and video playback review |
 | `release_rehearsal_v1.json` | Exact V090-10 staged artifacts, 33 platform-operation cells, withdrawal, user-data preservation, retained hashes, and release-authority contract |
 | `stable_promotion_v1.json` | Exact 1.0 protected tag, upstream acceptance, public artifacts, optional pack, provenance, install, preservation, and compatibility contract |
+| `stable_upstream_acceptance_v1.json` | Closed stable-promotion authority for ten decision IDs, their exact accepted kinds, ordered gates, generic and special schemas, cross-bindings, retained evidence, and external-operation limits |
 | `power_decision_contract_v1.json` | V070-09 nine-power families, lifecycle aggregates, seeded synergy scenarios, privacy boundary, and default-off Mutation Fork decision gate |
 | `achievement_mode_audit_v1.json` | Reviewed Classic/Vibe eligibility and exclusion decision for all 25 reference achievements |
 | `release_signing_policy.json` | Strict non-secret platform signing, notarization, checksum, and provenance routes |

@@ -1450,7 +1450,7 @@ public sealed class RepositoryChecksTests
         Assert.Equal(2, invalidCode);
         Assert.Equal(string.Empty, invalidOutput.ToString());
         Assert.Contains(
-            "RepositoryChecks <all|badges|docs|freeze|inventory|inventory-release|locks|logo|materials|rehearsal|screenshots|source|version>",
+            "RepositoryChecks <all|badges|docs|freeze|inventory|inventory-release|locks|logo|materials|rehearsal|screenshots|source|stable|version>",
             invalidError.ToString());
         Assert.Contains(
             "RepositoryChecks materials-write <output> [repository-root]",
@@ -1464,6 +1464,12 @@ public sealed class RepositoryChecksTests
         Assert.Contains(
             "RepositoryChecks rehearsal-record <record> <expected-revision> <output> [repository-root]",
             invalidError.ToString());
+        Assert.Contains(
+            "RepositoryChecks stable-write <output> [repository-root]",
+            invalidError.ToString());
+        Assert.Contains(
+            "RepositoryChecks stable-record <record> <expected-revision> <output> [repository-root]",
+            invalidError.ToString());
 
         WithTemporaryDirectory(root =>
         {
@@ -1471,6 +1477,7 @@ public sealed class RepositoryChecksTests
             WriteDocumentationFixture(root);
             WriteReleaseMaterialsFixture(root);
             WriteReleaseRehearsalFixture(root);
+            WriteStablePromotionFixture(root);
             WriteCandidateFreezeFixture(root);
             WriteDependencyLockFixture(root);
             WriteAgentPluginFixture(root);
@@ -1495,6 +1502,7 @@ public sealed class RepositoryChecksTests
                 "Release-material foundation qualified; exact candidate materials remain pending.",
                 output.ToString());
             Assert.Contains("rehearsal", output.ToString(), StringComparison.OrdinalIgnoreCase);
+            Assert.Contains("stable", output.ToString(), StringComparison.OrdinalIgnoreCase);
             Assert.Contains("Station badges verified", output.ToString());
             Assert.Contains("Source policy check passed", output.ToString());
             Assert.Contains("Agent Plugin source profile passed", output.ToString());
@@ -1512,6 +1520,7 @@ public sealed class RepositoryChecksTests
     [InlineData("materials")]
     [InlineData("rehearsal")]
     [InlineData("source")]
+    [InlineData("stable")]
     [InlineData("version")]
     public void Command_runs_each_individual_check(string command)
     {
@@ -1521,6 +1530,7 @@ public sealed class RepositoryChecksTests
             WriteDocumentationFixture(root);
             WriteReleaseMaterialsFixture(root);
             WriteReleaseRehearsalFixture(root);
+            WriteStablePromotionFixture(root);
             WriteCandidateFreezeFixture(root);
             WriteDependencyLockFixture(root);
             CopyApprovedLogo(root);
@@ -1552,6 +1562,8 @@ public sealed class RepositoryChecksTests
             ["materials-candidate", "candidate.json", "revision"],
             ["rehearsal-write"],
             ["rehearsal-record", "record.json", "revision"],
+            ["stable-write"],
+            ["stable-record", "record.json", "revision"],
         })
         {
             var output = new StringWriter();
@@ -1757,6 +1769,56 @@ public sealed class RepositoryChecksTests
             var recordCode = RepositoryCheckCommand.Run(
                 [
                     "rehearsal-record",
+                    "retained/missing-record.json",
+                    new string('a', 40),
+                    "TestResults/record.json",
+                    root,
+                ],
+                output,
+                error);
+
+            Assert.Equal(1, recordCode);
+            Assert.Equal(string.Empty, output.ToString());
+            Assert.Contains("check failed:", error.ToString(), StringComparison.Ordinal);
+            Assert.Contains("record", error.ToString(), StringComparison.OrdinalIgnoreCase);
+        });
+    }
+
+    [Fact]
+    public void Stable_promotion_commands_write_foundation_and_propagate_record_failures()
+    {
+        WithTemporaryDirectory(root =>
+        {
+            WriteVersionFixture(root);
+            WriteStablePromotionFixture(root);
+            var output = new StringWriter();
+            var error = new StringWriter();
+
+            var inspectCode = RepositoryCheckCommand.Run(["stable", root], output, error);
+
+            Assert.Equal(0, inspectCode);
+            Assert.NotEqual(string.Empty, output.ToString());
+            Assert.Contains("stable", output.ToString(), StringComparison.OrdinalIgnoreCase);
+            Assert.Equal(string.Empty, error.ToString());
+            Assert.False(File.Exists(Path.Combine(root, "stable-promotion-handoff.json")));
+
+            output = new StringWriter();
+            error = new StringWriter();
+            var foundationCode = RepositoryCheckCommand.Run(
+                ["stable-write", "TestResults/foundation.json", root],
+                output,
+                error);
+
+            Assert.Equal(0, foundationCode);
+            Assert.NotEqual(string.Empty, output.ToString());
+            Assert.Equal(string.Empty, error.ToString());
+            Assert.True(File.Exists(Path.Combine(root, "TestResults", "foundation.json")));
+
+            output = new StringWriter();
+            error = new StringWriter();
+            var recordCode = RepositoryCheckCommand.Run(
+                [
+                    "stable-record",
                     "retained/missing-record.json",
                     new string('a', 40),
                     "TestResults/record.json",
@@ -2085,6 +2147,24 @@ public sealed class RepositoryChecksTests
         if (!File.Exists(Path.Combine(root, "docs", "guides", "RECOVERY.md")))
         {
             WriteFile(root, "docs/guides/RECOVERY.md", "# Recovery\n\nVerified recovery route.\n");
+        }
+    }
+
+    private static void WriteStablePromotionFixture(string root)
+    {
+        var repositoryRoot = ResolveRepositoryRoot();
+        foreach (var relativePath in new[]
+        {
+            "config/stable_promotion_v1.json",
+            "config/stable_upstream_acceptance_v1.json",
+        })
+        {
+            var destination = Path.Combine(root, relativePath.Replace('/', Path.DirectorySeparatorChar));
+            Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
+            File.Copy(
+                Path.Combine(repositoryRoot, relativePath.Replace('/', Path.DirectorySeparatorChar)),
+                destination,
+                overwrite: true);
         }
     }
 

@@ -2,26 +2,30 @@
 
 [Release state](README.md) | [Release checklist](RELEASE_CHECKLIST.md) | [Release rehearsal](REHEARSAL.md) | [Signing](SIGNING.md)
 
-Status: stable-promotion guard qualified, protected execution pending.
+Status: stable-promotion guard qualified, protected execution and release acceptance pending.
 
-Version 1.0 is a promotion of a proven candidate, not another feature milestone. The machine-readable authority is [`config/stable_promotion_v1.json`](../../config/stable_promotion_v1.json). The validator checks a retained protected-workflow record but never tags, signs, uploads, withdraws, or publishes anything.
+Version 1.0 is a promotion of a proven candidate, not another feature milestone. [`config/stable_promotion_v1.json`](../../config/stable_promotion_v1.json) closes the protected rebuild and preservation contract. [`config/stable_upstream_acceptance_v1.json`](../../config/stable_upstream_acceptance_v1.json) separately closes the exact decision kind, field, and ordered gate authority for each upstream acceptance. The native validator checks those authorities and a retained protected-workflow record. It never performs human review, hardware execution, signing, tagging, upload, withdrawal, installation, or publication.
 
 ## Mandatory upstream decisions
 
-All ten records must have `passed: true`, `releaseAcceptance: true`, and the exact promotion source revision:
+All ten records must have `passed: true`, `releaseAcceptance: true`, and the exact promotion source revision and application version. Each decision ID accepts only its named kind:
 
-1. three-platform release matrix;
-2. complete manual product matrix;
-3. controlled external validation;
-4. exact `release-materials-acceptance-v1` decision accepted after structural completion, artifact reconciliation, claim approval, visible image review, and video playback review;
-5. exact `release-rehearsal-handoff-v2` decision with validated retained execution evidence and the same candidate artifact and manifest identities;
-6. content and optional-pack approval;
-7. named-hardware performance acceptance;
-8. retained accessibility human review;
-9. structured human playtest acceptance;
-10. protected platform signing acceptance.
+1. `release-matrix-acceptance-v1` for the three-platform Release matrix;
+2. `manual-product-matrix-acceptance-v1` for the complete manual product matrix;
+3. `external-validation-acceptance-v1` for controlled external validation;
+4. `release-materials-acceptance-v1`, accepted after structural completion, artifact reconciliation, claim approval, visible image review, and video playback review;
+5. `release-rehearsal-handoff-v2`, with validated retained execution evidence and the same candidate artifact and manifest identities;
+6. `content-approval-acceptance-v1` for core content and the optional pack;
+7. `hardware-performance-acceptance-v1` for named-hardware performance;
+8. `accessibility-human-review-acceptance-v1` for retained accessibility review;
+9. `human-playtest-acceptance-v1` for structured human playtest acceptance;
+10. `platform-signing-acceptance-v1` for protected platform signing and provenance.
 
-A protocol-qualified handoff with zero sessions is not an accepted decision. The structural `release-materials-handoff-v2` is never an accepted material decision, even when `candidateMaterialComplete: true`. The later material-acceptance decision and rehearsal v2 decision must each be complete, same-revision, and free of pending gates and errors. Missing people, hardware, content approval, credentials, or platform evidence cannot be converted to a pass by the promotion guard.
+Eight decisions use the authority's closed generic acceptance schema. Their gate records must appear once in the declared order, name non-personal operational roles, and retain unique evidence whose hashes form the exact referenced-file closure. Content approval also binds the optional-pack and optional-pack-manifest hashes. Platform signing also binds the unsigned input artifact and manifest maps plus the signed public artifact, manifest, and provenance maps.
+
+Release materials and rehearsal are special decisions with their own checked-in exact schemas. A protocol-qualified handoff with zero sessions is not an accepted decision. The structural `release-materials-handoff-v2` is never an accepted material decision, even when `candidateMaterialComplete: true`. The later material-acceptance decision and rehearsal v2 decision must each be complete, same-revision, and free of pending gates and errors. Missing people, hardware, content approval, credentials, or platform evidence cannot be converted to a pass by the promotion guard.
+
+Every upstream decision is cross-bound to the stable record's source revision and application version. Nine review decisions agree on the three-platform unsigned candidate artifact and manifest cohort. The material decision's manifest map is cross-bound through the rehearsal, which names and hashes that exact accepted decision. The platform-signing decision takes the unsigned cohort as its input, then binds the byte-changing signed public artifact and manifest maps plus final provenance to the stable record. Content approval also agrees on the optional pack. Decision paths, evidence paths, and retained hash keys are unique portable paths beneath one link-free trust root, so one favorable file or one aliased evidence file cannot satisfy multiple authorities.
 
 ## Protected rebuild
 
@@ -49,7 +53,7 @@ Retain at least one nonempty file in every category:
 - previous supported artifacts;
 - support and operational record.
 
-The stable record has one SHA-256 map whose keys exactly equal every artifact, manifest, provenance bundle, checksum, optional pack, upstream decision, public-install result, and preserved evidence path it references. Tampering or an unreferenced extra hash blocks promotion.
+The stable record has one SHA-256 map whose keys exactly equal every artifact, manifest, provenance bundle, checksum, optional pack, upstream decision, public-install result, and preserved evidence path it references. The validator rechecks bounded retained files and a final stable snapshot. Tampering, path aliasing, cross-platform identity drift, or an unreferenced extra hash blocks promotion.
 
 ## Stable contract
 
@@ -66,20 +70,31 @@ Changing one of these promises requires an explicit future contract review. It c
 
 ## Validation commands
 
-Qualify the checked-in guard:
+Inspect the checked-in guard without writing evidence:
 
 ```powershell
-python scripts/check_stable_promotion.py `
-  --output TestResults/stable-promotion/stable_promotion_handoff.json
+dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj `
+  --configuration Release --no-restore -- stable .
+```
+
+Write the pending foundation handoff used by CI:
+
+```powershell
+dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj `
+  --configuration Release --no-restore -- stable-write `
+  TestResults/stable-promotion/stable_promotion_handoff.json .
 ```
 
 Validate the retained protected-workflow record:
 
 ```powershell
-python scripts/check_stable_promotion.py `
-  --record C:\retained-vibesnake-evidence\stable-promotion\record.json `
-  --expected-revision 0123456789abcdef0123456789abcdef01234567 `
-  --output C:\retained-vibesnake-evidence\stable-promotion\decision.json
+dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj `
+  --configuration Release --no-restore -- stable-record `
+  C:\retained-vibesnake-evidence\stable-promotion\record.json `
+  0123456789abcdef0123456789abcdef01234567 `
+  C:\retained-vibesnake-evidence\stable-promotion\decision.json .
 ```
 
-The repository currently contains no promotion record. `promotionComplete` and `releaseAcceptance` therefore remain false.
+Both writing routes emit canonical `stable-promotion-handoff-v2` JSON bound to the two checked-in contract hashes. The record route additionally binds the exact source revision. The foundation handoff can report `guardQualified: true`, but it has no record hash or protected run ID and keeps `recordIntegrityQualified`, `protectedWorkflowAttested`, `promotionComplete`, and `releaseAcceptance` false with the exact pending gates. Only `stable-record` can set those completion fields after validating the complete retained record.
+
+The repository currently contains no promotion record. Protected execution, `promotionComplete`, and `releaseAcceptance` therefore remain pending and false.

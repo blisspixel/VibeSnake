@@ -1,0 +1,170 @@
+{
+  "schemaVersion": 1,
+  "kind": "vibesnake-stable-upstream-acceptance-v1",
+  "status": "closed-upstream-acceptance-authority",
+  "artifactPlatforms": [
+    "windows-x64",
+    "macos-universal",
+    "linux-x64"
+  ],
+  "decisionKindsById": {
+    "release-matrix": {
+      "acceptedKind": "release-matrix-acceptance-v1",
+      "artifactBinding": "unsigned-candidate",
+      "additionalRequiredDecisionFields": []
+    },
+    "manual-product-matrix": {
+      "acceptedKind": "manual-product-matrix-acceptance-v1",
+      "artifactBinding": "unsigned-candidate",
+      "additionalRequiredDecisionFields": []
+    },
+    "external-validation": {
+      "acceptedKind": "external-validation-acceptance-v1",
+      "artifactBinding": "unsigned-candidate",
+      "additionalRequiredDecisionFields": []
+    },
+    "release-materials": {
+      "acceptedKind": "release-materials-acceptance-v1",
+      "artifactBinding": "unsigned-candidate",
+      "additionalRequiredDecisionFields": []
+    },
+    "release-rehearsal": {
+      "acceptedKind": "release-rehearsal-handoff-v2",
+      "artifactBinding": "unsigned-candidate",
+      "additionalRequiredDecisionFields": []
+    },
+    "content-approval": {
+      "acceptedKind": "content-approval-acceptance-v1",
+      "artifactBinding": "unsigned-candidate",
+      "additionalRequiredDecisionFields": [
+        "optionalPackSha256",
+        "optionalPackManifestSha256"
+      ]
+    },
+    "hardware-performance": {
+      "acceptedKind": "hardware-performance-acceptance-v1",
+      "artifactBinding": "unsigned-candidate",
+      "additionalRequiredDecisionFields": []
+    },
+    "accessibility-human-review": {
+      "acceptedKind": "accessibility-human-review-acceptance-v1",
+      "artifactBinding": "unsigned-candidate",
+      "additionalRequiredDecisionFields": []
+    },
+    "human-playtest": {
+      "acceptedKind": "human-playtest-acceptance-v1",
+      "artifactBinding": "unsigned-candidate",
+      "additionalRequiredDecisionFields": []
+    },
+    "platform-signing": {
+      "acceptedKind": "platform-signing-acceptance-v1",
+      "artifactBinding": "post-signing-public",
+      "additionalRequiredDecisionFields": [
+        "inputArtifactSha256ByPlatform",
+        "inputManifestSha256ByPlatform",
+        "provenanceSha256ByPlatform"
+      ]
+    }
+  },
+  "gateIdsById": {
+    "release-matrix": [
+      "three-platform-release-matrix",
+      "release-artifact-manifest-and-checksum-reconciliation",
+      "deterministic-package-and-smoke-identity"
+    ],
+    "manual-product-matrix": [
+      "retained-windows-x64-full-flow",
+      "retained-macos-universal-apple-silicon-full-flow",
+      "retained-macos-universal-intel-full-flow",
+      "retained-linux-x64-full-flow",
+      "physical-input-audio-accessibility-profile-coverage"
+    ],
+    "external-validation": [
+      "controlled-real-artifact-distribution",
+      "clean-install-fresh-participants",
+      "structured-defect-comprehension-accessibility-crash-reports",
+      "fresh-participant-comprehension-and-replay-intent",
+      "clean-candidate-fix-and-gate-rerun-loop"
+    ],
+    "release-materials": [
+      "artifact-manifest-size-reconciliation",
+      "marketing-claim-approval",
+      "visible-image-review",
+      "video-playback-review"
+    ],
+    "release-rehearsal": [
+      "staged-final-artifacts-and-checksums",
+      "three-platform-install-update-rollback-removal",
+      "optional-content-lifecycle",
+      "withdrawal-and-previous-artifact-restoration",
+      "user-data-preservation",
+      "verified-release-authority-roles"
+    ],
+    "content-approval": [
+      "core-content-approval",
+      "optional-pack-content-approval",
+      "rights-credits-and-notices-reconciliation",
+      "listening-review"
+    ],
+    "hardware-performance": [
+      "named-minimum-hardware-performance",
+      "named-recommended-hardware-performance",
+      "resolution-presentation-review",
+      "long-session-resource-review"
+    ],
+    "accessibility-human-review": [
+      "physical-input-accessibility-review",
+      "accessibility-user-review",
+      "photosensitivity-review",
+      "maximum-text-scale-review"
+    ],
+    "human-playtest": [
+      "formative-participant-review",
+      "targeted-follow-up-review",
+      "fresh-validation-review",
+      "experience-target-range-acceptance"
+    ],
+    "platform-signing": [
+      "windows-signing-verification",
+      "macos-signing-notarization-stapling-verification",
+      "linux-runtime-baseline-and-desktop-integration",
+      "provenance-verification"
+    ]
+  },
+  "requiredGenericDecisionFields": [
+    "schemaVersion",
+    "kind",
+    "passed",
+    "releaseAcceptance",
+    "sourceRevision",
+    "appVersion",
+    "candidateArtifactSha256ByPlatform",
+    "candidateManifestSha256ByPlatform",
+    "acceptedUtc",
+    "gateRecords",
+    "retainedFileSha256",
+    "pendingGates",
+    "errors"
+  ],
+  "requiredGateFields": [
+    "gateId",
+    "result",
+    "authorityRoleId",
+    "evidencePaths"
+  ],
+  "releaseRules": [
+    "The ten decision IDs, their accepted kinds, their required fields, and their ordered gate IDs are closed by this authority.",
+    "Every generic accepted decision has exactly the generic fields plus its profile fields, and every special accepted decision has exactly its separately authorized schema.",
+    "A structural release-materials-handoff-v2 is never an accepted release-material decision; only release-materials-acceptance-v1 can satisfy that decision ID.",
+    "Release-rehearsal-handoff-v2 is accepted only when record integrity, external execution, rehearsal completion, and release acceptance are true and pending gates and errors are empty.",
+    "Every accepted decision passes, accepts release, and binds the exact stable-promotion source revision and application version.",
+    "The nine unsigned-candidate decisions bind one reviewed pre-signing artifact and manifest cohort; the special release-material decision binds that cohort's manifest map through the accepted rehearsal and structural-material identities.",
+    "Content approval additionally matches the exact optional-pack and optional-pack-manifest SHA-256 values in the stable-promotion record.",
+    "Platform signing binds its input artifact and manifest SHA-256 maps to the reviewed unsigned cohort, then binds its candidate artifact, candidate manifest, and provenance SHA-256 maps to the final public files in the stable-promotion record.",
+    "Every generic gate record appears once in authority order, has result pass, uses a non-personal operational role ID, and retains at least one unique evidence file.",
+    "Decision paths, gate evidence paths, and retained-file keys are unique portable NFC relative paths contained beneath one link-free trust root, with no aliases or portable case collisions.",
+    "Each generic retained-file hash map is the exact closure of its gate evidence paths, and every retained regular file is bounded, read stably, and matched to its lowercase SHA-256 digest.",
+    "Special release-material and release-rehearsal decisions retain and hash their complete nested evidence according to their own checked-in authorities, and stable promotion rechecks every referenced decision file digest.",
+    "Pending gates and errors are empty, timestamps are canonical UTC, and automated validation never performs or invents approval, human review, hardware execution, signing, or publication."
+  ]
+}

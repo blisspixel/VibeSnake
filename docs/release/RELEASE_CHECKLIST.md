@@ -130,6 +130,9 @@ The current development revision does not meet this checklist. See [STATUS.md](S
 - [ ] `materials-candidate` writes a passing, structurally complete `release-materials-handoff-v2` with `releaseAcceptance: false`; artifact-manifest reconciliation, marketing-claim approval, visible image review, and video playback review remain required.
 - [ ] A retained `release-materials-acceptance-v1` decision closes those four gates for the exact revision, version, candidate, and artifact manifests; the structural handoff alone is insufficient.
 - [ ] `rehearsal-record` validates all 33 staged platform-operation cells, exact retained files, protected-data preservation, withdrawal, and operational authority, then writes a same-revision `release-rehearsal-handoff-v2` accepted by the stable-promotion contract.
+- [ ] Ten exact-kind upstream acceptance decisions bind the same stable revision and version under `stable_upstream_acceptance_v1.json`; nine review decisions bind the unsigned cohort, and signing binds that cohort as input plus the signed public artifacts, manifests, and provenance as output.
+- [ ] `stable-record` validates the retained protected 1.0 rebuild, public installs, smoke results, preservation evidence, contract acknowledgements, and exact hashes, then writes `stable-promotion-handoff-v2` with `promotionComplete: true` and `releaseAcceptance: true`.
+- [ ] Protected signing, tagging, upload, installation, and publication are executed externally by the named authorities; the validator only checks retained evidence and does not perform those operations.
 - [ ] Private vulnerability reporting is enabled and its end-to-end report flow is tested.
 - [ ] A concrete private conduct-reporting route is published and tested before contributions or official community spaces open.
 - [x] Dependabot alerts and security updates are enabled; the GitHub API verified alerts plus unpaused automated security fixes on 2026-08-13, and every proposed fix still follows the project's review policy.
@@ -160,6 +163,7 @@ dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- lo
 dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- inventory-release .
 dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- materials-candidate C:\retained-vibesnake-evidence\release-materials\candidate.json 0123456789abcdef0123456789abcdef01234567 C:\retained-vibesnake-evidence\release-materials\decision.json .
 dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- rehearsal-record C:\retained-vibesnake-evidence\release-rehearsal\record.json 0123456789abcdef0123456789abcdef01234567 C:\retained-vibesnake-evidence\release-rehearsal\decision.json .
+dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- stable-record C:\retained-vibesnake-evidence\stable-promotion\record.json 0123456789abcdef0123456789abcdef01234567 C:\retained-vibesnake-evidence\stable-promotion\decision.json .
 python -m vibesnake.qa.shared_traces --check
 python -m vibesnake.qa.shared_rule_traces --check
 python -m vibesnake.qa.shared_power_traces --check

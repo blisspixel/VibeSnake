@@ -110,8 +110,9 @@ jobs:
       - name: Qualify stable promotion guard
         if: matrix.python-version == '3.14'
         run: >-
-          python scripts/check_stable_promotion.py
-          --output TestResults/stable-promotion/stable_promotion_handoff.json
+          dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj
+          --configuration Release --no-restore -- stable-write
+          TestResults/stable-promotion/stable_promotion_handoff.json .
 
       - name: Verify shared Python-to-C# traces
         run: |
