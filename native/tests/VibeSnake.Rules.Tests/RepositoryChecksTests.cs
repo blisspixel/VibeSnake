@@ -1450,7 +1450,10 @@ public sealed class RepositoryChecksTests
         Assert.Equal(2, invalidCode);
         Assert.Equal(string.Empty, invalidOutput.ToString());
         Assert.Contains(
-            "RepositoryChecks <all|badges|docs|freeze|inventory|inventory-release|locks|logo|materials|rehearsal|screenshots|source|stable|version>",
+            "RepositoryChecks <achievement-candidates|all|badges|docs|freeze|inventory|inventory-release|locks|logo|materials|rehearsal|screenshots|source|stable|version>",
+            invalidError.ToString());
+        Assert.Contains(
+            "RepositoryChecks achievement-candidates-write [repository-root]",
             invalidError.ToString());
         Assert.Contains(
             "RepositoryChecks materials-write <output> [repository-root]",
@@ -1473,6 +1476,7 @@ public sealed class RepositoryChecksTests
 
         WithTemporaryDirectory(root =>
         {
+            WriteAchievementCandidateFixture(root);
             WriteVersionFixture(root);
             WriteDocumentationFixture(root);
             WriteReleaseMaterialsFixture(root);
@@ -1492,6 +1496,7 @@ public sealed class RepositoryChecksTests
 
             Assert.Equal(0, code);
             Assert.Equal(string.Empty, error.ToString());
+            Assert.Contains("Shared achievement-candidate fixture verified", output.ToString());
             Assert.Contains("Product versions aligned", output.ToString());
             Assert.Contains("Documentation link check passed", output.ToString());
             Assert.Contains("Candidate freeze policy check passed", output.ToString());
@@ -1510,6 +1515,7 @@ public sealed class RepositoryChecksTests
     }
 
     [Theory]
+    [InlineData("achievement-candidates")]
     [InlineData("docs")]
     [InlineData("badges")]
     [InlineData("freeze")]
@@ -1526,6 +1532,7 @@ public sealed class RepositoryChecksTests
     {
         WithTemporaryDirectory(root =>
         {
+            WriteAchievementCandidateFixture(root);
             WriteVersionFixture(root);
             WriteDocumentationFixture(root);
             WriteReleaseMaterialsFixture(root);
@@ -2471,6 +2478,12 @@ public sealed class RepositoryChecksTests
 
             # Play Vibe Snake
             """ + "\n");
+    }
+
+    private static void WriteAchievementCandidateFixture(string root)
+    {
+        var result = AchievementCandidateFixtureCheck.Write(root);
+        Assert.True(result.Passed, string.Join(Environment.NewLine, result.Failures));
     }
 
     private static void WriteStationBadgeFixture(string root)

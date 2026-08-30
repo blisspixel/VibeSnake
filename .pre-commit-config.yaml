@@ -61,18 +61,29 @@ repos:
         entry: dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- stable .
         language: system
         pass_filenames: false
+      - id: achievement-candidates
+        name: achievement-candidate fixture
+        entry: dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- achievement-candidates .
+        language: system
+        pass_filenames: false
       - id: shared-traces
         name: shared parity fixtures
-        entry: python -m vibesnake.qa.shared_traces --check
+        entry: >-
+          python -c "import runpy,sys;sys.path.insert(0,'src');runpy.run_module('vibesnake.qa.shared_traces',run_name='__main__')"
+          --check
         language: system
         pass_filenames: false
       - id: shared-rule-traces
         name: shared rule fixtures
-        entry: python -m vibesnake.qa.shared_rule_traces --check
+        entry: >-
+          python -c "import runpy,sys;sys.path.insert(0,'src');runpy.run_module('vibesnake.qa.shared_rule_traces',run_name='__main__')"
+          --check
         language: system
         pass_filenames: false
       - id: shared-power-traces
         name: shared power fixtures
-        entry: python -m vibesnake.qa.shared_power_traces --check
+        entry: >-
+          python -c "import runpy,sys;sys.path.insert(0,'src');runpy.run_module('vibesnake.qa.shared_power_traces',run_name='__main__')"
+          --check
         language: system
         pass_filenames: false

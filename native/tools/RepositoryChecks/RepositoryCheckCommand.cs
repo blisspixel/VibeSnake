@@ -496,6 +496,13 @@ public static class RepositoryCheckCommand
         ArgumentNullException.ThrowIfNull(standardError);
         if (arguments is not null
             && arguments.Count > 0
+            && arguments[0] == "achievement-candidates-write")
+        {
+            return RunAchievementCandidatesWrite(arguments, standardOutput, standardError);
+        }
+
+        if (arguments is not null
+            && arguments.Count > 0
             && arguments[0] == "freeze-baseline")
         {
             return RunFreezeBaseline(arguments, standardOutput, standardError);
@@ -580,7 +587,7 @@ public static class RepositoryCheckCommand
 
         if (arguments is null
             || arguments.Count is < 1 or > 2
-            || arguments[0] is not ("all" or "badges" or "docs" or "freeze" or "inventory" or "inventory-release" or "locks" or "logo" or "materials" or "rehearsal" or "screenshots" or "source" or "stable" or "version"))
+            || arguments[0] is not ("achievement-candidates" or "all" or "badges" or "docs" or "freeze" or "inventory" or "inventory-release" or "locks" or "logo" or "materials" or "rehearsal" or "screenshots" or "source" or "stable" or "version"))
         {
             WriteUsage(standardError);
             return 2;
@@ -600,6 +607,10 @@ public static class RepositoryCheckCommand
 
         var results = arguments[0] switch
         {
+            "achievement-candidates" => new[]
+            {
+                AchievementCandidateFixtureCheck.Inspect(repositoryRoot),
+            },
             "badges" => new[] { StationBadgeCheck.Inspect(repositoryRoot) },
             "docs" => new[] { DocumentationCheck.Inspect(repositoryRoot) },
             "freeze" => new[] { CandidateFreezeCheck.Inspect(repositoryRoot) },
@@ -615,6 +626,7 @@ public static class RepositoryCheckCommand
             "version" => new[] { ProductVersionCheck.Inspect(repositoryRoot) },
             _ => new[]
             {
+                AchievementCandidateFixtureCheck.Inspect(repositoryRoot),
                 ProductVersionCheck.Inspect(repositoryRoot),
                 DocumentationCheck.Inspect(repositoryRoot),
                 CandidateFreezeCheck.Inspect(repositoryRoot),
@@ -650,6 +662,24 @@ public static class RepositoryCheckCommand
         }
 
         return passed ? 0 : 1;
+    }
+
+    private static int RunAchievementCandidatesWrite(
+        IReadOnlyList<string> arguments,
+        TextWriter standardOutput,
+        TextWriter standardError)
+    {
+        if (arguments.Count > 2)
+        {
+            WriteUsage(standardError);
+            return 2;
+        }
+
+        return ReportSingleResult(
+            AchievementCandidateFixtureCheck.Write(
+                arguments.Count == 2 ? arguments[1] : "."),
+            standardOutput,
+            standardError);
     }
 
     private static int RunMaterialsWrite(
@@ -1107,8 +1137,10 @@ public static class RepositoryCheckCommand
     private static void WriteUsage(TextWriter writer)
     {
         writer.WriteLine(
-            "Usage: RepositoryChecks <all|badges|docs|freeze|inventory|inventory-release|locks|logo|materials|rehearsal|screenshots|source|stable|version> "
+            "Usage: RepositoryChecks <achievement-candidates|all|badges|docs|freeze|inventory|inventory-release|locks|logo|materials|rehearsal|screenshots|source|stable|version> "
             + "[repository-root]");
+        writer.WriteLine(
+            "       RepositoryChecks achievement-candidates-write [repository-root]");
         writer.WriteLine(
             "       RepositoryChecks badge-write [repository-root]");
         writer.WriteLine(

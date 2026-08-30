@@ -21,7 +21,7 @@ A change is complete when:
 - The dependency-lock checks confirm the CI and runtime graphs match their requirement inputs.
 - `python -m ruff format --check src tests scripts` passes.
 - `python -m ruff check src tests scripts` passes.
-- `dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- all .` passes for documentation, product-version, source, candidate-freeze, dependency-lock, project-logo, station-badge, content-inventory, README screenshots, release-material foundation, release-rehearsal foundation, and Agent Plugin policy.
+- `dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- all .` passes for documentation, product-version, source, candidate-freeze, dependency-lock, project-logo, station-badge, content-inventory, README screenshots, release-material foundation, release-rehearsal foundation, stable-promotion foundation, exact achievement-candidate fixture freshness, and Agent Plugin policy.
 - The source and assembled Agent Plugin, interoperability baseline, and generated OKF bundle pass their drift and containment gates.
 - `dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- screenshots .` passes.
 - `dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- badges .` passes.
@@ -58,7 +58,7 @@ python -m vibesnake.qa.shared_power_traces --check
 python -m vibesnake.qa.shared_phase_shift_traces --check
 python -m vibesnake.qa.shared_last_stand_traces --check
 python -m vibesnake.qa.shared_remaining_power_traces --check
-python -m vibesnake.qa.shared_achievement_candidate_traces --check
+dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- achievement-candidates .
 python -m vibesnake.qa --seeds 0 1 2 3 4 --steps 500 --output qa_reports/core.json
 python -m pytest --cov=vibesnake --cov-report=term-missing --cov-report=xml
 ./scripts/test_native.ps1

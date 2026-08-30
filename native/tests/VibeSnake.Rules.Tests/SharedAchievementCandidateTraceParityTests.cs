@@ -3,13 +3,14 @@ using System.Text.Json;
 namespace VibeSnake.Rules.Tests;
 
 /// <summary>
-/// Dual-runtime parity for terminal achievement_candidate events with the
-/// product flag enabled. Default core_rules fixtures keep the flag off (PD-009).
+/// Native parity against the reviewed Python-origin terminal achievement_candidate
+/// corpus with the product flag enabled. Default core_rules fixtures keep the flag
+/// off (PD-009).
 /// </summary>
 public sealed class SharedAchievementCandidateTraceParityTests
 {
     [Fact]
-    public void Csharp_matches_python_achievement_candidate_traces()
+    public void Csharp_matches_reviewed_python_origin_achievement_candidate_traces()
     {
         var fixturePath = Path.Combine(
             AppContext.BaseDirectory,
@@ -24,9 +25,40 @@ public sealed class SharedAchievementCandidateTraceParityTests
         Assert.Equal("achievement-candidates-targeted-v1", fixture.Contract);
         Assert.Equal(SnakeRun.RulesetId, fixture.Ruleset.Id);
         Assert.Equal(SnakeRun.RulesVersion, fixture.Ruleset.Version);
+        Assert.Equal(
+            "positions-injected-or-random-output-normalized-v2",
+            fixture.RandomnessPolicy);
+        Assert.Equal("python-core-reference-v3", fixture.SourceEngine);
+        Assert.Equal(
+            [
+                "terminal_achievement_candidates",
+                "already_unlocked_suppression",
+                "ordered_events",
+            ],
+            fixture.ComparisonScope);
+        Assert.Equal(
+            ["default_flag_off_corpus", "profile_lifetime_achievements"],
+            fixture.ExcludedScope);
         Assert.True(fixture.Config.EnableAchievementCandidates);
+        Assert.Equal(64, fixture.Config.Width);
+        Assert.Equal(33, fixture.Config.Height);
+        Assert.Equal(600, fixture.Config.StarvationTicks);
+        Assert.Equal(3, fixture.Config.MaximumDirectionQueue);
+        Assert.Equal(SnakeRun.MaximumScore, fixture.Config.MaximumScore);
+        Assert.Equal(60, fixture.Config.ComboWindowTicks);
+        Assert.Equal(30, fixture.Config.SpeedBonusTicks);
+        Assert.Equal(10, fixture.Config.FoodScore);
         Assert.Equal(4, fixture.CaseCount);
         Assert.Equal(fixture.CaseCount, fixture.Cases.Count);
+        Assert.Equal(
+            [
+                "starvation-score-candidates",
+                "starvation-suppresses-already-unlocked",
+                "starvation-zero-score-no-candidates",
+                "self-collision-score-candidates",
+            ],
+            fixture.Cases.Select(item => item.Id));
+        Assert.All(fixture.Cases, traceCase => Assert.Empty(traceCase.Commands));
 
         foreach (var traceCase in fixture.Cases)
         {
@@ -99,7 +131,7 @@ public sealed class SharedAchievementCandidateTraceParityTests
                     Fixture: "achievement_candidates_rules_v1.json",
                     TestFilter:
                         "VibeSnake.Rules.Tests.SharedAchievementCandidateTraceParityTests."
-                        + "Csharp_matches_python_achievement_candidate_traces",
+                        + "Csharp_matches_reviewed_python_origin_achievement_candidate_traces",
                     CaseId: traceCase.Id,
                     Seed: null,
                     FirstDivergentStep: expected.Tick,
@@ -143,8 +175,12 @@ public sealed class SharedAchievementCandidateTraceParityTests
         int SchemaVersion,
         string Contract,
         AchievementRuleset Ruleset,
+        string RandomnessPolicy,
+        string SourceEngine,
         int CaseCount,
         AchievementConfig Config,
+        List<string> ComparisonScope,
+        List<string> ExcludedScope,
         List<AchievementCase> Cases);
 
     private sealed record AchievementRuleset(string Id, int Version);
@@ -163,6 +199,7 @@ public sealed class SharedAchievementCandidateTraceParityTests
     private sealed record AchievementCase(
         string Id,
         AchievementInitial Initial,
+        List<string> Commands,
         AchievementExpected Expected);
 
     private sealed record AchievementInitial(

@@ -139,10 +139,12 @@ python -m vibesnake.qa.shared_power_traces --check
 python -m vibesnake.qa.shared_phase_shift_traces --check
 python -m vibesnake.qa.shared_last_stand_traces --check
 python -m vibesnake.qa.shared_remaining_power_traces --check
-python -m vibesnake.qa.shared_achievement_candidate_traces --check
+dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- achievement-candidates .
 python -m vibesnake.qa --seeds 0 1 2 3 4 --steps 500 --output qa_reports/core.json
 python -m pytest --cov=vibesnake --cov-report=term-missing --cov-report=xml
 ```
+
+The `achievement-candidates` route compares the checked fixture with a closed native rendering of the four reviewed Python-origin vectors. It does not execute C# rules, so `SharedAchievementCandidateTraceParityTests` remains an independent live consumer. Use `achievement-candidates-write [repository-root]` only to restore the fixed fixture's exact canonical LF bytes after review.
 
 The read-only `materials [repository-root]` route validates the closed V090-09 contract and current ten-document foundation. Use `materials-write <output> [repository-root]` to write the canonical pending `release-materials-handoff-v2` CI evidence with candidate completion and release acceptance both false. Only retained candidate workspaces use `materials-candidate <candidate> <expected-revision> <output> [repository-root]`. A passing candidate route sets `candidateMaterialComplete: true` but keeps `releaseAcceptance: false` pending artifact-manifest reconciliation, marketing-claim approval, visible image review, and video playback review. It is structural evidence, not an accepted rehearsal or promotion input.
 

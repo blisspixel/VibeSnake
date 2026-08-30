@@ -114,7 +114,13 @@ jobs:
           --configuration Release --no-restore -- stable-write
           TestResults/stable-promotion/stable_promotion_handoff.json .
 
-      - name: Verify shared Python-to-C# traces
+      - name: Verify reviewed achievement-candidate fixture
+        if: matrix.python-version == '3.14'
+        run: >-
+          dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj
+          --configuration Release --no-restore -- achievement-candidates .
+
+      - name: Verify remaining Python-generated shared traces
         run: |
           python -m vibesnake.qa.shared_traces --check
           python -m vibesnake.qa.shared_rule_traces --check
@@ -122,7 +128,6 @@ jobs:
           python -m vibesnake.qa.shared_phase_shift_traces --check
           python -m vibesnake.qa.shared_last_stand_traces --check
           python -m vibesnake.qa.shared_remaining_power_traces --check
-          python -m vibesnake.qa.shared_achievement_candidate_traces --check
 
       - name: Test with coverage
         run: python -m pytest --cov=vibesnake --cov-report=term-missing --cov-report=xml

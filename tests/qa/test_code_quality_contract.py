@@ -215,6 +215,7 @@ def test_ci_runs_the_documented_quality_and_dependency_gates() -> None:
     assert "python scripts/check_release_materials.py" not in workflow
     assert "python scripts/check_release_rehearsal.py" not in workflow
     assert "python scripts/check_stable_promotion.py" not in workflow
+    assert "python -m vibesnake.qa.shared_achievement_candidate_traces" not in workflow
     assert (
         "--configuration Release --no-restore -- materials-write\n"
         "          TestResults/release-materials/release_materials_handoff.json ." in workflow
@@ -230,6 +231,7 @@ def test_ci_runs_the_documented_quality_and_dependency_gates() -> None:
         "          TestResults/stable-promotion/stable_promotion_handoff.json ." in workflow
     )
     assert "TestResults/stable-promotion/stable_promotion_handoff.json" in workflow
+    assert "--configuration Release --no-restore -- achievement-candidates ." in workflow
 
     pre_commit = (REPOSITORY_ROOT / ".pre-commit-config.yaml").read_text(encoding="utf-8")
     assert "dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- docs ." in pre_commit
@@ -237,11 +239,28 @@ def test_ci_runs_the_documented_quality_and_dependency_gates() -> None:
     assert "dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- materials ." in pre_commit
     assert "dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- rehearsal ." in pre_commit
     assert "dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- stable ." in pre_commit
+    assert (
+        "dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj "
+        "-- achievement-candidates ." in pre_commit
+    )
     assert "python scripts/check_docs.py" not in pre_commit
     assert "python scripts/check_source_policy.py" not in pre_commit
     assert "python scripts/check_release_materials.py" not in pre_commit
     assert "python scripts/check_release_rehearsal.py" not in pre_commit
     assert "python scripts/check_stable_promotion.py" not in pre_commit
+    assert "python -m vibesnake.qa.shared_achievement_candidate_traces" not in pre_commit
+
+    assert not (REPOSITORY_ROOT / "src" / "vibesnake" / "qa" / "shared_achievement_candidate_traces.py").exists()
+    assert not (REPOSITORY_ROOT / "tests" / "qa" / "test_shared_achievement_candidate_traces.py").exists()
+    fixture_tool = (
+        REPOSITORY_ROOT / "native" / "tools" / "RepositoryChecks" / "AchievementCandidateFixtureCheck.cs"
+    ).read_text(encoding="utf-8")
+    repository_checks_project = (
+        REPOSITORY_ROOT / "native" / "tools" / "RepositoryChecks" / "RepositoryChecks.csproj"
+    ).read_text(encoding="utf-8")
+    assert "SnakeRun" not in fixture_tool
+    assert "VibeSnake.Rules" not in fixture_tool
+    assert "src\\VibeSnake.Rules" not in repository_checks_project
 
     complete = parsed["jobs"]["ci-complete"]
     assert complete["name"] == "CI complete"

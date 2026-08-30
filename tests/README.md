@@ -6,7 +6,7 @@
 | --- | --- |
 | `audio/` | Radio discovery, control, failure recovery, and playback orchestration |
 | `core/` | Movement, food, scoring, persistence, achievements, metrics, and rendering contracts owned by core models |
-| `fixtures/shared/` | Versioned Python-to-C# parity scenarios |
+| `fixtures/shared/` | Versioned Python-to-C# parity scenarios, including frozen Python-origin vectors with native freshness ownership |
 | `input/` | Keyboard, mouse, and controller mapping behavior |
 | `integration/` | Game construction, state flow, rendering, HUD, and full power behavior |
 | `powerups/` | Individual power lifecycle contracts |
