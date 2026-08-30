@@ -8,6 +8,13 @@ using RepositoryChecks;
 
 namespace VibeSnake.Rules.Tests;
 
+[CollectionDefinition(Name, DisableParallelization = true)]
+public sealed class ExternalProcessIntegrationGroup
+{
+    public const string Name = "External process integration";
+}
+
+[Collection(ExternalProcessIntegrationGroup.Name)]
 public sealed class RepositoryChecksTests
 {
     private static readonly int[] EmojiPolicyCodePoints =
@@ -1247,11 +1254,9 @@ public sealed class RepositoryChecksTests
         {
             executable = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.System),
-                "WindowsPowerShell",
-                "v1.0",
-                "powershell.exe");
-            outputArguments = ["-NoProfile", "-Command", "Write-Output output; [Console]::Error.WriteLine('error'); exit 7"];
-            timeoutArguments = ["-NoProfile", "-Command", "Start-Sleep -Seconds 5"];
+                "cmd.exe");
+            outputArguments = ["/D", "/S", "/C", "echo output & echo error 1>&2 & exit /b 7"];
+            timeoutArguments = ["/D", "/S", "/C", "ping 127.0.0.1 -n 6 > nul"];
         }
         else
         {
@@ -1260,7 +1265,6 @@ public sealed class RepositoryChecksTests
             timeoutArguments = ["-c", "sleep 5"];
         }
 
-        // Hosted Windows Coverlet runs can spend several seconds starting powershell.exe.
         var completed = resolver.Run(
             executable,
             outputArguments,
@@ -1277,6 +1281,25 @@ public sealed class RepositoryChecksTests
         Assert.Contains("output", completed.StandardOutput, StringComparison.Ordinal);
         Assert.Contains("error", completed.StandardError, StringComparison.Ordinal);
         Assert.True(timedOut.TimedOut);
+
+        static string ReadBounded(string value)
+        {
+            using var stream = new MemoryStream(Encoding.UTF8.GetBytes(value));
+            using var reader = new StreamReader(stream, Encoding.UTF8);
+            return BoundedProcessRunner
+                .ReadBoundedAsync(reader, CancellationToken.None)
+                .GetAwaiter()
+                .GetResult();
+        }
+
+        var exact = new string('x', BoundedProcessRunner.MaximumOutputCharacters);
+        Assert.Equal(exact, ReadBounded(exact));
+        var overflow = ReadBounded(exact + "overflow");
+        Assert.Equal(BoundedProcessRunner.MaximumOutputCharacters, overflow.Length);
+        Assert.EndsWith(
+            BoundedProcessRunner.TruncatedOutputMarker,
+            overflow,
+            StringComparison.Ordinal);
         Assert.ThrowsAny<Exception>(() => resolver.Run(
             Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N")),
             [],
@@ -2371,6 +2394,7 @@ public sealed class RepositoryChecksTests
         WriteFile(root, "native/src/VibeSnake.Rules/screenshot-source.cs", "rules\n");
         WriteFile(root, "native/src/VibeSnake.Persistence/screenshot-source.cs", "persistence\n");
         WriteFile(root, "native/toolchain.json", "{}\n");
+        WriteFile(root, "native/tools/RepositoryChecks/BoundedProcessRunner.cs", "processes\n");
         WriteFile(root, "native/tools/RepositoryChecks/ContentInventoryCheck.cs", "inventory\n");
         WriteFile(root, "native/tools/RepositoryChecks/ReadmeScreenshotCheck.cs", "screenshots\n");
         WriteFile(root, "native/tools/RepositoryChecks/PngHeaderReader.cs", "png\n");

@@ -1,5 +1,4 @@
 using System.ComponentModel;
-using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Security.Cryptography;
 using System.Text;
@@ -27,184 +26,22 @@ internal interface IScreenshotCaptureProcess
 [ExcludeFromCodeCoverage]
 internal sealed class SystemScreenshotCaptureProcess : IScreenshotCaptureProcess
 {
-    private const int MaximumOutputCharacters = 256 * 1024;
-    private static readonly TimeSpan TerminationBudget = TimeSpan.FromSeconds(5);
-    private static readonly TimeSpan OutputDrainBudget = TimeSpan.FromSeconds(2);
-
     public ScreenshotProcessResult Run(
         string executable,
         IReadOnlyList<string> arguments,
         string workingDirectory,
         TimeSpan timeout)
     {
-        var startInfo = new ProcessStartInfo
-        {
-            FileName = executable,
-            WorkingDirectory = workingDirectory,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            UseShellExecute = false,
-            CreateNoWindow = true,
-        };
-        foreach (var argument in arguments)
-        {
-            startInfo.ArgumentList.Add(argument);
-        }
-
-        using var process = new Process { StartInfo = startInfo };
-        process.Start();
-        using var outputCancellation = new CancellationTokenSource();
-        var standardOutput = ReadBoundedAsync(
-            process.StandardOutput,
-            outputCancellation.Token);
-        var standardError = ReadBoundedAsync(
-            process.StandardError,
-            outputCancellation.Token);
-        using var timeoutSource = new CancellationTokenSource(timeout);
-        try
-        {
-            process.WaitForExitAsync(timeoutSource.Token).GetAwaiter().GetResult();
-        }
-        catch (OperationCanceledException)
-        {
-            if (!process.HasExited)
-            {
-                try
-                {
-                    process.Kill(entireProcessTree: true);
-                }
-                catch (Exception exception) when (
-                    exception is InvalidOperationException
-                        or NotSupportedException
-                        or Win32Exception)
-                {
-                    // A bounded wait below still prevents cleanup from hanging.
-                }
-
-                if (!process.HasExited)
-                {
-                    using var terminationSource = new CancellationTokenSource(TerminationBudget);
-                    try
-                    {
-                        process.WaitForExitAsync(terminationSource.Token).GetAwaiter().GetResult();
-                    }
-                    catch (OperationCanceledException)
-                    {
-                        // The process did not terminate inside the fixed cleanup budget.
-                    }
-                }
-            }
-
-            outputCancellation.Cancel();
-            var timedOutOutput = CompleteOutput(
-                standardOutput,
-                standardError,
-                outputCancellation);
-            return new ScreenshotProcessResult(
-                -1,
-                timedOutOutput.StandardOutput,
-                timedOutOutput.StandardError,
-                TimedOut: true);
-        }
-
-        var completedOutput = CompleteOutput(
-            standardOutput,
-            standardError,
-            outputCancellation);
+        var result = BoundedProcessRunner.Run(
+            executable,
+            arguments,
+            workingDirectory,
+            timeout);
         return new ScreenshotProcessResult(
-            process.ExitCode,
-            completedOutput.StandardOutput,
-            completedOutput.StandardError);
-    }
-
-    private static (string StandardOutput, string StandardError) CompleteOutput(
-        Task<string> standardOutput,
-        Task<string> standardError,
-        CancellationTokenSource cancellation)
-    {
-        var combined = Task.WhenAll(standardOutput, standardError);
-        try
-        {
-            combined.WaitAsync(OutputDrainBudget).GetAwaiter().GetResult();
-        }
-        catch (Exception exception) when (IsOutputCompletionFailure(exception))
-        {
-            cancellation.Cancel();
-            try
-            {
-                combined.WaitAsync(OutputDrainBudget).GetAwaiter().GetResult();
-            }
-            catch (Exception retryException) when (IsOutputCompletionFailure(retryException))
-            {
-                ObserveLater(standardOutput);
-                ObserveLater(standardError);
-            }
-        }
-
-        return (
-            CompletedTranscript(standardOutput),
-            CompletedTranscript(standardError));
-    }
-
-    private static bool IsOutputCompletionFailure(Exception exception) =>
-        exception is TimeoutException
-            or OperationCanceledException
-            or IOException
-            or ObjectDisposedException;
-
-    private static string CompletedTranscript(Task<string> task)
-    {
-        if (task.IsCompletedSuccessfully)
-        {
-            return task.Result;
-        }
-
-        if (task.IsFaulted)
-        {
-            _ = task.Exception;
-            return "[process output read failed]";
-        }
-
-        return "[process output drain timed out]";
-    }
-
-    private static void ObserveLater(Task<string> task) =>
-        _ = task.ContinueWith(
-            completed => _ = completed.Exception,
-            CancellationToken.None,
-            TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously,
-            TaskScheduler.Default);
-
-    private static async Task<string> ReadBoundedAsync(
-        StreamReader reader,
-        CancellationToken cancellationToken)
-    {
-        var output = new StringBuilder();
-        var buffer = new char[4096];
-        try
-        {
-            while (await reader
-                .ReadAsync(buffer.AsMemory(), cancellationToken)
-                .ConfigureAwait(false) is var count && count > 0)
-            {
-                var remaining = MaximumOutputCharacters - output.Length;
-                if (remaining > 0)
-                {
-                    output.Append(buffer, 0, Math.Min(remaining, count));
-                }
-            }
-        }
-        catch (OperationCanceledException)
-        {
-            // Return the bounded partial transcript after timeout cleanup.
-        }
-
-        if (output.Length == MaximumOutputCharacters)
-        {
-            output.Append("\n[process output truncated]");
-        }
-
-        return output.ToString();
+            result.ExitCode,
+            result.StandardOutput,
+            result.StandardError,
+            result.TimedOut);
     }
 }
 
@@ -254,6 +91,7 @@ public static class ReadmeScreenshotCheck
     [
         "config/content_inventory.json",
         "native/toolchain.json",
+        "native/tools/RepositoryChecks/BoundedProcessRunner.cs",
         "native/tools/RepositoryChecks/ContentInventoryCheck.cs",
         Generator,
         "native/tools/RepositoryChecks/PngHeaderReader.cs",

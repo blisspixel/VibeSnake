@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -91,52 +90,16 @@ internal sealed class SystemDependencyResolverProcess : IDependencyResolverProce
         string workingDirectory,
         TimeSpan timeout)
     {
-        var startInfo = new ProcessStartInfo
-        {
-            FileName = executable,
-            WorkingDirectory = workingDirectory,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            UseShellExecute = false,
-            CreateNoWindow = true,
-        };
-        foreach (var argument in arguments)
-        {
-            startInfo.ArgumentList.Add(argument);
-        }
-
-        using var process = new Process { StartInfo = startInfo };
-        process.Start();
-        var standardOutput = process.StandardOutput.ReadToEndAsync();
-        var standardError = process.StandardError.ReadToEndAsync();
-        using var timeoutSource = new CancellationTokenSource(timeout);
-        try
-        {
-            process.WaitForExitAsync(timeoutSource.Token).GetAwaiter().GetResult();
-        }
-        catch (OperationCanceledException)
-        {
-            try
-            {
-                process.Kill(entireProcessTree: true);
-            }
-            catch (InvalidOperationException)
-            {
-                // The resolver exited between the timeout and termination request.
-            }
-
-            process.WaitForExit();
-            return new ResolverProcessResult(
-                -1,
-                standardOutput.GetAwaiter().GetResult(),
-                standardError.GetAwaiter().GetResult(),
-                TimedOut: true);
-        }
-
+        var result = BoundedProcessRunner.Run(
+            executable,
+            arguments,
+            workingDirectory,
+            timeout);
         return new ResolverProcessResult(
-            process.ExitCode,
-            standardOutput.GetAwaiter().GetResult(),
-            standardError.GetAwaiter().GetResult());
+            result.ExitCode,
+            result.StandardOutput,
+            result.StandardError,
+            result.TimedOut);
     }
 }
 

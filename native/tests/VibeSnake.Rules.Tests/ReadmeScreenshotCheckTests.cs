@@ -5,6 +5,7 @@ using RepositoryChecks;
 
 namespace VibeSnake.Rules.Tests;
 
+[Collection(ExternalProcessIntegrationGroup.Name)]
 public sealed class ReadmeScreenshotCheckTests
 {
     private const string FixedFingerprint =
@@ -388,7 +389,7 @@ public sealed class ReadmeScreenshotCheckTests
     }
 
     [Fact]
-    public void System_process_timeout_is_bounded_and_terminates_the_process_tree()
+    public void System_process_timeout_and_incomplete_output_are_bounded()
     {
         var executable = OperatingSystem.IsWindows() ? "ping.exe" : "/bin/sh";
         var arguments = OperatingSystem.IsWindows()
@@ -426,8 +427,12 @@ public sealed class ReadmeScreenshotCheckTests
                 TimeSpan.FromSeconds(5));
             stopwatch.Stop();
 
-            Assert.Equal(0, inheritedPipe.ExitCode);
-            Assert.False(inheritedPipe.TimedOut);
+            Assert.Equal(-1, inheritedPipe.ExitCode);
+            Assert.True(inheritedPipe.TimedOut);
+            Assert.Contains(
+                BoundedProcessRunner.OutputDrainTimedOutMarker,
+                inheritedPipe.StandardOutput + inheritedPipe.StandardError,
+                StringComparison.Ordinal);
             Assert.True(stopwatch.Elapsed < TimeSpan.FromSeconds(15), stopwatch.Elapsed.ToString());
             childPid = int.Parse(
                 File.ReadAllText(pidPath).Trim(),
@@ -633,6 +638,7 @@ public sealed class ReadmeScreenshotCheckTests
         WriteFile(root, "native/src/VibeSnake.Persistence/Store.cs", "store\n");
         WriteFile(root, "config/content_inventory.json", "{}\n");
         WriteValidToolchain(root);
+        WriteFile(root, "native/tools/RepositoryChecks/BoundedProcessRunner.cs", "processes\n");
         WriteFile(root, "native/tools/RepositoryChecks/ContentInventoryCheck.cs", "inventory\n");
         WriteFile(root, "native/tools/RepositoryChecks/ReadmeScreenshotCheck.cs", "screenshots\n");
         WriteFile(root, "native/tools/RepositoryChecks/PngHeaderReader.cs", "png\n");
