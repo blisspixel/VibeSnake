@@ -1,5 +1,5 @@
 {
-  "generator": "scripts/capture_readme_screenshots.py",
+  "generator": "native/tools/RepositoryChecks/ReadmeScreenshotCheck.cs",
   "schemaVersion": 1,
   "screenshots": [
     {
@@ -22,7 +22,7 @@
       "file": "customization.png",
       "height": 720,
       "label": "Customization",
-      "sha256": "c2fb2bee82eda0a47e78bd617deb09543fa1b414ccebdf03212c85b351775ec8",
+      "sha256": "2495a81eeeb2fe438e750018cbf15c2e0336306d84a032d195efc68fb84e81e7",
       "state": "COSMETICS",
       "width": 1280
     },
@@ -35,5 +35,5 @@
       "width": 1280
     }
   ],
-  "sourceSha256": "2f5bbca141033f13cd5947d3d76e0fa846795a3b24e8d7e99230beb1b74c1f4f"
+  "sourceSha256": "034af6427dabddb63a694633eabd7edd9329c05f37a0e9335157f48f372145d9"
 }

@@ -529,9 +529,16 @@ public static class RepositoryCheckCommand
             return RunInventoryWrite(arguments, standardOutput, standardError);
         }
 
+        if (arguments is not null
+            && arguments.Count > 0
+            && arguments[0] == "screenshots-write")
+        {
+            return RunScreenshotWrite(arguments, standardOutput, standardError);
+        }
+
         if (arguments is null
             || arguments.Count is < 1 or > 2
-            || arguments[0] is not ("all" or "badges" or "docs" or "freeze" or "inventory" or "inventory-release" or "locks" or "logo" or "source" or "version"))
+            || arguments[0] is not ("all" or "badges" or "docs" or "freeze" or "inventory" or "inventory-release" or "locks" or "logo" or "screenshots" or "source" or "version"))
         {
             WriteUsage(standardError);
             return 2;
@@ -558,6 +565,7 @@ public static class RepositoryCheckCommand
             "inventory-release" => new[] { ContentInventoryCheck.Inspect(repositoryRoot, requireReleaseReady: true) },
             "locks" => new[] { DependencyLockCheck.Inspect(repositoryRoot) },
             "logo" => new[] { ProjectLogoCheck.Inspect(repositoryRoot) },
+            "screenshots" => new[] { ReadmeScreenshotCheck.Inspect(repositoryRoot) },
             "source" => new[] { SourcePolicyCheck.Inspect(repositoryRoot) },
             "version" => new[] { ProductVersionCheck.Inspect(repositoryRoot) },
             _ => new[]
@@ -568,6 +576,7 @@ public static class RepositoryCheckCommand
                 ContentInventoryCheck.Inspect(repositoryRoot),
                 DependencyLockCheck.Inspect(repositoryRoot),
                 ProjectLogoCheck.Inspect(repositoryRoot),
+                ReadmeScreenshotCheck.Inspect(repositoryRoot),
                 StationBadgeCheck.Inspect(repositoryRoot),
                 SourcePolicyCheck.Inspect(repositoryRoot),
                 AgentPluginCheck.Inspect(
@@ -593,6 +602,35 @@ public static class RepositoryCheckCommand
         }
 
         return passed ? 0 : 1;
+    }
+
+    private static int RunScreenshotWrite(
+        IReadOnlyList<string> arguments,
+        TextWriter standardOutput,
+        TextWriter standardError)
+    {
+        if (arguments.Count is < 2 or > 3)
+        {
+            WriteUsage(standardError);
+            return 2;
+        }
+
+        var result = ReadmeScreenshotCheck.Capture(
+            arguments.Count == 3 ? arguments[2] : ".",
+            arguments[1]);
+        if (result.Passed)
+        {
+            standardOutput.WriteLine(result.SuccessMessage);
+            return 0;
+        }
+
+        standardError.WriteLine(result.Name + " generation failed:");
+        foreach (var failure in result.Failures)
+        {
+            standardError.WriteLine("  " + failure);
+        }
+
+        return 1;
     }
 
     private static int RunInventoryWrite(
@@ -794,12 +832,14 @@ public static class RepositoryCheckCommand
     private static void WriteUsage(TextWriter writer)
     {
         writer.WriteLine(
-            "Usage: RepositoryChecks <all|badges|docs|freeze|inventory|inventory-release|locks|logo|source|version> "
+            "Usage: RepositoryChecks <all|badges|docs|freeze|inventory|inventory-release|locks|logo|screenshots|source|version> "
             + "[repository-root]");
         writer.WriteLine(
             "       RepositoryChecks badge-write [repository-root]");
         writer.WriteLine(
             "       RepositoryChecks inventory-write [repository-root]");
+        writer.WriteLine(
+            "       RepositoryChecks screenshots-write <godot-executable> [repository-root]");
         writer.WriteLine(
             "       RepositoryChecks freeze-baseline <revision> <generated-utc> "
             + "[repository-root] [output]");

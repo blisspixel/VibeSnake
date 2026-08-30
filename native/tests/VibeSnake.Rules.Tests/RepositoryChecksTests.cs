@@ -1427,7 +1427,7 @@ public sealed class RepositoryChecksTests
         Assert.Equal(2, invalidCode);
         Assert.Equal(string.Empty, invalidOutput.ToString());
         Assert.Contains(
-            "RepositoryChecks <all|badges|docs|freeze|inventory|inventory-release|locks|logo|source|version>",
+            "RepositoryChecks <all|badges|docs|freeze|inventory|inventory-release|locks|logo|screenshots|source|version>",
             invalidError.ToString());
 
         WithTemporaryDirectory(root =>
@@ -1440,6 +1440,7 @@ public sealed class RepositoryChecksTests
             CopyApprovedLogo(root);
             WriteStationBadgeFixture(root);
             WriteContentInventoryFixture(root);
+            WriteReadmeScreenshotFixture(root);
             var output = new StringWriter();
             var error = new StringWriter();
 
@@ -1909,6 +1910,46 @@ public sealed class RepositoryChecksTests
         var path = Path.Combine(root, relativePath.Replace('/', Path.DirectorySeparatorChar));
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
         File.WriteAllText(path, source, new UTF8Encoding(false));
+    }
+
+    private static void WriteReadmeScreenshotFixture(string root)
+    {
+        var repositoryRoot = ResolveRepositoryRoot();
+        var screenshotDirectory = Path.Combine(root, "docs", "images", "screenshots");
+        Directory.CreateDirectory(screenshotDirectory);
+        var files = new[]
+        {
+            "main-menu.png",
+            "powers-run.png",
+            "customization.png",
+            "ai-channel.png",
+        };
+        foreach (var file in files)
+        {
+            File.Copy(
+                Path.Combine(repositoryRoot, "docs", "images", "screenshots", file),
+                Path.Combine(screenshotDirectory, file));
+        }
+
+        File.AppendAllText(
+            Path.Combine(root, "README.md"),
+            string.Join(
+                "\n",
+                files.Select(file => $"docs/images/screenshots/{file}"))
+                + "\n",
+            new UTF8Encoding(false));
+        WriteFile(root, "game/screenshot-source.cs", "source\n");
+        WriteFile(root, "native/src/VibeSnake.Rules/screenshot-source.cs", "rules\n");
+        WriteFile(root, "native/src/VibeSnake.Persistence/screenshot-source.cs", "persistence\n");
+        WriteFile(root, "native/toolchain.json", "{}\n");
+        WriteFile(root, "native/tools/RepositoryChecks/ContentInventoryCheck.cs", "inventory\n");
+        WriteFile(root, "native/tools/RepositoryChecks/ReadmeScreenshotCheck.cs", "screenshots\n");
+        WriteFile(root, "native/tools/RepositoryChecks/PngHeaderReader.cs", "png\n");
+        var sourceFingerprint = ReadmeScreenshotCheck.ComputeSourceFingerprint(root);
+        WriteFile(
+            root,
+            "docs/images/screenshots/manifest.json",
+            ReadmeScreenshotCheck.RenderManifest(root, sourceFingerprint));
     }
 
     private static void CopyApprovedLogo(string root)

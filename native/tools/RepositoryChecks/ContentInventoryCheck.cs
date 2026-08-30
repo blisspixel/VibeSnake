@@ -914,6 +914,25 @@ public static class ContentInventoryCheck
         return new IntegrityResult("valid", detail);
     }
 
+    internal static string? ValidatePngForRepositoryCheck(string path)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(path);
+        try
+        {
+            var size = new FileInfo(path).Length;
+            var result = InspectPng(path, size);
+            return result.Status == "valid" ? null : result.Detail;
+        }
+        catch (Exception exception) when (
+            exception is IOException
+                or UnauthorizedAccessException
+                or InvalidDataException
+                or OverflowException)
+        {
+            return "PNG validation failed: " + SingleLine(exception.Message);
+        }
+    }
+
     private static PngHeaderResult ValidatePngHeader(ReadOnlySpan<byte> value)
     {
         var width = BinaryPrimitives.ReadUInt32BigEndian(value);

@@ -111,9 +111,6 @@ jobs:
           python scripts/check_stable_promotion.py
           --output TestResults/stable-promotion/stable_promotion_handoff.json
 
-      - name: Verify current README screenshots
-        run: python scripts/capture_readme_screenshots.py --check
-
       - name: Verify shared Python-to-C# traces
         run: |
           python -m vibesnake.qa.shared_traces --check

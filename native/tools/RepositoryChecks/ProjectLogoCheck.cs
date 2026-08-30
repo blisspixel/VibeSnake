@@ -1,4 +1,3 @@
-using System.Buffers.Binary;
 using System.Security.Cryptography;
 
 namespace RepositoryChecks;
@@ -10,10 +9,6 @@ public static class ProjectLogoCheck
     public const int ExpectedHeight = 1024;
     public const string ExpectedSha256 =
         "2ca74991f5b6e83a6da178ff6a63673884425610844a55b29ba35bc89b4a901c";
-
-    private static readonly byte[] PngSignature =
-        [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A];
-    private static readonly byte[] IhdrType = [0x49, 0x48, 0x44, 0x52];
 
     public static RepositoryCheckResult Inspect(string repositoryRoot)
     {
@@ -28,27 +23,12 @@ public static class ProjectLogoCheck
             return Failed($"logo is missing: {RelativePath}");
         }
 
-        byte[] header;
-        try
+        var headerError = PngHeaderReader.TryRead(path, out var width, out var height);
+        if (headerError is not null)
         {
-            using var stream = File.OpenRead(path);
-            header = new byte[24];
-            var read = stream.Read(header, 0, header.Length);
-            if (read != header.Length
-                || !header.AsSpan(0, 8).SequenceEqual(PngSignature)
-                || !header.AsSpan(12, 4).SequenceEqual(IhdrType))
-            {
-                return Failed($"not a supported PNG logo: {RelativePath}");
-            }
-        }
-        catch (Exception exception) when (
-            exception is IOException or UnauthorizedAccessException)
-        {
-            return Failed($"logo is missing: {RelativePath}");
+            return Failed($"not a supported PNG logo: {RelativePath}");
         }
 
-        var width = BinaryPrimitives.ReadUInt32BigEndian(header.AsSpan(16, 4));
-        var height = BinaryPrimitives.ReadUInt32BigEndian(header.AsSpan(20, 4));
         if (width != ExpectedWidth || height != ExpectedHeight)
         {
             return Failed(

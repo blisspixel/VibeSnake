@@ -88,7 +88,7 @@ native/
 |-- src/VibeSnake.AgentPlay/  Transport-neutral step and bounded-burst external-agent sessions, public observations, experience contracts, and verified replay ownership
 |-- src/VibeSnake.AgentViewer/  Read-only same-user pipe client and public snapshot projection
 |-- tools/VibeSnake.AgentHost/  Local stateless-era stdio MCP adapter, capacity and idle-bounded session registry, replay save, and read-only viewer server
-|-- tools/RepositoryChecks/  Native repository-policy, content-inventory, and dependency-lock qualification command
+|-- tools/RepositoryChecks/  Native repository-policy, screenshot, content-inventory, and dependency-lock qualification command
 |-- tools/ValidateCreatorContent/  Data-only personality and canonical pack-set validation command
 `-- tests/VibeSnake.Rules.Tests/  xUnit parity, restore, replay, storage, and generated state-machine contracts
 
@@ -176,7 +176,7 @@ All files collected under `tests/` are deterministic automated checks. Manual an
 
 ## Tools and production data
 
-- `scripts/`: deterministic quality, content, screenshot, badge, toolchain, and native-artifact utilities.
+- `scripts/`: remaining deterministic quality, content, release, toolchain, and native-artifact utilities.
 - `config/radio_network_plan.json`: production plan for radio content.
 - `data/`: legacy source-checkout saves and generation history. Normal player saves now live in the operating system's user-data directory and should never be committed.
 - `archive/`: ignored, recoverable local audio candidates, retired production

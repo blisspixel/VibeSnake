@@ -11,7 +11,6 @@ This directory contains explicit command-line tools. Runtime code belongs under 
 | `close_agent_preview.py` | One-command Agent Arena preview close-out: patch public-contract digests, regenerate knowledge, check interop and docs, run focused native tests. Invoked by root `close-agent-preview.cmd` so cmd.exe can set the repo SDK before any .NET global tool starts. |
 | `package_agent_host.ps1` | Assemble the current-RID unsigned self-contained Agent Host package with closed manifest, lock-derived inventory, unsigned provenance, checksums, and isolated user-data policy |
 | `validate_agent_host_package.py` | Enforce the AA-10 host-package manifest, inventory, provenance, isolation, and checksum contract |
-| `capture_readme_screenshots.py` | Isolated current-build README screenshot capture and freshness verification |
 | `content_packs.py` | Core and optional pack manifest qualification |
 | `assemble_radio_pack.py` | Deterministic, fail-closed assembly of one approved optional radio pack with manifest, checksums, and curation evidence |
 | `assert_godot_toolchain.ps1` | SHA-512 archive, extracted editor SHA-256, and exact build identity verification |
@@ -37,7 +36,7 @@ This directory contains explicit command-line tools. Runtime code belongs under 
 
 These entry points are kept at `scripts/` root because README, CI, and release documentation invoke them directly.
 
-The native `RepositoryChecks` command owns canonical documentation discovery, relative-link validation, changelog contract-release uniqueness, product-version alignment, source policy, candidate-freeze validation, deterministic freeze-baseline preparation, CI/runtime dependency-lock validation and generation, project-logo PNG identity, deterministic station-badge generation and exact-byte freshness, deterministic content-inventory generation and release readiness, and source and packaged Agent Plugin validation. Run `dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- all .` from the repository root. Use `badge-write [repository-root]` or `inventory-write [repository-root]` only after an intentional source change, use `inventory-release [repository-root]` for the fail-closed release route, and use `plugin <plugin-root> [--require-mcp]` for an isolated plugin tree.
+The native `RepositoryChecks` command owns canonical documentation discovery, relative-link validation, changelog contract-release uniqueness, product-version alignment, source policy, candidate-freeze validation, deterministic freeze-baseline preparation, CI/runtime dependency-lock validation and generation, project-logo PNG identity, deterministic station-badge generation and exact-byte freshness, deterministic content-inventory generation and release readiness, README screenshot capture and freshness, and source and packaged Agent Plugin validation. Run `dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- all .` from the repository root. Use `badge-write [repository-root]` or `inventory-write [repository-root]` only after an intentional source change, use `screenshots-write <godot-executable> [repository-root]` for staged native recapture, use `inventory-release [repository-root]` for the fail-closed release route, and use `plugin <plugin-root> [--require-mcp]` for an isolated plugin tree.
 
 `ValidateArtifactManifest` also builds deterministic qualification-only release archives after validating the manifest and signing-readiness policy. It writes `release_output_plan.json` and `SHA256SUMS` beside the versioned package and never marks that unsigned output publishable.
 
@@ -64,9 +63,13 @@ station badges using project-owned pixel glyphs, integer-only drawing, and its o
 closed RGB PNG encoder. Use `RepositoryChecks -- badge-write .` to regenerate them.
 The `logo` route separately hash-checks the preferred handcrafted brand mark under
 `assets/images/logo.png`.
-`capture_readme_screenshots.py` builds the native game, asks Godot to render four
-staged product screens with isolated user data, and checks exact committed bytes,
-dimensions, README references, and native presentation-source freshness.
+Native `RepositoryChecks -- screenshots .` verifies the four README captures by
+closed schema, canonical LF manifest, complete PNG integrity, exact hashes,
+dimensions, README references, and native presentation-source freshness. Its
+`screenshots-write` route builds the game, asks an explicit pinned Godot executable
+to render into temporary staging with isolated user data, validates the complete
+set before replacement, and writes the manifest last. Cross-host pixel identity is
+not claimed, so every intentional recapture still requires visible review.
 
 Legacy credentialed audio-generation, grading, curation, rename, and mutation
 programs are preserved only in the ignored local archive. They are not release

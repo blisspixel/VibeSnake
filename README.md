@@ -38,7 +38,7 @@ This is active `0.3.0-alpha.1` development. Automated Windows, macOS, and Linux 
   </tr>
 </table>
 
-These are direct 1280 by 720 captures from the current Godot renderer. Their hashes, dimensions, README references, and native presentation-source fingerprint are enforced by the [capture manifest](docs/images/screenshots/manifest.json).
+These are direct 1280 by 720 captures from the current Godot renderer. Native `RepositoryChecks` enforces their complete PNG integrity, exact hashes, dimensions, README references, canonical manifest, and presentation-source fingerprint through the [capture manifest](docs/images/screenshots/manifest.json).
 
 ## Highlights
 
@@ -130,7 +130,7 @@ The native quality loop builds the Godot project, runs the C# contract suite wit
 ./scripts/test_native.ps1
 ```
 
-Python reference and cross-runtime checks remain temporarily in CI while their remaining validators and fixture generators move to .NET. Documentation, product-version, source-policy, candidate-freeze, dependency-lock, project-logo, station-badge, content-inventory, and Agent Plugin qualification now run through native `RepositoryChecks`. The content route performs bounded media integrity, exact deterministic freshness, atomic generation, and fail-closed release-readiness checks; Ruff retains full Python syntax ownership while the frozen oracle exists. The remaining Python tools are explicit migration work. They are test-only scaffolding, not a second product path. The ordered removal gates, full command set, dependency locks, screenshot workflow, and packaged-player qualification are documented in the [migration map](docs/engineering/MIGRATION_MAP.md#repository-wide-python-retirement) and [development guide](docs/guides/DEVELOPMENT.md). Contribution requirements are in [CONTRIBUTING.md](CONTRIBUTING.md).
+Python reference and cross-runtime checks remain temporarily in CI while their remaining validators and fixture generators move to .NET. Documentation, product-version, source-policy, candidate-freeze, dependency-lock, project-logo, station-badge, content-inventory, README screenshot capture/freshness, and Agent Plugin qualification now run through native `RepositoryChecks`. The screenshot route stages Godot output outside the committed evidence set, performs full PNG and canonical-manifest validation, and replaces the manifest last so interrupted multi-file capture fails closed. Ruff retains full Python syntax ownership while the frozen oracle exists. The remaining Python tools are explicit migration work. They are test-only scaffolding, not a second product path. The ordered removal gates, full command set, dependency locks, screenshot workflow, and packaged-player qualification are documented in the [migration map](docs/engineering/MIGRATION_MAP.md#repository-wide-python-retirement) and [development guide](docs/guides/DEVELOPMENT.md). Contribution requirements are in [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 

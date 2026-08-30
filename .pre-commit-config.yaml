@@ -28,7 +28,7 @@ repos:
         pass_filenames: false
       - id: readme-screenshots
         name: current README screenshots
-        entry: python scripts/capture_readme_screenshots.py --check
+        entry: dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- screenshots .
         language: system
         pass_filenames: false
       - id: station-badges
