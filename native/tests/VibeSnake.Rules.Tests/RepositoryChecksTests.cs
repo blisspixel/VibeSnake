@@ -1450,7 +1450,7 @@ public sealed class RepositoryChecksTests
         Assert.Equal(2, invalidCode);
         Assert.Equal(string.Empty, invalidOutput.ToString());
         Assert.Contains(
-            "RepositoryChecks <achievement-candidates|all|badges|docs|freeze|inventory|inventory-release|last-stand|locks|logo|materials|phase-shift|rehearsal|screenshots|source|stable|version>",
+            "RepositoryChecks <achievement-candidates|all|badges|docs|freeze|inventory|inventory-release|last-stand|locks|logo|materials|phase-shift|rehearsal|screenshots|shield|source|stable|version>",
             invalidError.ToString());
         Assert.Contains(
             "RepositoryChecks achievement-candidates-write [repository-root]",
@@ -1460,6 +1460,9 @@ public sealed class RepositoryChecksTests
             invalidError.ToString());
         Assert.Contains(
             "RepositoryChecks phase-shift-write [repository-root]",
+            invalidError.ToString());
+        Assert.Contains(
+            "RepositoryChecks shield-write [repository-root]",
             invalidError.ToString());
         Assert.Contains(
             "RepositoryChecks materials-write <output> [repository-root]",
@@ -1485,6 +1488,7 @@ public sealed class RepositoryChecksTests
             WriteAchievementCandidateFixture(root);
             WriteLastStandFixture(root);
             WritePhaseShiftFixture(root);
+            WriteShieldFixture(root);
             WriteVersionFixture(root);
             WriteDocumentationFixture(root);
             WriteReleaseMaterialsFixture(root);
@@ -1507,6 +1511,7 @@ public sealed class RepositoryChecksTests
             Assert.Contains("Shared achievement-candidate fixture verified", output.ToString());
             Assert.Contains("Shared Last Stand fixture verified", output.ToString());
             Assert.Contains("Shared Phase Shift fixture verified", output.ToString());
+            Assert.Contains("Shared Shield fixture verified", output.ToString());
             Assert.Contains("Product versions aligned", output.ToString());
             Assert.Contains("Documentation link check passed", output.ToString());
             Assert.Contains("Candidate freeze policy check passed", output.ToString());
@@ -1528,6 +1533,7 @@ public sealed class RepositoryChecksTests
     [InlineData("achievement-candidates")]
     [InlineData("last-stand")]
     [InlineData("phase-shift")]
+    [InlineData("shield")]
     [InlineData("docs")]
     [InlineData("badges")]
     [InlineData("freeze")]
@@ -1547,6 +1553,7 @@ public sealed class RepositoryChecksTests
             WriteAchievementCandidateFixture(root);
             WriteLastStandFixture(root);
             WritePhaseShiftFixture(root);
+            WriteShieldFixture(root);
             WriteVersionFixture(root);
             WriteDocumentationFixture(root);
             WriteReleaseMaterialsFixture(root);
@@ -2509,6 +2516,12 @@ public sealed class RepositoryChecksTests
     private static void WritePhaseShiftFixture(string root)
     {
         var result = PhaseShiftFixtureCheck.Write(root);
+        Assert.True(result.Passed, string.Join(Environment.NewLine, result.Failures));
+    }
+
+    private static void WriteShieldFixture(string root)
+    {
+        var result = ShieldFixtureCheck.Write(root);
         Assert.True(result.Passed, string.Join(Environment.NewLine, result.Failures));
     }
 

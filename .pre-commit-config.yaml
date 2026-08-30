@@ -76,6 +76,11 @@ repos:
         entry: dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- phase-shift .
         language: system
         pass_filenames: false
+      - id: shield
+        name: Shield fixture
+        entry: dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- shield .
+        language: system
+        pass_filenames: false
       - id: shared-traces
         name: shared parity fixtures
         entry: >-
@@ -87,13 +92,6 @@ repos:
         name: shared rule fixtures
         entry: >-
           python -c "import runpy,sys;sys.path.insert(0,'src');runpy.run_module('vibesnake.qa.shared_rule_traces',run_name='__main__')"
-          --check
-        language: system
-        pass_filenames: false
-      - id: shared-power-traces
-        name: shared power fixtures
-        entry: >-
-          python -c "import runpy,sys;sys.path.insert(0,'src');runpy.run_module('vibesnake.qa.shared_power_traces',run_name='__main__')"
           --check
         language: system
         pass_filenames: false

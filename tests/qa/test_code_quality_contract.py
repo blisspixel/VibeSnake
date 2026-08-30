@@ -218,6 +218,7 @@ def test_ci_runs_the_documented_quality_and_dependency_gates() -> None:
     assert "python -m vibesnake.qa.shared_achievement_candidate_traces" not in workflow
     assert "python -m vibesnake.qa.shared_last_stand_traces" not in workflow
     assert "python -m vibesnake.qa.shared_phase_shift_traces" not in workflow
+    assert "shared_power_traces" not in workflow
     assert (
         "--configuration Release --no-restore -- materials-write\n"
         "          TestResults/release-materials/release_materials_handoff.json ." in workflow
@@ -236,6 +237,7 @@ def test_ci_runs_the_documented_quality_and_dependency_gates() -> None:
     assert "--configuration Release --no-restore -- achievement-candidates ." in workflow
     assert "--configuration Release --no-restore -- last-stand ." in workflow
     assert "--configuration Release --no-restore -- phase-shift ." in workflow
+    assert "--configuration Release --no-restore -- shield ." in workflow
 
     pre_commit = (REPOSITORY_ROOT / ".pre-commit-config.yaml").read_text(encoding="utf-8")
     assert "dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- docs ." in pre_commit
@@ -249,6 +251,7 @@ def test_ci_runs_the_documented_quality_and_dependency_gates() -> None:
     )
     assert "dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- last-stand ." in pre_commit
     assert "dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- phase-shift ." in pre_commit
+    assert "dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- shield ." in pre_commit
     assert "python scripts/check_docs.py" not in pre_commit
     assert "python scripts/check_source_policy.py" not in pre_commit
     assert "python scripts/check_release_materials.py" not in pre_commit
@@ -257,6 +260,7 @@ def test_ci_runs_the_documented_quality_and_dependency_gates() -> None:
     assert "python -m vibesnake.qa.shared_achievement_candidate_traces" not in pre_commit
     assert "python -m vibesnake.qa.shared_last_stand_traces" not in pre_commit
     assert "python -m vibesnake.qa.shared_phase_shift_traces" not in pre_commit
+    assert "shared_power_traces" not in pre_commit
 
     assert not (REPOSITORY_ROOT / "src" / "vibesnake" / "qa" / "shared_achievement_candidate_traces.py").exists()
     assert not (REPOSITORY_ROOT / "tests" / "qa" / "test_shared_achievement_candidate_traces.py").exists()
@@ -264,6 +268,8 @@ def test_ci_runs_the_documented_quality_and_dependency_gates() -> None:
     assert not (REPOSITORY_ROOT / "tests" / "qa" / "test_shared_last_stand_traces.py").exists()
     assert not (REPOSITORY_ROOT / "src" / "vibesnake" / "qa" / "shared_phase_shift_traces.py").exists()
     assert not (REPOSITORY_ROOT / "tests" / "qa" / "test_shared_phase_shift_traces.py").exists()
+    assert not (REPOSITORY_ROOT / "src" / "vibesnake" / "qa" / "shared_power_traces.py").exists()
+    assert not (REPOSITORY_ROOT / "tests" / "qa" / "test_shared_power_traces.py").exists()
     fixture_tool = (
         REPOSITORY_ROOT / "native" / "tools" / "RepositoryChecks" / "AchievementCandidateFixtureCheck.cs"
     ).read_text(encoding="utf-8")
@@ -276,6 +282,12 @@ def test_ci_runs_the_documented_quality_and_dependency_gates() -> None:
     phase_shift_parity_test = (
         REPOSITORY_ROOT / "native" / "tests" / "VibeSnake.Rules.Tests" / "SharedPhaseShiftTraceParityTests.cs"
     ).read_text(encoding="utf-8")
+    shield_fixture_tool = (
+        REPOSITORY_ROOT / "native" / "tools" / "RepositoryChecks" / "ShieldFixtureCheck.cs"
+    ).read_text(encoding="utf-8")
+    shield_parity_test = (
+        REPOSITORY_ROOT / "native" / "tests" / "VibeSnake.Rules.Tests" / "SharedShieldTraceParityTests.cs"
+    ).read_text(encoding="utf-8")
     repository_checks_project = (
         REPOSITORY_ROOT / "native" / "tools" / "RepositoryChecks" / "RepositoryChecks.csproj"
     ).read_text(encoding="utf-8")
@@ -286,6 +298,9 @@ def test_ci_runs_the_documented_quality_and_dependency_gates() -> None:
     assert "SnakeRun" not in phase_shift_fixture_tool
     assert "VibeSnake.Rules" not in phase_shift_fixture_tool
     assert "PhaseShiftFixtureCheck" not in phase_shift_parity_test
+    assert "SnakeRun" not in shield_fixture_tool
+    assert "VibeSnake.Rules" not in shield_fixture_tool
+    assert "ShieldFixtureCheck" not in shield_parity_test
     assert "src\\VibeSnake.Rules" not in repository_checks_project
 
     complete = parsed["jobs"]["ci-complete"]

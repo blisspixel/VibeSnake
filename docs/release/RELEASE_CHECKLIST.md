@@ -166,7 +166,7 @@ dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- re
 dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- stable-record C:\retained-vibesnake-evidence\stable-promotion\record.json 0123456789abcdef0123456789abcdef01234567 C:\retained-vibesnake-evidence\stable-promotion\decision.json .
 python -m vibesnake.qa.shared_traces --check
 python -m vibesnake.qa.shared_rule_traces --check
-python -m vibesnake.qa.shared_power_traces --check
+dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- shield .
 dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- phase-shift .
 dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- last-stand .
 python -m vibesnake.qa.shared_remaining_power_traces --check

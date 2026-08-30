@@ -5,7 +5,7 @@ namespace VibeSnake.Rules.Tests;
 public sealed class SharedShieldTraceParityTests
 {
     [Fact]
-    public void Csharp_matches_targeted_python_shield_traces()
+    public void Csharp_matches_reviewed_python_origin_shield_traces()
     {
         var fixturePath = Path.Combine(AppContext.BaseDirectory, "Fixtures", "shield_rules_v1.json");
         var fixture = JsonSerializer.Deserialize<ShieldFixture>(
@@ -18,9 +18,48 @@ public sealed class SharedShieldTraceParityTests
         Assert.Equal(SnakeRun.RulesetId, fixture.Ruleset.Id);
         Assert.Equal(SnakeRun.RulesVersion, fixture.Ruleset.Version);
         Assert.Equal("positions-and-power-state-injected-v1", fixture.RandomnessPolicy);
+        Assert.Equal("python-production-shield-v1", fixture.SourceEngine);
+        Assert.Equal(
+            [
+                "pickup_identity",
+                "collection_on_entry",
+                "activation",
+                "duration_countdown",
+                "pickup_expiry",
+                "effect_expiry",
+                "self_collision_consumption",
+                "collision_prevention",
+                "starvation_bypass",
+                "ordered_power_events",
+            ],
+            fixture.ComparisonScope);
+        Assert.Equal(
+            [
+                "random_spawn_position",
+                "spawn_schedule",
+                "presentation_feedback",
+                "other_power_types",
+            ],
+            fixture.ExcludedScope);
+        Assert.Equal(64, fixture.Config.Width);
+        Assert.Equal(33, fixture.Config.Height);
+        Assert.Equal(600, fixture.Config.StarvationTicks);
+        Assert.Equal(120, fixture.Config.PowerVisibleTicks);
+        Assert.Equal(100, fixture.Config.ShieldDurationTicks);
         Assert.Equal(8, fixture.CaseCount);
         Assert.Equal(fixture.CaseCount, fixture.Cases.Count);
-        Assert.All(fixture.Cases, traceCase => Assert.False(string.IsNullOrWhiteSpace(traceCase.Id)));
+        Assert.Equal(
+            [
+                "shield-collect-on-entry",
+                "shield-pickup-expiry",
+                "shield-active-countdown",
+                "shield-active-expiry",
+                "shield-collision-consumption",
+                "shield-collision-at-starvation-deadline",
+                "shield-expiry-before-collision",
+                "shield-does-not-block-starvation",
+            ],
+            fixture.Cases.Select(traceCase => traceCase.Id));
         Assert.Equal(
             fixture.Cases.Count,
             fixture.Cases.Select(traceCase => traceCase.Id).Distinct(StringComparer.Ordinal).Count());
@@ -41,6 +80,11 @@ public sealed class SharedShieldTraceParityTests
             PowerVisibleTicks: fixtureConfig.PowerVisibleTicks,
             ShieldDurationTicks: fixtureConfig.ShieldDurationTicks);
         var initial = traceCase.Initial;
+        if (initial.Pickup is not null)
+        {
+            Assert.Equal("shield", initial.Pickup.Kind);
+        }
+
         var run = SnakeRun.CreateForTesting(
             config,
             initial.Body.Select(ToGridPoint),
@@ -91,7 +135,7 @@ public sealed class SharedShieldTraceParityTests
                     Fixture: "shield_rules_v1.json",
                     TestFilter:
                         "VibeSnake.Rules.Tests.SharedShieldTraceParityTests."
-                        + "Csharp_matches_targeted_python_shield_traces",
+                        + "Csharp_matches_reviewed_python_origin_shield_traces",
                     CaseId: traceCase.Id,
                     Seed: null,
                     FirstDivergentStep: expected.Tick,
@@ -168,8 +212,11 @@ public sealed class SharedShieldTraceParityTests
         string Contract,
         ShieldRuleset Ruleset,
         string RandomnessPolicy,
+        string SourceEngine,
         int CaseCount,
         ShieldConfig Config,
+        List<string> ComparisonScope,
+        List<string> ExcludedScope,
         List<ShieldCase> Cases);
 
     private sealed record ShieldRuleset(string Id, int Version);

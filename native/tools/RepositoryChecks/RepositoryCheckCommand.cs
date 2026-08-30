@@ -517,6 +517,13 @@ public static class RepositoryCheckCommand
 
         if (arguments is not null
             && arguments.Count > 0
+            && arguments[0] == "shield-write")
+        {
+            return RunShieldWrite(arguments, standardOutput, standardError);
+        }
+
+        if (arguments is not null
+            && arguments.Count > 0
             && arguments[0] == "freeze-baseline")
         {
             return RunFreezeBaseline(arguments, standardOutput, standardError);
@@ -601,7 +608,7 @@ public static class RepositoryCheckCommand
 
         if (arguments is null
             || arguments.Count is < 1 or > 2
-            || arguments[0] is not ("achievement-candidates" or "all" or "badges" or "docs" or "freeze" or "inventory" or "inventory-release" or "last-stand" or "locks" or "logo" or "materials" or "phase-shift" or "rehearsal" or "screenshots" or "source" or "stable" or "version"))
+            || arguments[0] is not ("achievement-candidates" or "all" or "badges" or "docs" or "freeze" or "inventory" or "inventory-release" or "last-stand" or "locks" or "logo" or "materials" or "phase-shift" or "rehearsal" or "screenshots" or "shield" or "source" or "stable" or "version"))
         {
             WriteUsage(standardError);
             return 2;
@@ -637,6 +644,7 @@ public static class RepositoryCheckCommand
             "phase-shift" => new[] { PhaseShiftFixtureCheck.Inspect(repositoryRoot) },
             "rehearsal" => new[] { ReleaseRehearsalCheck.Inspect(repositoryRoot) },
             "screenshots" => new[] { ReadmeScreenshotCheck.Inspect(repositoryRoot) },
+            "shield" => new[] { ShieldFixtureCheck.Inspect(repositoryRoot) },
             "source" => new[] { SourcePolicyCheck.Inspect(repositoryRoot) },
             "stable" => new[] { StablePromotionCheck.Inspect(repositoryRoot) },
             "version" => new[] { ProductVersionCheck.Inspect(repositoryRoot) },
@@ -645,6 +653,7 @@ public static class RepositoryCheckCommand
                 AchievementCandidateFixtureCheck.Inspect(repositoryRoot),
                 LastStandFixtureCheck.Inspect(repositoryRoot),
                 PhaseShiftFixtureCheck.Inspect(repositoryRoot),
+                ShieldFixtureCheck.Inspect(repositoryRoot),
                 ProductVersionCheck.Inspect(repositoryRoot),
                 DocumentationCheck.Inspect(repositoryRoot),
                 CandidateFreezeCheck.Inspect(repositoryRoot),
@@ -731,6 +740,24 @@ public static class RepositoryCheckCommand
 
         return ReportSingleResult(
             PhaseShiftFixtureCheck.Write(
+                arguments.Count == 2 ? arguments[1] : "."),
+            standardOutput,
+            standardError);
+    }
+
+    private static int RunShieldWrite(
+        IReadOnlyList<string> arguments,
+        TextWriter standardOutput,
+        TextWriter standardError)
+    {
+        if (arguments.Count > 2)
+        {
+            WriteUsage(standardError);
+            return 2;
+        }
+
+        return ReportSingleResult(
+            ShieldFixtureCheck.Write(
                 arguments.Count == 2 ? arguments[1] : "."),
             standardOutput,
             standardError);
@@ -1191,7 +1218,7 @@ public static class RepositoryCheckCommand
     private static void WriteUsage(TextWriter writer)
     {
         writer.WriteLine(
-            "Usage: RepositoryChecks <achievement-candidates|all|badges|docs|freeze|inventory|inventory-release|last-stand|locks|logo|materials|phase-shift|rehearsal|screenshots|source|stable|version> "
+            "Usage: RepositoryChecks <achievement-candidates|all|badges|docs|freeze|inventory|inventory-release|last-stand|locks|logo|materials|phase-shift|rehearsal|screenshots|shield|source|stable|version> "
             + "[repository-root]");
         writer.WriteLine(
             "       RepositoryChecks achievement-candidates-write [repository-root]");
@@ -1199,6 +1226,8 @@ public static class RepositoryCheckCommand
             "       RepositoryChecks last-stand-write [repository-root]");
         writer.WriteLine(
             "       RepositoryChecks phase-shift-write [repository-root]");
+        writer.WriteLine(
+            "       RepositoryChecks shield-write [repository-root]");
         writer.WriteLine(
             "       RepositoryChecks badge-write [repository-root]");
         writer.WriteLine(
