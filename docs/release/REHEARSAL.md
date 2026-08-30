@@ -2,9 +2,9 @@
 
 [Release state](README.md) | [Packaging](PACKAGING.md) | [Signing](SIGNING.md) | [Recovery](../guides/RECOVERY.md)
 
-Status: V090-10 handoff qualified, staged execution pending.
+Status: native V090-10 foundation qualified, accepted materials and staged execution pending.
 
-The release rehearsal uses the exact artifacts intended for release. It proves that the staged files can be acquired, verified, installed, exercised, withdrawn, and replaced without losing existing player data. The machine-readable authority is [`config/release_rehearsal_v1.json`](../../config/release_rehearsal_v1.json).
+The release rehearsal uses the exact artifacts intended for release. Real staged execution demonstrates that the files can be acquired, verified, installed, exercised, withdrawn, and replaced without losing existing player data. Native validation proves the retained record's integrity and exact cross-file identity, not that the external operations happened. The rehearsal authority is [`config/release_rehearsal_v1.json`](../../config/release_rehearsal_v1.json), and the required prior approval authority is [`config/release_materials_acceptance_v1.json`](../../config/release_materials_acceptance_v1.json).
 
 ## Entry gate
 
@@ -13,11 +13,11 @@ Begin only after the exact candidate has:
 1. a clean source revision and canonical version;
 2. final Windows x64, macOS Universal, and Linux x64 artifact and manifest hashes;
 3. completed protected signing and platform verification;
-4. accepted release materials with `releaseAcceptance: true` bound to the same revision;
+4. an exact `release-materials-acceptance-v1` decision with `releaseAcceptance: true`, all four approval gates passed, and the same revision, version, candidate, and artifact manifests;
 5. a preserved previous supported artifact for every platform;
 6. a retained migration fixture set that represents every supported save schema.
 
-Qualification-only packages, unsigned placeholders, an unapproved optional pack, or current alpha documentation cannot satisfy this entry gate. A direct `materials-candidate` handoff proves structural completion only and cannot satisfy the accepted-material decision by itself.
+Qualification-only packages, unsigned placeholders, an unapproved optional pack, or current alpha documentation cannot satisfy this entry gate. A direct `materials-candidate` handoff proves structural completion only and cannot satisfy the accepted-material decision by itself. The acceptance decision must retain and hash that structural handoff plus evidence for artifact-manifest size reconciliation, marketing-claim approval, visible-image review, and video-playback review. The repository validates such a decision but does not create or approve it.
 
 ## Staged record
 
@@ -84,17 +84,18 @@ Each role requires retained authorization evidence. The rehearsal file proves ca
 Qualify the repository handoff:
 
 ```powershell
-python scripts/check_release_rehearsal.py `
-  --output TestResults/release-rehearsal/release_rehearsal_handoff.json
+dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- `
+  rehearsal-write TestResults/release-rehearsal/release_rehearsal_handoff.json .
 ```
 
 Validate the retained staged execution:
 
 ```powershell
-python scripts/check_release_rehearsal.py `
-  --record C:\retained-vibesnake-evidence\release-rehearsal\record.json `
-  --expected-revision 0123456789abcdef0123456789abcdef01234567 `
-  --output C:\retained-vibesnake-evidence\release-rehearsal\decision.json
+dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- `
+  rehearsal-record `
+  C:\retained-vibesnake-evidence\release-rehearsal\record.json `
+  0123456789abcdef0123456789abcdef01234567 `
+  C:\retained-vibesnake-evidence\release-rehearsal\decision.json .
 ```
 
-Acceptance requires all 33 platform-operation cells, exact hashes, unchanged protected user data, a complete withdrawal result, and all four authority records. The checked-in handoff has no rehearsal record and therefore reports `rehearsalComplete: false` and `releaseAcceptance: false`.
+The native validator uses strict duplicate-free bounded JSON, portable link-free paths, stable streaming hashes, exact retained-file closure, output-alias rejection, canonical LF JSON, and atomic replacement. Acceptance requires all 33 platform-operation cells, exact artifact and manifest identities, an accepted material decision, unchanged protected user data, a complete withdrawal result, and all four authority records. It writes `release-rehearsal-handoff-v2` with the exact source revision and version required by stable promotion. The checked-in foundation has no rehearsal record and therefore reports `externalExecutionAttested: false`, `rehearsalComplete: false`, and `releaseAcceptance: false`.

@@ -132,6 +132,7 @@ dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- ba
 dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- logo .
 dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- inventory .
 dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- materials .
+dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- rehearsal .
 python -m vibesnake.qa.shared_traces --check
 python -m vibesnake.qa.shared_rule_traces --check
 python -m vibesnake.qa.shared_power_traces --check
@@ -144,6 +145,8 @@ python -m pytest --cov=vibesnake --cov-report=term-missing --cov-report=xml
 ```
 
 The read-only `materials [repository-root]` route validates the closed V090-09 contract and current ten-document foundation. Use `materials-write <output> [repository-root]` to write the canonical pending `release-materials-handoff-v2` CI evidence with candidate completion and release acceptance both false. Only retained candidate workspaces use `materials-candidate <candidate> <expected-revision> <output> [repository-root]`. A passing candidate route sets `candidateMaterialComplete: true` but keeps `releaseAcceptance: false` pending artifact-manifest reconciliation, marketing-claim approval, visible image review, and video playback review. It is structural evidence, not an accepted rehearsal or promotion input.
+
+The read-only `rehearsal [repository-root]` route validates the exact V090-10 protocol foundation. Use `rehearsal-write <output> [repository-root]` for the canonical pending `release-rehearsal-handoff-v2` CI evidence. Only retained staged workspaces use `rehearsal-record <record> <expected-revision> <output> [repository-root]`. The record route requires a separate `release-materials-acceptance-v1` decision for the same revision, version, candidate, and three artifact manifests, plus all 33 passing platform-operation cells, withdrawal evidence, protected-data preservation, and four verified operational roles. It validates retained evidence and never performs an install, approval, signing action, withdrawal, or publication.
 
 The suite configures dummy SDL drivers and temporary save storage through [tests/conftest.py](../../tests/conftest.py).
 

@@ -1,0 +1,55 @@
+{
+  "schemaVersion": 1,
+  "kind": "vibesnake-release-materials-acceptance-v1",
+  "status": "external-approval-required",
+  "artifactPlatforms": [
+    "windows-x64",
+    "macos-universal",
+    "linux-x64"
+  ],
+  "sourceStructuralHandoffKind": "release-materials-handoff-v2",
+  "acceptedDecisionKind": "release-materials-acceptance-v1",
+  "gateIds": [
+    "artifact-manifest-size-reconciliation",
+    "marketing-claim-approval",
+    "visible-image-review",
+    "video-playback-review"
+  ],
+  "resultValues": [
+    "pass"
+  ],
+  "requiredDecisionFields": [
+    "schemaVersion",
+    "kind",
+    "passed",
+    "foundationQualified",
+    "candidateMaterialComplete",
+    "releaseAcceptance",
+    "sourceRevision",
+    "appVersion",
+    "candidateSha256",
+    "structuralHandoffPath",
+    "structuralHandoffSha256",
+    "artifactManifestSha256ByPlatform",
+    "acceptedUtc",
+    "gateRecords",
+    "retainedFileSha256",
+    "pendingGates",
+    "errors"
+  ],
+  "requiredGateFields": [
+    "gateId",
+    "result",
+    "authorityRoleId",
+    "evidencePaths"
+  ],
+  "releaseRules": [
+    "The accepted decision binds one structurally complete release-material handoff whose release acceptance remains false.",
+    "The source revision, application version, candidate hash, and three artifact-manifest hashes match the structural handoff and rehearsal record exactly.",
+    "Artifact-manifest size reconciliation, marketing-claim approval, visible-image review, and video-playback review each have one passing gate record.",
+    "Every gate uses a verified non-personal authority role and at least one retained evidence file.",
+    "The retained-file hash map is the exact closure of the structural handoff and all gate evidence paths.",
+    "Pending gates and errors are empty before release acceptance can be true.",
+    "Automated validation checks contract shape, retained bytes, and cross-file identity but never performs or invents external or human approval."
+  ]
+}

@@ -103,8 +103,9 @@ jobs:
       - name: Qualify release rehearsal handoff
         if: matrix.python-version == '3.14'
         run: >-
-          python scripts/check_release_rehearsal.py
-          --output TestResults/release-rehearsal/release_rehearsal_handoff.json
+          dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj
+          --configuration Release --no-restore -- rehearsal-write
+          TestResults/release-rehearsal/release_rehearsal_handoff.json .
 
       - name: Qualify stable promotion guard
         if: matrix.python-version == '3.14'

@@ -550,9 +550,23 @@ public static class RepositoryCheckCommand
             return RunMaterialsCandidate(arguments, standardOutput, standardError);
         }
 
+        if (arguments is not null
+            && arguments.Count > 0
+            && arguments[0] == "rehearsal-write")
+        {
+            return RunRehearsalWrite(arguments, standardOutput, standardError);
+        }
+
+        if (arguments is not null
+            && arguments.Count > 0
+            && arguments[0] == "rehearsal-record")
+        {
+            return RunRehearsalRecord(arguments, standardOutput, standardError);
+        }
+
         if (arguments is null
             || arguments.Count is < 1 or > 2
-            || arguments[0] is not ("all" or "badges" or "docs" or "freeze" or "inventory" or "inventory-release" or "locks" or "logo" or "materials" or "screenshots" or "source" or "version"))
+            || arguments[0] is not ("all" or "badges" or "docs" or "freeze" or "inventory" or "inventory-release" or "locks" or "logo" or "materials" or "rehearsal" or "screenshots" or "source" or "version"))
         {
             WriteUsage(standardError);
             return 2;
@@ -580,6 +594,7 @@ public static class RepositoryCheckCommand
             "locks" => new[] { DependencyLockCheck.Inspect(repositoryRoot) },
             "logo" => new[] { ProjectLogoCheck.Inspect(repositoryRoot) },
             "materials" => new[] { ReleaseMaterialsCheck.Inspect(repositoryRoot) },
+            "rehearsal" => new[] { ReleaseRehearsalCheck.Inspect(repositoryRoot) },
             "screenshots" => new[] { ReadmeScreenshotCheck.Inspect(repositoryRoot) },
             "source" => new[] { SourcePolicyCheck.Inspect(repositoryRoot) },
             "version" => new[] { ProductVersionCheck.Inspect(repositoryRoot) },
@@ -592,6 +607,7 @@ public static class RepositoryCheckCommand
                 DependencyLockCheck.Inspect(repositoryRoot),
                 ProjectLogoCheck.Inspect(repositoryRoot),
                 ReleaseMaterialsCheck.Inspect(repositoryRoot),
+                ReleaseRehearsalCheck.Inspect(repositoryRoot),
                 ReadmeScreenshotCheck.Inspect(repositoryRoot),
                 StationBadgeCheck.Inspect(repositoryRoot),
                 SourcePolicyCheck.Inspect(repositoryRoot),
@@ -683,6 +699,75 @@ public static class RepositoryCheckCommand
             ReleaseMaterialsCheck.WriteCandidateHandoff(
                 repositoryRoot,
                 candidatePath,
+                arguments[2],
+                outputPath),
+            standardOutput,
+            standardError);
+    }
+
+    private static int RunRehearsalWrite(
+        IReadOnlyList<string> arguments,
+        TextWriter standardOutput,
+        TextWriter standardError)
+    {
+        if (arguments.Count is < 2 or > 3)
+        {
+            WriteUsage(standardError);
+            return 2;
+        }
+
+        string repositoryRoot;
+        string outputPath;
+        try
+        {
+            repositoryRoot = Path.GetFullPath(arguments.Count == 3 ? arguments[2] : ".");
+            outputPath = Path.GetFullPath(arguments[1], repositoryRoot);
+        }
+        catch (Exception exception) when (
+            exception is ArgumentException or NotSupportedException or PathTooLongException)
+        {
+            standardError.WriteLine("Repository root or release-rehearsal output is invalid.");
+            return 2;
+        }
+
+        return ReportSingleResult(
+            ReleaseRehearsalCheck.WriteFoundationHandoff(repositoryRoot, outputPath),
+            standardOutput,
+            standardError);
+    }
+
+    private static int RunRehearsalRecord(
+        IReadOnlyList<string> arguments,
+        TextWriter standardOutput,
+        TextWriter standardError)
+    {
+        if (arguments.Count is < 4 or > 5)
+        {
+            WriteUsage(standardError);
+            return 2;
+        }
+
+        string repositoryRoot;
+        string recordPath;
+        string outputPath;
+        try
+        {
+            repositoryRoot = Path.GetFullPath(arguments.Count == 5 ? arguments[4] : ".");
+            recordPath = Path.GetFullPath(arguments[1], repositoryRoot);
+            outputPath = Path.GetFullPath(arguments[3], repositoryRoot);
+        }
+        catch (Exception exception) when (
+            exception is ArgumentException or NotSupportedException or PathTooLongException)
+        {
+            standardError.WriteLine(
+                "Repository root, release-rehearsal record, or output is invalid.");
+            return 2;
+        }
+
+        return ReportSingleResult(
+            ReleaseRehearsalCheck.WriteRecordHandoff(
+                repositoryRoot,
+                recordPath,
                 arguments[2],
                 outputPath),
             standardOutput,
@@ -937,7 +1022,7 @@ public static class RepositoryCheckCommand
     private static void WriteUsage(TextWriter writer)
     {
         writer.WriteLine(
-            "Usage: RepositoryChecks <all|badges|docs|freeze|inventory|inventory-release|locks|logo|materials|screenshots|source|version> "
+            "Usage: RepositoryChecks <all|badges|docs|freeze|inventory|inventory-release|locks|logo|materials|rehearsal|screenshots|source|version> "
             + "[repository-root]");
         writer.WriteLine(
             "       RepositoryChecks badge-write [repository-root]");
@@ -949,6 +1034,11 @@ public static class RepositoryCheckCommand
             "       RepositoryChecks materials-write <output> [repository-root]");
         writer.WriteLine(
             "       RepositoryChecks materials-candidate <candidate> <expected-revision> "
+            + "<output> [repository-root]");
+        writer.WriteLine(
+            "       RepositoryChecks rehearsal-write <output> [repository-root]");
+        writer.WriteLine(
+            "       RepositoryChecks rehearsal-record <record> <expected-revision> "
             + "<output> [repository-root]");
         writer.WriteLine(
             "       RepositoryChecks freeze-baseline <revision> <generated-utc> "

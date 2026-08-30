@@ -15,6 +15,7 @@ This directory contains authored project inputs and generated content authority.
 | `qa_manual_product_matrix_v2.json` | Exact V090-07 Release-derived candidate, platform artifact, atomic flow/device/capability/profile observation, and release-acceptance contract |
 | `qa_external_validation_v1.json` | Exact V090-08 controlled distribution, cohort, comprehension, report, clean-candidate, finding, repair, and privacy contract |
 | `release_materials_v1.json` | Exact V090-09 required documents, platform and input disclosures, candidate media roles, claim identities, retained hashes, and publication rules |
+| `release_materials_acceptance_v1.json` | Exact externally approved V090-09 transition from structural completion through manifest reconciliation, claim approval, visible-image review, and video playback review |
 | `release_rehearsal_v1.json` | Exact V090-10 staged artifacts, 33 platform-operation cells, withdrawal, user-data preservation, retained hashes, and release-authority contract |
 | `stable_promotion_v1.json` | Exact 1.0 protected tag, upstream acceptance, public artifacts, optional pack, provenance, install, preservation, and compatibility contract |
 | `power_decision_contract_v1.json` | V070-09 nine-power families, lifecycle aggregates, seeded synergy scenarios, privacy boundary, and default-off Mutation Fork decision gate |

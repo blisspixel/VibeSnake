@@ -1450,7 +1450,7 @@ public sealed class RepositoryChecksTests
         Assert.Equal(2, invalidCode);
         Assert.Equal(string.Empty, invalidOutput.ToString());
         Assert.Contains(
-            "RepositoryChecks <all|badges|docs|freeze|inventory|inventory-release|locks|logo|materials|screenshots|source|version>",
+            "RepositoryChecks <all|badges|docs|freeze|inventory|inventory-release|locks|logo|materials|rehearsal|screenshots|source|version>",
             invalidError.ToString());
         Assert.Contains(
             "RepositoryChecks materials-write <output> [repository-root]",
@@ -1458,12 +1458,19 @@ public sealed class RepositoryChecksTests
         Assert.Contains(
             "RepositoryChecks materials-candidate <candidate> <expected-revision> <output> [repository-root]",
             invalidError.ToString());
+        Assert.Contains(
+            "RepositoryChecks rehearsal-write <output> [repository-root]",
+            invalidError.ToString());
+        Assert.Contains(
+            "RepositoryChecks rehearsal-record <record> <expected-revision> <output> [repository-root]",
+            invalidError.ToString());
 
         WithTemporaryDirectory(root =>
         {
             WriteVersionFixture(root);
             WriteDocumentationFixture(root);
             WriteReleaseMaterialsFixture(root);
+            WriteReleaseRehearsalFixture(root);
             WriteCandidateFreezeFixture(root);
             WriteDependencyLockFixture(root);
             WriteAgentPluginFixture(root);
@@ -1487,6 +1494,7 @@ public sealed class RepositoryChecksTests
             Assert.Contains(
                 "Release-material foundation qualified; exact candidate materials remain pending.",
                 output.ToString());
+            Assert.Contains("rehearsal", output.ToString(), StringComparison.OrdinalIgnoreCase);
             Assert.Contains("Station badges verified", output.ToString());
             Assert.Contains("Source policy check passed", output.ToString());
             Assert.Contains("Agent Plugin source profile passed", output.ToString());
@@ -1502,6 +1510,7 @@ public sealed class RepositoryChecksTests
     [InlineData("locks")]
     [InlineData("logo")]
     [InlineData("materials")]
+    [InlineData("rehearsal")]
     [InlineData("source")]
     [InlineData("version")]
     public void Command_runs_each_individual_check(string command)
@@ -1511,6 +1520,7 @@ public sealed class RepositoryChecksTests
             WriteVersionFixture(root);
             WriteDocumentationFixture(root);
             WriteReleaseMaterialsFixture(root);
+            WriteReleaseRehearsalFixture(root);
             WriteCandidateFreezeFixture(root);
             WriteDependencyLockFixture(root);
             CopyApprovedLogo(root);
@@ -1540,6 +1550,8 @@ public sealed class RepositoryChecksTests
             ["lock-write"],
             ["materials-write"],
             ["materials-candidate", "candidate.json", "revision"],
+            ["rehearsal-write"],
+            ["rehearsal-record", "record.json", "revision"],
         })
         {
             var output = new StringWriter();
@@ -1706,6 +1718,57 @@ public sealed class RepositoryChecksTests
                 StringComparison.Ordinal);
             Assert.Contains("PRIVACY.md", error.ToString(), StringComparison.Ordinal);
             Assert.True(File.Exists(Path.Combine(root, "TestResults", "failed.json")));
+        });
+    }
+
+    [Fact]
+    public void Release_rehearsal_commands_write_foundation_and_propagate_record_failures()
+    {
+        WithTemporaryDirectory(root =>
+        {
+            WriteVersionFixture(root);
+            WriteReleaseMaterialsFixture(root);
+            WriteReleaseRehearsalFixture(root);
+            var output = new StringWriter();
+            var error = new StringWriter();
+
+            var inspectCode = RepositoryCheckCommand.Run(["rehearsal", root], output, error);
+
+            Assert.Equal(0, inspectCode);
+            Assert.NotEqual(string.Empty, output.ToString());
+            Assert.Contains("rehearsal", output.ToString(), StringComparison.OrdinalIgnoreCase);
+            Assert.Equal(string.Empty, error.ToString());
+            Assert.False(File.Exists(Path.Combine(root, "release-rehearsal-handoff.json")));
+
+            output = new StringWriter();
+            error = new StringWriter();
+            var foundationCode = RepositoryCheckCommand.Run(
+                ["rehearsal-write", "TestResults/foundation.json", root],
+                output,
+                error);
+
+            Assert.Equal(0, foundationCode);
+            Assert.NotEqual(string.Empty, output.ToString());
+            Assert.Equal(string.Empty, error.ToString());
+            Assert.True(File.Exists(Path.Combine(root, "TestResults", "foundation.json")));
+
+            output = new StringWriter();
+            error = new StringWriter();
+            var recordCode = RepositoryCheckCommand.Run(
+                [
+                    "rehearsal-record",
+                    "retained/missing-record.json",
+                    new string('a', 40),
+                    "TestResults/record.json",
+                    root,
+                ],
+                output,
+                error);
+
+            Assert.Equal(1, recordCode);
+            Assert.Equal(string.Empty, output.ToString());
+            Assert.Contains("check failed:", error.ToString(), StringComparison.Ordinal);
+            Assert.Contains("record", error.ToString(), StringComparison.OrdinalIgnoreCase);
         });
     }
 
@@ -1996,6 +2059,32 @@ public sealed class RepositoryChecksTests
                         "Verified release guidance and candidate evidence remain explicit. ",
                         4))
                 + "\n");
+        }
+    }
+
+    private static void WriteReleaseRehearsalFixture(string root)
+    {
+        var repositoryRoot = ResolveRepositoryRoot();
+        foreach (var relativePath in new[]
+        {
+            "config/release_materials_acceptance_v1.json",
+            "config/release_rehearsal_v1.json",
+            "config/release_signing_policy.json",
+        })
+        {
+            var destination = Path.Combine(root, relativePath.Replace('/', Path.DirectorySeparatorChar));
+            Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
+            File.Copy(
+                Path.Combine(repositoryRoot, relativePath.Replace('/', Path.DirectorySeparatorChar)),
+                destination,
+                overwrite: true);
+        }
+
+        WriteFile(root, "docs/release/PACKAGING.md", "# Packaging\n\nVerified packaging route.\n");
+        WriteFile(root, "docs/release/SIGNING.md", "# Signing\n\nVerified signing route.\n");
+        if (!File.Exists(Path.Combine(root, "docs", "guides", "RECOVERY.md")))
+        {
+            WriteFile(root, "docs/guides/RECOVERY.md", "# Recovery\n\nVerified recovery route.\n");
         }
     }
 
