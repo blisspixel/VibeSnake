@@ -67,26 +67,32 @@ internal sealed class SystemScreenshotCaptureProcess : IScreenshotCaptureProcess
         }
         catch (OperationCanceledException)
         {
-            try
+            if (!process.HasExited)
             {
-                process.Kill(entireProcessTree: true);
-            }
-            catch (Exception exception) when (
-                exception is InvalidOperationException
-                    or NotSupportedException
-                    or Win32Exception)
-            {
-                // A bounded wait below still prevents cleanup from hanging.
-            }
+                try
+                {
+                    process.Kill(entireProcessTree: true);
+                }
+                catch (Exception exception) when (
+                    exception is InvalidOperationException
+                        or NotSupportedException
+                        or Win32Exception)
+                {
+                    // A bounded wait below still prevents cleanup from hanging.
+                }
 
-            using var terminationSource = new CancellationTokenSource(TerminationBudget);
-            try
-            {
-                process.WaitForExitAsync(terminationSource.Token).GetAwaiter().GetResult();
-            }
-            catch (OperationCanceledException)
-            {
-                // The process did not terminate inside the fixed cleanup budget.
+                if (!process.HasExited)
+                {
+                    using var terminationSource = new CancellationTokenSource(TerminationBudget);
+                    try
+                    {
+                        process.WaitForExitAsync(terminationSource.Token).GetAwaiter().GetResult();
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        // The process did not terminate inside the fixed cleanup budget.
+                    }
+                }
             }
 
             outputCancellation.Cancel();
