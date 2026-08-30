@@ -96,8 +96,9 @@ jobs:
       - name: Qualify release-material foundation
         if: matrix.python-version == '3.14'
         run: >-
-          python scripts/check_release_materials.py
-          --output TestResults/release-materials/release_materials_handoff.json
+          dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj
+          --configuration Release --no-restore -- materials-write
+          TestResults/release-materials/release_materials_handoff.json .
 
       - name: Qualify release rehearsal handoff
         if: matrix.python-version == '3.14'

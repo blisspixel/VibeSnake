@@ -212,12 +212,20 @@ def test_ci_runs_the_documented_quality_and_dependency_gates() -> None:
     assert "python scripts/check_product_version.py" not in workflow
     assert "python scripts/check_source_policy.py" not in workflow
     assert "python scripts/check_candidate_freeze.py" not in workflow
+    assert "python scripts/check_release_materials.py" not in workflow
+    assert (
+        "--configuration Release --no-restore -- materials-write\n"
+        "          TestResults/release-materials/release_materials_handoff.json ." in workflow
+    )
+    assert "TestResults/release-materials/release_materials_handoff.json" in workflow
 
     pre_commit = (REPOSITORY_ROOT / ".pre-commit-config.yaml").read_text(encoding="utf-8")
     assert "dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- docs ." in pre_commit
     assert "dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- source ." in pre_commit
+    assert "dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- materials ." in pre_commit
     assert "python scripts/check_docs.py" not in pre_commit
     assert "python scripts/check_source_policy.py" not in pre_commit
+    assert "python scripts/check_release_materials.py" not in pre_commit
 
     complete = parsed["jobs"]["ci-complete"]
     assert complete["name"] == "CI complete"

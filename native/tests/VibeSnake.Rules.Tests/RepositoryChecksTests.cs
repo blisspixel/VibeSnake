@@ -1427,13 +1427,20 @@ public sealed class RepositoryChecksTests
         Assert.Equal(2, invalidCode);
         Assert.Equal(string.Empty, invalidOutput.ToString());
         Assert.Contains(
-            "RepositoryChecks <all|badges|docs|freeze|inventory|inventory-release|locks|logo|screenshots|source|version>",
+            "RepositoryChecks <all|badges|docs|freeze|inventory|inventory-release|locks|logo|materials|screenshots|source|version>",
+            invalidError.ToString());
+        Assert.Contains(
+            "RepositoryChecks materials-write <output> [repository-root]",
+            invalidError.ToString());
+        Assert.Contains(
+            "RepositoryChecks materials-candidate <candidate> <expected-revision> <output> [repository-root]",
             invalidError.ToString());
 
         WithTemporaryDirectory(root =>
         {
             WriteVersionFixture(root);
             WriteDocumentationFixture(root);
+            WriteReleaseMaterialsFixture(root);
             WriteCandidateFreezeFixture(root);
             WriteDependencyLockFixture(root);
             WriteAgentPluginFixture(root);
@@ -1454,6 +1461,9 @@ public sealed class RepositoryChecksTests
             Assert.Contains("Content inventory verified", output.ToString());
             Assert.Contains("Python dependency locks verified", output.ToString());
             Assert.Contains("Project logo check passed.", output.ToString());
+            Assert.Contains(
+                "Release-material foundation qualified; exact candidate materials remain pending.",
+                output.ToString());
             Assert.Contains("Station badges verified", output.ToString());
             Assert.Contains("Source policy check passed", output.ToString());
             Assert.Contains("Agent Plugin source profile passed", output.ToString());
@@ -1468,6 +1478,7 @@ public sealed class RepositoryChecksTests
     [InlineData("inventory-release")]
     [InlineData("locks")]
     [InlineData("logo")]
+    [InlineData("materials")]
     [InlineData("source")]
     [InlineData("version")]
     public void Command_runs_each_individual_check(string command)
@@ -1476,6 +1487,7 @@ public sealed class RepositoryChecksTests
         {
             WriteVersionFixture(root);
             WriteDocumentationFixture(root);
+            WriteReleaseMaterialsFixture(root);
             WriteCandidateFreezeFixture(root);
             WriteDependencyLockFixture(root);
             CopyApprovedLogo(root);
@@ -1503,6 +1515,8 @@ public sealed class RepositoryChecksTests
             ["freeze-baseline", "revision"],
             ["inventory-write", ".", "extra"],
             ["lock-write"],
+            ["materials-write"],
+            ["materials-candidate", "candidate.json", "revision"],
         })
         {
             var output = new StringWriter();
@@ -1574,6 +1588,101 @@ public sealed class RepositoryChecksTests
             Assert.Equal(1, code);
             Assert.Equal(string.Empty, output.ToString());
             Assert.Contains("Content inventory generation failed:", error.ToString(), StringComparison.Ordinal);
+        });
+    }
+
+    [Fact]
+    public void Release_material_commands_write_exact_handoffs_and_propagate_failures()
+    {
+        WithTemporaryDirectory(root =>
+        {
+            WriteVersionFixture(root);
+            WriteReleaseMaterialsFixture(root);
+            var candidatePath = WriteReleaseMaterialsCandidate(root);
+            var output = new StringWriter();
+            var error = new StringWriter();
+
+            var inspectCode = RepositoryCheckCommand.Run(["materials", root], output, error);
+
+            Assert.Equal(0, inspectCode);
+            Assert.Equal(
+                "Release-material foundation qualified; exact candidate materials remain pending."
+                + Environment.NewLine,
+                output.ToString());
+            Assert.Equal(string.Empty, error.ToString());
+            Assert.False(File.Exists(Path.Combine(root, "release-materials-handoff.json")));
+
+            output = new StringWriter();
+            error = new StringWriter();
+            var foundationCode = RepositoryCheckCommand.Run(
+                ["materials-write", "TestResults/foundation.json", root],
+                output,
+                error);
+
+            Assert.Equal(0, foundationCode);
+            Assert.Equal(
+                "Release-material foundation qualified; exact candidate materials remain pending."
+                + Environment.NewLine,
+                output.ToString());
+            Assert.Equal(string.Empty, error.ToString());
+            Assert.True(File.Exists(Path.Combine(root, "TestResults", "foundation.json")));
+
+            output = new StringWriter();
+            error = new StringWriter();
+            var candidateCode = RepositoryCheckCommand.Run(
+                [
+                    "materials-candidate",
+                    Path.GetRelativePath(root, candidatePath),
+                    new string('a', 40),
+                    "TestResults/candidate.json",
+                    root,
+                ],
+                output,
+                error);
+
+            Assert.Equal(0, candidateCode);
+            Assert.Equal(
+                "Exact-candidate release-material structure qualified; separate release gates remain pending."
+                + Environment.NewLine,
+                output.ToString());
+            Assert.Equal(string.Empty, error.ToString());
+            Assert.True(File.Exists(Path.Combine(root, "TestResults", "candidate.json")));
+
+            output = new StringWriter();
+            error = new StringWriter();
+            var defaultRootShapeCode = RepositoryCheckCommand.Run(
+                [
+                    "materials-candidate",
+                    candidatePath,
+                    new string('a', 40),
+                    Path.Combine(root, "TestResults", "default-root.json"),
+                ],
+                output,
+                error);
+
+            Assert.Equal(1, defaultRootShapeCode);
+            Assert.Equal(string.Empty, output.ToString());
+            Assert.StartsWith(
+                "Release materials check failed:" + Environment.NewLine,
+                error.ToString(),
+                StringComparison.Ordinal);
+
+            File.Delete(Path.Combine(root, "PRIVACY.md"));
+            output = new StringWriter();
+            error = new StringWriter();
+            var failureCode = RepositoryCheckCommand.Run(
+                ["materials-write", "TestResults/failed.json", root],
+                output,
+                error);
+
+            Assert.Equal(1, failureCode);
+            Assert.Equal(string.Empty, output.ToString());
+            Assert.StartsWith(
+                "Release materials check failed:" + Environment.NewLine,
+                error.ToString(),
+                StringComparison.Ordinal);
+            Assert.Contains("PRIVACY.md", error.ToString(), StringComparison.Ordinal);
+            Assert.True(File.Exists(Path.Combine(root, "TestResults", "failed.json")));
         });
     }
 
@@ -1824,6 +1933,326 @@ public sealed class RepositoryChecksTests
         }
 
         WriteFile(root, "docs/guide.md", "# Guide\n");
+    }
+
+    private static void WriteReleaseMaterialsFixture(string root)
+    {
+        var repositoryRoot = ResolveRepositoryRoot();
+        var contractSource = Path.Combine(
+            repositoryRoot,
+            "config",
+            "release_materials_v1.json");
+        var contractDestination = Path.Combine(
+            root,
+            "config",
+            "release_materials_v1.json");
+        Directory.CreateDirectory(Path.GetDirectoryName(contractDestination)!);
+        File.Copy(contractSource, contractDestination, overwrite: true);
+
+        string[] documentPaths =
+        [
+            "README.md",
+            "docs/guides/PLAYER_GUIDE.md",
+            "docs/guides/ACCESSIBILITY.md",
+            "PRIVACY.md",
+            "SUPPORT.md",
+            "docs/guides/RECOVERY.md",
+            "docs/release/KNOWN_ISSUES.md",
+            "THIRD_PARTY_NOTICES.md",
+            "CREDITS.md",
+            "CHANGELOG.md",
+        ];
+        foreach (var (path, index) in documentPaths.Select((path, index) => (path, index)))
+        {
+            WriteFile(
+                root,
+                path,
+                $"# Release document {index}\n\n"
+                + string.Concat(
+                    Enumerable.Repeat(
+                        "Verified release guidance and candidate evidence remain explicit. ",
+                        4))
+                + "\n");
+        }
+    }
+
+    private static string WriteReleaseMaterialsCandidate(string root)
+    {
+        string[] documentPaths =
+        [
+            "README.md",
+            "docs/guides/PLAYER_GUIDE.md",
+            "docs/guides/ACCESSIBILITY.md",
+            "PRIVACY.md",
+            "SUPPORT.md",
+            "docs/guides/RECOVERY.md",
+            "docs/release/KNOWN_ISSUES.md",
+            "THIRD_PARTY_NOTICES.md",
+            "CREDITS.md",
+            "CHANGELOG.md",
+        ];
+        string[] platforms = ["windows-x64", "macos-universal", "linux-x64"];
+        string[] inputDevices =
+        [
+            "keyboard",
+            "mouse",
+            "xbox-layout-controller",
+            "playstation-layout-controller",
+        ];
+        string[] screenshotRoles =
+        [
+            "main-menu",
+            "classic-gameplay",
+            "vibe-gameplay",
+            "controls-remapping",
+            "accessibility-settings",
+            "spectator-and-replay",
+        ];
+        string[] videoRoles = ["gameplay-overview", "accessibility-and-input"];
+        string[] claimIds =
+        [
+            "native-three-platform-player",
+            "offline-core-play",
+            "keyboard-mouse-controller",
+            "nine-integrated-powers",
+            "accessibility-features",
+            "local-save-recovery",
+            "optional-pack-boundary",
+            "no-account-required",
+        ];
+
+        const string inputEvidencePath = "evidence/input.json";
+        const string claimEvidencePath = "evidence/claim.json";
+        const string screenshotPath = "media/screenshot.png";
+        const string videoPath = "media/video.mp4";
+        WriteFile(root, "retained/" + inputEvidencePath, "retained physical input evidence\n");
+        WriteFile(root, "retained/" + claimEvidencePath, "retained claim evidence\n");
+
+        var screenshotDestination = Path.Combine(
+            root,
+            "retained",
+            "media",
+            "screenshot.png");
+        Directory.CreateDirectory(Path.GetDirectoryName(screenshotDestination)!);
+        File.Copy(
+            Path.Combine(ResolveRepositoryRoot(), "assets", "images", "logo.png"),
+            screenshotDestination,
+            overwrite: true);
+        File.WriteAllBytes(
+            Path.Combine(root, "retained", "media", "video.mp4"),
+            ValidReleaseMaterialsMp4());
+
+        var documentationSha256 = new JsonObject();
+        foreach (var path in documentPaths)
+        {
+            documentationSha256[path] = Convert.ToHexStringLower(
+                SHA256.HashData(File.ReadAllBytes(Path.Combine(root, path.Replace(
+                    '/',
+                    Path.DirectorySeparatorChar)))));
+        }
+
+        var artifactManifestSha256ByPlatform = new JsonObject();
+        var downloadBytesByPlatform = new JsonObject();
+        var installedBytesByPlatform = new JsonObject();
+        var supportedOperatingSystemsByPlatform = new JsonObject();
+        var saveLocationsByPlatform = new JsonObject();
+        foreach (var (platform, index) in platforms.Select((platform, index) => (platform, index)))
+        {
+            artifactManifestSha256ByPlatform[platform] = new string((char)('a' + index), 64);
+            downloadBytesByPlatform[platform] = 1000 + index;
+            installedBytesByPlatform[platform] = 2000 + index;
+            supportedOperatingSystemsByPlatform[platform] = new JsonArray(
+                $"Supported {platform} version");
+            saveLocationsByPlatform[platform] = $"Documented {platform} save location";
+        }
+
+        var inputEvidencePathsByDevice = new JsonObject();
+        foreach (var inputDevice in inputDevices)
+        {
+            inputEvidencePathsByDevice[inputDevice] = new JsonArray(inputEvidencePath);
+        }
+
+        var screenshotPathsByRole = new JsonObject();
+        foreach (var role in screenshotRoles)
+        {
+            screenshotPathsByRole[role] = new JsonArray(screenshotPath);
+        }
+
+        var videoPathsByRole = new JsonObject();
+        foreach (var role in videoRoles)
+        {
+            videoPathsByRole[role] = new JsonArray(videoPath);
+        }
+
+        var marketingClaims = new JsonArray();
+        foreach (var claimId in claimIds)
+        {
+            marketingClaims.Add(new JsonObject
+            {
+                ["claimId"] = claimId,
+                ["statement"] = $"Verified candidate claim for {claimId}.",
+                ["evidencePaths"] = new JsonArray(claimEvidencePath),
+            });
+        }
+
+        var retainedFileSha256 = new JsonObject();
+        foreach (var path in new[]
+        {
+            claimEvidencePath,
+            inputEvidencePath,
+            screenshotPath,
+            videoPath,
+        })
+        {
+            retainedFileSha256[path] = Convert.ToHexStringLower(
+                SHA256.HashData(File.ReadAllBytes(Path.Combine(
+                    root,
+                    "retained",
+                    path.Replace('/', Path.DirectorySeparatorChar)))));
+        }
+
+        var candidate = new JsonObject
+        {
+            ["schemaVersion"] = 1,
+            ["kind"] = "vibesnake-release-materials-candidate-v1",
+            ["sourceRevision"] = new string('a', 40),
+            ["appVersion"] = "0.3.0-alpha.1",
+            ["artifactManifestSha256ByPlatform"] = artifactManifestSha256ByPlatform,
+            ["downloadBytesByPlatform"] = downloadBytesByPlatform,
+            ["installedBytesByPlatform"] = installedBytesByPlatform,
+            ["supportedOperatingSystemsByPlatform"] = supportedOperatingSystemsByPlatform,
+            ["inputDeviceIds"] = new JsonArray(
+                inputDevices.Select(value => JsonValue.Create(value)).ToArray()),
+            ["inputEvidencePathsByDevice"] = inputEvidencePathsByDevice,
+            ["offlineBehavior"] = "core-play-requires-no-account-or-network",
+            ["saveLocationsByPlatform"] = saveLocationsByPlatform,
+            ["coreContentBytes"] = 500,
+            ["optionalContentBytes"] = 300,
+            ["documentationSha256"] = documentationSha256,
+            ["screenshotPathsByRole"] = screenshotPathsByRole,
+            ["videoPathsByRole"] = videoPathsByRole,
+            ["retainedFileSha256"] = retainedFileSha256,
+            ["marketingClaims"] = marketingClaims,
+        };
+        WriteFile(root, "retained/candidate.json", RenderJson(candidate));
+        return Path.Combine(root, "retained", "candidate.json");
+    }
+
+    private static byte[] ValidReleaseMaterialsMp4()
+    {
+        var provisional = BuildReleaseMaterialsMp4(1);
+        return BuildReleaseMaterialsMp4(checked((uint)(provisional.Length - 1)));
+    }
+
+    private static byte[] BuildReleaseMaterialsMp4(uint chunkOffset)
+    {
+        using var output = new MemoryStream();
+        WriteReleaseMaterialsBox(
+            output,
+            "ftyp",
+            [.. Encoding.ASCII.GetBytes("isom"), 0, 0, 0, 0, .. Encoding.ASCII.GetBytes("isom")]);
+
+        var movieHeader = ReleaseMaterialsBox(
+            "mvhd",
+            [.. new byte[12], .. ReleaseMaterialsUInt32(1000), .. ReleaseMaterialsUInt32(1000)]);
+        var trackHeader = ReleaseMaterialsBox(
+            "tkhd",
+            [
+                0, 0, 0, 1,
+                .. new byte[8],
+                .. ReleaseMaterialsUInt32(1),
+                .. new byte[4],
+                .. ReleaseMaterialsUInt32(1000),
+            ]);
+        var mediaHeader = ReleaseMaterialsBox(
+            "mdhd",
+            [.. new byte[12], .. ReleaseMaterialsUInt32(1000), .. ReleaseMaterialsUInt32(1000)]);
+        var handler = ReleaseMaterialsBox(
+            "hdlr",
+            [.. new byte[8], .. Encoding.ASCII.GetBytes("vide")]);
+        var sampleEntry = ReleaseMaterialsBox("avc1", ReleaseMaterialsVisualSampleEntry());
+        var sampleDescriptions = ReleaseMaterialsBox(
+            "stsd",
+            [.. new byte[4], .. ReleaseMaterialsUInt32(1), .. sampleEntry]);
+        var timeToSample = ReleaseMaterialsBox(
+            "stts",
+            [
+                .. new byte[4],
+                .. ReleaseMaterialsUInt32(1),
+                .. ReleaseMaterialsUInt32(1),
+                .. ReleaseMaterialsUInt32(1000),
+            ]);
+        var sampleToChunk = ReleaseMaterialsBox(
+            "stsc",
+            [
+                .. new byte[4],
+                .. ReleaseMaterialsUInt32(1),
+                .. ReleaseMaterialsUInt32(1),
+                .. ReleaseMaterialsUInt32(1),
+                .. ReleaseMaterialsUInt32(1),
+            ]);
+        var sampleSizes = ReleaseMaterialsBox(
+            "stsz",
+            [.. new byte[4], .. ReleaseMaterialsUInt32(1), .. ReleaseMaterialsUInt32(1)]);
+        var chunkOffsets = ReleaseMaterialsBox(
+            "stco",
+            [.. new byte[4], .. ReleaseMaterialsUInt32(1), .. ReleaseMaterialsUInt32(chunkOffset)]);
+        var sampleTable = ReleaseMaterialsBox(
+            "stbl",
+            [.. sampleDescriptions, .. timeToSample, .. sampleToChunk, .. sampleSizes, .. chunkOffsets]);
+        var mediaInformation = ReleaseMaterialsBox("minf", sampleTable);
+        var media = ReleaseMaterialsBox("mdia", [.. mediaHeader, .. handler, .. mediaInformation]);
+        var track = ReleaseMaterialsBox("trak", [.. trackHeader, .. media]);
+        WriteReleaseMaterialsBox(output, "moov", [.. movieHeader, .. track]);
+        WriteReleaseMaterialsBox(output, "mdat", [0]);
+        return output.ToArray();
+    }
+
+    private static byte[] ReleaseMaterialsBox(string type, byte[] payload)
+    {
+        using var output = new MemoryStream();
+        WriteReleaseMaterialsBox(output, type, payload);
+        return output.ToArray();
+    }
+
+    private static byte[] ReleaseMaterialsUInt32(uint value)
+    {
+        var bytes = new byte[4];
+        BinaryPrimitives.WriteUInt32BigEndian(bytes, value);
+        return bytes;
+    }
+
+    private static byte[] ReleaseMaterialsVisualSampleEntry()
+    {
+        var value = new byte[78];
+        BinaryPrimitives.WriteUInt16BigEndian(value.AsSpan(6), 1);
+        BinaryPrimitives.WriteUInt16BigEndian(value.AsSpan(24), 1);
+        BinaryPrimitives.WriteUInt16BigEndian(value.AsSpan(26), 1);
+        BinaryPrimitives.WriteUInt32BigEndian(value.AsSpan(28), 0x0048_0000);
+        BinaryPrimitives.WriteUInt32BigEndian(value.AsSpan(32), 0x0048_0000);
+        BinaryPrimitives.WriteUInt16BigEndian(value.AsSpan(40), 1);
+        BinaryPrimitives.WriteUInt16BigEndian(value.AsSpan(74), 0x18);
+        BinaryPrimitives.WriteUInt16BigEndian(value.AsSpan(76), ushort.MaxValue);
+        return
+        [
+            .. value,
+            .. ReleaseMaterialsBox(
+                "avcC",
+                [
+                    1, 0x42, 0, 0x1e, 0xff, 0xe1,
+                    0, 4, 0x67, 0x42, 0, 0x1e,
+                    1, 0, 2, 0x68, 0xce,
+                ]),
+        ];
+    }
+
+    private static void WriteReleaseMaterialsBox(Stream output, string type, byte[] payload)
+    {
+        Span<byte> size = stackalloc byte[4];
+        BinaryPrimitives.WriteUInt32BigEndian(size, checked((uint)(payload.Length + 8)));
+        output.Write(size);
+        output.Write(Encoding.ASCII.GetBytes(type));
+        output.Write(payload);
     }
 
     private static void WriteAgentPluginFixture(string root)

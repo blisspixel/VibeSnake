@@ -13,7 +13,7 @@ All ten records must have `passed: true`, `releaseAcceptance: true`, and the exa
 1. three-platform release matrix;
 2. complete manual product matrix;
 3. controlled external validation;
-4. exact candidate release materials;
+4. exact candidate release materials accepted after structural completion, artifact reconciliation, claim approval, visible image review, and video playback review;
 5. release and rollback rehearsal;
 6. content and optional-pack approval;
 7. named-hardware performance acceptance;
@@ -21,7 +21,7 @@ All ten records must have `passed: true`, `releaseAcceptance: true`, and the exa
 9. structured human playtest acceptance;
 10. protected platform signing acceptance.
 
-A protocol-qualified handoff with zero sessions is not an accepted decision. Missing people, hardware, content approval, credentials, or platform evidence cannot be converted to a pass by the promotion guard.
+A protocol-qualified handoff with zero sessions is not an accepted decision. For release materials, `candidateMaterialComplete: true` without `releaseAcceptance: true` is also insufficient. Missing people, hardware, content approval, credentials, or platform evidence cannot be converted to a pass by the promotion guard.
 
 ## Protected rebuild
 

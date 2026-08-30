@@ -1011,9 +1011,10 @@ public static class ReadmeScreenshotCheck
             throw new FileNotFoundException("explicit Godot executable does not exist");
         }
 
-        var pathRoot = Path.GetPathRoot(path)
-            ?? throw new InvalidDataException("explicit Godot executable root is invalid");
-        RejectExistingPathComponents(pathRoot, path, "Godot executable");
+        // Explicit executable paths can legitimately pass through platform aliases such as
+        // macOS /var. The final executable must still be a regular, non-linked file, and its
+        // exact pinned build identity is verified before it can render any evidence.
+        RejectReparsePoint(path, "Godot executable");
         return path;
     }
 

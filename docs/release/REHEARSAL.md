@@ -13,11 +13,11 @@ Begin only after the exact candidate has:
 1. a clean source revision and canonical version;
 2. final Windows x64, macOS Universal, and Linux x64 artifact and manifest hashes;
 3. completed protected signing and platform verification;
-4. accepted release materials bound to the same revision;
+4. accepted release materials with `releaseAcceptance: true` bound to the same revision;
 5. a preserved previous supported artifact for every platform;
 6. a retained migration fixture set that represents every supported save schema.
 
-Qualification-only packages, unsigned placeholders, an unapproved optional pack, or current alpha documentation cannot satisfy this entry gate.
+Qualification-only packages, unsigned placeholders, an unapproved optional pack, or current alpha documentation cannot satisfy this entry gate. A direct `materials-candidate` handoff proves structural completion only and cannot satisfy the accepted-material decision by itself.
 
 ## Staged record
 
@@ -26,7 +26,7 @@ Keep the rehearsal outside the source checkout. The strict record binds:
 - candidate and previous application versions;
 - exact candidate revision and controlled staged-location ID;
 - candidate artifact, previous artifact, and candidate manifest paths and SHA-256 values for all three platforms;
-- the accepted release-material decision file and SHA-256;
+- the later accepted release-material decision file and SHA-256, not the structural candidate handoff alone;
 - every migration fixture and a deterministic set digest;
 - platform operation results and retained evidence;
 - withdrawal result;
