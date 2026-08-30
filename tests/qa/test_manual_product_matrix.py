@@ -7,8 +7,10 @@ import json
 from pathlib import Path
 
 from scripts.check_manual_product_matrix import (
+    COMPLETE_FLOW_INPUT_DEVICES,
     CONTRACT_PATH,
     INPUT_DEVICES,
+    MOUSE_INPUT_CAPABILITIES,
     PLATFORM_ROWS,
     REQUIRED_FLOWS,
     SETTINGS_PROFILES,
@@ -65,12 +67,21 @@ def _write_candidate(path: Path) -> Path:
     return path
 
 
-def _session(platform: str, index: int) -> dict[str, object]:
-    artifact_digit = 2 if platform.startswith("macos-universal") else index + 1
+def _session(
+    platform: str,
+    platform_index: int,
+    session_index: int,
+    input_device: str,
+    *,
+    flows: tuple[str, ...] = REQUIRED_FLOWS,
+    include_profiles: bool = False,
+) -> dict[str, object]:
+    artifact_digit = 2 if platform.startswith("macos-universal") else platform_index + 1
+    capability_by_flow = dict(zip(REQUIRED_FLOWS, MOUSE_INPUT_CAPABILITIES, strict=False))
     return {
-        "schemaVersion": 1,
-        "kind": "vibesnake-manual-product-matrix-session-v1",
-        "sessionId": f"product-matrix-{index:03d}",
+        "schemaVersion": 2,
+        "kind": "vibesnake-manual-product-matrix-session-v2",
+        "sessionId": f"product-matrix-{session_index:03d}",
         "candidateRevision": "a" * 40,
         "artifactSha256": str(artifact_digit) * 64,
         "appVersion": "0.9.0",
@@ -78,29 +89,73 @@ def _session(platform: str, index: int) -> dict[str, object]:
         "operatingSystemVersion": "qualified-os-version",
         "hardwareClass": "declared-hardware-class",
         "renderer": "gl-compatibility",
-        "inputDeviceIds": [INPUT_DEVICES[index][0]],
-        "settingsProfileIds": list(SETTINGS_PROFILES[index * 2 : (index + 1) * 2]),
-        "executedUtc": f"2026-08-0{index + 1}T12:00:00Z",
+        "executedUtc": f"2026-08-{platform_index + 1:02d}T12:00:00Z",
         "results": [
             {
                 "flowId": flow_id,
+                "inputDeviceId": input_device,
+                "inputCapabilityIds": (
+                    [capability_by_flow[flow_id]] if input_device == "mouse" and flow_id in capability_by_flow else []
+                ),
+                "settingsProfileIds": (
+                    [SETTINGS_PROFILES[index]] if include_profiles and index < len(SETTINGS_PROFILES) else []
+                ),
                 "result": "pass",
-                "evidencePaths": [f"evidence/{platform}/{flow_id}.png"],
+                "evidencePaths": [f"evidence/{platform}/{session_index:03d}-{flow_id}.png"],
             }
-            for flow_id in REQUIRED_FLOWS
+            for index, flow_id in enumerate(flows)
         ],
     }
+
+
+def _write_complete_matrix(sessions: Path) -> list[Path]:
+    paths: list[Path] = []
+    session_index = 0
+    for platform_index, (platform, _, _) in enumerate(PLATFORM_ROWS):
+        for input_device in COMPLETE_FLOW_INPUT_DEVICES:
+            path = sessions / f"session-{session_index:03d}.json"
+            _write_session(
+                path,
+                _session(
+                    platform,
+                    platform_index,
+                    session_index,
+                    input_device,
+                    include_profiles=input_device == "keyboard",
+                ),
+            )
+            paths.append(path)
+            session_index += 1
+        path = sessions / f"session-{session_index:03d}.json"
+        _write_session(
+            path,
+            _session(
+                platform,
+                platform_index,
+                session_index,
+                "mouse",
+                flows=REQUIRED_FLOWS[: len(MOUSE_INPUT_CAPABILITIES)],
+            ),
+        )
+        paths.append(path)
+        session_index += 1
+    return paths
 
 
 def test_repository_manual_product_matrix_handoff_is_exact_and_pending() -> None:
     errors, evidence = validate_manual_product_matrix()
 
     assert errors == []
+    assert evidence["schemaVersion"] == 2
+    assert evidence["kind"] == "manual-product-matrix-handoff-v2"
     assert evidence["passed"] is True
     assert evidence["protocolQualified"] is True
     assert evidence["platformRowCount"] == 4
     assert evidence["requiredFlowCount"] == 36
     assert evidence["requiredPlatformFlowCellCount"] == 144
+    assert evidence["requiredDeviceFlowCellCount"] == 432
+    assert evidence["requiredMouseCapabilityCellCount"] == 16
+    assert evidence["requiredPlatformProfileCellCount"] == 32
     assert evidence["inputDeviceCount"] == 4
     assert evidence["settingsProfileCount"] == 8
     assert evidence["manualSessionCount"] == 0
@@ -123,14 +178,16 @@ def test_contract_rejects_a_missing_required_flow(tmp_path: Path) -> None:
 def test_complete_retained_sessions_close_every_matrix_dimension(tmp_path: Path) -> None:
     sessions = tmp_path / "sessions"
     candidate = _write_candidate(tmp_path / "candidate.json")
-    for index, (platform, _, _) in enumerate(PLATFORM_ROWS):
-        _write_session(sessions / f"session-{index}.json", _session(platform, index))
+    _write_complete_matrix(sessions)
 
     errors, evidence = validate_manual_product_matrix(sessions_directory=sessions, candidate_path=candidate)
 
     assert errors == []
-    assert evidence["manualSessionCount"] == 4
+    assert evidence["manualSessionCount"] == 16
     assert evidence["completedPlatformFlowCellCount"] == 144
+    assert evidence["completedDeviceFlowCellCount"] == 432
+    assert evidence["completedMouseCapabilityCellCount"] == 16
+    assert evidence["completedPlatformProfileCellCount"] == 32
     assert evidence["observedInputDevices"] == sorted(item[0] for item in INPUT_DEVICES)
     assert evidence["observedSettingsProfiles"] == sorted(SETTINGS_PROFILES)
     assert evidence["failedOrBlockedResultCount"] == 0
@@ -141,31 +198,61 @@ def test_complete_retained_sessions_close_every_matrix_dimension(tmp_path: Path)
     assert evidence["pendingGates"] == []
 
 
-def test_incomplete_or_failed_session_cannot_claim_acceptance(tmp_path: Path) -> None:
+def test_one_device_per_platform_cannot_claim_complete_device_coverage(tmp_path: Path) -> None:
     sessions = tmp_path / "sessions"
     candidate = _write_candidate(tmp_path / "candidate.json")
     for index, (platform, _, _) in enumerate(PLATFORM_ROWS):
-        document = _session(platform, index)
-        if index == 0:
-            document["results"][0]["result"] = "fail"
-        if index == 1:
-            document["results"] = document["results"][:-1]
+        input_device = INPUT_DEVICES[index][0]
+        document = _session(platform, index, index, input_device)
+        if input_device == "mouse":
+            document["results"][0]["inputCapabilityIds"] = list(MOUSE_INPUT_CAPABILITIES)
         _write_session(sessions / f"session-{index}.json", document)
-    missing_evidence = sessions / "evidence" / PLATFORM_ROWS[2][0] / f"{REQUIRED_FLOWS[0]}.png"
-    missing_evidence.unlink()
+
+    errors, evidence = validate_manual_product_matrix(sessions_directory=sessions, candidate_path=candidate)
+
+    assert evidence["completedPlatformFlowCellCount"] == 144
+    assert evidence["manualExecutionComplete"] is False
+    assert evidence["releaseAcceptance"] is False
+    assert any("windows-x64 xbox-layout-controller is missing passing flows" in error for error in errors)
+
+
+def test_complete_device_and_mouse_capability_gaps_fail_closed(tmp_path: Path) -> None:
+    sessions = tmp_path / "sessions"
+    candidate = _write_candidate(tmp_path / "candidate.json")
+    paths = _write_complete_matrix(sessions)
+
+    keyboard = json.loads(paths[0].read_text(encoding="utf-8"))
+    keyboard["results"] = keyboard["results"][:-1]
+    _write_json(paths[0], keyboard)
+    mouse = json.loads(paths[3].read_text(encoding="utf-8"))
+    mouse["results"][-1]["inputCapabilityIds"] = []
+    _write_json(paths[3], mouse)
 
     errors, evidence = validate_manual_product_matrix(sessions_directory=sessions, candidate_path=candidate)
 
     assert evidence["manualExecutionComplete"] is False
-    assert evidence["releaseAcceptance"] is False
-    assert any("missing passing flows" in error for error in errors)
-    assert any("missing retained files" in error for error in errors)
+    assert any("windows-x64 keyboard is missing passing flows: quit" in error for error in errors)
+    assert any("windows-x64 mouse is missing passing capabilities: back" in error for error in errors)
+
+
+def test_failed_profile_observation_earns_no_coverage_and_remains_fatal(tmp_path: Path) -> None:
+    sessions = tmp_path / "sessions"
+    candidate = _write_candidate(tmp_path / "candidate.json")
+    paths = _write_complete_matrix(sessions)
+    document = json.loads(paths[0].read_text(encoding="utf-8"))
+    document["results"][0]["result"] = "fail"
+    _write_json(paths[0], document)
+
+    errors, evidence = validate_manual_product_matrix(sessions_directory=sessions, candidate_path=candidate)
+
+    assert evidence["manualExecutionComplete"] is False
+    assert any("windows-x64 is missing passing settings profiles: sound-device-absent" in error for error in errors)
     assert "manual matrix contains failed or blocked required flows" in errors
 
 
 def test_retained_sessions_require_and_match_an_exact_candidate(tmp_path: Path) -> None:
     sessions = tmp_path / "sessions"
-    document = _session("windows-x64", 0)
+    document = _session("windows-x64", 0, 0, "keyboard")
     _write_session(sessions / "session.json", document)
 
     errors, evidence = validate_manual_product_matrix(sessions_directory=sessions)
@@ -202,18 +289,20 @@ def test_candidate_rejects_duplicate_fields_and_split_universal_identity(tmp_pat
     assert evidence["candidateQualified"] is False
 
 
-def test_malformed_session_lists_and_invalid_calendar_time_fail_closed(tmp_path: Path) -> None:
+def test_malformed_result_dimensions_and_invalid_calendar_time_fail_closed(tmp_path: Path) -> None:
     sessions = tmp_path / "sessions"
     candidate = _write_candidate(tmp_path / "candidate.json")
-    document = _session("windows-x64", 0)
-    document["inputDeviceIds"] = [{"unexpected": True}]
-    document["settingsProfileIds"] = [["sound-muted"]]
+    document = _session("windows-x64", 0, 0, "keyboard")
     document["executedUtc"] = "2026-99-99T99:99:99Z"
+    document["results"][0]["inputDeviceId"] = ["unknown-controller"]
+    document["results"][1]["inputCapabilityIds"] = ["back"]
+    document["results"][2]["settingsProfileIds"] = [["sound-muted"]]
     _write_session(sessions / "session.json", document)
 
     errors, evidence = validate_manual_product_matrix(sessions_directory=sessions, candidate_path=candidate)
 
-    assert any("inputDeviceIds must be unique supported devices" in error for error in errors)
+    assert any("inputDeviceId is unsupported" in error for error in errors)
+    assert any("inputCapabilityIds must be empty for keyboard" in error for error in errors)
     assert any("settingsProfileIds must be unique supported profiles" in error for error in errors)
     assert any("executedUtc must use" in error for error in errors)
     assert evidence["releaseAcceptance"] is False

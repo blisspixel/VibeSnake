@@ -1,6 +1,6 @@
 {
-  "schemaVersion": 1,
-  "kind": "vibesnake-manual-product-matrix-v1",
+  "schemaVersion": 2,
+  "kind": "vibesnake-manual-product-matrix-v2",
   "status": "qualified-handoff-execution-pending",
   "requiredFlowDefectSeverity": "P1",
   "platformRows": [
@@ -66,20 +66,26 @@
   "inputDevices": [
     {
       "id": "keyboard",
-      "requiredCoverage": "complete-required-flow"
+      "requiredCoverage": "complete-required-flow-per-platform"
     },
     {
       "id": "mouse",
-      "requiredCoverage": "menu-settings-gameplay-direction-back"
+      "requiredCoverage": "complete-capability-set-per-platform"
     },
     {
       "id": "xbox-layout-controller",
-      "requiredCoverage": "complete-required-flow"
+      "requiredCoverage": "complete-required-flow-per-platform"
     },
     {
       "id": "playstation-layout-controller",
-      "requiredCoverage": "complete-required-flow"
+      "requiredCoverage": "complete-required-flow-per-platform"
     }
+  ],
+  "mouseInputCapabilities": [
+    "menu-targeting",
+    "settings-navigation",
+    "gameplay-direction",
+    "back"
   ],
   "settingsProfiles": [
     "sound-device-absent",
@@ -125,13 +131,14 @@
     "operatingSystemVersion",
     "hardwareClass",
     "renderer",
-    "inputDeviceIds",
-    "settingsProfileIds",
     "executedUtc",
     "results"
   ],
   "requiredResultFields": [
     "flowId",
+    "inputDeviceId",
+    "inputCapabilityIds",
+    "settingsProfileIds",
     "result",
     "evidencePaths"
   ],
@@ -143,8 +150,10 @@
   "releaseRules": [
     "Every retained session must match an exact candidate record projected from independently verified Release matrix evidence.",
     "Every required flow must pass on every platform row using the exact candidate artifact.",
-    "Keyboard, mouse, Xbox-layout controller, and PlayStation-layout controller coverage must be retained.",
-    "Every required settings profile must be observed at least once and on every platform where the behavior is platform-dependent.",
+    "Keyboard, Xbox-layout controller, and PlayStation-layout controller must each pass every required flow on every platform row.",
+    "Mouse menu targeting, settings navigation, gameplay direction, and Back must each pass on every platform row.",
+    "Every required settings profile must appear on at least one passing observation on every platform row.",
+    "Only a passing result earns flow, device, capability, or settings-profile coverage.",
     "A failed or blocked required flow prevents release acceptance.",
     "An inaccessible required flow is a P1 defect and prevents release acceptance."
   ]

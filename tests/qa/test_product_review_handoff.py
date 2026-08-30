@@ -76,9 +76,13 @@ def test_session_template_binds_identity_and_cannot_accidentally_pass() -> None:
     assert template["candidateRevision"] == REVISION
     assert template["artifactSha256"] == "2" * 64
     assert template["appVersion"] == "0.3.0-alpha.1"
-    assert template["inputDeviceIds"] == []
+    assert template["schemaVersion"] == 2
+    assert template["kind"] == "vibesnake-manual-product-matrix-session-v2"
     assert len(template["results"]) == 36
     assert {row["result"] for row in template["results"]} == {"pending"}
+    assert {row["inputDeviceId"] for row in template["results"]} == {"REPLACE"}
+    assert all(row["inputCapabilityIds"] == [] for row in template["results"])
+    assert all(row["settingsProfileIds"] == [] for row in template["results"])
 
 
 def test_workspace_recomputes_matrix_and_is_deterministic_and_fail_closed(

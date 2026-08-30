@@ -129,8 +129,8 @@ def build_session_template(candidate: Mapping[str, Any], artifact_row: Mapping[s
     """Create an intentionally incomplete session template with exact immutable identity fields."""
     platform_row_id = str(artifact_row["platformRowId"])
     return {
-        "schemaVersion": 1,
-        "kind": "vibesnake-manual-product-matrix-session-v1",
+        "schemaVersion": 2,
+        "kind": "vibesnake-manual-product-matrix-session-v2",
         "sessionId": "product-matrix-REPLACE",
         "candidateRevision": candidate["candidateRevision"],
         "artifactSha256": artifact_row["sha256"],
@@ -139,12 +139,13 @@ def build_session_template(candidate: Mapping[str, Any], artifact_row: Mapping[s
         "operatingSystemVersion": "REPLACE",
         "hardwareClass": "REPLACE",
         "renderer": "REPLACE",
-        "inputDeviceIds": [],
-        "settingsProfileIds": [],
         "executedUtc": "REPLACE",
         "results": [
             {
                 "flowId": flow_id,
+                "inputDeviceId": "REPLACE",
+                "inputCapabilityIds": [],
+                "settingsProfileIds": [],
                 "result": "pending",
                 "evidencePaths": [f"evidence/{platform_row_id}/{flow_id}.REPLACE"],
             }
@@ -180,8 +181,10 @@ continue with a renamed, rebuilt, or mismatched package.
 1. Copy the applicable file from `templates/` into `sessions/` with a unique name such as
    `product-matrix-001.json`.
 2. Preserve the candidate revision, application version, platform row, and artifact SHA-256 exactly.
-3. Replace every `REPLACE` value, list every input device and settings profile actually observed, and record
-   `pass`, `fail`, or `blocked` for each executed flow.
+3. Replace every `REPLACE` value. Each result names the one input device that executed that flow, any mouse
+   capability demonstrated, and every settings profile active for that observation. Record `pass`, `fail`, or
+   `blocked` for each executed flow. Copy a platform template into additional sessions when another device or
+   profile must execute the same flow.
 4. Put sanitized screenshots, video, logs, and observations under `sessions/evidence/<platform-row>/`. Keep every
    evidence path relative and never record controller serials, accounts, private paths, or unrelated device data.
 5. A failure or blocked flow is evidence, not a reason to discard the session.
@@ -195,8 +198,9 @@ python scripts/check_manual_product_matrix.py `
   --output <workspace>/decision.json
 ```
 
-Review remains incomplete until the validator reports all 144 platform-flow cells passing with every required
-device and settings profile. This workspace does not sign, publish, approve, or modify candidate bytes.
+Review remains incomplete until the validator reports all 144 platform-flow cells, all 432 complete-device
+flow cells, all 16 mouse-capability cells, and all 32 platform-profile cells passing. This workspace does not
+sign, publish, approve, or modify candidate bytes.
 """
 
 

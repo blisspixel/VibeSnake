@@ -59,12 +59,13 @@ The complete player-facing behavior is in the [player guide](docs/guides/PLAYER_
 
 The immediate goal is the first reproducible native alpha, not more feature surface.
 
-Unsigned Windows, macOS, and Linux review packages are retained from [Release run 32421705560](https://github.com/blisspixel/VibeSnake/actions/runs/32421705560) at `e87db6e`. Physical-session templates and the 12-track `the_bureau` listening record are bound to those exact bytes. Execution is still 0 of 144 cells and 0 of 12 listening decisions. Evidence, hashes, and open gates live in [current status](docs/release/STATUS.md).
+[Release run 32421705560](https://github.com/blisspixel/VibeSnake/actions/runs/32421705560) at `e87db6e` remains historical automated qualification evidence. Later player and rules changes on `main` supersede those packages for physical release acceptance, so no current candidate-bound physical review is prepared. The hash-bound 12-track `the_bureau` listening record remains current at 0 of 12 decisions. Evidence, hashes, and open gates live in [current status](docs/release/STATUS.md).
 
-1. Fill the prepared physical-review sessions against those retained packages.
-2. Complete `the_bureau` listening, then approve the first export-eligible core and radio set.
-3. Repair findings and rerun every affected gate without expanding feature scope.
-4. Publish `v0.3.0-alpha.1` only when the reviewed revision, hosted CI, artifacts, content, and disclosures agree.
+1. Complete `the_bureau` listening and approve the first non-zero core and radio export allowlists.
+2. Freeze the resulting content-bearing revision, run a fresh three-platform Release matrix, and generate a new candidate-bound review workspace.
+3. Execute the corrected physical matrix against those exact packages.
+4. Repair findings and rerun every affected gate without expanding feature scope.
+5. Publish `v0.3.0-alpha.1` only when the reviewed revision, hosted CI, artifacts, content, and disclosures agree.
 
 The [roadmap](ROADMAP.md#what-is-next-ordered-and-why) explains why this work precedes later milestones.
 

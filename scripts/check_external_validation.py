@@ -102,7 +102,7 @@ FINDING_FIELDS = (
 )
 PREREQUISITE_PATHS = (
     "config/qa_human_playtest_protocol.json",
-    "config/qa_manual_product_matrix_v1.json",
+    "config/qa_manual_product_matrix_v2.json",
     "docs/guides/ACCESSIBILITY.md",
     "docs/release/MANUAL_PRODUCT_MATRIX.md",
 )

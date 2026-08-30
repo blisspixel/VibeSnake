@@ -13,7 +13,7 @@ from typing import Any
 
 
 ROOT = Path(__file__).resolve().parents[1]
-CONTRACT_PATH = ROOT / "config" / "qa_manual_product_matrix_v1.json"
+CONTRACT_PATH = ROOT / "config" / "qa_manual_product_matrix_v2.json"
 REVISION_PATTERN = re.compile(r"[0-9a-f]{40}")
 SHA256_PATTERN = re.compile(r"[0-9a-f]{64}")
 UTC_PATTERN = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z")
@@ -65,10 +65,19 @@ REQUIRED_FLOWS = (
     "quit",
 )
 INPUT_DEVICES = (
-    ("keyboard", "complete-required-flow"),
-    ("mouse", "menu-settings-gameplay-direction-back"),
-    ("xbox-layout-controller", "complete-required-flow"),
-    ("playstation-layout-controller", "complete-required-flow"),
+    ("keyboard", "complete-required-flow-per-platform"),
+    ("mouse", "complete-capability-set-per-platform"),
+    ("xbox-layout-controller", "complete-required-flow-per-platform"),
+    ("playstation-layout-controller", "complete-required-flow-per-platform"),
+)
+COMPLETE_FLOW_INPUT_DEVICES = tuple(
+    device_id for device_id, coverage in INPUT_DEVICES if coverage == "complete-required-flow-per-platform"
+)
+MOUSE_INPUT_CAPABILITIES = (
+    "menu-targeting",
+    "settings-navigation",
+    "gameplay-direction",
+    "back",
 )
 SETTINGS_PROFILES = (
     "sound-device-absent",
@@ -91,12 +100,17 @@ SESSION_FIELDS = (
     "operatingSystemVersion",
     "hardwareClass",
     "renderer",
-    "inputDeviceIds",
-    "settingsProfileIds",
     "executedUtc",
     "results",
 )
-RESULT_FIELDS = ("flowId", "result", "evidencePaths")
+RESULT_FIELDS = (
+    "flowId",
+    "inputDeviceId",
+    "inputCapabilityIds",
+    "settingsProfileIds",
+    "result",
+    "evidencePaths",
+)
 RESULT_VALUES = ("pass", "fail", "blocked")
 CANDIDATE_FIELDS = (
     "schemaVersion",
@@ -124,8 +138,10 @@ CANDIDATE_ARTIFACT_FIELDS = (
 RELEASE_RULES = (
     "Every retained session must match an exact candidate record projected from independently verified Release matrix evidence.",
     "Every required flow must pass on every platform row using the exact candidate artifact.",
-    "Keyboard, mouse, Xbox-layout controller, and PlayStation-layout controller coverage must be retained.",
-    "Every required settings profile must be observed at least once and on every platform where the behavior is platform-dependent.",
+    "Keyboard, Xbox-layout controller, and PlayStation-layout controller must each pass every required flow on every platform row.",
+    "Mouse menu targeting, settings navigation, gameplay direction, and Back must each pass on every platform row.",
+    "Every required settings profile must appear on at least one passing observation on every platform row.",
+    "Only a passing result earns flow, device, capability, or settings-profile coverage.",
     "A failed or blocked required flow prevents release acceptance.",
     "An inaccessible required flow is a P1 defect and prevents release acceptance.",
 )
@@ -213,6 +229,7 @@ def validate_contract(contract_path: Path = CONTRACT_PATH) -> tuple[list[str], d
         "platformRows",
         "requiredFlows",
         "inputDevices",
+        "mouseInputCapabilities",
         "settingsProfiles",
         "requiredCandidateFields",
         "requiredCandidateArtifactFields",
@@ -224,8 +241,8 @@ def validate_contract(contract_path: Path = CONTRACT_PATH) -> tuple[list[str], d
     if not _strict_keys(contract, expected_fields, "contract", errors):
         return errors, contract if isinstance(contract, dict) else None
 
-    _exact(contract["schemaVersion"], 1, "contract.schemaVersion", errors)
-    _exact(contract["kind"], "vibesnake-manual-product-matrix-v1", "contract.kind", errors)
+    _exact(contract["schemaVersion"], 2, "contract.schemaVersion", errors)
+    _exact(contract["kind"], "vibesnake-manual-product-matrix-v2", "contract.kind", errors)
     _exact(
         contract["status"],
         "qualified-handoff-execution-pending",
@@ -247,6 +264,12 @@ def validate_contract(contract_path: Path = CONTRACT_PATH) -> tuple[list[str], d
         contract["inputDevices"],
         [{"id": device_id, "requiredCoverage": coverage} for device_id, coverage in INPUT_DEVICES],
         "contract.inputDevices",
+        errors,
+    )
+    _exact(
+        contract["mouseInputCapabilities"],
+        list(MOUSE_INPUT_CAPABILITIES),
+        "contract.mouseInputCapabilities",
         errors,
     )
     _exact(
@@ -355,12 +378,12 @@ def _validate_session(
     session: Any,
     path: Path,
     errors: list[str],
-) -> tuple[str, str, str, set[str], set[str], dict[str, str]] | None:
+) -> tuple[str, str, str, dict[str, tuple[str, str, set[str], set[str]]]] | None:
     label = f"session {path.name}"
     if not _strict_keys(session, set(SESSION_FIELDS), label, errors):
         return None
-    _exact(session["schemaVersion"], 1, f"{label}.schemaVersion", errors)
-    _exact(session["kind"], "vibesnake-manual-product-matrix-session-v1", f"{label}.kind", errors)
+    _exact(session["schemaVersion"], 2, f"{label}.schemaVersion", errors)
+    _exact(session["kind"], "vibesnake-manual-product-matrix-session-v2", f"{label}.kind", errors)
     session_id = session["sessionId"]
     revision = session["candidateRevision"]
     artifact_sha = session["artifactSha256"]
@@ -371,35 +394,15 @@ def _validate_session(
         errors.append(f"{label}.candidateRevision must be a lowercase 40-character revision")
     if not SHA256_PATTERN.fullmatch(str(artifact_sha)):
         errors.append(f"{label}.artifactSha256 must be a SHA-256 digest")
-    if platform not in {row[0] for row in PLATFORM_ROWS}:
+    if not isinstance(platform, str) or platform not in {row[0] for row in PLATFORM_ROWS}:
         errors.append(f"{label}.platformRowId is unsupported: {platform!r}")
     for field in ("appVersion", "operatingSystemVersion", "hardwareClass", "renderer"):
         _nonempty_string(session[field], f"{label}.{field}", errors)
     if not _valid_utc(session["executedUtc"]):
         errors.append(f"{label}.executedUtc must use YYYY-MM-DDTHH:MM:SSZ")
 
-    input_devices = session["inputDeviceIds"]
-    if (
-        not isinstance(input_devices, list)
-        or not input_devices
-        or not all(isinstance(item, str) for item in input_devices)
-        or len(input_devices) != len(set(input_devices))
-        or not set(input_devices) <= {item[0] for item in INPUT_DEVICES}
-    ):
-        errors.append(f"{label}.inputDeviceIds must be unique supported devices")
-        input_devices = []
-    profiles = session["settingsProfileIds"]
-    if (
-        not isinstance(profiles, list)
-        or not all(isinstance(item, str) for item in profiles)
-        or len(profiles) != len(set(profiles))
-        or not set(profiles) <= set(SETTINGS_PROFILES)
-    ):
-        errors.append(f"{label}.settingsProfileIds must be unique supported profiles")
-        profiles = []
-
     results = session["results"]
-    result_map: dict[str, str] = {}
+    result_map: dict[str, tuple[str, str, set[str], set[str]]] = {}
     if not isinstance(results, list) or not results:
         errors.append(f"{label}.results must be a nonempty array")
     else:
@@ -418,6 +421,31 @@ def _validate_session(
             if value not in RESULT_VALUES:
                 errors.append(f"{result_label}.result is unsupported: {value!r}")
                 continue
+            input_device = result["inputDeviceId"]
+            if not isinstance(input_device, str) or input_device not in {item[0] for item in INPUT_DEVICES}:
+                errors.append(f"{result_label}.inputDeviceId is unsupported: {input_device!r}")
+                continue
+            capabilities = result["inputCapabilityIds"]
+            if (
+                not isinstance(capabilities, list)
+                or not all(isinstance(item, str) for item in capabilities)
+                or len(capabilities) != len(set(capabilities))
+                or not set(capabilities) <= set(MOUSE_INPUT_CAPABILITIES)
+            ):
+                errors.append(f"{result_label}.inputCapabilityIds must be unique supported capabilities")
+                continue
+            if input_device != "mouse" and capabilities:
+                errors.append(f"{result_label}.inputCapabilityIds must be empty for {input_device}")
+                continue
+            profiles = result["settingsProfileIds"]
+            if (
+                not isinstance(profiles, list)
+                or not all(isinstance(item, str) for item in profiles)
+                or len(profiles) != len(set(profiles))
+                or not set(profiles) <= set(SETTINGS_PROFILES)
+            ):
+                errors.append(f"{result_label}.settingsProfileIds must be unique supported profiles")
+                continue
             evidence_paths = result["evidencePaths"]
             if (
                 not isinstance(evidence_paths, list)
@@ -432,14 +460,17 @@ def _validate_session(
                     f"{result_label}.evidencePaths reference missing retained files: " + ", ".join(missing_evidence)
                 )
                 continue
-            result_map[flow_id] = value
+            result_map[flow_id] = (
+                value,
+                input_device,
+                set(capabilities),
+                set(profiles),
+            )
 
     return (
         str(session_id),
         str(revision),
         str(artifact_sha),
-        set(input_devices),
-        set(profiles),
         result_map,
     )
 
@@ -479,6 +510,11 @@ def validate_manual_product_matrix(
         errors.append(f"sessions directory does not exist: {sessions_directory}")
 
     platform_passes = {row[0]: set() for row in PLATFORM_ROWS}
+    device_flow_passes = {
+        (row[0], device_id): set() for row in PLATFORM_ROWS for device_id in COMPLETE_FLOW_INPUT_DEVICES
+    }
+    mouse_capability_passes = {row[0]: set() for row in PLATFORM_ROWS}
+    platform_profile_passes = {row[0]: set() for row in PLATFORM_ROWS}
     observed_devices: set[str] = set()
     observed_profiles: set[str] = set()
     session_ids: set[str] = set()
@@ -490,13 +526,11 @@ def validate_manual_product_matrix(
         validated = _validate_session(session, path, errors)
         if validated is None or not isinstance(session, dict):
             continue
-        session_id, revision, artifact_sha, devices, profiles, results = validated
+        session_id, revision, artifact_sha, results = validated
         if session_id in session_ids:
             errors.append(f"duplicate manual product matrix sessionId: {session_id}")
         session_ids.add(session_id)
         revisions.add(revision)
-        observed_devices.update(devices)
-        observed_profiles.update(profiles)
         platform = str(session["platformRowId"])
         if platform in platform_passes:
             artifact_hashes[platform].add(artifact_sha)
@@ -508,9 +542,16 @@ def validate_manual_product_matrix(
                     errors.append(f"session {session_id} artifact SHA-256 does not match the exact candidate")
                 if session.get("appVersion") != candidate.get("appVersion"):
                     errors.append(f"session {session_id} application version does not match the exact candidate")
-            for flow_id, result in results.items():
+            for flow_id, (result, input_device, capabilities, profiles) in results.items():
+                observed_devices.add(input_device)
+                observed_profiles.update(profiles)
                 if result == "pass":
                     platform_passes[platform].add(flow_id)
+                    platform_profile_passes[platform].update(profiles)
+                    if input_device in COMPLETE_FLOW_INPUT_DEVICES:
+                        device_flow_passes[(platform, input_device)].add(flow_id)
+                    elif input_device == "mouse":
+                        mouse_capability_passes[platform].update(capabilities)
                 else:
                     failed_or_blocked += 1
 
@@ -522,6 +563,22 @@ def validate_manual_product_matrix(
                 errors.append(f"{platform} is missing passing flows: {', '.join(missing)}")
             if len(artifact_hashes[platform]) != 1:
                 errors.append(f"{platform} must use exactly one candidate artifact SHA-256")
+            for input_device in COMPLETE_FLOW_INPUT_DEVICES:
+                missing_device_flows = sorted(set(REQUIRED_FLOWS) - device_flow_passes[(platform, input_device)])
+                if missing_device_flows:
+                    errors.append(
+                        f"{platform} {input_device} is missing passing flows: " + ", ".join(missing_device_flows)
+                    )
+            missing_mouse_capabilities = sorted(set(MOUSE_INPUT_CAPABILITIES) - mouse_capability_passes[platform])
+            if missing_mouse_capabilities:
+                errors.append(
+                    f"{platform} mouse is missing passing capabilities: " + ", ".join(missing_mouse_capabilities)
+                )
+            missing_platform_profiles = sorted(set(SETTINGS_PROFILES) - platform_profile_passes[platform])
+            if missing_platform_profiles:
+                errors.append(
+                    f"{platform} is missing passing settings profiles: " + ", ".join(missing_platform_profiles)
+                )
         apple_silicon_hashes = artifact_hashes["macos-universal-apple-silicon"]
         intel_hashes = artifact_hashes["macos-universal-intel"]
         if len(apple_silicon_hashes) == 1 and len(intel_hashes) == 1 and apple_silicon_hashes != intel_hashes:
@@ -529,9 +586,6 @@ def validate_manual_product_matrix(
         missing_devices = sorted({item[0] for item in INPUT_DEVICES} - observed_devices)
         if missing_devices:
             errors.append(f"manual matrix is missing input devices: {', '.join(missing_devices)}")
-        missing_profiles = sorted(set(SETTINGS_PROFILES) - observed_profiles)
-        if missing_profiles:
-            errors.append(f"manual matrix is missing settings profiles: {', '.join(missing_profiles)}")
         if len(revisions) != 1:
             errors.append("manual matrix sessions must use one candidate revision")
         if failed_or_blocked:
@@ -539,9 +593,12 @@ def validate_manual_product_matrix(
         manual_execution_complete = not errors
 
     completed_cells = sum(len(flows) for flows in platform_passes.values())
+    completed_device_flow_cells = sum(len(flows) for flows in device_flow_passes.values())
+    completed_mouse_capability_cells = sum(len(items) for items in mouse_capability_passes.values())
+    completed_platform_profile_cells = sum(len(items) for items in platform_profile_passes.values())
     evidence = {
-        "schemaVersion": 1,
-        "kind": "manual-product-matrix-handoff-v1",
+        "schemaVersion": 2,
+        "kind": "manual-product-matrix-handoff-v2",
         "passed": not errors if sessions_directory is not None else not errors and contract is not None,
         "protocolQualified": not contract_errors,
         "contractSha256": contract_sha,
@@ -552,6 +609,9 @@ def validate_manual_product_matrix(
         "platformRowCount": len(PLATFORM_ROWS),
         "requiredFlowCount": len(REQUIRED_FLOWS),
         "requiredPlatformFlowCellCount": len(PLATFORM_ROWS) * len(REQUIRED_FLOWS),
+        "requiredDeviceFlowCellCount": (len(PLATFORM_ROWS) * len(COMPLETE_FLOW_INPUT_DEVICES) * len(REQUIRED_FLOWS)),
+        "requiredMouseCapabilityCellCount": len(PLATFORM_ROWS) * len(MOUSE_INPUT_CAPABILITIES),
+        "requiredPlatformProfileCellCount": len(PLATFORM_ROWS) * len(SETTINGS_PROFILES),
         "inputDeviceCount": len(INPUT_DEVICES),
         "settingsProfileCount": len(SETTINGS_PROFILES),
         "requiredSessionFieldCount": len(SESSION_FIELDS),
@@ -560,6 +620,9 @@ def validate_manual_product_matrix(
         "requiredCandidateArtifactFieldCount": len(CANDIDATE_ARTIFACT_FIELDS),
         "manualSessionCount": len(session_paths),
         "completedPlatformFlowCellCount": completed_cells,
+        "completedDeviceFlowCellCount": completed_device_flow_cells,
+        "completedMouseCapabilityCellCount": completed_mouse_capability_cells,
+        "completedPlatformProfileCellCount": completed_platform_profile_cells,
         "observedInputDevices": sorted(observed_devices),
         "observedSettingsProfiles": sorted(observed_profiles),
         "failedOrBlockedResultCount": failed_or_blocked,

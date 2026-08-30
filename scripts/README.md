@@ -21,7 +21,7 @@ This directory contains explicit command-line tools. Runtime code belongs under 
 | `test_native.ps1` | Native rules, coverage, balance, reliability, fault/triage, localization, and capture-sharing evidence, format, Godot import, scene smoke, and Godot watch against the packaged Agent Host |
 | `test_native_coverage.ps1` | Shared local/CI native test and coverage gate with validated module floors and one clean rebuild retry for truncated Coverlet streams |
 | `write_dependency_inventory.ps1` | Lock-derived NuGet/Python dependency inventory and source-revision provenance |
-| `check_manual_product_matrix.py` | Validate the exact V090-07 protocol, Release-derived candidate record, and retained sessions; fail closed on missing or mismatched artifact identity, platform flows, devices, settings profiles, or safe evidence |
+| `check_manual_product_matrix.py` | Validate the schema-2 V090-07 protocol, exact Release-derived candidate, and atomic retained observations; fail closed on missing platform-flow, complete-device, mouse-capability, platform-profile, artifact-identity, or safe-evidence coverage |
 | `manual/prepare_product_review.py` | Independently recompute retained three-platform Release evidence and prepare a deterministic, intentionally incomplete four-row physical-review workspace |
 | `manual/review_radio_copies.py` | Rehash exact lossless review copies, prepare a pending headphone/speaker record, and validate explicit per-track listening decisions without changing approval state |
 | `check_external_validation.py` | Validate the V090-08 controlled-participant handoff, exact clean-candidate chain, retained report files, comprehension results, finding closure, and affected-gate reruns |
