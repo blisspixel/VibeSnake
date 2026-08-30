@@ -411,6 +411,42 @@ public sealed class LastStandFixtureCheckTests
                     .Select(Path.GetFileName)
                     .Order(StringComparer.Ordinal));
         });
+
+        WithTemporaryDirectory(root =>
+        {
+            for (var index = 0; index < FixedCanonicalFixtureFile.MaximumSiblingEntries - 1; index++)
+            {
+                File.WriteAllText(
+                    Path.Combine(root, $"entry-{index:D3}"),
+                    string.Empty,
+                    new UTF8Encoding(false));
+            }
+
+            var result = LastStandFixtureCheck.Write(root);
+            Assert.True(result.Passed, string.Join(Environment.NewLine, result.Failures));
+            Assert.Equal(
+                FixedCanonicalFixtureFile.MaximumSiblingEntries,
+                Directory.EnumerateFileSystemEntries(root).Count());
+        });
+
+        WithTemporaryDirectory(root =>
+        {
+            var parent = Path.GetDirectoryName(FixturePath(root))!;
+            Directory.CreateDirectory(parent);
+            for (var index = 0; index < FixedCanonicalFixtureFile.MaximumSiblingEntries - 1; index++)
+            {
+                File.WriteAllText(
+                    Path.Combine(parent, $"entry-{index:D3}"),
+                    string.Empty,
+                    new UTF8Encoding(false));
+            }
+
+            var result = LastStandFixtureCheck.Write(root);
+            Assert.True(result.Passed, string.Join(Environment.NewLine, result.Failures));
+            Assert.Equal(
+                FixedCanonicalFixtureFile.MaximumSiblingEntries,
+                Directory.EnumerateFileSystemEntries(parent).Count());
+        });
     }
 
     [Fact]

@@ -5,7 +5,7 @@ namespace VibeSnake.Rules.Tests;
 public sealed class SharedPhaseShiftTraceParityTests
 {
     [Fact]
-    public void Csharp_matches_targeted_python_phase_shift_traces()
+    public void Csharp_matches_reviewed_python_origin_phase_shift_traces()
     {
         var fixturePath = Path.Combine(AppContext.BaseDirectory, "Fixtures", "phase_shift_rules_v1.json");
         var fixture = JsonSerializer.Deserialize<PhaseFixture>(
@@ -18,9 +18,47 @@ public sealed class SharedPhaseShiftTraceParityTests
         Assert.Equal(SnakeRun.RulesetId, fixture.Ruleset.Id);
         Assert.Equal(SnakeRun.RulesVersion, fixture.Ruleset.Version);
         Assert.Equal("positions-and-power-state-injected-v1", fixture.RandomnessPolicy);
+        Assert.Equal("python-production-phase-shift-v1", fixture.SourceEngine);
+        Assert.Equal(
+            [
+                "pickup_identity",
+                "collection_on_entry",
+                "activation",
+                "duration_countdown",
+                "pickup_expiry",
+                "effect_expiry",
+                "self_collision_phasing",
+                "body_overlap",
+                "starvation_bypass",
+                "ordered_power_events",
+            ],
+            fixture.ComparisonScope);
+        Assert.Equal(
+            [
+                "random_spawn_position",
+                "spawn_schedule",
+                "presentation_feedback",
+                "detached_obstacles",
+                "other_power_types",
+            ],
+            fixture.ExcludedScope);
+        Assert.Equal(64, fixture.Config.Width);
+        Assert.Equal(33, fixture.Config.Height);
+        Assert.Equal(600, fixture.Config.StarvationTicks);
+        Assert.Equal(120, fixture.Config.PowerVisibleTicks);
+        Assert.Equal(100, fixture.Config.PhaseShiftDurationTicks);
         Assert.Equal(6, fixture.CaseCount);
         Assert.Equal(fixture.CaseCount, fixture.Cases.Count);
-        Assert.All(fixture.Cases, traceCase => Assert.False(string.IsNullOrWhiteSpace(traceCase.Id)));
+        Assert.Equal(
+            [
+                "phase-shift-collect-on-entry",
+                "phase-shift-pickup-expiry",
+                "phase-shift-active-countdown",
+                "phase-shift-active-expiry-before-collision",
+                "phase-shift-body-overlap",
+                "phase-shift-does-not-block-starvation",
+            ],
+            fixture.Cases.Select(traceCase => traceCase.Id));
         Assert.Equal(
             fixture.Cases.Count,
             fixture.Cases.Select(traceCase => traceCase.Id).Distinct(StringComparer.Ordinal).Count());
@@ -41,6 +79,11 @@ public sealed class SharedPhaseShiftTraceParityTests
             PowerVisibleTicks: fixtureConfig.PowerVisibleTicks,
             PhaseShiftDurationTicks: fixtureConfig.PhaseShiftDurationTicks);
         var initial = traceCase.Initial;
+        if (initial.Pickup is not null)
+        {
+            Assert.Equal("phase_shift", initial.Pickup.Kind);
+        }
+
         var run = SnakeRun.CreateForTesting(
             config,
             initial.Body.Select(ToGridPoint),
@@ -91,7 +134,7 @@ public sealed class SharedPhaseShiftTraceParityTests
                     Fixture: "phase_shift_rules_v1.json",
                     TestFilter:
                         "VibeSnake.Rules.Tests.SharedPhaseShiftTraceParityTests."
-                        + "Csharp_matches_targeted_python_phase_shift_traces",
+                        + "Csharp_matches_reviewed_python_origin_phase_shift_traces",
                     CaseId: traceCase.Id,
                     Seed: null,
                     FirstDivergentStep: expected.Tick,
@@ -168,8 +211,11 @@ public sealed class SharedPhaseShiftTraceParityTests
         string Contract,
         PhaseRuleset Ruleset,
         string RandomnessPolicy,
+        string SourceEngine,
         int CaseCount,
         PhaseConfig Config,
+        List<string> ComparisonScope,
+        List<string> ExcludedScope,
         List<PhaseCase> Cases);
 
     private sealed record PhaseRuleset(string Id, int Version);

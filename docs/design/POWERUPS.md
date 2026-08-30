@@ -107,7 +107,7 @@ The pure C# rules kernel implements Phase Shift beside Shield:
 - Lifecycle advances before movement, so a one-tick remaining Phase Shift expires before that step's collision check.
 - Phase Shift does not prevent starvation and does not stack with a second Phase Shift pickup.
 - When Phase Shift and Shield are both active, Phase Shift wins on self-collision (the body phases through; Shield is not consumed).
-- Six generated Python-to-C# cases compare collection, expiry, body overlap, and starvation bypass under `phase_shift_rules_v1.json`.
+- Six reviewed Python-origin cases compare collection, expiry, body overlap, and starvation bypass under `phase_shift_rules_v1.json`; native `RepositoryChecks` reproduces their exact canonical bytes while a separate C# parity test consumes them.
 
 ## Native Shield qualification
 

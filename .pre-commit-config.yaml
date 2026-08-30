@@ -71,6 +71,11 @@ repos:
         entry: dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- last-stand .
         language: system
         pass_filenames: false
+      - id: phase-shift
+        name: Phase Shift fixture
+        entry: dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- phase-shift .
+        language: system
+        pass_filenames: false
       - id: shared-traces
         name: shared parity fixtures
         entry: >-

@@ -167,7 +167,7 @@ dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- st
 python -m vibesnake.qa.shared_traces --check
 python -m vibesnake.qa.shared_rule_traces --check
 python -m vibesnake.qa.shared_power_traces --check
-python -m vibesnake.qa.shared_phase_shift_traces --check
+dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- phase-shift .
 dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- last-stand .
 python -m vibesnake.qa.shared_remaining_power_traces --check
 dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- achievement-candidates .
