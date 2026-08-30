@@ -95,7 +95,7 @@ The pure C# rules kernel implements Last Stand as a held recovery resource:
 - Revive keeps score, shrinks body to half length rounded up (`max(1, (n + 1) / 2)`), resets hunger, and grants recovery immunity for the configured recovery ticks (default 60 ticks / 3 seconds).
 - Recovery immunity blocks self-collision without moving the body and advances each rules step.
 - Starvation consumes held Last Stand the same way and never leaves a starvation death while held.
-- Five shared Python-to-C# cases live in `last_stand_rules_v1.json`.
+- Five reviewed Python-origin cases live in `last_stand_rules_v1.json`; native `RepositoryChecks` reproduces their exact canonical bytes without executing rules, and the separate C# parity test remains the live consumer.
 
 ## Native Phase Shift qualification
 

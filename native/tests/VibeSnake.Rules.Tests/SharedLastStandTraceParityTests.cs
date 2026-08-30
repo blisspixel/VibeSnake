@@ -5,7 +5,7 @@ namespace VibeSnake.Rules.Tests;
 public sealed class SharedLastStandTraceParityTests
 {
     [Fact]
-    public void Csharp_matches_targeted_python_last_stand_traces()
+    public void Csharp_matches_reviewed_python_origin_last_stand_traces()
     {
         var fixturePath = Path.Combine(AppContext.BaseDirectory, "Fixtures", "last_stand_rules_v1.json");
         var fixture = JsonSerializer.Deserialize<LastStandFixture>(
@@ -17,8 +17,48 @@ public sealed class SharedLastStandTraceParityTests
         Assert.Equal("last-stand-rules-targeted-v1", fixture.Contract);
         Assert.Equal(SnakeRun.RulesetId, fixture.Ruleset.Id);
         Assert.Equal(SnakeRun.RulesVersion, fixture.Ruleset.Version);
+        Assert.Equal("positions-and-power-state-injected-v1", fixture.RandomnessPolicy);
+        Assert.Equal("python-production-last-stand-v1", fixture.SourceEngine);
+        Assert.Equal(
+            [
+                "pickup_identity",
+                "collection_on_entry",
+                "held_activation",
+                "collision_revive",
+                "body_shrink",
+                "starvation_revive",
+                "recovery_immunity",
+                "recovery_expiry",
+                "ordered_power_events",
+            ],
+            fixture.ComparisonScope);
+        Assert.Equal(
+            [
+                "random_spawn_position",
+                "spawn_schedule",
+                "presentation_feedback",
+                "other_power_types",
+            ],
+            fixture.ExcludedScope);
+        Assert.Equal(64, fixture.Config.Width);
+        Assert.Equal(33, fixture.Config.Height);
+        Assert.Equal(600, fixture.Config.StarvationTicks);
+        Assert.Equal(120, fixture.Config.PowerVisibleTicks);
+        Assert.Equal(60, fixture.Config.LastStandRecoveryTicks);
         Assert.Equal(5, fixture.CaseCount);
         Assert.Equal(fixture.CaseCount, fixture.Cases.Count);
+        Assert.Equal(
+            [
+                "last-stand-collect-on-entry",
+                "last-stand-collision-revive",
+                "last-stand-recovery-blocks-collision",
+                "last-stand-starvation-revive",
+                "last-stand-recovery-expiry",
+            ],
+            fixture.Cases.Select(item => item.Id));
+        Assert.Equal(
+            fixture.CaseCount,
+            fixture.Cases.Select(item => item.Id).Distinct(StringComparer.Ordinal).Count());
 
         foreach (var traceCase in fixture.Cases)
         {
@@ -36,6 +76,11 @@ public sealed class SharedLastStandTraceParityTests
             PowerVisibleTicks: fixtureConfig.PowerVisibleTicks,
             LastStandRecoveryTicks: fixtureConfig.LastStandRecoveryTicks);
         var initial = traceCase.Initial;
+        if (initial.Pickup is not null)
+        {
+            Assert.Equal("last_stand", initial.Pickup.Kind);
+        }
+
         var run = SnakeRun.CreateForTesting(
             config,
             initial.Body.Select(ToGridPoint),
@@ -89,7 +134,7 @@ public sealed class SharedLastStandTraceParityTests
                     Fixture: "last_stand_rules_v1.json",
                     TestFilter:
                         "VibeSnake.Rules.Tests.SharedLastStandTraceParityTests."
-                        + "Csharp_matches_targeted_python_last_stand_traces",
+                        + "Csharp_matches_reviewed_python_origin_last_stand_traces",
                     CaseId: traceCase.Id,
                     Seed: null,
                     FirstDivergentStep: expected.Tick,
@@ -160,8 +205,12 @@ public sealed class SharedLastStandTraceParityTests
         int SchemaVersion,
         string Contract,
         LastStandRuleset Ruleset,
+        string RandomnessPolicy,
+        string SourceEngine,
         int CaseCount,
         LastStandConfig Config,
+        List<string> ComparisonScope,
+        List<string> ExcludedScope,
         List<LastStandCase> Cases);
 
     private sealed record LastStandRuleset(string Id, int Version);

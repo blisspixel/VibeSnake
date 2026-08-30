@@ -168,7 +168,7 @@ python -m vibesnake.qa.shared_traces --check
 python -m vibesnake.qa.shared_rule_traces --check
 python -m vibesnake.qa.shared_power_traces --check
 python -m vibesnake.qa.shared_phase_shift_traces --check
-python -m vibesnake.qa.shared_last_stand_traces --check
+dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- last-stand .
 python -m vibesnake.qa.shared_remaining_power_traces --check
 dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- achievement-candidates .
 python -m vibesnake.qa --seeds 0 1 2 3 4 --steps 500 --output qa_reports/core.json

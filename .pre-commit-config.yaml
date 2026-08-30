@@ -66,6 +66,11 @@ repos:
         entry: dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- achievement-candidates .
         language: system
         pass_filenames: false
+      - id: last-stand
+        name: Last Stand fixture
+        entry: dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- last-stand .
+        language: system
+        pass_filenames: false
       - id: shared-traces
         name: shared parity fixtures
         entry: >-

@@ -305,7 +305,7 @@ public sealed class AchievementCandidateFixtureCheckTests
     }
 
     [Fact]
-    public void Linked_parent_and_output_are_rejected_without_touching_external_files()
+    public void Symbolic_linked_parent_and_output_are_rejected_without_touching_external_files()
     {
         WithTemporaryDirectory(root =>
         WithTemporaryDirectory(external =>
@@ -466,13 +466,26 @@ public sealed class AchievementCandidateFixtureCheckTests
             "vibesnake-achievement-fixture-tests",
             Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(root);
+        Exception? primaryFailure = null;
         try
         {
             action(root);
         }
+        catch (Exception exception)
+        {
+            primaryFailure = exception;
+            throw;
+        }
         finally
         {
-            Directory.Delete(root, recursive: true);
+            try
+            {
+                Directory.Delete(root, recursive: true);
+            }
+            catch when (primaryFailure is not null)
+            {
+                // Preserve the test-body failure rather than masking it with cleanup.
+            }
         }
     }
 }
