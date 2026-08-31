@@ -86,6 +86,8 @@ Slow-Mo and Boost are pure cadence modifiers on the rules snapshot. They do not 
 - **Gluttony** scores and resets hunger on food without growing the body for its duration.
 - **Segment Detach** removes up to five tail cells into timed obstacles that block content and kill without Phase Shift; Phase Shift bypasses those cells; obstacles expire together. Collection runs after movement settles so detached cells match the Python post-move body.
 
+Nine reviewed Python-origin cases in `remaining_powers_rules_v1.json` cover Slow-Mo, Boost, Magnet, Bait, Gluttony, and Segment Detach collection and state transitions. Native `RepositoryChecks` reproduces their exact 9,548 canonical LF bytes without executing rules, and the separate C# parity test remains the live behavior consumer.
+
 ## Native Last Stand qualification
 
 The pure C# rules kernel implements Last Stand as a held recovery resource:

@@ -81,6 +81,11 @@ repos:
         entry: dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- shield .
         language: system
         pass_filenames: false
+      - id: remaining-powers
+        name: Remaining Powers fixture
+        entry: dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- remaining-powers .
+        language: system
+        pass_filenames: false
       - id: shared-traces
         name: shared parity fixtures
         entry: >-

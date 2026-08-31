@@ -138,7 +138,7 @@ python -m vibesnake.qa.shared_rule_traces --check
 dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- shield .
 dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- phase-shift .
 dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- last-stand .
-python -m vibesnake.qa.shared_remaining_power_traces --check
+dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- remaining-powers .
 dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- achievement-candidates .
 python -m vibesnake.qa --seeds 0 1 2 3 4 --steps 500 --output qa_reports/core.json
 python -m pytest --cov=vibesnake --cov-report=term-missing --cov-report=xml
@@ -150,7 +150,9 @@ The `last-stand` route applies the same independence rule to five reviewed Pytho
 
 The `phase-shift` route reproduces six reviewed Python-origin effect vectors as the fixed 3,534-byte corpus without executing `SnakeRun`; `SharedPhaseShiftTraceParityTests` remains the live behavior consumer. Use `phase-shift-write [repository-root]` only to restore those exact reviewed bytes.
 
-The `shield` route reproduces eight reviewed Python-origin protection vectors as the fixed 4,489-byte corpus without executing `SnakeRun`; `SharedShieldTraceParityTests` remains the live behavior consumer. Use `shield-write [repository-root]` only to restore those exact reviewed bytes. All four fixture routes share bounded generation and reads, symbolic/reparse-point and portable-case-alias rejection, pre-mutation sibling reservation, flushed same-directory replacement, immediate fixed-path revalidation, cleanup, and exact post-write verification.
+The `shield` route reproduces eight reviewed Python-origin protection vectors as the fixed 4,489-byte corpus without executing `SnakeRun`; `SharedShieldTraceParityTests` remains the live behavior consumer. Use `shield-write [repository-root]` only to restore those exact reviewed bytes.
+
+The `remaining-powers` route reproduces nine reviewed Python-origin Slow-Mo, Boost, Magnet, Bait, Gluttony, and Segment Detach vectors as the fixed 9,548-byte corpus without executing `SnakeRun`; `SharedRemainingPowerTraceParityTests` remains the live behavior consumer. Use `remaining-powers-write [repository-root]` only to restore those exact reviewed bytes. All five fixture routes share bounded generation and reads, symbolic/reparse-point and portable-case-alias rejection, pre-mutation sibling reservation, flushed same-directory replacement, immediate fixed-path revalidation, cleanup, and exact post-write verification.
 
 The read-only `materials [repository-root]` route validates the closed V090-09 contract and current ten-document foundation. Use `materials-write <output> [repository-root]` to write the canonical pending `release-materials-handoff-v2` CI evidence with candidate completion and release acceptance both false. Only retained candidate workspaces use `materials-candidate <candidate> <expected-revision> <output> [repository-root]`. A passing candidate route sets `candidateMaterialComplete: true` but keeps `releaseAcceptance: false` pending artifact-manifest reconciliation, marketing-claim approval, visible image review, and video playback review. It is structural evidence, not an accepted rehearsal or promotion input.
 
