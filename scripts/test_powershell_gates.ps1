@@ -304,12 +304,15 @@ try {
         'for ($attempt = 1; $attempt -le 2; $attempt++)',
         "Native tests failed; a coverage-report retry cannot hide a test failure.",
         "Coverlet truncated a hit stream after a green test run.",
+        "Coverlet reported zero hits for an instrumented module after a green test run.",
         "Unable to read beyond the end of the stream",
         '$testsPassed = $false',
         '$coverletTruncated = $false',
+        '$instrumentedModuleReportedZeroCoverage = $false',
         "Write-Output `$testLine",
         '$testsPassed = $true',
         '$coverletTruncated = $true',
+        '$instrumentedModuleReportedZeroCoverage = $true',
         "build-server",
         "Assert-NativeCoverageReport"
     )) {
@@ -341,10 +344,47 @@ try {
     if ($retryResult.ExitCode -ne 7 `
         -or -not $retryResult.TestsPassed `
         -or -not $retryResult.CoverletTruncated `
+        -or $retryResult.InstrumentedModuleReportedZeroCoverage `
         -or (Get-NativeCoverageAttemptAction -Result $retryResult) -cne "retry" `
         -or $retryOutput -notcontains "stdout-marker" `
         -or $retryOutput -notcontains "stderr-marker") {
         throw "Native coverage streaming retry classification failed."
+    }
+    $zeroCoverageResult = $null
+    $zeroCoverageOutput = @(Invoke-NativeCoverageTestProcess `
+        -Executable $powershellExecutable `
+        -CommandArguments @(
+            "-NoLogo",
+            "-NoProfile",
+            "-NonInteractive",
+            "-Command",
+            '[Console]::Out.WriteLine("Passed!  - Failed:     0,"); [Console]::Out.WriteLine("| VibeSnake.AgentHost    | 0%     | 0%     | 0%     |"); exit 7'
+        ) `
+        -Result ([ref]$zeroCoverageResult))
+    if ($zeroCoverageResult.ExitCode -ne 7 `
+        -or -not $zeroCoverageResult.TestsPassed `
+        -or $zeroCoverageResult.CoverletTruncated `
+        -or -not $zeroCoverageResult.InstrumentedModuleReportedZeroCoverage `
+        -or (Get-NativeCoverageAttemptAction -Result $zeroCoverageResult) -cne "retry" `
+        -or $zeroCoverageOutput.Count -ne 2) {
+        throw "Native coverage zero-hit module retry classification failed."
+    }
+    $zeroCoverageOnlyResult = $null
+    Invoke-NativeCoverageTestProcess `
+        -Executable $powershellExecutable `
+        -CommandArguments @(
+            "-NoLogo",
+            "-NoProfile",
+            "-NonInteractive",
+            "-Command",
+            '[Console]::Out.WriteLine("| VibeSnake.AgentViewer  | 0%     | 0%     | 0%     |"); exit 7'
+        ) `
+        -Result ([ref]$zeroCoverageOnlyResult) | Out-Null
+    if ($zeroCoverageOnlyResult.TestsPassed `
+        -or $zeroCoverageOnlyResult.CoverletTruncated `
+        -or -not $zeroCoverageOnlyResult.InstrumentedModuleReportedZeroCoverage `
+        -or (Get-NativeCoverageAttemptAction -Result $zeroCoverageOnlyResult) -cne "fail") {
+        throw "Native coverage retry classification accepted a zero-hit module without a pass marker."
     }
     $passedOnlyResult = $null
     Invoke-NativeCoverageTestProcess `
@@ -359,6 +399,7 @@ try {
         -Result ([ref]$passedOnlyResult) | Out-Null
     if (-not $passedOnlyResult.TestsPassed `
         -or $passedOnlyResult.CoverletTruncated `
+        -or $passedOnlyResult.InstrumentedModuleReportedZeroCoverage `
         -or (Get-NativeCoverageAttemptAction -Result $passedOnlyResult) -cne "fail") {
         throw "Native coverage retry classification accepted a pass marker without truncation."
     }
@@ -375,6 +416,7 @@ try {
         -Result ([ref]$truncationOnlyResult) | Out-Null
     if ($truncationOnlyResult.TestsPassed `
         -or -not $truncationOnlyResult.CoverletTruncated `
+        -or $truncationOnlyResult.InstrumentedModuleReportedZeroCoverage `
         -or (Get-NativeCoverageAttemptAction -Result $truncationOnlyResult) -cne "fail") {
         throw "Native coverage retry classification accepted truncation without a pass marker."
     }
@@ -392,6 +434,7 @@ try {
     if ($successResult.ExitCode -ne 0 `
         -or -not $successResult.TestsPassed `
         -or $successResult.CoverletTruncated `
+        -or $successResult.InstrumentedModuleReportedZeroCoverage `
         -or (Get-NativeCoverageAttemptAction -Result $successResult) -cne "validate" `
         -or $successOutput.Count -ne 1) {
         throw "Native coverage streaming success classification failed."
@@ -410,6 +453,7 @@ try {
     if ($failureResult.ExitCode -ne 3 `
         -or $failureResult.TestsPassed `
         -or $failureResult.CoverletTruncated `
+        -or $failureResult.InstrumentedModuleReportedZeroCoverage `
         -or (Get-NativeCoverageAttemptAction -Result $failureResult) -cne "fail" `
         -or $failureOutput -notcontains "true-test-failure") {
         throw "Native coverage streaming failure classification failed."

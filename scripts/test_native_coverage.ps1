@@ -65,6 +65,7 @@ function Invoke-NativeCoverageTestProcess {
 
     $testsPassed = $false
     $coverletTruncated = $false
+    $instrumentedModuleReportedZeroCoverage = $false
     & $Executable @CommandArguments 2>&1 | ForEach-Object {
         $testLine = "$_"
         Write-Output $testLine
@@ -74,12 +75,16 @@ function Invoke-NativeCoverageTestProcess {
         if ($testLine -match 'Unable to read beyond the end of the stream') {
             $coverletTruncated = $true
         }
+        if ($testLine -match '^\|\s+(?:RepositoryChecks|ValidateCreatorContent|VibeSnake\.(?:AgentHost|AgentPlay|AgentViewer|Persistence|Rules))\s+\|\s+0(?:\.0+)?%\s+\|\s+0(?:\.0+)?%\s+\|') {
+            $instrumentedModuleReportedZeroCoverage = $true
+        }
     }
     $testExit = $LASTEXITCODE
     $Result.Value = [pscustomobject]@{
         ExitCode = $testExit
         TestsPassed = $testsPassed
         CoverletTruncated = $coverletTruncated
+        InstrumentedModuleReportedZeroCoverage = $instrumentedModuleReportedZeroCoverage
     }
 }
 
@@ -92,7 +97,9 @@ function Get-NativeCoverageAttemptAction {
     if ($Result.ExitCode -eq 0) {
         return "validate"
     }
-    if ($Result.TestsPassed -and $Result.CoverletTruncated) {
+    if ($Result.TestsPassed -and (
+        $Result.CoverletTruncated -or
+        $Result.InstrumentedModuleReportedZeroCoverage)) {
         return "retry"
     }
 
@@ -145,7 +152,11 @@ try {
 
         try {
             if ($attemptAction -eq "retry") {
-                throw "Coverlet truncated a hit stream after a green test run."
+                if ($testResult.CoverletTruncated) {
+                    throw "Coverlet truncated a hit stream after a green test run."
+                }
+
+                throw "Coverlet reported zero hits for an instrumented module after a green test run."
             }
             Assert-NativeCoverageReport
             $coverageAccepted = $true
