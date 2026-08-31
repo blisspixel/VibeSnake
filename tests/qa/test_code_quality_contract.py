@@ -188,6 +188,7 @@ def test_dependency_automation_is_bounded_and_covers_every_package_ecosystem() -
 def test_ci_runs_the_documented_quality_and_dependency_gates() -> None:
     workflow = (REPOSITORY_ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
     parsed = load_workflow(REPOSITORY_ROOT / ".github" / "workflows" / "ci.yml")
+    assert parsed["jobs"]["native-rules"]["timeout-minutes"] == "30"
 
     for required in (
         "python -m ruff check src tests scripts",

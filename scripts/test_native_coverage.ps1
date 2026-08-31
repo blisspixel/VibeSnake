@@ -51,6 +51,54 @@ function Assert-NativeCoverageReport {
     }
 }
 
+function Invoke-NativeCoverageTestProcess {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Executable,
+
+        [Parameter(Mandatory = $true)]
+        [string[]]$CommandArguments,
+
+        [Parameter(Mandatory = $true)]
+        [ref]$Result
+    )
+
+    $testsPassed = $false
+    $coverletTruncated = $false
+    & $Executable @CommandArguments 2>&1 | ForEach-Object {
+        $testLine = "$_"
+        Write-Output $testLine
+        if ($testLine -match 'Passed!\s+-\s+Failed:\s+0,') {
+            $testsPassed = $true
+        }
+        if ($testLine -match 'Unable to read beyond the end of the stream') {
+            $coverletTruncated = $true
+        }
+    }
+    $testExit = $LASTEXITCODE
+    $Result.Value = [pscustomobject]@{
+        ExitCode = $testExit
+        TestsPassed = $testsPassed
+        CoverletTruncated = $coverletTruncated
+    }
+}
+
+function Get-NativeCoverageAttemptAction {
+    param(
+        [Parameter(Mandatory = $true)]
+        [pscustomobject]$Result
+    )
+
+    if ($Result.ExitCode -eq 0) {
+        return "validate"
+    }
+    if ($Result.TestsPassed -and $Result.CoverletTruncated) {
+        return "retry"
+    }
+
+    return "fail"
+}
+
 $testArguments = @(
     "test",
     "native/tests/VibeSnake.Rules.Tests/VibeSnake.Rules.Tests.csproj",
@@ -67,6 +115,10 @@ $testArguments = @(
     "-p:ExcludeByFile=**/Properties/AssemblyInfo.cs"
 )
 
+if ($MyInvocation.InvocationName -eq ".") {
+    return
+}
+
 Push-Location $repositoryRoot
 try {
     Invoke-Dotnet -CommandArguments @(
@@ -81,18 +133,18 @@ try {
         if (Test-Path -LiteralPath $coveragePath -PathType Leaf) {
             Remove-Item -LiteralPath $coveragePath -Force
         }
-        $testLines = & dotnet @testArguments 2>&1
-        $testExit = $LASTEXITCODE
-        $testLines | ForEach-Object { Write-Output "$_" }
-        $joined = ($testLines | ForEach-Object { "$_" }) -join [Environment]::NewLine
-        $testsPassed = $joined -match 'Passed!\s+-\s+Failed:\s+0,'
-        $coverletTruncated = $joined -match 'Unable to read beyond the end of the stream'
-        if ($testExit -ne 0 -and -not ($testsPassed -and $coverletTruncated)) {
+        $testResult = $null
+        Invoke-NativeCoverageTestProcess `
+            -Executable "dotnet" `
+            -CommandArguments $testArguments `
+            -Result ([ref]$testResult)
+        $attemptAction = Get-NativeCoverageAttemptAction -Result $testResult
+        if ($attemptAction -eq "fail") {
             throw "Native tests failed; a coverage-report retry cannot hide a test failure."
         }
 
         try {
-            if ($testExit -ne 0) {
+            if ($attemptAction -eq "retry") {
                 throw "Coverlet truncated a hit stream after a green test run."
             }
             Assert-NativeCoverageReport

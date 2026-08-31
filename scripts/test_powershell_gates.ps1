@@ -305,12 +305,114 @@ try {
         "Native tests failed; a coverage-report retry cannot hide a test failure.",
         "Coverlet truncated a hit stream after a green test run.",
         "Unable to read beyond the end of the stream",
+        '$testsPassed = $false',
+        '$coverletTruncated = $false',
+        "Write-Output `$testLine",
+        '$testsPassed = $true',
+        '$coverletTruncated = $true',
         "build-server",
         "Assert-NativeCoverageReport"
     )) {
         if (-not $nativeCoverageScript.Contains($requiredCoverageFragment, [StringComparison]::Ordinal)) {
             throw "Native coverage gate is missing: $requiredCoverageFragment"
         }
+    }
+    foreach ($prohibitedCoverageFragment in @(
+        "System.Collections.Generic.List",
+        "-join [Environment]::NewLine"
+    )) {
+        if ($nativeCoverageScript.Contains($prohibitedCoverageFragment, [StringComparison]::Ordinal)) {
+            throw "Native coverage script retains unbounded output: $prohibitedCoverageFragment"
+        }
+    }
+    . (Join-Path $repositoryRoot "scripts/test_native_coverage.ps1")
+    $powershellExecutable = (Get-Process -Id $PID).Path
+    $retryResult = $null
+    $retryOutput = @(Invoke-NativeCoverageTestProcess `
+        -Executable $powershellExecutable `
+        -CommandArguments @(
+            "-NoLogo",
+            "-NoProfile",
+            "-NonInteractive",
+            "-Command",
+            '[Console]::Out.WriteLine("stdout-marker"); [Console]::Error.WriteLine("stderr-marker"); [Console]::Out.WriteLine("Passed!  - Failed:     0,"); [Console]::Error.WriteLine("Unable to read beyond the end of the stream"); exit 7'
+        ) `
+        -Result ([ref]$retryResult))
+    if ($retryResult.ExitCode -ne 7 `
+        -or -not $retryResult.TestsPassed `
+        -or -not $retryResult.CoverletTruncated `
+        -or (Get-NativeCoverageAttemptAction -Result $retryResult) -cne "retry" `
+        -or $retryOutput -notcontains "stdout-marker" `
+        -or $retryOutput -notcontains "stderr-marker") {
+        throw "Native coverage streaming retry classification failed."
+    }
+    $passedOnlyResult = $null
+    Invoke-NativeCoverageTestProcess `
+        -Executable $powershellExecutable `
+        -CommandArguments @(
+            "-NoLogo",
+            "-NoProfile",
+            "-NonInteractive",
+            "-Command",
+            '[Console]::Out.WriteLine("Passed!  - Failed:     0,"); exit 7'
+        ) `
+        -Result ([ref]$passedOnlyResult) | Out-Null
+    if (-not $passedOnlyResult.TestsPassed `
+        -or $passedOnlyResult.CoverletTruncated `
+        -or (Get-NativeCoverageAttemptAction -Result $passedOnlyResult) -cne "fail") {
+        throw "Native coverage retry classification accepted a pass marker without truncation."
+    }
+    $truncationOnlyResult = $null
+    Invoke-NativeCoverageTestProcess `
+        -Executable $powershellExecutable `
+        -CommandArguments @(
+            "-NoLogo",
+            "-NoProfile",
+            "-NonInteractive",
+            "-Command",
+            '[Console]::Error.WriteLine("Unable to read beyond the end of the stream"); exit 7'
+        ) `
+        -Result ([ref]$truncationOnlyResult) | Out-Null
+    if ($truncationOnlyResult.TestsPassed `
+        -or -not $truncationOnlyResult.CoverletTruncated `
+        -or (Get-NativeCoverageAttemptAction -Result $truncationOnlyResult) -cne "fail") {
+        throw "Native coverage retry classification accepted truncation without a pass marker."
+    }
+    $successResult = $null
+    $successOutput = @(Invoke-NativeCoverageTestProcess `
+        -Executable $powershellExecutable `
+        -CommandArguments @(
+            "-NoLogo",
+            "-NoProfile",
+            "-NonInteractive",
+            "-Command",
+            '[Console]::Out.WriteLine("Passed!  - Failed:     0,"); exit 0'
+        ) `
+        -Result ([ref]$successResult))
+    if ($successResult.ExitCode -ne 0 `
+        -or -not $successResult.TestsPassed `
+        -or $successResult.CoverletTruncated `
+        -or (Get-NativeCoverageAttemptAction -Result $successResult) -cne "validate" `
+        -or $successOutput.Count -ne 1) {
+        throw "Native coverage streaming success classification failed."
+    }
+    $failureResult = $null
+    $failureOutput = @(Invoke-NativeCoverageTestProcess `
+        -Executable $powershellExecutable `
+        -CommandArguments @(
+            "-NoLogo",
+            "-NoProfile",
+            "-NonInteractive",
+            "-Command",
+            '[Console]::Error.WriteLine("true-test-failure"); exit 3'
+        ) `
+        -Result ([ref]$failureResult))
+    if ($failureResult.ExitCode -ne 3 `
+        -or $failureResult.TestsPassed `
+        -or $failureResult.CoverletTruncated `
+        -or (Get-NativeCoverageAttemptAction -Result $failureResult) -cne "fail" `
+        -or $failureOutput -notcontains "true-test-failure") {
+        throw "Native coverage streaming failure classification failed."
     }
     foreach ($requiredLocalizationFragment in @(
         "ShellLocalization.All.Count == 734",

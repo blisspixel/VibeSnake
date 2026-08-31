@@ -18,7 +18,7 @@ This directory contains explicit command-line tools. Runtime code belongs under 
 | `platform_path_policy.ps1` | Absolute environment-path validation for tooling |
 | `test_powershell_gates.ps1` | Executable-spoofing, artifact-path, and ordinary-CI credential-boundary regression checks |
 | `test_native.ps1` | Native rules, coverage, balance, reliability, fault/triage, localization, and capture-sharing evidence, format, Godot import, scene smoke, and Godot watch against the packaged Agent Host |
-| `test_native_coverage.ps1` | Shared local/CI native test and coverage gate with validated module floors and one clean rebuild retry for truncated Coverlet streams |
+| `test_native_coverage.ps1` | Shared local/CI native test and coverage gate with live output, bounded pass/retry classification, validated module floors, and one clean rebuild retry for truncated Coverlet streams |
 | `write_dependency_inventory.ps1` | Lock-derived NuGet/Python dependency inventory and source-revision provenance |
 | `check_manual_product_matrix.py` | Validate the schema-2 V090-07 protocol, exact Release-derived candidate, and atomic retained observations; fail closed on missing platform-flow, complete-device, mouse-capability, platform-profile, artifact-identity, or safe-evidence coverage |
 | `manual/prepare_product_review.py` | Independently recompute retained three-platform Release evidence and prepare a deterministic, intentionally incomplete four-row physical-review workspace |
