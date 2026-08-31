@@ -83,6 +83,8 @@ Native `RepositoryChecks` scans source assets without loading them into either g
 
 The console script and `python -m vibesnake` both call [__main__.py](../../src/vibesnake/__main__.py). This path is retained only for frozen behavior reproduction while the remaining validators and fixture generators move to .NET. It is not a product runtime or a permanent repository architecture.
 
+The first 18 bounded retirement slices are complete. Six closed native fixture renderers reproduce 67 reviewed Python-origin vectors across achievement candidates, Last Stand, Phase Shift, Shield, Remaining Powers, and Core Rules as exact canonical LF files of 2,682, 3,596, 3,534, 4,489, 9,548, and 57,031 bytes. Each renderer remains separate from its live native rules consumer. The 999,087-byte movement fixture is next, but it exceeds the shared 65,536-byte fixed-fixture limit and requires a separate bounded large-file lifecycle and review boundary.
+
 The loop in [game_state.py](../../src/vibesnake/core/game_state.py) is:
 
 ```text

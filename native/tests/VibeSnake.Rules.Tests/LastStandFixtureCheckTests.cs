@@ -273,6 +273,30 @@ public sealed class LastStandFixtureCheckTests
                 Path.GetDirectoryName(FixturePath(root))!,
                 "*.tmp-*"));
 
+            var exactLimit = CanonicalFixtureJson.Render("exact-limit fixture", writer =>
+            {
+                writer.WriteStartArray();
+                writer.WriteStringValue(new string(
+                    'x',
+                    FixedCanonicalFixtureFile.MaximumBytes - 5));
+                writer.WriteEndArray();
+            });
+            Assert.Equal(FixedCanonicalFixtureFile.MaximumBytes, exactLimit.Length);
+            Assert.Equal((byte)'\n', exactLimit[^1]);
+
+            const string exactLimitPath = "tests/fixtures/shared/exact-limit.json";
+            FixedCanonicalFixtureFile.Write(
+                root,
+                exactLimitPath,
+                "exact-limit fixture",
+                exactLimit);
+            Assert.Equal(
+                exactLimit,
+                FixedCanonicalFixtureFile.Read(
+                    root,
+                    exactLimitPath,
+                    "exact-limit fixture"));
+
             var oversized = Assert.Throws<InvalidDataException>(() =>
                 FixedCanonicalFixtureFile.Write(
                     root,

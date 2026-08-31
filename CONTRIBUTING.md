@@ -21,7 +21,7 @@ A change is complete when:
 - The dependency-lock checks confirm the CI and runtime graphs match their requirement inputs.
 - `python -m ruff format --check src tests scripts` passes.
 - `python -m ruff check src tests scripts` passes.
-- `dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- all .` passes for documentation, product-version, source, candidate-freeze, dependency-lock, project-logo, station-badge, content-inventory, README screenshots, release-material foundation, release-rehearsal foundation, stable-promotion foundation, exact achievement-candidate, Last Stand, Phase Shift, Shield, and Remaining Powers fixture freshness, and Agent Plugin policy.
+- `dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- all .` passes for documentation, product-version, source, candidate-freeze, dependency-lock, project-logo, station-badge, content-inventory, README screenshots, release-material foundation, release-rehearsal foundation, stable-promotion foundation, exact achievement-candidate, Last Stand, Phase Shift, Shield, Remaining Powers, and Core Rules fixture freshness, and Agent Plugin policy.
 - The source and assembled Agent Plugin, interoperability baseline, and generated OKF bundle pass their drift and containment gates.
 - `dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- screenshots .` passes.
 - `dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- badges .` passes.
@@ -53,7 +53,7 @@ dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- in
 dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- materials .
 dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- rehearsal .
 python -m vibesnake.qa.shared_traces --check
-python -m vibesnake.qa.shared_rule_traces --check
+dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- core-rules .
 dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- shield .
 dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- phase-shift .
 dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- last-stand .

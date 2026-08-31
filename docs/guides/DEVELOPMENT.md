@@ -134,7 +134,7 @@ dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- in
 dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- materials .
 dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- rehearsal .
 python -m vibesnake.qa.shared_traces --check
-python -m vibesnake.qa.shared_rule_traces --check
+dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- core-rules .
 dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- shield .
 dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- phase-shift .
 dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- last-stand .

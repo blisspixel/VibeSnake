@@ -144,10 +144,14 @@ jobs:
           dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj
           --configuration Release --no-restore -- remaining-powers .
 
-      - name: Verify remaining Python-generated shared traces
-        run: |
-          python -m vibesnake.qa.shared_traces --check
-          python -m vibesnake.qa.shared_rule_traces --check
+      - name: Verify reviewed Core Rules fixture
+        if: matrix.python-version == '3.14'
+        run: >-
+          dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj
+          --configuration Release --no-restore -- core-rules .
+
+      - name: Verify remaining Python-generated shared trace
+        run: python -m vibesnake.qa.shared_traces --check
 
       - name: Test with coverage
         run: python -m pytest --cov=vibesnake --cov-report=term-missing --cov-report=xml
