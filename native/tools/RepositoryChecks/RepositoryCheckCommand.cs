@@ -552,6 +552,13 @@ public static class RepositoryCheckCommand
 
         if (arguments is not null
             && arguments.Count > 0
+            && arguments[0] == "interop-write")
+        {
+            return RunInteropWrite(arguments, standardOutput, standardError);
+        }
+
+        if (arguments is not null
+            && arguments.Count > 0
             && arguments[0] == "freeze-baseline")
         {
             return RunFreezeBaseline(arguments, standardOutput, standardError);
@@ -636,7 +643,7 @@ public static class RepositoryCheckCommand
 
         if (arguments is null
             || arguments.Count is < 1 or > 2
-            || arguments[0] is not ("achievement-candidates" or "all" or "badges" or "core-rules" or "docs" or "freeze" or "inventory" or "inventory-release" or "knowledge" or "last-stand" or "locks" or "logo" or "materials" or "movement" or "phase-shift" or "rehearsal" or "remaining-powers" or "screenshots" or "shield" or "source" or "stable" or "version"))
+            || arguments[0] is not ("achievement-candidates" or "all" or "badges" or "core-rules" or "docs" or "freeze" or "interop" or "inventory" or "inventory-release" or "knowledge" or "last-stand" or "locks" or "logo" or "materials" or "movement" or "phase-shift" or "rehearsal" or "remaining-powers" or "screenshots" or "shield" or "source" or "stable" or "version"))
         {
             WriteUsage(standardError);
             return 2;
@@ -664,6 +671,7 @@ public static class RepositoryCheckCommand
             "core-rules" => new[] { CoreRulesFixtureCheck.Inspect(repositoryRoot) },
             "docs" => new[] { DocumentationCheck.Inspect(repositoryRoot) },
             "freeze" => new[] { CandidateFreezeCheck.Inspect(repositoryRoot) },
+            "interop" => new[] { AgentInteropCheck.Inspect(repositoryRoot) },
             "inventory" => new[] { ContentInventoryCheck.Inspect(repositoryRoot) },
             "inventory-release" => new[] { ContentInventoryCheck.Inspect(repositoryRoot, requireReleaseReady: true) },
             "knowledge" => new[] { AgentKnowledgeCheck.Inspect(repositoryRoot) },
@@ -689,6 +697,7 @@ public static class RepositoryCheckCommand
                 RemainingPowersFixtureCheck.Inspect(repositoryRoot),
                 CoreRulesFixtureCheck.Inspect(repositoryRoot),
                 MovementFixtureCheck.Inspect(repositoryRoot),
+                AgentInteropCheck.Inspect(repositoryRoot),
                 AgentKnowledgeCheck.Inspect(repositoryRoot),
                 ProductVersionCheck.Inspect(repositoryRoot),
                 DocumentationCheck.Inspect(repositoryRoot),
@@ -866,6 +875,24 @@ public static class RepositoryCheckCommand
 
         return ReportSingleResult(
             AgentKnowledgeCheck.Write(
+                arguments.Count == 2 ? arguments[1] : "."),
+            standardOutput,
+            standardError);
+    }
+
+    private static int RunInteropWrite(
+        IReadOnlyList<string> arguments,
+        TextWriter standardOutput,
+        TextWriter standardError)
+    {
+        if (arguments.Count > 2)
+        {
+            WriteUsage(standardError);
+            return 2;
+        }
+
+        return ReportSingleResult(
+            AgentInteropCheck.WriteDigests(
                 arguments.Count == 2 ? arguments[1] : "."),
             standardOutput,
             standardError);
@@ -1326,7 +1353,7 @@ public static class RepositoryCheckCommand
     private static void WriteUsage(TextWriter writer)
     {
         writer.WriteLine(
-            "Usage: RepositoryChecks <achievement-candidates|all|badges|core-rules|docs|freeze|inventory|inventory-release|knowledge|last-stand|locks|logo|materials|movement|phase-shift|rehearsal|remaining-powers|screenshots|shield|source|stable|version> "
+            "Usage: RepositoryChecks <achievement-candidates|all|badges|core-rules|docs|freeze|interop|inventory|inventory-release|knowledge|last-stand|locks|logo|materials|movement|phase-shift|rehearsal|remaining-powers|screenshots|shield|source|stable|version> "
             + "[repository-root]");
         writer.WriteLine(
             "       RepositoryChecks achievement-candidates-write [repository-root]");
@@ -1344,6 +1371,8 @@ public static class RepositoryCheckCommand
             "       RepositoryChecks movement-write [repository-root]");
         writer.WriteLine(
             "       RepositoryChecks knowledge-write [repository-root]");
+        writer.WriteLine(
+            "       RepositoryChecks interop-write [repository-root]");
         writer.WriteLine(
             "       RepositoryChecks badge-write [repository-root]");
         writer.WriteLine(

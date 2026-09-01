@@ -8,18 +8,15 @@ creates a local commit only after those gates pass.
 from __future__ import annotations
 
 import argparse
-import json
 import os
 import subprocess
-import sys
-from datetime import date
 from pathlib import Path
 
 
 SCRIPTS = Path(__file__).resolve().parent
 ROOT = SCRIPTS.parent
-BASELINE = ROOT / "integrations" / "agent-interop-baseline.json"
 TEST_PROJECT = ROOT / "native" / "tests" / "VibeSnake.Rules.Tests" / "VibeSnake.Rules.Tests.csproj"
+REPOSITORY_CHECKS = ROOT / "native" / "tools" / "RepositoryChecks" / "RepositoryChecks.csproj"
 JUNK = (
     ROOT / "_aa07_runner.cmd",
     ROOT / "_aa07_nul_test.txt",
@@ -39,33 +36,6 @@ def _run(command: list[str], *, env: dict[str, str]) -> int:
     print("+ " + " ".join(command), flush=True)
     completed = subprocess.run(command, cwd=ROOT, env=env, check=False)
     return completed.returncode
-
-
-def _patch_baseline(digests: dict[str, str]) -> None:
-    sys.path.insert(0, str(SCRIPTS))
-    from check_agent_interop import calculate_contract_digests, load_baseline
-
-    computed = calculate_contract_digests(ROOT)
-    if computed != digests:
-        raise SystemExit("digest calculation drifted while patching the baseline")
-
-    baseline = load_baseline(BASELINE)
-    host_version = baseline["mcp"]["host_version"]
-    plugin_version = baseline["agent_plugins"]["plugin_version"]
-    history = baseline["public_contract_history"]
-    for kind, version, digest in (
-        ("host", host_version, digests["host"]),
-        ("plugin", plugin_version, digests["plugin"]),
-    ):
-        latest = history[kind][-1]
-        if latest.get("version") != version:
-            raise SystemExit(
-                f"public_contract_history.{kind} latest version is {latest.get('version')!r}, expected {version!r}"
-            )
-        latest["sha256"] = digest
-        print(f"patched {kind} {version} sha256={digest}", flush=True)
-
-    BASELINE.write_text(json.dumps(baseline, indent=2) + "\n", encoding="utf-8")
 
 
 def _clean_junk() -> None:
@@ -96,14 +66,22 @@ def main() -> int:
         env["DOTNET_ROOT_X64"] = str(repo_dotnet)
         env["PATH"] = str(repo_dotnet) + os.pathsep + env.get("PATH", "")
 
-    sys.path.insert(0, str(SCRIPTS))
-    from check_agent_interop import calculate_contract_digests, check_baseline
-
     print("1. public-contract digests", flush=True)
-    digests = calculate_contract_digests(ROOT)
-    print(f"host={digests['host']}", flush=True)
-    print(f"plugin={digests['plugin']}", flush=True)
-    _patch_baseline(digests)
+    if _run(
+        [
+            str(_repo_dotnet()),
+            "run",
+            "--project",
+            str(REPOSITORY_CHECKS),
+            "--configuration",
+            "Release",
+            "--",
+            "interop-write",
+            str(ROOT),
+        ],
+        env=env,
+    ):
+        return 1
 
     print("2. agent knowledge", flush=True)
     if _run(
@@ -111,7 +89,7 @@ def main() -> int:
             str(_repo_dotnet()),
             "run",
             "--project",
-            str(ROOT / "native" / "tools" / "RepositoryChecks" / "RepositoryChecks.csproj"),
+            str(REPOSITORY_CHECKS),
             "--configuration",
             "Release",
             "--",
@@ -123,13 +101,21 @@ def main() -> int:
         return 1
 
     print("3. interoperability baseline", flush=True)
-    errors = check_baseline(ROOT, date(2026, 8, 19))
-    if errors:
-        print("interop check failed:", flush=True)
-        for error in errors:
-            print(f"  {error}", flush=True)
+    if _run(
+        [
+            str(_repo_dotnet()),
+            "run",
+            "--project",
+            str(REPOSITORY_CHECKS),
+            "--configuration",
+            "Release",
+            "--",
+            "interop",
+            str(ROOT),
+        ],
+        env=env,
+    ):
         return 1
-    print("interop check passed", flush=True)
 
     print("4. documentation links", flush=True)
     if _run(
@@ -137,7 +123,7 @@ def main() -> int:
             str(_repo_dotnet()),
             "run",
             "--project",
-            str(ROOT / "native" / "tools" / "RepositoryChecks" / "RepositoryChecks.csproj"),
+            str(REPOSITORY_CHECKS),
             "--",
             "docs",
             str(ROOT),

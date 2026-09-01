@@ -21,5 +21,15 @@ jobs:
         with:
           python-version: "3.14"
 
-      - name: Verify reviewed interoperability pins and upstream schemas
-        run: python scripts/check_agent_interop.py --check-upstream
+      - name: Set up .NET
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: 10.0.303
+
+      - name: Verify reviewed local interoperability baseline
+        run: >-
+          dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj
+          --configuration Release -- interop .
+
+      - name: Verify reviewed upstream specification and schema bytes
+        run: python scripts/check_agent_interop_upstream.py

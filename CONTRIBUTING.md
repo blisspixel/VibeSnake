@@ -42,7 +42,7 @@ python -m ruff check src tests scripts
 dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- all .
 dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- plugin integrations/vibesnake-agent-plugin
 dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- knowledge .
-python scripts/check_agent_interop.py
+dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- interop .
 ./scripts/package_agent_plugin.ps1 -OutputRoot TestResults/agent-plugin -Force
 ./scripts/package_agent_host.ps1 -OutputRoot TestResults/agent-host -Force
 dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- plugin TestResults/agent-plugin/portable/vibesnake-agent --require-mcp

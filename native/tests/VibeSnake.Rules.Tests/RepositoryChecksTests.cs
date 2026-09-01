@@ -1450,7 +1450,7 @@ public sealed class RepositoryChecksTests
         Assert.Equal(2, invalidCode);
         Assert.Equal(string.Empty, invalidOutput.ToString());
         Assert.Contains(
-            "RepositoryChecks <achievement-candidates|all|badges|core-rules|docs|freeze|inventory|inventory-release|knowledge|last-stand|locks|logo|materials|movement|phase-shift|rehearsal|remaining-powers|screenshots|shield|source|stable|version>",
+            "RepositoryChecks <achievement-candidates|all|badges|core-rules|docs|freeze|interop|inventory|inventory-release|knowledge|last-stand|locks|logo|materials|movement|phase-shift|rehearsal|remaining-powers|screenshots|shield|source|stable|version>",
             invalidError.ToString());
         Assert.Contains(
             "RepositoryChecks achievement-candidates-write [repository-root]",
@@ -1475,6 +1475,9 @@ public sealed class RepositoryChecksTests
             invalidError.ToString());
         Assert.Contains(
             "RepositoryChecks knowledge-write [repository-root]",
+            invalidError.ToString());
+        Assert.Contains(
+            "RepositoryChecks interop-write [repository-root]",
             invalidError.ToString());
         Assert.Contains(
             "RepositoryChecks materials-write <output> [repository-root]",
@@ -1516,6 +1519,17 @@ public sealed class RepositoryChecksTests
             WriteStationBadgeFixture(root);
             WriteContentInventoryFixture(root);
             AgentKnowledgeTestRepository.Write(root);
+            AgentInteropTestRepository.CopyInputs(root);
+            WriteFile(
+                root,
+                "docs/engineering/AGENT_PLAY.md",
+                "2026-07-28 2.2.0 0.18.0 1.0.0 "
+                + "0a4aad95ce337878ad38802ebf0daa3fde76abe3f65400c86bcbb1ec0b3ab883 "
+                + "6539175bfcdf43085855183e86da40ea94b166547a72b47ae9a0a390516d3acb "
+                + "0.2 2026-08-15 published working-draft "
+                + "1fc1b6270e3cc492ec2d24ad7a34277c6d53b9c1 "
+                + "97a658b7dca3ce1b4c2266b95da300fa51d9dc4ade59d73168e5f9104272da18 "
+                + "minimal-non-experimental 2026-01-26\n");
             WriteReadmeScreenshotFixture(root);
             var output = new StringWriter();
             var error = new StringWriter();
@@ -1531,6 +1545,7 @@ public sealed class RepositoryChecksTests
             Assert.Contains("Shared Remaining Powers fixture verified", output.ToString());
             Assert.Contains("Shared Core Rules fixture verified", output.ToString());
             Assert.Contains("Shared Movement fixture verified", output.ToString());
+            Assert.Contains("Agent interoperability baseline verified", output.ToString());
             Assert.Contains("Agent knowledge verified", output.ToString());
             Assert.Contains("Product versions aligned", output.ToString());
             Assert.Contains("Documentation link check passed", output.ToString());

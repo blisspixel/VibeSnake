@@ -77,7 +77,7 @@ jobs:
         run: |
           dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj --configuration Release -- plugin integrations/vibesnake-agent-plugin
           dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj --configuration Release -- knowledge .
-          python scripts/check_agent_interop.py
+          dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj --configuration Release -- interop .
           ./scripts/package_agent_plugin.ps1 -OutputRoot TestResults/agent-plugin
           ./scripts/package_agent_host.ps1 -OutputRoot TestResults/agent-host -Force
 

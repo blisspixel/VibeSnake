@@ -205,7 +205,7 @@ def test_ci_runs_the_documented_quality_and_dependency_gates() -> None:
         "./scripts/package_agent_host.ps1 -OutputRoot TestResults/agent-host -Force",
         "VIBESNAKE_AGENT_PLUGIN_ROOT:",
         "VIBESNAKE_AGENT_HOST_ROOT:",
-        "python scripts/check_agent_interop.py",
+        "--configuration Release -- interop .",
     ):
         assert required in workflow
 
@@ -216,6 +216,7 @@ def test_ci_runs_the_documented_quality_and_dependency_gates() -> None:
     assert "python scripts/check_release_materials.py" not in workflow
     assert "python scripts/check_release_rehearsal.py" not in workflow
     assert "python scripts/check_stable_promotion.py" not in workflow
+    assert "python scripts/check_agent_interop.py" not in workflow
     assert "python -m vibesnake.qa.shared_achievement_candidate_traces" not in workflow
     assert "python -m vibesnake.qa.shared_last_stand_traces" not in workflow
     assert "python -m vibesnake.qa.shared_phase_shift_traces" not in workflow
@@ -266,6 +267,7 @@ def test_ci_runs_the_documented_quality_and_dependency_gates() -> None:
     assert "dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- core-rules ." in pre_commit
     assert "dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- movement ." in pre_commit
     assert "dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- knowledge ." in pre_commit
+    assert "dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- interop ." in pre_commit
     assert "python scripts/check_docs.py" not in pre_commit
     assert "python scripts/check_source_policy.py" not in pre_commit
     assert "python scripts/check_release_materials.py" not in pre_commit
@@ -382,7 +384,9 @@ def test_agent_interoperability_drift_workflow_is_bounded_and_required() -> None
     assert job["runs-on"] == "ubuntu-latest"
     assert job["timeout-minutes"] == "5"
     raw = path.read_text(encoding="utf-8")
-    assert "python scripts/check_agent_interop.py --check-upstream" in raw
+    assert "--configuration Release -- interop ." in raw
+    assert "python scripts/check_agent_interop_upstream.py" in raw
+    assert "python scripts/check_agent_interop.py" not in raw
 
 
 def test_floating_source_release_uses_only_a_successful_ci_revision() -> None:

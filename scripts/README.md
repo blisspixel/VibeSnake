@@ -6,8 +6,8 @@ This directory contains explicit command-line tools. Runtime code belongs under 
 
 | Tool | Ownership |
 | --- | --- |
-| `check_agent_interop.py` | Validate the closed machine-readable MCP, Agent Plugins, Agent Skill, MCP Apps, and OKF baseline, canonical UTC lifecycle metadata, absolute review dates, source alignment, version-bound public-contract digests, documentation pins, and optional read-only integrity of pinned Agent Plugins specification and schema bytes |
-| `close_agent_preview.py` | One-command Agent Arena preview close-out: patch public-contract digests, call the native Agent Knowledge writer, check interop and docs, run focused native tests. Invoked by root `close-agent-preview.cmd` so cmd.exe can set the repo SDK before any .NET global tool starts. |
+| `check_agent_interop_upstream.py` | Perform the isolated read-only HTTP integrity probe for the reviewed Agent Plugins specification and schema bytes after native local baseline qualification |
+| `close_agent_preview.py` | One-command Agent Arena preview close-out: call the native public-contract digest and Agent Knowledge writers, check interop and docs, then run focused native tests. Invoked by root `close-agent-preview.cmd` so cmd.exe can set the repo SDK before any .NET global tool starts. |
 | `package_agent_host.ps1` | Assemble the current-RID unsigned self-contained Agent Host package with closed manifest, lock-derived inventory, unsigned provenance, checksums, and isolated user-data policy |
 | `validate_agent_host_package.py` | Enforce the AA-10 host-package manifest, inventory, provenance, isolation, and checksum contract |
 | `content_packs.py` | Core and optional pack manifest qualification |

@@ -101,3 +101,8 @@ repos:
         entry: dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- knowledge .
         language: system
         pass_filenames: false
+      - id: agent-interoperability
+        name: Agent interoperability baseline
+        entry: dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- interop .
+        language: system
+        pass_filenames: false
