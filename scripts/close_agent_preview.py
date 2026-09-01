@@ -107,7 +107,17 @@ def main() -> int:
 
     print("2. agent knowledge", flush=True)
     if _run(
-        [sys.executable, str(SCRIPTS / "generate_agent_knowledge.py"), "--write"],
+        [
+            str(_repo_dotnet()),
+            "run",
+            "--project",
+            str(ROOT / "native" / "tools" / "RepositoryChecks" / "RepositoryChecks.csproj"),
+            "--configuration",
+            "Release",
+            "--",
+            "knowledge-write",
+            str(ROOT),
+        ],
         env=env,
     ):
         return 1

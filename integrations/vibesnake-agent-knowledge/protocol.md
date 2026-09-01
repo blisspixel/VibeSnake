@@ -3,7 +3,7 @@ type: "Protocol"
 title: "Vibe Snake MCP agent host"
 description: "The local stdio MCP surface and its portable Agent Plugin packaging."
 tags: [vibesnake, mcp, agent-plugins, stdio]
-generated: { by: process:vibesnake-okf-generator, at: 2026-08-15T11:31:47Z }
+generated: { by: process:vibesnake-okf-generator, at: 2026-09-01T14:25:13Z }
 verified: { by: process:vibesnake-quality-gate, at: 2026-08-15T11:31:47Z }
 stale_after: "2026-11-14"
 status: draft
@@ -75,7 +75,7 @@ Clients must speak the stateless MCP `2026-07-28` era: every request carries pro
 
 # Live viewer
 
-The optional same-user pipe uses `vibesnake-agent-viewer-frame-v7`. Every frame declares initial, step, burst, or finish origin and binds exact steps advanced to the pre-mutation tick and state hash. Burst frames carry closed stop reason and final-step event, while terminal truth, immutable match identity, catalog-bound Passport v4, action facts, contiguous state anchors, two ordered live style criteria, ordered lesson progress, optional replay-bound terminal style outcomes, and optional combined-evidence lesson outcomes are cross-validated before presentation. Malformed, oversized, contradictory, unknown-catalog, identity-drifting, criterion-drifting, or mixed-version input clears pending content and rejects the stream. The host keeps only the latest unsent frame, the client reports sequence gaps as coalesced earlier updates, and the packaged-host transcript exercises rejection-aware lesson recovery as well as terminal burst delivery. The verified replay remains the canonical accepted-step history, and viewer timing never advances rules or score.
+The optional same-user pipe uses `vibesnake-agent-viewer-frame-v9`. Every frame declares initial, step, burst, or finish origin and binds exact steps advanced to the pre-mutation tick and state hash. Burst frames carry closed stop reason and final-step event, while terminal truth, immutable match identity, catalog-bound Passport v4, action facts, contiguous state anchors, two ordered live style criteria, ordered lesson progress, optional replay-bound terminal style outcomes, optional combined-evidence lesson outcomes, and the verified replay payload hash are cross-validated before presentation. Its `vibesnake-agent-survival-state-v1` block reports structural open exits, the closed pressure tier, and fixed-order held recovery resources derived from the same public board state; disagreement rejects the frame, and the block never recommends a direction. Malformed, oversized, contradictory, unknown-catalog, identity-drifting, criterion-drifting, requirement-drifting, or mixed-version input clears pending content and rejects the stream. The host keeps only the latest unsent frame, the client reports sequence gaps as coalesced earlier updates, and the packaged-host transcript exercises rejection-aware lesson recovery as well as terminal burst delivery. The verified replay remains the canonical accepted-step history, and viewer timing never advances rules or score.
 
 # Trust boundary
 

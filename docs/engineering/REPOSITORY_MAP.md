@@ -88,7 +88,7 @@ native/
 |-- src/VibeSnake.AgentPlay/  Transport-neutral step and bounded-burst external-agent sessions, public observations, experience contracts, and verified replay ownership
 |-- src/VibeSnake.AgentViewer/  Read-only same-user pipe client and public snapshot projection
 |-- tools/VibeSnake.AgentHost/  Local stateless-era stdio MCP adapter, capacity and idle-bounded session registry, replay save, and read-only viewer server
-|-- tools/RepositoryChecks/  Native repository-policy, fixture-generation, screenshot, content-inventory, dependency-lock, release-material, rehearsal, and stable-promotion qualification command
+|-- tools/RepositoryChecks/  Native repository-policy, fixture and Agent Knowledge generation, screenshot, content-inventory, dependency-lock, release-material, rehearsal, and stable-promotion qualification command
 |-- tools/ValidateCreatorContent/  Data-only personality and canonical pack-set validation command
 `-- tests/VibeSnake.Rules.Tests/  xUnit parity, restore, replay, storage, and generated state-machine contracts
 
@@ -124,7 +124,6 @@ scripts/
 |-- package_agent_plugin.ps1      Assemble, checksum, and natively validate the framework-dependent preview Agent Plugin
 |-- package_agent_host.ps1        Assemble the current-RID unsigned self-contained Agent Host package
 |-- validate_agent_host_package.py Enforce the AA-10 host-package manifest, inventory, provenance, and checksum contract
-|-- generate_agent_knowledge.py   Generate or drift-check the Open Knowledge Format 0.2 bundle
 |-- test_native_export.ps1        Outside-checkout packaged-player smoke
 `-- inspect_native_artifact.ps1   Payload, portability, and SHA-256 manifest gate
 

@@ -1450,7 +1450,7 @@ public sealed class RepositoryChecksTests
         Assert.Equal(2, invalidCode);
         Assert.Equal(string.Empty, invalidOutput.ToString());
         Assert.Contains(
-            "RepositoryChecks <achievement-candidates|all|badges|core-rules|docs|freeze|inventory|inventory-release|last-stand|locks|logo|materials|movement|phase-shift|rehearsal|remaining-powers|screenshots|shield|source|stable|version>",
+            "RepositoryChecks <achievement-candidates|all|badges|core-rules|docs|freeze|inventory|inventory-release|knowledge|last-stand|locks|logo|materials|movement|phase-shift|rehearsal|remaining-powers|screenshots|shield|source|stable|version>",
             invalidError.ToString());
         Assert.Contains(
             "RepositoryChecks achievement-candidates-write [repository-root]",
@@ -1472,6 +1472,9 @@ public sealed class RepositoryChecksTests
             invalidError.ToString());
         Assert.Contains(
             "RepositoryChecks movement-write [repository-root]",
+            invalidError.ToString());
+        Assert.Contains(
+            "RepositoryChecks knowledge-write [repository-root]",
             invalidError.ToString());
         Assert.Contains(
             "RepositoryChecks materials-write <output> [repository-root]",
@@ -1512,13 +1515,14 @@ public sealed class RepositoryChecksTests
             CopyApprovedLogo(root);
             WriteStationBadgeFixture(root);
             WriteContentInventoryFixture(root);
+            AgentKnowledgeTestRepository.Write(root);
             WriteReadmeScreenshotFixture(root);
             var output = new StringWriter();
             var error = new StringWriter();
 
             var code = RepositoryCheckCommand.Run(["all", root], output, error);
 
-            Assert.Equal(0, code);
+            Assert.True(code == 0, error.ToString());
             Assert.Equal(string.Empty, error.ToString());
             Assert.Contains("Shared achievement-candidate fixture verified", output.ToString());
             Assert.Contains("Shared Last Stand fixture verified", output.ToString());
@@ -1527,6 +1531,7 @@ public sealed class RepositoryChecksTests
             Assert.Contains("Shared Remaining Powers fixture verified", output.ToString());
             Assert.Contains("Shared Core Rules fixture verified", output.ToString());
             Assert.Contains("Shared Movement fixture verified", output.ToString());
+            Assert.Contains("Agent knowledge verified", output.ToString());
             Assert.Contains("Product versions aligned", output.ToString());
             Assert.Contains("Documentation link check passed", output.ToString());
             Assert.Contains("Candidate freeze policy check passed", output.ToString());
@@ -1556,6 +1561,7 @@ public sealed class RepositoryChecksTests
     [InlineData("freeze")]
     [InlineData("inventory")]
     [InlineData("inventory-release")]
+    [InlineData("knowledge")]
     [InlineData("locks")]
     [InlineData("logo")]
     [InlineData("materials")]
@@ -1583,6 +1589,7 @@ public sealed class RepositoryChecksTests
             CopyApprovedLogo(root);
             WriteStationBadgeFixture(root);
             WriteContentInventoryFixture(root);
+            AgentKnowledgeTestRepository.Write(root);
             var output = new StringWriter();
             var error = new StringWriter();
 

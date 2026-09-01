@@ -96,3 +96,8 @@ repos:
         entry: dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- movement .
         language: system
         pass_filenames: false
+      - id: agent-knowledge
+        name: Agent Knowledge freshness
+        entry: dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- knowledge .
+        language: system
+        pass_filenames: false

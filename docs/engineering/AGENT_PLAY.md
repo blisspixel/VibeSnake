@@ -232,11 +232,11 @@ The floating `player-latest` release is a source and reference channel. Its sour
 The generated `integrations/vibesnake-agent-knowledge/` bundle uses Open Knowledge Format 0.2 for discoverable rules and protocol concepts. It is generated from canonical source and is never a runtime schema or a second rules authority. Its `generated.at` value changes only when concept meaning changes, `verified.at` changes when the canonical sources and pinned specifications are reviewed, and `stale_after` requires a new quarterly review. CI proves deterministic derivation, but it does not replace that upstream review.
 
 ```powershell
-python scripts/generate_agent_knowledge.py --check
-python scripts/generate_agent_knowledge.py --write
+dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- knowledge .
+dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- knowledge-write .
 ```
 
-Use `--check` in normal validation. Use `--write` only after intentionally changing a canonical source.
+Use `knowledge` in normal validation. Use `knowledge-write` only after intentionally changing a canonical source or its reviewed lifecycle metadata.
 
 ## Verification
 
@@ -245,8 +245,7 @@ Focused tests cover deterministic sessions, step-equivalent bursts, fixed event 
 ```powershell
 dotnet test native/tests/VibeSnake.Rules.Tests/VibeSnake.Rules.Tests.csproj --filter "FullyQualifiedName~Agent"
 ./scripts/test_native_coverage.ps1
-python -m pytest tests/qa/test_agent_knowledge.py
-python scripts/generate_agent_knowledge.py --check
+dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- knowledge .
 ```
 
 The normal repository lint, locked restore, dependency audit, formatting, Godot smoke, documentation, privacy, and artifact gates remain required. Passing automation proves implementation contracts, not that watching an agent is fun. Structured human review must still establish clarity, pacing, personality, accessibility, and rematch desire.
