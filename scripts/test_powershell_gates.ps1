@@ -476,6 +476,8 @@ try {
         'private readonly record struct RunHudCell(',
         'previous.RightEdge + RunHudCellGutter > next.Left',
         'GameActions.FixedPromptBindings.ContainsKey(action)',
+        'DrawAgentPassportPrompts(receiptAvailable: true);',
+        'Localize("action.open-latest-receipt")',
         'UnboundPromptActionCount: unboundPromptActions.Count'
     )) {
         if (-not $gameMainScript.Contains($requiredLocalizationFragment, [StringComparison]::Ordinal)) {

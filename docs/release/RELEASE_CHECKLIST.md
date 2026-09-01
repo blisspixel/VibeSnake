@@ -164,7 +164,7 @@ dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- in
 dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- materials-candidate C:\retained-vibesnake-evidence\release-materials\candidate.json 0123456789abcdef0123456789abcdef01234567 C:\retained-vibesnake-evidence\release-materials\decision.json .
 dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- rehearsal-record C:\retained-vibesnake-evidence\release-rehearsal\record.json 0123456789abcdef0123456789abcdef01234567 C:\retained-vibesnake-evidence\release-rehearsal\decision.json .
 dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- stable-record C:\retained-vibesnake-evidence\stable-promotion\record.json 0123456789abcdef0123456789abcdef01234567 C:\retained-vibesnake-evidence\stable-promotion\decision.json .
-python -m vibesnake.qa.shared_traces --check
+dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- movement .
 dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- core-rules .
 dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- shield .
 dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- phase-shift .

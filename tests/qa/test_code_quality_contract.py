@@ -222,6 +222,7 @@ def test_ci_runs_the_documented_quality_and_dependency_gates() -> None:
     assert "shared_power_traces" not in workflow
     assert "shared_remaining_power_traces" not in workflow
     assert "shared_rule_traces" not in workflow
+    assert "vibesnake.qa.shared_traces" not in workflow
     assert (
         "--configuration Release --no-restore -- materials-write\n"
         "          TestResults/release-materials/release_materials_handoff.json ." in workflow
@@ -243,6 +244,7 @@ def test_ci_runs_the_documented_quality_and_dependency_gates() -> None:
     assert "--configuration Release --no-restore -- shield ." in workflow
     assert "--configuration Release --no-restore -- remaining-powers ." in workflow
     assert "--configuration Release --no-restore -- core-rules ." in workflow
+    assert "--configuration Release --no-restore -- movement ." in workflow
 
     pre_commit = (REPOSITORY_ROOT / ".pre-commit-config.yaml").read_text(encoding="utf-8")
     assert "dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- docs ." in pre_commit
@@ -261,6 +263,7 @@ def test_ci_runs_the_documented_quality_and_dependency_gates() -> None:
         "dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- remaining-powers ." in pre_commit
     )
     assert "dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- core-rules ." in pre_commit
+    assert "dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- movement ." in pre_commit
     assert "python scripts/check_docs.py" not in pre_commit
     assert "python scripts/check_source_policy.py" not in pre_commit
     assert "python scripts/check_release_materials.py" not in pre_commit
@@ -272,6 +275,7 @@ def test_ci_runs_the_documented_quality_and_dependency_gates() -> None:
     assert "shared_power_traces" not in pre_commit
     assert "shared_remaining_power_traces" not in pre_commit
     assert "shared_rule_traces" not in pre_commit
+    assert "vibesnake.qa.shared_traces" not in pre_commit
 
     assert not (REPOSITORY_ROOT / "src" / "vibesnake" / "qa" / "shared_achievement_candidate_traces.py").exists()
     assert not (REPOSITORY_ROOT / "tests" / "qa" / "test_shared_achievement_candidate_traces.py").exists()
@@ -285,6 +289,8 @@ def test_ci_runs_the_documented_quality_and_dependency_gates() -> None:
     assert not (REPOSITORY_ROOT / "tests" / "qa" / "test_shared_remaining_power_traces.py").exists()
     assert not (REPOSITORY_ROOT / "src" / "vibesnake" / "qa" / "shared_rule_traces.py").exists()
     assert not (REPOSITORY_ROOT / "tests" / "qa" / "test_shared_rule_traces.py").exists()
+    assert not (REPOSITORY_ROOT / "src" / "vibesnake" / "qa" / "shared_traces.py").exists()
+    assert not (REPOSITORY_ROOT / "tests" / "qa" / "test_shared_traces.py").exists()
     fixture_tool = (
         REPOSITORY_ROOT / "native" / "tools" / "RepositoryChecks" / "AchievementCandidateFixtureCheck.cs"
     ).read_text(encoding="utf-8")

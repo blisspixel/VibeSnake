@@ -12239,6 +12239,7 @@ public partial class Main : Node2D
                 minimumFontSize: 11,
                 maximumWidth: AgentExhibitionRowWidth,
                 color: ActiveShellPalette.AccentText);
+            DrawAgentPassportPrompts(receiptAvailable: false);
             DrawAgentPassportIsolationNote();
             return;
         }
@@ -12305,14 +12306,29 @@ public partial class Main : Node2D
             }
         }
 
-        DrawFittedLabel(
-            Localize("agent-arena.passports.handoff-ready"),
-            new Vector2(46.0f, 620.0f),
-            preferredFontSize: ScaledFontSize(13),
-            minimumFontSize: 10,
-            maximumWidth: AgentExhibitionRowWidth,
-            color: SecondaryTextColor());
+        DrawAgentPassportPrompts(receiptAvailable: true);
         DrawAgentPassportIsolationNote();
+    }
+
+    private void DrawAgentPassportPrompts(bool receiptAvailable)
+    {
+        var nextX = 46.0f;
+        if (receiptAvailable)
+        {
+            nextX = DrawActionPromptSegment(
+                "confirm",
+                Localize("action.open-latest-receipt"),
+                new Vector2(nextX, 648.0f),
+                ScaledFontSize(13),
+                SecondaryTextColor());
+        }
+
+        DrawActionPromptSegment(
+            "back",
+            Localize("action.return-menu"),
+            new Vector2(nextX, 648.0f),
+            ScaledFontSize(13),
+            SecondaryTextColor());
     }
 
     private void DrawAgentPassportIsolationNote() =>

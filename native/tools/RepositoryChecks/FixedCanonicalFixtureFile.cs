@@ -22,11 +22,19 @@ internal static class FixedCanonicalFixtureFile
         string repositoryRoot,
         string relativePath,
         string label)
+        => ReadWithLimit(repositoryRoot, relativePath, label, MaximumBytes);
+
+    internal static byte[] ReadWithLimit(
+        string repositoryRoot,
+        string relativePath,
+        string label,
+        int maximumBytes)
     {
+        EnsurePositiveLimit(maximumBytes);
         var root = ResolveRepositoryRoot(repositoryRoot);
         var parts = ValidateRelativePath(relativePath);
         var path = ResolveExistingPath(root, parts, relativePath, label);
-        return ReadBounded(path, label);
+        return ReadBounded(path, label, maximumBytes);
     }
 
     internal static void Write(
@@ -34,8 +42,17 @@ internal static class FixedCanonicalFixtureFile
         string relativePath,
         string label,
         ReadOnlySpan<byte> bytes)
+        => WriteWithLimit(repositoryRoot, relativePath, label, bytes, MaximumBytes);
+
+    internal static void WriteWithLimit(
+        string repositoryRoot,
+        string relativePath,
+        string label,
+        ReadOnlySpan<byte> bytes,
+        int maximumBytes)
     {
-        EnsureBounded(bytes.Length, label);
+        EnsurePositiveLimit(maximumBytes);
+        EnsureBounded(bytes.Length, label, maximumBytes);
         var root = ResolveRepositoryRoot(repositoryRoot);
         var parts = ValidateRelativePath(relativePath);
         var path = ResolveWritablePath(root, parts, label);
@@ -64,10 +81,28 @@ internal static class FixedCanonicalFixtureFile
     }
 
     internal static void EnsureBounded(int byteCount, string label)
+        => EnsureBounded(byteCount, label, MaximumBytes);
+
+    internal static void EnsureBounded(
+        int byteCount,
+        string label,
+        int maximumBytes)
     {
-        if (byteCount > MaximumBytes)
+        EnsurePositiveLimit(maximumBytes);
+        if (byteCount > maximumBytes)
         {
-            throw new InvalidDataException($"{label} exceeds {MaximumBytes} bytes");
+            throw new InvalidDataException($"{label} exceeds {maximumBytes} bytes");
+        }
+    }
+
+    private static void EnsurePositiveLimit(int maximumBytes)
+    {
+        if (maximumBytes <= 0)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(maximumBytes),
+                maximumBytes,
+                "fixture byte limit must be positive");
         }
     }
 
@@ -278,7 +313,10 @@ internal static class FixedCanonicalFixtureFile
         }
     }
 
-    private static byte[] ReadBounded(string path, string label)
+    private static byte[] ReadBounded(
+        string path,
+        string label,
+        int maximumBytes)
     {
         using var input = new FileStream(
             path,
@@ -288,10 +326,13 @@ internal static class FixedCanonicalFixtureFile
             16 * 1024,
             FileOptions.SequentialScan);
         var initialLength = input.Length;
-        EnsureBounded(checked((int)Math.Min(initialLength, int.MaxValue)), label);
+        EnsureBounded(
+            checked((int)Math.Min(initialLength, int.MaxValue)),
+            label,
+            maximumBytes);
 
         using var output = new MemoryStream(
-            initialLength <= MaximumBytes ? checked((int)initialLength) : 0);
+            initialLength <= maximumBytes ? checked((int)initialLength) : 0);
         var buffer = new byte[16 * 1024];
         while (true)
         {
@@ -301,7 +342,10 @@ internal static class FixedCanonicalFixtureFile
                 break;
             }
 
-            EnsureBounded(checked((int)output.Length + read), label);
+            EnsureBounded(
+                checked((int)output.Length + read),
+                label,
+                maximumBytes);
             output.Write(buffer, 0, read);
         }
 
@@ -362,14 +406,54 @@ internal static class FixedCanonicalFixtureFile
     }
 }
 
+internal static class LargeCanonicalFixtureFile
+{
+    internal const int MaximumBytes = 1_000_000;
+
+    internal static byte[] Read(
+        string repositoryRoot,
+        string relativePath,
+        string label) =>
+        FixedCanonicalFixtureFile.ReadWithLimit(
+            repositoryRoot,
+            relativePath,
+            label,
+            MaximumBytes);
+
+    internal static void Write(
+        string repositoryRoot,
+        string relativePath,
+        string label,
+        ReadOnlySpan<byte> bytes) =>
+        FixedCanonicalFixtureFile.WriteWithLimit(
+            repositoryRoot,
+            relativePath,
+            label,
+            bytes,
+            MaximumBytes);
+
+    internal static bool IsExpectedFailure(Exception exception) =>
+        FixedCanonicalFixtureFile.IsExpectedFailure(exception);
+
+    internal static string SingleLine(string value) =>
+        FixedCanonicalFixtureFile.SingleLine(value);
+}
+
 internal static class CanonicalFixtureJson
 {
     internal static byte[] Render(
         string label,
         Action<Utf8JsonWriter> writeFixture)
+        => Render(label, FixedCanonicalFixtureFile.MaximumBytes, writeFixture);
+
+    internal static byte[] Render(
+        string label,
+        int maximumBytes,
+        Action<Utf8JsonWriter> writeFixture)
     {
         ArgumentNullException.ThrowIfNull(writeFixture);
-        using var stream = new BoundedMemoryStream(label);
+        FixedCanonicalFixtureFile.EnsureBounded(0, label, maximumBytes);
+        using var stream = new BoundedMemoryStream(label, maximumBytes);
         using (var writer = new Utf8JsonWriter(stream))
         {
             writeFixture(writer);
@@ -380,7 +464,9 @@ internal static class CanonicalFixtureJson
         return stream.ToArray();
     }
 
-    private sealed class BoundedMemoryStream(string label) : MemoryStream
+    private sealed class BoundedMemoryStream(
+        string label,
+        int maximumBytes) : MemoryStream
     {
         public override void Write(byte[] buffer, int offset, int count)
         {
@@ -402,11 +488,22 @@ internal static class CanonicalFixtureJson
 
         private void EnsureCapacityFor(int additionalBytes)
         {
-            if (additionalBytes > FixedCanonicalFixtureFile.MaximumBytes - Position)
+            if (additionalBytes > maximumBytes - Position)
             {
                 throw new InvalidDataException(
-                    $"{label} exceeds {FixedCanonicalFixtureFile.MaximumBytes} bytes");
+                    $"{label} exceeds {maximumBytes} bytes");
             }
         }
     }
+}
+
+internal static class LargeCanonicalFixtureJson
+{
+    internal static byte[] Render(
+        string label,
+        Action<Utf8JsonWriter> writeFixture) =>
+        CanonicalFixtureJson.Render(
+            label,
+            LargeCanonicalFixtureFile.MaximumBytes,
+            writeFixture);
 }

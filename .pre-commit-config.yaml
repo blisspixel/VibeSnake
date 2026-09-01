@@ -91,10 +91,8 @@ repos:
         entry: dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- core-rules .
         language: system
         pass_filenames: false
-      - id: shared-traces
-        name: shared parity fixtures
-        entry: >-
-          python -c "import runpy,sys;sys.path.insert(0,'src');runpy.run_module('vibesnake.qa.shared_traces',run_name='__main__')"
-          --check
+      - id: movement
+        name: Movement fixture
+        entry: dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- movement .
         language: system
         pass_filenames: false

@@ -522,9 +522,7 @@ internal static class ShellLocalization
         Entry(
             "agent-arena.passports.detail",
             "{policies} POLICY  |  {divisions} DIVISION  |  AHEAD {ahead}  LEVEL {level}  BEHIND {behind}  |  {milestones} MILESTONE"),
-        Entry(
-            "agent-arena.passports.handoff-ready",
-            "CONFIRM OPENS THE LATEST RECEIPT IN EXHIBITIONS"),
+        Entry("action.open-latest-receipt", "open the latest receipt"),
         Entry(
             "agent-arena.passports.handoff-empty",
             "NO RECEIPT TO OPEN"),
