@@ -189,6 +189,7 @@ def test_ci_runs_the_documented_quality_and_dependency_gates() -> None:
     workflow = (REPOSITORY_ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
     parsed = load_workflow(REPOSITORY_ROOT / ".github" / "workflows" / "ci.yml")
     assert parsed["jobs"]["native-rules"]["timeout-minutes"] == "30"
+    assert parsed["jobs"]["godot-smoke"]["timeout-minutes"] == "50"
 
     for required in (
         "python -m ruff check src tests scripts",

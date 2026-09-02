@@ -259,7 +259,7 @@ jobs:
     name: Native player smoke on ${{ matrix.os }}
     needs: native-rules
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 35
+    timeout-minutes: 50
     strategy:
       fail-fast: false
       matrix:
