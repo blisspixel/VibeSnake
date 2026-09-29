@@ -1,4 +1,5 @@
 using System.Text;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 
 namespace RepositoryChecks;
@@ -674,6 +675,20 @@ public static class RepositoryCheckCommand
             && arguments[0] == "external-validation-record")
         {
             return RunExternalValidationRecord(arguments, standardOutput, standardError);
+        }
+
+        if (arguments is not null
+            && arguments.Count > 0
+            && arguments[0] == "release-matrix")
+        {
+            return RunReleaseMatrix(arguments, standardOutput, standardError);
+        }
+
+        if (arguments is not null
+            && arguments.Count > 0
+            && arguments[0] == "unsigned-preview")
+        {
+            return RunUnsignedPreview(arguments, standardOutput, standardError);
         }
 
         if (arguments is null
@@ -1501,6 +1516,170 @@ public static class RepositoryCheckCommand
         return 1;
     }
 
+    private static int RunReleaseMatrix(
+        IReadOnlyList<string> arguments,
+        TextWriter standardOutput,
+        TextWriter standardError)
+    {
+        if (arguments.Count != 5)
+        {
+            WriteUsage(standardError);
+            return 2;
+        }
+
+        string downloadRoot;
+        string outputPath;
+        try
+        {
+            downloadRoot = Path.GetFullPath(arguments[1]);
+            outputPath = Path.GetFullPath(arguments[4]);
+        }
+        catch (Exception exception) when (
+            exception is ArgumentException or NotSupportedException or PathTooLongException)
+        {
+            standardError.WriteLine("Release matrix download root or output is invalid.");
+            return 2;
+        }
+
+        ReleaseMatrixCheck.Qualification qualification;
+        try
+        {
+            qualification = ReleaseMatrixCheck.Qualify(downloadRoot, arguments[2], arguments[3]);
+        }
+        catch (Exception exception) when (
+            exception is ArgumentException or NotSupportedException or PathTooLongException)
+        {
+            standardError.WriteLine("Release matrix download root or output is invalid.");
+            return 2;
+        }
+
+        try
+        {
+            var parent = Path.GetDirectoryName(outputPath);
+            if (string.IsNullOrEmpty(parent))
+            {
+                standardError.WriteLine("Release matrix output is invalid.");
+                return 2;
+            }
+
+            Directory.CreateDirectory(parent);
+            File.WriteAllText(outputPath, qualification.Json, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
+        }
+        catch (Exception exception) when (
+            exception is IOException or UnauthorizedAccessException)
+        {
+            standardError.WriteLine(
+                "Release matrix qualification failed: "
+                + exception.Message.Replace('\r', ' ').Replace('\n', ' ').Trim());
+            return 1;
+        }
+
+        if (!qualification.Passed)
+        {
+            standardError.WriteLine("Release matrix qualification failed:");
+            foreach (var error in qualification.Errors)
+            {
+                standardError.WriteLine("  " + error);
+            }
+
+            return 1;
+        }
+
+        var platforms = 0;
+        using (var evidence = JsonDocument.Parse(qualification.Json))
+        {
+            platforms = evidence.RootElement.GetProperty("platforms").GetArrayLength();
+        }
+
+        standardOutput.WriteLine(
+            "Release matrix qualification passed for "
+            + platforms.ToString(System.Globalization.CultureInfo.InvariantCulture)
+            + " platforms at "
+            + arguments[2]
+            + ".");
+        return 0;
+    }
+
+    private static int RunUnsignedPreview(
+        IReadOnlyList<string> arguments,
+        TextWriter standardOutput,
+        TextWriter standardError)
+    {
+        if (arguments.Count != 9)
+        {
+            WriteUsage(standardError);
+            return 2;
+        }
+
+        string channelRoot;
+        string provenanceRoot;
+        string radioPackRoot;
+        string matrixPath;
+        string versionRoot;
+        string outputRoot;
+        try
+        {
+            channelRoot = Path.GetFullPath(arguments[1]);
+            provenanceRoot = Path.GetFullPath(arguments[2]);
+            radioPackRoot = Path.GetFullPath(arguments[3]);
+            matrixPath = Path.GetFullPath(arguments[4]);
+            versionRoot = Path.GetFullPath(arguments[5]);
+            outputRoot = Path.GetFullPath(arguments[8]);
+        }
+        catch (Exception exception) when (
+            exception is ArgumentException or NotSupportedException or PathTooLongException)
+        {
+            standardError.WriteLine("Unsigned preview input or output path is invalid.");
+            return 2;
+        }
+
+        UnsignedPreviewCheck.Assembly assembly;
+        try
+        {
+            assembly = UnsignedPreviewCheck.Assemble(
+                channelRoot,
+                provenanceRoot,
+                radioPackRoot,
+                matrixPath,
+                versionRoot,
+                arguments[6],
+                arguments[7],
+                outputRoot);
+        }
+        catch (Exception exception) when (
+            exception is ArgumentException or NotSupportedException or PathTooLongException)
+        {
+            standardError.WriteLine("Unsigned preview input or output path is invalid.");
+            return 2;
+        }
+
+        if (!assembly.Passed)
+        {
+            standardError.WriteLine("Unsigned native alpha preview assembly failed:");
+            foreach (var error in assembly.Errors)
+            {
+                standardError.WriteLine("  " + error);
+            }
+
+            return 1;
+        }
+
+        var productVersion = string.Empty;
+        var platforms = 0;
+        using (var evidence = JsonDocument.Parse(assembly.Json))
+        {
+            productVersion = evidence.RootElement.GetProperty("productVersion").GetString() ?? string.Empty;
+            platforms = evidence.RootElement.GetProperty("packages").GetArrayLength();
+        }
+
+        standardOutput.WriteLine(
+            "Unsigned native alpha preview assembled: version="
+            + productVersion
+            + " platforms="
+            + platforms.ToString(System.Globalization.CultureInfo.InvariantCulture));
+        return 0;
+    }
+
     private static int RunLockWrite(
         IReadOnlyList<string> arguments,
         TextWriter standardOutput,
@@ -1664,6 +1843,11 @@ public static class RepositoryCheckCommand
             "       RepositoryChecks plugin <plugin-root> [--require-mcp]");
         writer.WriteLine(
             "       RepositoryChecks host-package <package-root> [repository-root]");
+        writer.WriteLine(
+            "       RepositoryChecks release-matrix <download-root> <expected-revision> <Debug|Release> <output>");
+        writer.WriteLine(
+            "       RepositoryChecks unsigned-preview <channel-root> <provenance-root> <radio-pack-root> "
+            + "<matrix> <version-root> <tag> <expected-revision> <output>");
     }
 
 }

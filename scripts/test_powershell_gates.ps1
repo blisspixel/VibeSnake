@@ -647,8 +647,9 @@ try {
         "needs: godot-smoke",
         "pattern: vibesnake-*-qualification-evidence",
         "pattern: vibesnake-*-manifest",
-        "python scripts/check_release_matrix.py release-matrix",
-        '--expected-revision "${{ github.sha }}"',
+        "dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj",
+        "--configuration Release --no-restore -- release-matrix release-matrix",
+        '"${{ github.sha }}" "$build_mode" TestResults/release-matrix/release_matrix.json',
         "name: vibesnake-release-matrix"
     )) {
         if (-not $releaseMatrixJob.Contains($requiredMatrixFragment, [StringComparison]::Ordinal)) {
@@ -696,11 +697,15 @@ try {
         "contents: read",
         "dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj",
         "--configuration Release --no-restore -- inventory-release .",
-        "python scripts/assemble_unsigned_preview.py preview-channel",
+        "--configuration Release --no-restore -- unsigned-preview",
+        "preview-channel",
+        "preview-provenance",
+        "preview-radio",
+        "preview-matrix/release_matrix.json",
+        '"${{ github.ref_name }}"',
+        '"${{ github.sha }}"',
+        "dist/native-alpha",
         "name: vibesnake-approved-radio-pack",
-        "--radio-pack-root preview-radio",
-        '--tag "${{ github.ref_name }}"',
-        '--expected-revision "${{ github.sha }}"',
         "name: vibesnake-native-alpha"
     )) {
         if (-not $alphaAssembleJob.Contains($requiredAlphaAssembleFragment, [StringComparison]::Ordinal)) {

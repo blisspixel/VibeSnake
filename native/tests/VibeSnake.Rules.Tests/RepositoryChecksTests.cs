@@ -1456,6 +1456,12 @@ public sealed class RepositoryChecksTests
             "RepositoryChecks host-package <package-root> [repository-root]",
             invalidError.ToString());
         Assert.Contains(
+            "RepositoryChecks release-matrix <download-root> <expected-revision> <Debug|Release> <output>",
+            invalidError.ToString());
+        Assert.Contains(
+            "RepositoryChecks unsigned-preview <channel-root> <provenance-root> <radio-pack-root> <matrix> <version-root> <tag> <expected-revision> <output>",
+            invalidError.ToString());
+        Assert.Contains(
             "RepositoryChecks achievement-candidates-write [repository-root]",
             invalidError.ToString());
         Assert.Contains(
@@ -1666,6 +1672,12 @@ public sealed class RepositoryChecksTests
             ["external-validation-record", "sessions", "ledger", "findings"],
             ["host-package"],
             ["host-package", "package", "repository", "extra"],
+            ["release-matrix"],
+            ["release-matrix", "download", "revision", "Release"],
+            ["release-matrix", "download", "revision", "Release", "output", "extra"],
+            ["unsigned-preview"],
+            ["unsigned-preview", "channel", "provenance", "radio", "matrix", "version", "tag", "revision"],
+            ["unsigned-preview", "channel", "provenance", "radio", "matrix", "version", "tag", "revision", "output", "extra"],
         })
         {
             var output = new StringWriter();

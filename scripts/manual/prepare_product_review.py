@@ -7,17 +7,89 @@ import hashlib
 import json
 import os
 import re
-import runpy
 import shutil
+import subprocess
 import sys
+import tempfile
 from pathlib import Path
 from typing import Any, Mapping
 from uuid import uuid4
 
 ROOT = Path(__file__).resolve().parents[2]
-_RELEASE_MATRIX = runpy.run_path(str(ROOT / "scripts" / "check_release_matrix.py"))
-validate_release_matrix = _RELEASE_MATRIX["validate_release_matrix"]
-read_release_json = _RELEASE_MATRIX["_read_json"]
+_MAXIMUM_RELEASE_MATRIX_BYTES = 4 * 1024 * 1024
+
+
+def _unique_json_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    value: dict[str, Any] = {}
+    for key, item in pairs:
+        if key in value:
+            raise ValueError(f"duplicate JSON field: {key}")
+        value[key] = item
+    return value
+
+
+def _reject_json_constant(value: str) -> None:
+    raise ValueError(f"non-finite JSON number: {value}")
+
+
+def read_release_json(path: Path, label: str, errors: list[str]) -> Any | None:
+    """Read one retained matrix with the same closed JSON limits as native qualification."""
+    if not path.is_file():
+        errors.append(f"missing {label}: {path}")
+        return None
+    try:
+        if path.stat().st_size > _MAXIMUM_RELEASE_MATRIX_BYTES:
+            errors.append(f"{label} exceeds the {_MAXIMUM_RELEASE_MATRIX_BYTES}-byte limit")
+            return None
+        source = path.read_text(encoding="utf-8")
+        if len(source.encode("utf-8")) > _MAXIMUM_RELEASE_MATRIX_BYTES:
+            errors.append(f"{label} exceeds the {_MAXIMUM_RELEASE_MATRIX_BYTES}-byte limit")
+            return None
+        return json.loads(
+            source,
+            object_pairs_hook=_unique_json_object,
+            parse_constant=_reject_json_constant,
+        )
+    except (OSError, UnicodeError, ValueError) as error:
+        errors.append(f"unreadable {label}: {path}: {error}")
+        return None
+
+
+def validate_release_matrix(
+    root: Path,
+    expected_revision: str,
+    build_mode: str,
+) -> tuple[list[str], dict[str, Any]]:
+    """Recompute a release matrix through native RepositoryChecks."""
+    with tempfile.TemporaryDirectory(prefix="vibesnake-release-matrix-") as temporary:
+        output = Path(temporary) / "release_matrix.json"
+        completed = subprocess.run(
+            [
+                "dotnet",
+                "run",
+                "--project",
+                str(ROOT / "native" / "tools" / "RepositoryChecks" / "RepositoryChecks.csproj"),
+                "--configuration",
+                "Release",
+                "--",
+                "release-matrix",
+                str(root),
+                expected_revision,
+                build_mode,
+                str(output),
+            ],
+            cwd=ROOT,
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+        if completed.returncode == 2 or not output.is_file():
+            detail = (completed.stderr or completed.stdout or "native release-matrix command failed").strip()
+            raise ProductReviewPreparationError(detail)
+        matrix = json.loads(output.read_text(encoding="utf-8"))
+    raw_errors = matrix.get("errors")
+    errors = [str(item) for item in raw_errors] if isinstance(raw_errors, list) else []
+    return errors, matrix
 
 
 def _manual_dimensions() -> tuple[tuple[tuple[str, str, str], ...], tuple[str, ...]]:
