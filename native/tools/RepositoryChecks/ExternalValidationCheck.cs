@@ -1407,6 +1407,11 @@ public static class ExternalValidationCheck
 
         var parent = Path.GetDirectoryName(path)
             ?? throw new InvalidDataException("external validation evidence output has no parent directory");
+        if (File.Exists(parent))
+        {
+            throw new InvalidDataException("external validation evidence output parent is not a directory");
+        }
+
         Directory.CreateDirectory(parent);
         if (Path.Exists(path) && (File.GetAttributes(path) & (FileAttributes.Directory | FileAttributes.ReparsePoint)) != 0)
         {

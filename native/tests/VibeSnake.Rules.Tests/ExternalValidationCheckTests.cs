@@ -651,6 +651,16 @@ public sealed class ExternalValidationCheckTests
         Assert.Contains(
             ExternalValidationCheck.Evaluate(root, null, null, null, outputPath: outputDirectory).Errors,
             error => error.Contains("must be a regular file", StringComparison.Ordinal));
+        var parentFile = Path.Combine(directory.Path, "parent-file");
+        File.WriteAllText(parentFile, "x");
+        Assert.Contains(
+            ExternalValidationCheck.Evaluate(
+                root,
+                null,
+                null,
+                null,
+                outputPath: Path.Combine(parentFile, "handoff.json")).Errors,
+            error => error.Contains("parent is not a directory", StringComparison.Ordinal));
         Assert.Contains(
             ExternalValidationCheck.Evaluate(root, null, null, null, outputPath: Path.GetPathRoot(directory.Path)!).Errors,
             error => error.Contains("no parent directory", StringComparison.Ordinal));

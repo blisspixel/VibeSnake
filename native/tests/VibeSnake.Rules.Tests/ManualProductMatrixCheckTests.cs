@@ -666,7 +666,7 @@ public sealed class ManualProductMatrixCheckTests
         var parentFile = Path.Combine(directory.Path, "parent-file");
         File.WriteAllText(parentFile, "x");
         var parentEvaluation = ManualProductMatrixCheck.Evaluate(root, null, null, outputPath: Path.Combine(parentFile, "handoff.json"));
-        Assert.Contains(parentEvaluation.Errors, error => error.Contains("Cannot create", StringComparison.Ordinal));
+        Assert.Contains(parentEvaluation.Errors, error => error.Contains("parent is not a directory", StringComparison.Ordinal));
         Assert.Contains(
             ManualProductMatrixCheck.Evaluate(root, null, null, outputPath: Path.GetPathRoot(directory.Path)!).Errors,
             error => error.Contains("no parent directory", StringComparison.Ordinal));
