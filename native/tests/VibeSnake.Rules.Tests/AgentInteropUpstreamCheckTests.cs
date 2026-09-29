@@ -651,7 +651,8 @@ public sealed class AgentInteropUpstreamCheckTests
         });
         using (var client = new UpstreamIntegrityClient(lyingHandler, TimeSpan.FromSeconds(5)))
         {
-            var exception = Assert.Throws<UpstreamFetchException>(() => client.Get("https://example.invalid/lie"));
+            var exception = await Assert.ThrowsAsync<UpstreamFetchException>(() =>
+                client.GetAsync("https://example.invalid/lie", CancellationToken.None));
             Assert.Contains("response exceeds", exception.Message, StringComparison.Ordinal);
             Assert.True(lying.WasRead);
         }
@@ -797,6 +798,20 @@ public sealed class AgentInteropUpstreamCheckTests
         public override int Read(byte[] buffer, int offset, int count) => ReadBytes(count);
 
         public override int Read(Span<byte> buffer) => ReadBytes(buffer.Length);
+
+        public override Task<int> ReadAsync(
+            byte[] buffer,
+            int offset,
+            int count,
+            CancellationToken cancellationToken) =>
+            cancellationToken.IsCancellationRequested
+                ? Task.FromCanceled<int>(cancellationToken)
+                : Task.FromResult(ReadBytes(count));
+
+        public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default) =>
+            cancellationToken.IsCancellationRequested
+                ? ValueTask.FromCanceled<int>(cancellationToken)
+                : new ValueTask<int>(ReadBytes(buffer.Length));
 
         public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
 

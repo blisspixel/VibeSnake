@@ -478,22 +478,39 @@ public sealed class JevPlayTests
                 return;
             }
 
-            using (client)
+            client.NoDelay = true;
+            client.LingerState = new LingerOption(true, 0);
+            try
+            {
+                var stream = client.GetStream();
+                stream.ReadTimeout = 5000;
+                stream.WriteTimeout = 5000;
+                var header = ReadRequestHeader(stream);
+                var path = RequestPath(header);
+                var auth = RequestAuthorization(header);
+                WriteRedirect(stream, port);
+                hits.Add(path);
+                authorization.Add(auth);
+            }
+            catch (IOException)
+            {
+            }
+            catch (SocketException)
+            {
+            }
+            catch (ObjectDisposedException)
+            {
+            }
+            finally
             {
                 try
                 {
-                    client.NoDelay = true;
-                    using var stream = client.GetStream();
-                    stream.ReadTimeout = 5000;
-                    stream.WriteTimeout = 5000;
-                    var header = ReadRequestHeader(stream);
-                    var path = RequestPath(header);
-                    var auth = RequestAuthorization(header);
-                    WriteRedirect(stream, port);
-                    hits.Add(path);
-                    authorization.Add(auth);
+                    client.Dispose();
                 }
                 catch (IOException)
+                {
+                }
+                catch (SocketException)
                 {
                 }
                 catch (ObjectDisposedException)
@@ -526,44 +543,11 @@ public sealed class JevPlayTests
                     continue;
                 }
 
-                var header = Encoding.ASCII.GetString(buffer, 0, index);
-                var contentLength = HeaderContentLength(header);
-                var bodyReceived = size - (index + 4);
-                while (bodyReceived < contentLength)
-                {
-                    var bodyRead = stream.Read(buffer, 0, buffer.Length);
-                    if (bodyRead <= 0)
-                    {
-                        break;
-                    }
-
-                    bodyReceived += bodyRead;
-                }
-
-                return header;
+                return Encoding.ASCII.GetString(buffer, 0, index);
             }
         }
 
         return Encoding.ASCII.GetString(buffer, 0, size);
-    }
-
-    private static int HeaderContentLength(string header)
-    {
-        foreach (var line in header.Split("\r\n"))
-        {
-            if (line.StartsWith("Content-Length:", StringComparison.OrdinalIgnoreCase)
-                && int.TryParse(
-                    line["Content-Length:".Length..].Trim(),
-                    NumberStyles.None,
-                    CultureInfo.InvariantCulture,
-                    out var length)
-                && length is > 0 and <= 1_048_576)
-            {
-                return length;
-            }
-        }
-
-        return 0;
     }
 
     private static string RequestPath(string header)
@@ -714,9 +698,27 @@ public sealed class JevPlayTests
         {
         }
 
-        public override int Read(byte[] buffer, int offset, int count)
+        public override int Read(byte[] buffer, int offset, int count) => Take(count);
+
+        public override int Read(Span<byte> buffer) => Take(buffer.Length);
+
+        public override Task<int> ReadAsync(
+            byte[] buffer,
+            int offset,
+            int count,
+            CancellationToken cancellationToken) =>
+            cancellationToken.IsCancellationRequested
+                ? Task.FromCanceled<int>(cancellationToken)
+                : Task.FromResult(Take(count));
+
+        public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default) =>
+            cancellationToken.IsCancellationRequested
+                ? ValueTask.FromCanceled<int>(cancellationToken)
+                : new ValueTask<int>(Take(buffer.Length));
+
+        private int Take(int count)
         {
-            if (_remaining == 0)
+            if (_remaining == 0 || count <= 0)
             {
                 return 0;
             }
