@@ -580,6 +580,13 @@ public static class RepositoryCheckCommand
 
         if (arguments is not null
             && arguments.Count > 0
+            && arguments[0] == "host-package")
+        {
+            return RunHostPackage(arguments, standardOutput, standardError);
+        }
+
+        if (arguments is not null
+            && arguments.Count > 0
             && arguments[0] == "badge-write")
         {
             return RunBadgeWrite(arguments, standardOutput, standardError);
@@ -1250,6 +1257,68 @@ public static class RepositoryCheckCommand
         return 1;
     }
 
+    private static int RunHostPackage(
+        IReadOnlyList<string> arguments,
+        TextWriter standardOutput,
+        TextWriter standardError)
+    {
+        if (arguments.Count is < 2 or > 3)
+        {
+            WriteUsage(standardError);
+            return 2;
+        }
+
+        string packageRoot;
+        try
+        {
+            packageRoot = Path.GetFullPath(arguments[1]);
+        }
+        catch (Exception exception) when (
+            exception is ArgumentException or NotSupportedException or PathTooLongException)
+        {
+            standardError.WriteLine("Agent Host package root is invalid.");
+            return 2;
+        }
+
+        string repositoryRoot;
+        try
+        {
+            repositoryRoot = Path.GetFullPath(arguments.Count == 3 ? arguments[2] : ".");
+        }
+        catch (Exception exception) when (
+            exception is ArgumentException or NotSupportedException or PathTooLongException)
+        {
+            standardError.WriteLine("Repository root is invalid.");
+            return 2;
+        }
+
+        RepositoryCheckResult result;
+        try
+        {
+            result = AgentHostPackageCheck.Inspect(packageRoot, repositoryRoot);
+        }
+        catch (Exception exception) when (
+            exception is ArgumentException or NotSupportedException or PathTooLongException)
+        {
+            standardError.WriteLine("Agent Host package root is invalid.");
+            return 2;
+        }
+
+        if (result.Passed)
+        {
+            standardOutput.WriteLine(result.SuccessMessage);
+            return 0;
+        }
+
+        standardError.WriteLine(result.Name + " check failed:");
+        foreach (var failure in result.Failures)
+        {
+            standardError.WriteLine("  " + failure);
+        }
+
+        return 1;
+    }
+
     private static int RunLockWrite(
         IReadOnlyList<string> arguments,
         TextWriter standardOutput,
@@ -1401,6 +1470,8 @@ public static class RepositoryCheckCommand
             "       RepositoryChecks lock-write <ci|runtime> [repository-root]");
         writer.WriteLine(
             "       RepositoryChecks plugin <plugin-root> [--require-mcp]");
+        writer.WriteLine(
+            "       RepositoryChecks host-package <package-root> [repository-root]");
     }
 
 }

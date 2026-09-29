@@ -122,8 +122,7 @@ scripts/
 |-- install_godot_templates.ps1   Selective checksum-verified export-template bootstrap
 |-- test_native.ps1               Rules, coverage, balance/AI evidence, import, and scene smoke
 |-- package_agent_plugin.ps1      Assemble, checksum, and natively validate the framework-dependent preview Agent Plugin
-|-- package_agent_host.ps1        Assemble the current-RID unsigned self-contained Agent Host package
-|-- validate_agent_host_package.py Enforce the AA-10 host-package manifest, inventory, provenance, and checksum contract
+|-- package_agent_host.ps1        Assemble the current-RID unsigned self-contained Agent Host package and validate it with native host-package
 |-- test_native_export.ps1        Outside-checkout packaged-player smoke
 `-- inspect_native_artifact.ps1   Payload, portability, and SHA-256 manifest gate
 

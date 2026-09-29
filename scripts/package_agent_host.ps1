@@ -12,7 +12,7 @@ Set-StrictMode -Version Latest
 $repositoryRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot ".."))
 $hostProject = Join-Path $repositoryRoot "native/tools/VibeSnake.AgentHost/VibeSnake.AgentHost.csproj"
 $pluginManifestPath = Join-Path $repositoryRoot "integrations/vibesnake-agent-plugin/plugin.json"
-$validator = Join-Path $repositoryRoot "scripts/validate_agent_host_package.py"
+$validatorProject = Join-Path $repositoryRoot "native/tools/RepositoryChecks/RepositoryChecks.csproj"
 
 function Get-CurrentRuntimeIdentifier {
     if ($IsWindows) {
@@ -340,7 +340,10 @@ $checksumLines = Get-ChildItem -LiteralPath $target -File -Recurse |
     $checksumLines,
     [System.Text.UTF8Encoding]::new($false))
 
-python $validator $target
+dotnet run `
+    --project $validatorProject `
+    --configuration Release `
+    -- host-package $target $repositoryRoot
 if ($LASTEXITCODE -ne 0) {
     throw "The assembled Agent Host package failed validation."
 }

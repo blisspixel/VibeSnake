@@ -1453,6 +1453,9 @@ public sealed class RepositoryChecksTests
             "RepositoryChecks <achievement-candidates|all|badges|core-rules|docs|freeze|interop|inventory|inventory-release|knowledge|last-stand|locks|logo|materials|movement|phase-shift|rehearsal|remaining-powers|screenshots|shield|source|stable|version>",
             invalidError.ToString());
         Assert.Contains(
+            "RepositoryChecks host-package <package-root> [repository-root]",
+            invalidError.ToString());
+        Assert.Contains(
             "RepositoryChecks achievement-candidates-write [repository-root]",
             invalidError.ToString());
         Assert.Contains(
@@ -1561,6 +1564,7 @@ public sealed class RepositoryChecksTests
             Assert.Contains("Station badges verified", output.ToString());
             Assert.Contains("Source policy check passed", output.ToString());
             Assert.Contains("Agent Plugin source profile passed", output.ToString());
+            Assert.DoesNotContain("Agent Host package", output.ToString(), StringComparison.Ordinal);
         });
     }
 
@@ -1633,6 +1637,8 @@ public sealed class RepositoryChecksTests
             ["rehearsal-record", "record.json", "revision"],
             ["stable-write"],
             ["stable-record", "record.json", "revision"],
+            ["host-package"],
+            ["host-package", "package", "repository", "extra"],
         })
         {
             var output = new StringWriter();

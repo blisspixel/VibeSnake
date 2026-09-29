@@ -214,11 +214,6 @@ jobs:
             native/tools/ValidateCreatorContent/packages.lock.json
             native/tools/VibeSnake.AgentHost/packages.lock.json
 
-      - name: Set up Python for remaining Agent Host package validation
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
-        with:
-          python-version: "3.14"
-
       - name: Restore locked dependencies
         run: dotnet restore native/VibeSnake.slnx --locked-mode
 

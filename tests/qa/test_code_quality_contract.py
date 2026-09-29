@@ -53,10 +53,15 @@ def test_dotnet_quality_contract_is_explicit_and_stable() -> None:
     )
     assert len(validator_installs) == 1
     native_rules_job = workflow.split("  native-rules:", 1)[1].split("  godot-smoke:", 1)[0]
-    assert "Set up Python for remaining Agent Host package validation" in native_rules_job
-    assert 'python-version: "3.14"' in native_rules_job
+    assert "Set up Python for remaining Agent Host package validation" not in native_rules_job
+    assert "python-version:" not in native_rules_job
     assert "pip install" not in native_rules_job
     assert "validate_agent_plugin.py" not in workflow
+    assert "validate_agent_host_package.py" not in workflow
+    host_packager = (REPOSITORY_ROOT / "scripts" / "package_agent_host.ps1").read_text(encoding="utf-8")
+    assert "-- host-package " in host_packager
+    assert "validate_agent_host_package.py" not in host_packager
+    assert "python " not in host_packager
     assert "RepositoryChecks/RepositoryChecks.csproj --configuration Release -- plugin" in workflow
     for script_name in ("write_dependency_inventory.ps1", "inspect_native_artifact.ps1"):
         script = (REPOSITORY_ROOT / "scripts" / script_name).read_text(encoding="utf-8")
