@@ -1450,7 +1450,7 @@ public sealed class RepositoryChecksTests
         Assert.Equal(2, invalidCode);
         Assert.Equal(string.Empty, invalidOutput.ToString());
         Assert.Contains(
-            "RepositoryChecks <achievement-candidates|all|badges|core-rules|docs|freeze|interop|inventory|inventory-release|knowledge|last-stand|locks|logo|materials|movement|phase-shift|rehearsal|remaining-powers|screenshots|shield|source|stable|version>",
+            "RepositoryChecks <achievement-candidates|all|badges|core-rules|docs|external-validation|freeze|interop|inventory|inventory-release|knowledge|last-stand|locks|logo|manual-matrix|materials|movement|phase-shift|rehearsal|remaining-powers|screenshots|shield|source|stable|version>",
             invalidError.ToString());
         Assert.Contains(
             "RepositoryChecks host-package <package-root> [repository-root]",
@@ -1500,6 +1500,18 @@ public sealed class RepositoryChecksTests
         Assert.Contains(
             "RepositoryChecks stable-record <record> <expected-revision> <output> [repository-root]",
             invalidError.ToString());
+        Assert.Contains(
+            "RepositoryChecks manual-matrix-write <output> [repository-root]",
+            invalidError.ToString());
+        Assert.Contains(
+            "RepositoryChecks manual-matrix-record <sessions-directory> <candidate> <output> [repository-root]",
+            invalidError.ToString());
+        Assert.Contains(
+            "RepositoryChecks external-validation-write <output> [repository-root]",
+            invalidError.ToString());
+        Assert.Contains(
+            "RepositoryChecks external-validation-record <sessions-directory> <candidate-ledger> <findings> <output> [repository-root]",
+            invalidError.ToString());
 
         WithTemporaryDirectory(root =>
         {
@@ -1515,6 +1527,7 @@ public sealed class RepositoryChecksTests
             WriteReleaseMaterialsFixture(root);
             WriteReleaseRehearsalFixture(root);
             WriteStablePromotionFixture(root);
+            WriteProductHandoffFixture(root);
             WriteCandidateFreezeFixture(root);
             WriteDependencyLockFixture(root);
             WriteAgentPluginFixture(root);
@@ -1561,6 +1574,12 @@ public sealed class RepositoryChecksTests
                 output.ToString());
             Assert.Contains("rehearsal", output.ToString(), StringComparison.OrdinalIgnoreCase);
             Assert.Contains("stable", output.ToString(), StringComparison.OrdinalIgnoreCase);
+            Assert.Contains(
+                "Manual product matrix handoff qualified; retained physical execution remains pending.",
+                output.ToString());
+            Assert.Contains(
+                "External validation handoff qualified; controlled participant execution remains pending.",
+                output.ToString());
             Assert.Contains("Station badges verified", output.ToString());
             Assert.Contains("Source policy check passed", output.ToString());
             Assert.Contains("Agent Plugin source profile passed", output.ToString());
@@ -1583,6 +1602,8 @@ public sealed class RepositoryChecksTests
     [InlineData("knowledge")]
     [InlineData("locks")]
     [InlineData("logo")]
+    [InlineData("manual-matrix")]
+    [InlineData("external-validation")]
     [InlineData("materials")]
     [InlineData("rehearsal")]
     [InlineData("source")]
@@ -1603,6 +1624,7 @@ public sealed class RepositoryChecksTests
             WriteReleaseMaterialsFixture(root);
             WriteReleaseRehearsalFixture(root);
             WriteStablePromotionFixture(root);
+            WriteProductHandoffFixture(root);
             WriteCandidateFreezeFixture(root);
             WriteDependencyLockFixture(root);
             CopyApprovedLogo(root);
@@ -1637,6 +1659,11 @@ public sealed class RepositoryChecksTests
             ["rehearsal-record", "record.json", "revision"],
             ["stable-write"],
             ["stable-record", "record.json", "revision"],
+            ["manual-matrix-write"],
+            ["manual-matrix-record", "sessions", "candidate"],
+            ["manual-matrix", ".", "extra"],
+            ["external-validation-write"],
+            ["external-validation-record", "sessions", "ledger", "findings"],
             ["host-package"],
             ["host-package", "package", "repository", "extra"],
         })
@@ -2197,6 +2224,32 @@ public sealed class RepositoryChecksTests
                         4))
                 + "\n");
         }
+    }
+
+    private static void WriteProductHandoffFixture(string root)
+    {
+        var repositoryRoot = ResolveRepositoryRoot();
+        foreach (var relativePath in new[]
+        {
+            "config/qa_manual_product_matrix_v2.json",
+            "config/qa_external_validation_v1.json",
+            "config/qa_human_playtest_protocol.json",
+        })
+        {
+            var destination = Path.Combine(root, relativePath.Replace('/', Path.DirectorySeparatorChar));
+            Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
+            File.Copy(
+                Path.Combine(repositoryRoot, relativePath.Replace('/', Path.DirectorySeparatorChar)),
+                destination,
+                overwrite: true);
+        }
+
+        if (!File.Exists(Path.Combine(root, "docs", "guides", "ACCESSIBILITY.md")))
+        {
+            WriteFile(root, "docs/guides/ACCESSIBILITY.md", "# Accessibility\n");
+        }
+
+        WriteFile(root, "docs/release/MANUAL_PRODUCT_MATRIX.md", "# Manual product matrix\n");
     }
 
     private static void WriteReleaseRehearsalFixture(string root)

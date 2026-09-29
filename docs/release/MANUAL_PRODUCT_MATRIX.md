@@ -49,9 +49,8 @@ The tool refuses an existing destination and cannot set release acceptance or pu
 Validate the handoff before physical execution:
 
 ```powershell
-python scripts/check_manual_product_matrix.py `
-  --candidate "TestResults/manual-product-review/$reviewRevision/candidate.json" `
-  --output "TestResults/manual-product-review/$reviewRevision/handoff-decision.json"
+dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- manual-matrix-write `
+  "TestResults/manual-product-review/$reviewRevision/handoff-decision.json"
 ```
 
 No current physical handoff exists. The zero-session `e87db6e` workspace is superseded and must not be used
@@ -134,10 +133,10 @@ retained evidence and prevents acceptance. An inaccessible required flow is a P1
 ## Validate retained sessions
 
 ```powershell
-python scripts/check_manual_product_matrix.py `
-  --candidate C:\retained-vibesnake-evidence\manual-product-matrix\candidate.json `
-  --sessions C:\retained-vibesnake-evidence\manual-product-matrix\sessions `
-  --output C:\retained-vibesnake-evidence\manual-product-matrix\decision.json
+dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- manual-matrix-record `
+  C:\retained-vibesnake-evidence\manual-product-matrix\sessions `
+  C:\retained-vibesnake-evidence\manual-product-matrix\candidate.json `
+  C:\retained-vibesnake-evidence\manual-product-matrix\decision.json
 ```
 
 The validator rejects unknown or duplicate fields, unsafe or missing retained evidence, a missing or invalid

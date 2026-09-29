@@ -231,6 +231,16 @@ def test_ci_runs_the_documented_quality_and_dependency_gates() -> None:
     assert "shared_rule_traces" not in workflow
     assert "vibesnake.qa.shared_traces" not in workflow
     assert (
+        "--configuration Release --no-restore -- manual-matrix-write\n"
+        "          TestResults/manual-product-matrix/manual_product_matrix_handoff.json ." in workflow
+    )
+    assert (
+        "--configuration Release --no-restore -- external-validation-write\n"
+        "          TestResults/external-validation/external_validation_handoff.json ." in workflow
+    )
+    assert "python scripts/check_manual_product_matrix.py" not in workflow
+    assert "python scripts/check_external_validation.py" not in workflow
+    assert (
         "--configuration Release --no-restore -- materials-write\n"
         "          TestResults/release-materials/release_materials_handoff.json ." in workflow
     )
@@ -257,6 +267,11 @@ def test_ci_runs_the_documented_quality_and_dependency_gates() -> None:
     pre_commit = (REPOSITORY_ROOT / ".pre-commit-config.yaml").read_text(encoding="utf-8")
     assert "dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- docs ." in pre_commit
     assert "dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- source ." in pre_commit
+    assert "dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- manual-matrix ." in pre_commit
+    assert (
+        "dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- external-validation ."
+        in pre_commit
+    )
     assert "dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- materials ." in pre_commit
     assert "dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- rehearsal ." in pre_commit
     assert "dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- stable ." in pre_commit
@@ -276,6 +291,8 @@ def test_ci_runs_the_documented_quality_and_dependency_gates() -> None:
     assert "dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- interop ." in pre_commit
     assert "python scripts/check_docs.py" not in pre_commit
     assert "python scripts/check_source_policy.py" not in pre_commit
+    assert "python scripts/check_manual_product_matrix.py" not in pre_commit
+    assert "python scripts/check_external_validation.py" not in pre_commit
     assert "python scripts/check_release_materials.py" not in pre_commit
     assert "python scripts/check_release_rehearsal.py" not in pre_commit
     assert "python scripts/check_stable_promotion.py" not in pre_commit
@@ -305,6 +322,10 @@ def test_ci_runs_the_documented_quality_and_dependency_gates() -> None:
     assert not (REPOSITORY_ROOT / "tests" / "qa" / "test_shared_traces.py").exists()
     assert not (REPOSITORY_ROOT / "scripts" / "generate_agent_knowledge.py").exists()
     assert not (REPOSITORY_ROOT / "tests" / "qa" / "test_agent_knowledge.py").exists()
+    assert not (REPOSITORY_ROOT / "scripts" / "check_manual_product_matrix.py").exists()
+    assert not (REPOSITORY_ROOT / "tests" / "qa" / "test_manual_product_matrix.py").exists()
+    assert not (REPOSITORY_ROOT / "scripts" / "check_external_validation.py").exists()
+    assert not (REPOSITORY_ROOT / "tests" / "qa" / "test_external_validation.py").exists()
     fixture_tool = (
         REPOSITORY_ROOT / "native" / "tools" / "RepositoryChecks" / "AchievementCandidateFixtureCheck.cs"
     ).read_text(encoding="utf-8")

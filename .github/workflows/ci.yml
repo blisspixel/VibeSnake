@@ -84,14 +84,16 @@ jobs:
       - name: Qualify manual product matrix handoff
         if: matrix.python-version == '3.14'
         run: >-
-          python scripts/check_manual_product_matrix.py
-          --output TestResults/manual-product-matrix/manual_product_matrix_handoff.json
+          dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj
+          --configuration Release --no-restore -- manual-matrix-write
+          TestResults/manual-product-matrix/manual_product_matrix_handoff.json .
 
       - name: Qualify external validation handoff
         if: matrix.python-version == '3.14'
         run: >-
-          python scripts/check_external_validation.py
-          --output TestResults/external-validation/external_validation_handoff.json
+          dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj
+          --configuration Release --no-restore -- external-validation-write
+          TestResults/external-validation/external_validation_handoff.json .
 
       - name: Qualify release-material foundation
         if: matrix.python-version == '3.14'

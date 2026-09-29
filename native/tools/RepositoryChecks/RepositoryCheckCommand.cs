@@ -648,9 +648,37 @@ public static class RepositoryCheckCommand
             return RunStableRecord(arguments, standardOutput, standardError);
         }
 
+        if (arguments is not null
+            && arguments.Count > 0
+            && arguments[0] == "manual-matrix-write")
+        {
+            return RunManualMatrixWrite(arguments, standardOutput, standardError);
+        }
+
+        if (arguments is not null
+            && arguments.Count > 0
+            && arguments[0] == "manual-matrix-record")
+        {
+            return RunManualMatrixRecord(arguments, standardOutput, standardError);
+        }
+
+        if (arguments is not null
+            && arguments.Count > 0
+            && arguments[0] == "external-validation-write")
+        {
+            return RunExternalValidationWrite(arguments, standardOutput, standardError);
+        }
+
+        if (arguments is not null
+            && arguments.Count > 0
+            && arguments[0] == "external-validation-record")
+        {
+            return RunExternalValidationRecord(arguments, standardOutput, standardError);
+        }
+
         if (arguments is null
             || arguments.Count is < 1 or > 2
-            || arguments[0] is not ("achievement-candidates" or "all" or "badges" or "core-rules" or "docs" or "freeze" or "interop" or "inventory" or "inventory-release" or "knowledge" or "last-stand" or "locks" or "logo" or "materials" or "movement" or "phase-shift" or "rehearsal" or "remaining-powers" or "screenshots" or "shield" or "source" or "stable" or "version"))
+            || arguments[0] is not ("achievement-candidates" or "all" or "badges" or "core-rules" or "docs" or "external-validation" or "freeze" or "interop" or "inventory" or "inventory-release" or "knowledge" or "last-stand" or "locks" or "logo" or "manual-matrix" or "materials" or "movement" or "phase-shift" or "rehearsal" or "remaining-powers" or "screenshots" or "shield" or "source" or "stable" or "version"))
         {
             WriteUsage(standardError);
             return 2;
@@ -684,7 +712,9 @@ public static class RepositoryCheckCommand
             "knowledge" => new[] { AgentKnowledgeCheck.Inspect(repositoryRoot) },
             "last-stand" => new[] { LastStandFixtureCheck.Inspect(repositoryRoot) },
             "locks" => new[] { DependencyLockCheck.Inspect(repositoryRoot) },
+            "external-validation" => new[] { ExternalValidationCheck.Inspect(repositoryRoot) },
             "logo" => new[] { ProjectLogoCheck.Inspect(repositoryRoot) },
+            "manual-matrix" => new[] { ManualProductMatrixCheck.Inspect(repositoryRoot) },
             "materials" => new[] { ReleaseMaterialsCheck.Inspect(repositoryRoot) },
             "movement" => new[] { MovementFixtureCheck.Inspect(repositoryRoot) },
             "phase-shift" => new[] { PhaseShiftFixtureCheck.Inspect(repositoryRoot) },
@@ -715,6 +745,8 @@ public static class RepositoryCheckCommand
                 ReleaseMaterialsCheck.Inspect(repositoryRoot),
                 ReleaseRehearsalCheck.Inspect(repositoryRoot),
                 StablePromotionCheck.Inspect(repositoryRoot),
+                ManualProductMatrixCheck.Inspect(repositoryRoot),
+                ExternalValidationCheck.Inspect(repositoryRoot),
                 ReadmeScreenshotCheck.Inspect(repositoryRoot),
                 StationBadgeCheck.Inspect(repositoryRoot),
                 SourcePolicyCheck.Inspect(repositoryRoot),
@@ -1112,10 +1144,160 @@ public static class RepositoryCheckCommand
             standardError);
     }
 
+    private static int RunManualMatrixWrite(
+        IReadOnlyList<string> arguments,
+        TextWriter standardOutput,
+        TextWriter standardError)
+    {
+        if (arguments.Count is < 2 or > 3)
+        {
+            WriteUsage(standardError);
+            return 2;
+        }
+
+        string repositoryRoot;
+        string outputPath;
+        try
+        {
+            repositoryRoot = Path.GetFullPath(arguments.Count == 3 ? arguments[2] : ".");
+            outputPath = Path.GetFullPath(arguments[1], repositoryRoot);
+        }
+        catch (Exception exception) when (
+            exception is ArgumentException or NotSupportedException or PathTooLongException)
+        {
+            standardError.WriteLine("Repository root or manual-product output is invalid.");
+            return 2;
+        }
+
+        return ReportSingleResult(
+            ManualProductMatrixCheck.WriteFoundationHandoff(repositoryRoot, outputPath),
+            standardOutput,
+            standardError,
+            "Manual product matrix qualification failed:");
+    }
+
+    private static int RunManualMatrixRecord(
+        IReadOnlyList<string> arguments,
+        TextWriter standardOutput,
+        TextWriter standardError)
+    {
+        if (arguments.Count is < 4 or > 5)
+        {
+            WriteUsage(standardError);
+            return 2;
+        }
+
+        string repositoryRoot;
+        string sessionsDirectory;
+        string candidatePath;
+        string outputPath;
+        try
+        {
+            repositoryRoot = Path.GetFullPath(arguments.Count == 5 ? arguments[4] : ".");
+            sessionsDirectory = Path.GetFullPath(arguments[1], repositoryRoot);
+            candidatePath = Path.GetFullPath(arguments[2], repositoryRoot);
+            outputPath = Path.GetFullPath(arguments[3], repositoryRoot);
+        }
+        catch (Exception exception) when (
+            exception is ArgumentException or NotSupportedException or PathTooLongException)
+        {
+            standardError.WriteLine(
+                "Repository root, manual-product sessions, candidate, or output is invalid.");
+            return 2;
+        }
+
+        return ReportSingleResult(
+            ManualProductMatrixCheck.RecordSessions(
+                repositoryRoot,
+                sessionsDirectory,
+                candidatePath,
+                outputPath),
+            standardOutput,
+            standardError,
+            "Manual product matrix qualification failed:");
+    }
+
+    private static int RunExternalValidationWrite(
+        IReadOnlyList<string> arguments,
+        TextWriter standardOutput,
+        TextWriter standardError)
+    {
+        if (arguments.Count is < 2 or > 3)
+        {
+            WriteUsage(standardError);
+            return 2;
+        }
+
+        string repositoryRoot;
+        string outputPath;
+        try
+        {
+            repositoryRoot = Path.GetFullPath(arguments.Count == 3 ? arguments[2] : ".");
+            outputPath = Path.GetFullPath(arguments[1], repositoryRoot);
+        }
+        catch (Exception exception) when (
+            exception is ArgumentException or NotSupportedException or PathTooLongException)
+        {
+            standardError.WriteLine("Repository root or external-validation output is invalid.");
+            return 2;
+        }
+
+        return ReportSingleResult(
+            ExternalValidationCheck.WriteFoundationHandoff(repositoryRoot, outputPath),
+            standardOutput,
+            standardError,
+            "External validation qualification failed:");
+    }
+
+    private static int RunExternalValidationRecord(
+        IReadOnlyList<string> arguments,
+        TextWriter standardOutput,
+        TextWriter standardError)
+    {
+        if (arguments.Count is < 5 or > 6)
+        {
+            WriteUsage(standardError);
+            return 2;
+        }
+
+        string repositoryRoot;
+        string sessionsDirectory;
+        string candidateLedgerPath;
+        string findingsPath;
+        string outputPath;
+        try
+        {
+            repositoryRoot = Path.GetFullPath(arguments.Count == 6 ? arguments[5] : ".");
+            sessionsDirectory = Path.GetFullPath(arguments[1], repositoryRoot);
+            candidateLedgerPath = Path.GetFullPath(arguments[2], repositoryRoot);
+            findingsPath = Path.GetFullPath(arguments[3], repositoryRoot);
+            outputPath = Path.GetFullPath(arguments[4], repositoryRoot);
+        }
+        catch (Exception exception) when (
+            exception is ArgumentException or NotSupportedException or PathTooLongException)
+        {
+            standardError.WriteLine(
+                "Repository root, external-validation sessions, ledger, findings, or output is invalid.");
+            return 2;
+        }
+
+        return ReportSingleResult(
+            ExternalValidationCheck.Record(
+                repositoryRoot,
+                sessionsDirectory,
+                candidateLedgerPath,
+                findingsPath,
+                outputPath),
+            standardOutput,
+            standardError,
+            "External validation qualification failed:");
+    }
+
     private static int ReportSingleResult(
         RepositoryCheckResult result,
         TextWriter standardOutput,
-        TextWriter standardError)
+        TextWriter standardError,
+        string? failureHeading = null)
     {
         if (result.Passed)
         {
@@ -1123,7 +1305,7 @@ public static class RepositoryCheckCommand
             return 0;
         }
 
-        standardError.WriteLine(result.Name + " check failed:");
+        standardError.WriteLine(failureHeading ?? result.Name + " check failed:");
         foreach (var failure in result.Failures)
         {
             standardError.WriteLine("  " + failure);
@@ -1422,7 +1604,7 @@ public static class RepositoryCheckCommand
     private static void WriteUsage(TextWriter writer)
     {
         writer.WriteLine(
-            "Usage: RepositoryChecks <achievement-candidates|all|badges|core-rules|docs|freeze|interop|inventory|inventory-release|knowledge|last-stand|locks|logo|materials|movement|phase-shift|rehearsal|remaining-powers|screenshots|shield|source|stable|version> "
+            "Usage: RepositoryChecks <achievement-candidates|all|badges|core-rules|docs|external-validation|freeze|interop|inventory|inventory-release|knowledge|last-stand|locks|logo|manual-matrix|materials|movement|phase-shift|rehearsal|remaining-powers|screenshots|shield|source|stable|version> "
             + "[repository-root]");
         writer.WriteLine(
             "       RepositoryChecks achievement-candidates-write [repository-root]");
@@ -1463,6 +1645,16 @@ public static class RepositoryCheckCommand
         writer.WriteLine(
             "       RepositoryChecks stable-record <record> <expected-revision> "
             + "<output> [repository-root]");
+        writer.WriteLine(
+            "       RepositoryChecks manual-matrix-write <output> [repository-root]");
+        writer.WriteLine(
+            "       RepositoryChecks manual-matrix-record <sessions-directory> <candidate> "
+            + "<output> [repository-root]");
+        writer.WriteLine(
+            "       RepositoryChecks external-validation-write <output> [repository-root]");
+        writer.WriteLine(
+            "       RepositoryChecks external-validation-record <sessions-directory> "
+            + "<candidate-ledger> <findings> <output> [repository-root]");
         writer.WriteLine(
             "       RepositoryChecks freeze-baseline <revision> <generated-utc> "
             + "[repository-root] [output]");

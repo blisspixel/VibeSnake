@@ -15,12 +15,22 @@ from typing import Any, Mapping
 from uuid import uuid4
 
 ROOT = Path(__file__).resolve().parents[2]
-_MANUAL_MATRIX = runpy.run_path(str(ROOT / "scripts" / "check_manual_product_matrix.py"))
 _RELEASE_MATRIX = runpy.run_path(str(ROOT / "scripts" / "check_release_matrix.py"))
-PLATFORM_ROWS = _MANUAL_MATRIX["PLATFORM_ROWS"]
-REQUIRED_FLOWS = _MANUAL_MATRIX["REQUIRED_FLOWS"]
 validate_release_matrix = _RELEASE_MATRIX["validate_release_matrix"]
 read_release_json = _RELEASE_MATRIX["_read_json"]
+
+
+def _manual_dimensions() -> tuple[tuple[tuple[str, str, str], ...], tuple[str, ...]]:
+    """Read the closed manual platform rows and required flows from the contract."""
+    document = json.loads((ROOT / "config" / "qa_manual_product_matrix_v2.json").read_text(encoding="utf-8"))
+    platform_rows = tuple(
+        (str(row["id"]), str(row["artifactPlatform"]), str(row["architecture"])) for row in document["platformRows"]
+    )
+    required_flows = tuple(str(flow_id) for flow_id in document["requiredFlows"])
+    return platform_rows, required_flows
+
+
+PLATFORM_ROWS, REQUIRED_FLOWS = _manual_dimensions()
 
 
 DEFAULT_OUTPUT_ROOT = ROOT / "TestResults" / "manual-product-review"
@@ -192,10 +202,10 @@ continue with a renamed, rebuilt, or mismatched package.
 Validate the retained sessions from the repository root:
 
 ```powershell
-python scripts/check_manual_product_matrix.py `
-  --candidate <workspace>/candidate.json `
-  --sessions <workspace>/sessions `
-  --output <workspace>/decision.json
+dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- manual-matrix-record `
+  <workspace>/sessions `
+  <workspace>/candidate.json `
+  <workspace>/decision.json
 ```
 
 Review remains incomplete until the validator reports all 144 platform-flow cells, all 432 complete-device

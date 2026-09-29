@@ -46,6 +46,16 @@ repos:
         entry: dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- inventory .
         language: system
         pass_filenames: false
+      - id: manual-product-matrix
+        name: manual product matrix foundation
+        entry: dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- manual-matrix .
+        language: system
+        pass_filenames: false
+      - id: external-validation
+        name: external validation foundation
+        entry: dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- external-validation .
+        language: system
+        pass_filenames: false
       - id: release-materials
         name: release-material foundation
         entry: dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- materials .

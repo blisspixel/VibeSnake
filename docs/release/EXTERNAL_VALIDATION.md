@@ -85,18 +85,18 @@ Use P0 through P3 from the release roadmap. P0 and P1 findings cannot receive a 
 First qualify the repository handoff:
 
 ```powershell
-python scripts/check_external_validation.py `
-  --output TestResults/external-validation/external_validation_handoff.json
+dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- external-validation-write `
+  TestResults/external-validation/external_validation_handoff.json
 ```
 
 Then validate a retained execution set outside the checkout:
 
 ```powershell
-python scripts/check_external_validation.py `
-  --sessions C:\retained-vibesnake-evidence\external-validation\sessions `
-  --candidate-ledger C:\retained-vibesnake-evidence\external-validation\candidate-ledger.json `
-  --findings C:\retained-vibesnake-evidence\external-validation\findings.json `
-  --output C:\retained-vibesnake-evidence\external-validation\decision.json
+dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- external-validation-record `
+  C:\retained-vibesnake-evidence\external-validation\sessions `
+  C:\retained-vibesnake-evidence\external-validation\candidate-ledger.json `
+  C:\retained-vibesnake-evidence\external-validation\findings.json `
+  C:\retained-vibesnake-evidence\external-validation\decision.json
 ```
 
 The gate accepts only the final candidate with all cohorts, all artifact platforms, all four input device classes, complete fresh-participant comprehension, exact candidate and artifact identity, retained report files, a valid repair chain, and no unresolved blocking finding.
