@@ -127,7 +127,7 @@ scripts/
 play.ps1 / play.sh / play.bat     Verify, build, and launch the native Godot game
 ```
 
-Native `content-packs` and `radio-pack` in `native/tools/RepositoryChecks/` qualify canonical manifests and assemble one already-approved radio archive. Both stay outside `all` and do not approve radio content or change export eligibility.
+Native `content-packs` and `radio-pack` in `native/tools/RepositoryChecks/` qualify canonical manifests and assemble one already-approved radio archive. Both stay outside `all` and do not approve radio content or change export eligibility. Native `interop-upstream` in the same tool verifies three reviewed HTTPS digests on the scheduled job. It stays outside `all` and ordinary CI.
 
 The Godot and C# paths are the default source-playable product. The Python package remains a frozen behavior oracle, fixture producer, and optional migration reference. New product behavior belongs in `game/` and `native/`.
 

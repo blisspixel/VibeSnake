@@ -1468,6 +1468,13 @@ public sealed class RepositoryChecksTests
             "RepositoryChecks radio-pack <repository-root> <manifest> <output> [--curation <path>] [--inventory <path>]",
             invalidError.ToString());
         Assert.Contains(
+            "RepositoryChecks interop-upstream [repository-root]",
+            invalidError.ToString());
+        Assert.DoesNotContain(
+            "interop-upstream",
+            invalidError.ToString().Split(Environment.NewLine)[0],
+            StringComparison.Ordinal);
+        Assert.Contains(
             "RepositoryChecks achievement-candidates-write [repository-root]",
             invalidError.ToString());
         Assert.Contains(

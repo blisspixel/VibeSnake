@@ -244,6 +244,7 @@ def test_ci_runs_the_documented_quality_and_dependency_gates() -> None:
     assert "python scripts/assemble_unsigned_preview.py" not in workflow
     assert "python scripts/content_packs.py" not in workflow
     assert "python scripts/assemble_radio_pack.py" not in workflow
+    assert "python scripts/check_agent_interop_upstream.py" not in workflow
     assert "--configuration Release --no-restore -- unsigned-preview" in workflow
     assert "--configuration Release --no-restore -- radio-pack" in workflow
     assert (
@@ -418,7 +419,9 @@ def test_agent_interoperability_drift_workflow_is_bounded_and_required() -> None
     assert job["timeout-minutes"] == "5"
     raw = path.read_text(encoding="utf-8")
     assert "--configuration Release -- interop ." in raw
-    assert "python scripts/check_agent_interop_upstream.py" in raw
+    assert "--configuration Release --no-restore -- interop-upstream ." in raw
+    assert "actions/setup-python" not in raw
+    assert "python scripts/check_agent_interop_upstream.py" not in raw
     assert "python scripts/check_agent_interop.py" not in raw
 
 

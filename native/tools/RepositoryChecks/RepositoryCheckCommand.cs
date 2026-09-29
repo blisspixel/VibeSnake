@@ -477,7 +477,7 @@ public static class RepositoryCheckCommand
         IReadOnlyList<string>? arguments,
         TextWriter standardOutput,
         TextWriter standardError) =>
-        RunCore(arguments, standardOutput, standardError, resolver: null);
+        RunCore(arguments, standardOutput, standardError, resolver: null, upstreamFetch: null);
 
     internal static int Run(
         IReadOnlyList<string>? arguments,
@@ -486,14 +486,25 @@ public static class RepositoryCheckCommand
         IDependencyResolverProcess resolver)
     {
         ArgumentNullException.ThrowIfNull(resolver);
-        return RunCore(arguments, standardOutput, standardError, resolver);
+        return RunCore(arguments, standardOutput, standardError, resolver, upstreamFetch: null);
+    }
+
+    internal static int Run(
+        IReadOnlyList<string>? arguments,
+        TextWriter standardOutput,
+        TextWriter standardError,
+        Func<string, byte[]> upstreamFetch)
+    {
+        ArgumentNullException.ThrowIfNull(upstreamFetch);
+        return RunCore(arguments, standardOutput, standardError, resolver: null, upstreamFetch);
     }
 
     private static int RunCore(
         IReadOnlyList<string>? arguments,
         TextWriter standardOutput,
         TextWriter standardError,
-        IDependencyResolverProcess? resolver)
+        IDependencyResolverProcess? resolver,
+        Func<string, byte[]>? upstreamFetch)
     {
         ArgumentNullException.ThrowIfNull(standardOutput);
         ArgumentNullException.ThrowIfNull(standardError);
@@ -705,6 +716,13 @@ public static class RepositoryCheckCommand
             && arguments[0] == "radio-pack")
         {
             return RunRadioPack(arguments, standardOutput, standardError);
+        }
+
+        if (arguments is not null
+            && arguments.Count > 0
+            && arguments[0] == "interop-upstream")
+        {
+            return RunInteropUpstream(arguments, standardOutput, standardError, upstreamFetch);
         }
 
         if (arguments is null
@@ -1870,6 +1888,8 @@ public static class RepositoryCheckCommand
         writer.WriteLine(
             "       RepositoryChecks radio-pack <repository-root> <manifest> <output> "
             + "[--curation <path>] [--inventory <path>]");
+        writer.WriteLine(
+            "       RepositoryChecks interop-upstream [repository-root]");
     }
 
     private const string DefaultGameVersion = "0.3.0";
@@ -2129,6 +2149,69 @@ public static class RepositoryCheckCommand
             curationPath,
             inventoryPath);
         return true;
+    }
+
+    private static int RunInteropUpstream(
+        IReadOnlyList<string> arguments,
+        TextWriter standardOutput,
+        TextWriter standardError,
+        Func<string, byte[]>? upstreamFetch)
+    {
+        if (arguments.Count > 2 || (arguments.Count == 2 && string.IsNullOrWhiteSpace(arguments[1])))
+        {
+            WriteUsage(standardError);
+            return 2;
+        }
+
+        string repositoryRoot;
+        try
+        {
+            repositoryRoot = Path.GetFullPath(arguments.Count == 2 ? arguments[1] : ".");
+        }
+        catch (Exception exception) when (
+            exception is ArgumentException or NotSupportedException or PathTooLongException)
+        {
+            standardError.WriteLine("Repository root is invalid.");
+            return 2;
+        }
+
+        UpstreamIntegrityClient? ownedClient = null;
+        var fetch = upstreamFetch;
+        if (fetch is null)
+        {
+            ownedClient = UpstreamIntegrityClient.Create();
+            fetch = ownedClient.Get;
+        }
+
+        try
+        {
+            var inspection = AgentInteropUpstreamCheck.Inspect(repositoryRoot, fetch);
+            if (inspection.LoadError is not null)
+            {
+                standardError.WriteLine(
+                    "Agent interoperability upstream check failed: " + inspection.LoadError);
+                return 1;
+            }
+
+            if (inspection.Errors.Length > 0)
+            {
+                standardError.WriteLine("Agent interoperability upstream check failed:");
+                foreach (var error in inspection.Errors)
+                {
+                    standardError.WriteLine("  " + error);
+                }
+
+                return 1;
+            }
+
+            standardOutput.WriteLine(
+                "Agent interoperability upstream specification and schema pins passed: " + repositoryRoot);
+            return 0;
+        }
+        finally
+        {
+            ownedClient?.Dispose();
+        }
     }
 
 }

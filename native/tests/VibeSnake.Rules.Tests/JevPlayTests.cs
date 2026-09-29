@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
@@ -403,41 +404,17 @@ public sealed class JevPlayTests
     [Fact]
     public async Task Owned_client_does_not_follow_a_redirect_or_forward_the_key()
     {
-        using var probe = new TcpListener(IPAddress.Loopback, 0);
-        probe.Start();
-        var port = ((IPEndPoint)probe.LocalEndpoint).Port;
-        probe.Stop();
-
-        using var listener = new HttpListener();
-        listener.Prefixes.Add($"http://127.0.0.1:{port}/");
+        // HttpListener accepted this connection on macOS and never completed the 302.
+        using var listener = new TcpListener(IPAddress.Loopback, 0);
         listener.Start();
+        var port = ((IPEndPoint)listener.LocalEndpoint).Port;
         var hits = new List<string>();
         var authorization = new List<string?>();
-        var server = Task.Run(async () =>
+        var server = new Thread(() => ServeRedirects(listener, hits, authorization, port))
         {
-            try
-            {
-                while (hits.Count < 4)
-                {
-                    var context = await listener.GetContextAsync().ConfigureAwait(false);
-                    hits.Add(context.Request.Url?.AbsolutePath ?? string.Empty);
-                    authorization.Add(context.Request.Headers["Authorization"]);
-                    var payload = Encoding.UTF8.GetBytes("rejected redirect-secret");
-                    context.Response.StatusCode = 302;
-                    context.Response.RedirectLocation = $"http://127.0.0.1:{port}/stolen";
-                    context.Response.ContentType = "text/plain";
-                    context.Response.ContentLength64 = payload.Length;
-                    await context.Response.OutputStream.WriteAsync(payload).ConfigureAwait(false);
-                    context.Response.OutputStream.Close();
-                }
-            }
-            catch (HttpListenerException)
-            {
-            }
-            catch (ObjectDisposedException)
-            {
-            }
-        });
+            IsBackground = true,
+        };
+        server.Start();
 
         try
         {
@@ -470,13 +447,164 @@ public sealed class JevPlayTests
         finally
         {
             listener.Stop();
-            await server;
+            server.Join(TimeSpan.FromSeconds(5));
         }
 
         Assert.Equal(["/v1/systemone", "/v1/systemone"], hits);
         Assert.Equal("Bearer redirect-secret", authorization[0]);
         Assert.Null(authorization[1]);
         Assert.DoesNotContain("/stolen", hits);
+    }
+
+    private static void ServeRedirects(
+        TcpListener listener,
+        List<string> hits,
+        List<string?> authorization,
+        int port)
+    {
+        while (hits.Count < 4)
+        {
+            TcpClient client;
+            try
+            {
+                client = listener.AcceptTcpClient();
+            }
+            catch (SocketException)
+            {
+                return;
+            }
+            catch (ObjectDisposedException)
+            {
+                return;
+            }
+
+            using (client)
+            {
+                try
+                {
+                    client.NoDelay = true;
+                    using var stream = client.GetStream();
+                    stream.ReadTimeout = 5000;
+                    stream.WriteTimeout = 5000;
+                    var header = ReadRequestHeader(stream);
+                    var path = RequestPath(header);
+                    var auth = RequestAuthorization(header);
+                    WriteRedirect(stream, port);
+                    hits.Add(path);
+                    authorization.Add(auth);
+                }
+                catch (IOException)
+                {
+                }
+                catch (ObjectDisposedException)
+                {
+                }
+            }
+        }
+    }
+
+    private static string ReadRequestHeader(NetworkStream stream)
+    {
+        var buffer = new byte[4096];
+        var size = 0;
+        while (size < buffer.Length)
+        {
+            var read = stream.Read(buffer, size, Math.Min(1024, buffer.Length - size));
+            if (read <= 0)
+            {
+                break;
+            }
+
+            size += read;
+            for (var index = 0; index <= size - 4; index++)
+            {
+                if (buffer[index] != '\r'
+                    || buffer[index + 1] != '\n'
+                    || buffer[index + 2] != '\r'
+                    || buffer[index + 3] != '\n')
+                {
+                    continue;
+                }
+
+                var header = Encoding.ASCII.GetString(buffer, 0, index);
+                var contentLength = HeaderContentLength(header);
+                var bodyReceived = size - (index + 4);
+                while (bodyReceived < contentLength)
+                {
+                    var bodyRead = stream.Read(buffer, 0, buffer.Length);
+                    if (bodyRead <= 0)
+                    {
+                        break;
+                    }
+
+                    bodyReceived += bodyRead;
+                }
+
+                return header;
+            }
+        }
+
+        return Encoding.ASCII.GetString(buffer, 0, size);
+    }
+
+    private static int HeaderContentLength(string header)
+    {
+        foreach (var line in header.Split("\r\n"))
+        {
+            if (line.StartsWith("Content-Length:", StringComparison.OrdinalIgnoreCase)
+                && int.TryParse(
+                    line["Content-Length:".Length..].Trim(),
+                    NumberStyles.None,
+                    CultureInfo.InvariantCulture,
+                    out var length)
+                && length is > 0 and <= 1_048_576)
+            {
+                return length;
+            }
+        }
+
+        return 0;
+    }
+
+    private static string RequestPath(string header)
+    {
+        var lineEnd = header.IndexOf('\r', StringComparison.Ordinal);
+        var line = lineEnd < 0 ? header : header[..lineEnd];
+        var first = line.IndexOf(' ', StringComparison.Ordinal);
+        if (first < 0 || first + 1 >= line.Length)
+        {
+            return string.Empty;
+        }
+
+        var second = line.IndexOf(' ', first + 1);
+        return second < 0 ? line[(first + 1)..] : line[(first + 1)..second];
+    }
+
+    private static string? RequestAuthorization(string header)
+    {
+        foreach (var line in header.Split("\r\n"))
+        {
+            if (line.StartsWith("Authorization:", StringComparison.OrdinalIgnoreCase))
+            {
+                return line["Authorization:".Length..].Trim();
+            }
+        }
+
+        return null;
+    }
+
+    private static void WriteRedirect(NetworkStream stream, int port)
+    {
+        ReadOnlySpan<byte> payload = "rejected redirect-secret"u8;
+        var head = Encoding.ASCII.GetBytes(
+            "HTTP/1.1 302 Found\r\nLocation: http://127.0.0.1:"
+            + port.ToString(CultureInfo.InvariantCulture)
+            + "/stolen\r\nContent-Type: text/plain\r\nContent-Length: "
+            + payload.Length.ToString(CultureInfo.InvariantCulture)
+            + "\r\nConnection: close\r\n\r\n");
+        stream.Write(head);
+        stream.Write(payload);
+        stream.Flush();
     }
 
     private sealed class ScriptHandler : HttpMessageHandler
