@@ -65,6 +65,7 @@ The root keeps the four project-wide entry artifacts: `README.md`, `ROADMAP.md`,
 - [Automated QA laboratory](engineering/AUTOMATED_QA.md): seeded simulation, policies, invariants, reports, balance campaigns, and human handoff.
 - [Replay recording and storage](engineering/REPLAYS.md): native replay capture, compatibility, deterministic verification, bounded atomic persistence, and import behavior.
 - [Agent play integration](engineering/AGENT_PLAY.md): post-1.0 local MCP tools, privacy boundary, live read-only viewing, verified replay handoff, and portable packaging.
+- [Jev watch](engineering/JEV_PLAY.md): opt-in System One spectator for OpenRouter, TypeSafe, or a local endpoint. It prints a factual ticker and does not change the offline Let's Play channels.
 - [User-data directories](engineering/USER_DATA.md): platform roots, Python and native layouts, recovery, and separation rules.
 - [Migration ownership map](engineering/MIGRATION_MAP.md): Python-to-native owners, port order, data-migration procedures, dual-runtime freeze.
 - [Parity decisions](engineering/PARITY_DECISIONS.md): reviewed Python-to-C# mismatches, target corrections, and open differences.

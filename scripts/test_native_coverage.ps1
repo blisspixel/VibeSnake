@@ -31,7 +31,8 @@ function Assert-NativeCoverageReport {
         "VibeSnake.Persistence",
         "VibeSnake.AgentPlay",
         "VibeSnake.AgentViewer",
-        "VibeSnake.AgentHost")) {
+        "VibeSnake.AgentHost",
+        "VibeSnake.JevPlay")) {
         $module = @($coverage.coverage.packages.package | Where-Object {
             $_.name -eq $requiredModule
         })
@@ -75,7 +76,7 @@ function Invoke-NativeCoverageTestProcess {
         if ($testLine -match 'Unable to read beyond the end of the stream') {
             $coverletTruncated = $true
         }
-        if ($testLine -match '^\|\s+(?:RepositoryChecks|ValidateCreatorContent|VibeSnake\.(?:AgentHost|AgentPlay|AgentViewer|Persistence|Rules))\s+\|\s+0(?:\.0+)?%\s+\|\s+0(?:\.0+)?%\s+\|') {
+        if ($testLine -match '^\|\s+(?:RepositoryChecks|ValidateCreatorContent|VibeSnake\.(?:AgentHost|AgentPlay|AgentViewer|JevPlay|Persistence|Rules))\s+\|\s+0(?:\.0+)?%\s+\|\s+0(?:\.0+)?%\s+\|') {
             $instrumentedModuleReportedZeroCoverage = $true
         }
     }

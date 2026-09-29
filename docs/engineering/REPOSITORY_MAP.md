@@ -88,6 +88,7 @@ native/
 |-- src/VibeSnake.AgentPlay/  Transport-neutral step and bounded-burst external-agent sessions, public observations, experience contracts, and verified replay ownership
 |-- src/VibeSnake.AgentViewer/  Read-only same-user pipe client and public snapshot projection
 |-- tools/VibeSnake.AgentHost/  Local stateless-era stdio MCP adapter, capacity and idle-bounded session registry, replay save, and read-only viewer server
+|-- tools/VibeSnake.JevPlay/  Opt-in System One spectator. It asks for one legal action per step and prints a factual ticker. It is outside the supported player.
 |-- tools/RepositoryChecks/  Native repository-policy, fixture and Agent Knowledge generation, screenshot, content-inventory, dependency-lock, release-material, rehearsal, stable-promotion, release-matrix, and unsigned-preview qualification command
 |-- tools/ValidateCreatorContent/  Data-only personality and canonical pack-set validation command
 `-- tests/VibeSnake.Rules.Tests/  xUnit parity, restore, replay, storage, and generated state-machine contracts

@@ -74,12 +74,12 @@ def test_dotnet_quality_contract_is_explicit_and_stable() -> None:
         for path in REPOSITORY_ROOT.rglob("packages.lock.json")
         if not {".tools", "TestResults"}.intersection(path.relative_to(REPOSITORY_ROOT).parts)
     }
-    assert len(committed_lock_paths) == 10
+    assert len(committed_lock_paths) == 11
     for lock_path in committed_lock_paths:
         assert f'"{lock_path}"' in inventory_script
 
     native_test_script = (REPOSITORY_ROOT / "scripts" / "test_native.ps1").read_text(encoding="utf-8")
-    assert "@($dependencyInventory.sources).Count -ne 12" in native_test_script
+    assert "@($dependencyInventory.sources).Count -ne 13" in native_test_script
 
     host_project = ET.parse(
         REPOSITORY_ROOT / "native" / "tools" / "VibeSnake.AgentHost" / "VibeSnake.AgentHost.csproj"

@@ -24,6 +24,8 @@ Godot read-only watch screen
 
 `VibeSnake.AgentPlay` depends only on `VibeSnake.Rules`. MCP, named pipes, storage, process launch, profiles, and Godot types remain outside that boundary. The viewer cannot send actions. A viewer failure or disconnect cannot advance, stop, or otherwise change a match.
 
+A separate opt-in preview, [Jev watch](JEV_PLAY.md), can ask a System One endpoint for one legal action per step and print a factual terminal ticker. It is not one of the ten built-in Let's Play personalities, and it does not go through this host.
+
 ## Interoperability versions
 
 | Surface | Current pin | Vibe Snake boundary |

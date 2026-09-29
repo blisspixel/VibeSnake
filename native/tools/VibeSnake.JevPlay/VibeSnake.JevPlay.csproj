@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <Description>Opt-in Jev spectator that asks a System One endpoint for one legal snake action per step.</Description>
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\VibeSnake.AgentPlay\VibeSnake.AgentPlay.csproj" />
+  </ItemGroup>
+
+</Project>

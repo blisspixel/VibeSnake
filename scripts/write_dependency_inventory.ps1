@@ -24,7 +24,8 @@ $nugetLockPaths = @(
     "native/tools/RepositoryChecks/packages.lock.json",
     "native/tools/ValidateArtifactManifest/packages.lock.json",
     "native/tools/ValidateCreatorContent/packages.lock.json",
-    "native/tools/VibeSnake.AgentHost/packages.lock.json"
+    "native/tools/VibeSnake.AgentHost/packages.lock.json",
+    "native/tools/VibeSnake.JevPlay/packages.lock.json"
 )
 $pythonLockPaths = @(
     "requirements-runtime.lock",

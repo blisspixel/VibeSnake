@@ -11,5 +11,6 @@ Architecture and verification contracts:
 - [Automated QA laboratory](AUTOMATED_QA.md): deterministic gameplay simulation, invariants, policies, reports, and human handoff.
 - [Replay recording and storage](REPLAYS.md): native capture, compatibility, verification, atomic persistence, import, and bounds.
 - [Agent play integration](AGENT_PLAY.md): post-1.0 MCP host, public match contract, live viewer, replay handoff, portable plugin, and generated knowledge.
+- [Jev watch](JEV_PLAY.md): opt-in System One spectator for one legal action per step. It is not a built-in Let's Play personality.
 - [Parity decisions](PARITY_DECISIONS.md): reviewed behavior differences during the Python-to-C# migration.
 - [Migration map](MIGRATION_MAP.md): subsystem ownership, port order, and dual-runtime freeze rules.

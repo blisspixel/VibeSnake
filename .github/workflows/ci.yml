@@ -215,6 +215,7 @@ jobs:
             native/tools/ValidateArtifactManifest/packages.lock.json
             native/tools/ValidateCreatorContent/packages.lock.json
             native/tools/VibeSnake.AgentHost/packages.lock.json
+            native/tools/VibeSnake.JevPlay/packages.lock.json
 
       - name: Restore locked dependencies
         run: dotnet restore native/VibeSnake.slnx --locked-mode

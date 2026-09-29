@@ -28,9 +28,10 @@ From the repository root:
 ```powershell
 ./scripts/test_native.ps1
 ./scripts/test_native_export.ps1 -GodotExecutable "C:\path\to\Godot_console.exe"
+dotnet run --project native/tools/VibeSnake.JevPlay/VibeSnake.JevPlay.csproj -- watch --help
 ```
 
-The first command qualifies the rules, formatting, coverage, editor import, and scene smoke. The second installs checksum-verified templates when needed, exports outside the checkout, launches the packaged player, and writes a validated SHA-256 artifact manifest. The repository-local SDK and editor are developer caches and are ignored. See [the development guide](../docs/guides/DEVELOPMENT.md) for setup and exact contracts.
+The first command qualifies the rules, formatting, coverage, editor import, and scene smoke. The second installs checksum-verified templates when needed, exports outside the checkout, launches the packaged player, and writes a validated SHA-256 artifact manifest. The third prints Jev watch usage and does not call a provider. The repository-local SDK and editor are developer caches and are ignored. See [the development guide](../docs/guides/DEVELOPMENT.md) for setup and exact contracts.
 
 ## Current scope
 

@@ -447,6 +447,12 @@
           "VibeSnake.AgentPlay": "[1.0.0, )"
         }
       },
+      "vibesnake.jevplay": {
+        "type": "Project",
+        "dependencies": {
+          "VibeSnake.AgentPlay": "[1.0.0, )"
+        }
+      },
       "vibesnake.persistence": {
         "type": "Project",
         "dependencies": {
