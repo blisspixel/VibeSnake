@@ -467,10 +467,15 @@ jobs:
       - name: Check out exact tagged source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Set up Python
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+      - name: Set up .NET
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
-          python-version: "3.14"
+          dotnet-version: 10.0.303
+
+      - name: Restore native repository checks
+        run: >-
+          dotnet restore native/tools/RepositoryChecks/RepositoryChecks.csproj
+          --locked-mode
 
       - name: Require exactly one approved alpha radio manifest
         shell: bash
@@ -481,7 +486,7 @@ jobs:
             echo "Expected exactly one approved alpha radio manifest; found ${#manifests[@]}." >&2
             exit 1
           fi
-          python scripts/assemble_radio_pack.py "${manifests[0]}" --output dist/approved-radio-pack
+          dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj --configuration Release --no-restore -- radio-pack . "${manifests[0]}" dist/approved-radio-pack
 
       - name: Retain approved radio pack
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

@@ -681,7 +681,7 @@ try {
         "startsWith(github.ref, 'refs/tags/v') && contains(github.ref_name, '-alpha.')",
         "needs: quality",
         "Expected exactly one approved alpha radio manifest",
-        "python scripts/assemble_radio_pack.py",
+        "--configuration Release --no-restore -- radio-pack",
         "name: vibesnake-approved-radio-pack"
     )) {
         if (-not $radioPackJob.Contains($requiredRadioPackFragment, [StringComparison]::Ordinal)) {

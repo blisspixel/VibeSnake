@@ -46,7 +46,7 @@ def test_dotnet_quality_contract_is_explicit_and_stable() -> None:
     assert toolchain["dotnetSdk"]["version"] == global_config["sdk"]["version"]
 
     workflow = (REPOSITORY_ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
-    assert workflow.count("dotnet-version: 10.0.303") == 5
+    assert workflow.count("dotnet-version: 10.0.303") == 6
     validator_installs = re.findall(
         r"python -m pip install --require-hashes --only-binary=:all:\s+-r requirements-ci\.lock",
         workflow,
@@ -242,7 +242,10 @@ def test_ci_runs_the_documented_quality_and_dependency_gates() -> None:
     assert "python scripts/check_external_validation.py" not in workflow
     assert "python scripts/check_release_matrix.py" not in workflow
     assert "python scripts/assemble_unsigned_preview.py" not in workflow
+    assert "python scripts/content_packs.py" not in workflow
+    assert "python scripts/assemble_radio_pack.py" not in workflow
     assert "--configuration Release --no-restore -- unsigned-preview" in workflow
+    assert "--configuration Release --no-restore -- radio-pack" in workflow
     assert (
         "--configuration Release --no-restore -- materials-write\n"
         "          TestResults/release-materials/release_materials_handoff.json ." in workflow

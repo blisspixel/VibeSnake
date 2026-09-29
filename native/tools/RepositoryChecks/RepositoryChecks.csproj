@@ -13,4 +13,8 @@
     <InternalsVisibleTo Include="VibeSnake.Rules.Tests" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\VibeSnake.Persistence\VibeSnake.Persistence.csproj" />
+  </ItemGroup>
+
 </Project>

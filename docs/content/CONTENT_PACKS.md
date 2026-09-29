@@ -4,16 +4,17 @@
 
 Vibe Snake must remain fully playable offline while allowing its large radio library to ship separately. The implemented schema 1 contract defines one required core pack and zero or more optional station packs. It validates identity, compatibility, dependencies, exact file metadata, cleared rights, credits, station track order, and the approved source-inventory allowlist before any content is loaded.
 
-The contract and optional-pack resolver are implemented and tested in both the Python qualification oracle and the pure C# product path. The Godot content service uses the native parser and resolver. No real source asset or release pack is approved yet. The current source inventory deliberately reports zero export-eligible files, so a production manifest cannot pass either validator until file-level rights and quality review are complete.
+The contract and optional-pack resolver are implemented and tested in both the Python qualification oracle and the pure C# product path. The Godot content service uses the native parser and resolver. Native `RepositoryChecks` owns the build-time `content-packs` and `radio-pack` commands. No real source asset or release pack is approved yet. The current source inventory deliberately reports zero export-eligible files, so a production manifest cannot pass until file-level rights and quality review are complete.
 
 ## Authorities
 
 | File | Authority |
 | --- | --- |
-| [packs.py](../../src/vibesnake/content/packs.py) | Schema 1 structure, inventory matching, compatibility, dependency, core, radio, and resolution rules |
-| [content_packs.py](../../scripts/content_packs.py) | Build-time qualification command for canonical manifests |
-| [assemble_radio_pack.py](../../scripts/assemble_radio_pack.py) | Deterministic approved-station archive, evidence, and checksum assembly |
-| [test_content_packs.py](../../tests/qa/test_content_packs.py) | Normal, malformed, unsafe, incomplete, tampered, incompatible, missing, and duplicate-pack contracts |
+| [packs.py](../../src/vibesnake/content/packs.py) | Frozen schema 1 oracle for structure, inventory matching, compatibility, dependency, core, radio, and resolution rules |
+| [test_content_packs.py](../../tests/qa/test_content_packs.py) | Frozen oracle contracts for normal, malformed, unsafe, incomplete, tampered, incompatible, missing, and duplicate packs |
+| [ContentPackQualificationCheck.cs](../../native/tools/RepositoryChecks/ContentPackQualificationCheck.cs) | Build-time qualification command for canonical manifests |
+| [RadioPackAssemblyCheck.cs](../../native/tools/RepositoryChecks/RadioPackAssemblyCheck.cs) | Deterministic approved-station archive, evidence, and checksum assembly |
+| [ContentPackToolTests.cs](../../native/tests/VibeSnake.Rules.Tests/ContentPackToolTests.cs) | Native qualification, stale-inventory, budget, curation, and fail-closed assembly contracts |
 | [ContentPackManifest.cs](../../native/src/VibeSnake.Persistence/ContentPackManifest.cs) | Pure C# bounded schema, canonical encoding, allowlist, metadata, rights, and radio validation |
 | [ContentPackResolver.cs](../../native/src/VibeSnake.Persistence/ContentPackResolver.cs) | Pure C# compatibility decisions and core-safe optional-pack isolation |
 | [OptionalPackStore.cs](../../native/src/VibeSnake.Persistence/OptionalPackStore.cs) | User-data-only atomic archive installation, installed-pack validation, recoverable quarantine, and revalidated restore |
@@ -24,7 +25,7 @@ The contract and optional-pack resolver are implemented and tested in both the P
 | [CONTENT_PIPELINE.md](CONTENT_PIPELINE.md) | Source classification, rights review, media integrity, and approval workflow |
 | [CREATOR_CONTENT.md](CREATOR_CONTENT.md) | Creator-facing commands, schemas, examples, error codes, compatibility, and collision rules |
 
-The Python validator remains the frozen qualification oracle. The native implementation owns product runtime decisions. Both enforce the same 1 MiB manifest, 4,096 file, 1,024 credit, 64 dependency, 512-character text/path, 128-character identifier, and signed integer version bounds before player assets enter Godot exports.
+The Python pack library remains the frozen schema oracle. Native `RepositoryChecks` owns the build-time qualification and radio-assembly commands, and the native implementation owns product runtime decisions. Both enforce the same 1 MiB manifest, 4,096 file, 1,024 credit, 64 dependency, 512-character text/path, 128-character identifier, and signed integer version bounds before player assets enter Godot exports.
 
 ## Boundary
 
@@ -150,7 +151,7 @@ These hashes provide integrity evidence, not publisher authenticity by themselve
 Once real manifests exist, qualify exactly one core plus any intended optional packs:
 
 ```powershell
-python scripts/content_packs.py `
+dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- content-packs . `
   config/packs/vibesnake.core.json `
   config/packs/vibesnake.radio.flow-signal.json `
   --game-version 0.3.0 `
@@ -163,9 +164,9 @@ The command first regenerates and compares the authoritative inventory, requires
 After human review marks one station approved, assemble its player artifact with:
 
 ```powershell
-python scripts/assemble_radio_pack.py `
+dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- radio-pack . `
   config/packs/vibesnake.radio.flow-signal.json `
-  --output dist/approved-radio-pack
+  dist/approved-radio-pack
 ```
 
 The builder requires exact curation coverage for every inventoried radio asset, no pending decisions for the selected station, and exact equality between approved tracks, manifest tracks, and packaged radio files. It emits one deterministic stored archive, canonical `pack.json`, `radio_pack_assembly.json`, and `SHA256SUMS.txt`. The whole archive is capped at 80 MiB and its payload at 120 MiB to match the native installer. The alpha publisher independently rechecks those facts before attaching the pack as a separate release download.

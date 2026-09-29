@@ -111,8 +111,6 @@ Progression-specific native ownership:
 
 ```text
 scripts/
-|-- content_packs.py            Qualify canonical core and optional pack manifests
-|-- assemble_radio_pack.py      Build one approved deterministic radio archive
 |-- install_player.ps1/.sh      Legacy frozen-Python reference bootstrap
 |-- assert_godot_toolchain.ps1  Checksum-bound pinned editor-build gate
 |-- native_artifact_policy.ps1  Shared prohibited native-bundle path rules
@@ -128,6 +126,8 @@ scripts/
 
 play.ps1 / play.sh / play.bat     Verify, build, and launch the native Godot game
 ```
+
+Native `content-packs` and `radio-pack` in `native/tools/RepositoryChecks/` qualify canonical manifests and assemble one already-approved radio archive. Both stay outside `all` and do not approve radio content or change export eligibility.
 
 The Godot and C# paths are the default source-playable product. The Python package remains a frozen behavior oracle, fixture producer, and optional migration reference. New product behavior belongs in `game/` and `native/`.
 

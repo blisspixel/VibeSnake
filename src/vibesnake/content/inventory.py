@@ -1,7 +1,7 @@
-"""Frozen Python parity helpers for source-content pack tooling.
+"""Frozen Python parity helpers for source-content inventory checks.
 
 The native RepositoryChecks command is the authoritative inventory generator
-and validator. This module remains temporarily for Python pack-tool parity.
+and validator. This module remains temporarily for the frozen content tests.
 """
 
 from __future__ import annotations

@@ -417,7 +417,10 @@
         }
       },
       "repositorychecks": {
-        "type": "Project"
+        "type": "Project",
+        "dependencies": {
+          "VibeSnake.Persistence": "[1.0.0, )"
+        }
       },
       "validatecreatorcontent": {
         "type": "Project",

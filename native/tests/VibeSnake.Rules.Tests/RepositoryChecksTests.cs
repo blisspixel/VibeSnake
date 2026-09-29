@@ -1462,6 +1462,12 @@ public sealed class RepositoryChecksTests
             "RepositoryChecks unsigned-preview <channel-root> <provenance-root> <radio-pack-root> <matrix> <version-root> <tag> <expected-revision> <output>",
             invalidError.ToString());
         Assert.Contains(
+            "RepositoryChecks content-packs <repository-root> <manifest> [manifest ...] [--inventory <path>] [--game-version <version>] [--ruleset-id <id>] [--ruleset-version <version>]",
+            invalidError.ToString());
+        Assert.Contains(
+            "RepositoryChecks radio-pack <repository-root> <manifest> <output> [--curation <path>] [--inventory <path>]",
+            invalidError.ToString());
+        Assert.Contains(
             "RepositoryChecks achievement-candidates-write [repository-root]",
             invalidError.ToString());
         Assert.Contains(

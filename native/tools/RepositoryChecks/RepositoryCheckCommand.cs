@@ -1,6 +1,8 @@
+using System.Globalization;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using VibeSnake.Rules;
 
 namespace RepositoryChecks;
 
@@ -689,6 +691,20 @@ public static class RepositoryCheckCommand
             && arguments[0] == "unsigned-preview")
         {
             return RunUnsignedPreview(arguments, standardOutput, standardError);
+        }
+
+        if (arguments is not null
+            && arguments.Count > 0
+            && arguments[0] == "content-packs")
+        {
+            return RunContentPacks(arguments, standardOutput, standardError);
+        }
+
+        if (arguments is not null
+            && arguments.Count > 0
+            && arguments[0] == "radio-pack")
+        {
+            return RunRadioPack(arguments, standardOutput, standardError);
         }
 
         if (arguments is null
@@ -1848,6 +1864,271 @@ public static class RepositoryCheckCommand
         writer.WriteLine(
             "       RepositoryChecks unsigned-preview <channel-root> <provenance-root> <radio-pack-root> "
             + "<matrix> <version-root> <tag> <expected-revision> <output>");
+        writer.WriteLine(
+            "       RepositoryChecks content-packs <repository-root> <manifest> [manifest ...] "
+            + "[--inventory <path>] [--game-version <version>] [--ruleset-id <id>] [--ruleset-version <version>]");
+        writer.WriteLine(
+            "       RepositoryChecks radio-pack <repository-root> <manifest> <output> "
+            + "[--curation <path>] [--inventory <path>]");
+    }
+
+    private const string DefaultGameVersion = "0.3.0";
+
+    private readonly record struct ContentPackInvocation(
+        string RepositoryRoot,
+        string[] Manifests,
+        string? InventoryPath,
+        string GameVersion,
+        string RulesetId,
+        int RulesetVersion);
+
+    private readonly record struct RadioPackInvocation(
+        string RepositoryRoot,
+        string ManifestPath,
+        string OutputPath,
+        string? CurationPath,
+        string? InventoryPath);
+
+    private static int RunContentPacks(
+        IReadOnlyList<string> arguments,
+        TextWriter standardOutput,
+        TextWriter standardError)
+    {
+        if (!TryReadContentPackInvocation(arguments, out var invocation))
+        {
+            WriteUsage(standardError);
+            return 2;
+        }
+
+        string repositoryRoot;
+        string[] manifests;
+        string? inventoryPath;
+        try
+        {
+            repositoryRoot = Path.GetFullPath(invocation.RepositoryRoot);
+            manifests = invocation.Manifests.Select(Path.GetFullPath).ToArray();
+            inventoryPath = invocation.InventoryPath is null
+                ? null
+                : Path.GetFullPath(invocation.InventoryPath);
+        }
+        catch (Exception exception) when (
+            exception is ArgumentException or NotSupportedException or PathTooLongException)
+        {
+            standardError.WriteLine("Content pack input path is invalid.");
+            return 2;
+        }
+
+        try
+        {
+            var result = ContentPackQualificationCheck.Qualify(
+                repositoryRoot,
+                manifests,
+                inventoryPath,
+                invocation.GameVersion,
+                invocation.RulesetId,
+                invocation.RulesetVersion);
+            foreach (var line in result.Lines)
+            {
+                standardOutput.WriteLine(line);
+            }
+
+            return result.Passed ? 0 : 1;
+        }
+        catch (Exception exception) when (
+            exception is ArgumentException
+                or DecoderFallbackException
+                or InvalidDataException
+                or IOException
+                or JsonException
+                or UnauthorizedAccessException)
+        {
+            standardError.WriteLine(
+                "Content pack qualification failed: "
+                + exception.Message.Replace('\r', ' ').Replace('\n', ' ').Trim());
+            return 1;
+        }
+    }
+
+    private static int RunRadioPack(
+        IReadOnlyList<string> arguments,
+        TextWriter standardOutput,
+        TextWriter standardError)
+    {
+        if (!TryReadRadioPackInvocation(arguments, out var invocation))
+        {
+            WriteUsage(standardError);
+            return 2;
+        }
+
+        string repositoryRoot;
+        string manifestPath;
+        string outputPath;
+        string curationPath;
+        string inventoryPath;
+        try
+        {
+            repositoryRoot = Path.GetFullPath(invocation.RepositoryRoot);
+            manifestPath = Path.GetFullPath(invocation.ManifestPath);
+            outputPath = Path.GetFullPath(invocation.OutputPath);
+            curationPath = Path.GetFullPath(
+                invocation.CurationPath
+                ?? Path.Combine(repositoryRoot, "config", "content_curation_v1.json"));
+            inventoryPath = Path.GetFullPath(
+                invocation.InventoryPath
+                ?? Path.Combine(repositoryRoot, ContentInventoryCheck.InventoryRelativePath));
+        }
+        catch (Exception exception) when (
+            exception is ArgumentException or NotSupportedException or PathTooLongException)
+        {
+            standardError.WriteLine("Radio pack input or output path is invalid.");
+            return 2;
+        }
+
+        try
+        {
+            var evidence = RadioPackAssemblyCheck.Assemble(
+                repositoryRoot,
+                manifestPath,
+                curationPath,
+                inventoryPath,
+                outputPath);
+            standardOutput.WriteLine(
+                "Approved radio pack assembled: "
+                + evidence.PackFileName
+                + " tracks="
+                + evidence.TrackCount.ToString(CultureInfo.InvariantCulture)
+                + " sha256="
+                + evidence.PackSha256);
+            return 0;
+        }
+        catch (Exception exception) when (
+            exception is ArgumentException
+                or DecoderFallbackException
+                or InvalidDataException
+                or IOException
+                or JsonException
+                or UnauthorizedAccessException)
+        {
+            standardError.WriteLine(
+                "Radio pack assembly failed: "
+                + exception.Message.Replace('\r', ' ').Replace('\n', ' ').Trim());
+            return 1;
+        }
+    }
+
+    private static bool TryReadContentPackInvocation(
+        IReadOnlyList<string> arguments,
+        out ContentPackInvocation invocation)
+    {
+        invocation = default;
+        var positionals = new List<string>();
+        string? inventoryPath = null;
+        var gameVersion = DefaultGameVersion;
+        var rulesetId = RulesetIdentity.CurrentId;
+        var rulesetVersion = RulesetIdentity.CurrentVersion;
+        for (var index = 1; index < arguments.Count; index++)
+        {
+            var token = arguments[index];
+            if (!token.StartsWith("--", StringComparison.Ordinal))
+            {
+                positionals.Add(token);
+                continue;
+            }
+
+            if (index + 1 >= arguments.Count || string.IsNullOrWhiteSpace(arguments[index + 1]))
+            {
+                return false;
+            }
+
+            var value = arguments[++index];
+            switch (token)
+            {
+                case "--inventory":
+                    inventoryPath = value;
+                    break;
+                case "--game-version":
+                    gameVersion = value;
+                    break;
+                case "--ruleset-id":
+                    rulesetId = value;
+                    break;
+                case "--ruleset-version":
+                    if (!int.TryParse(value, NumberStyles.None, CultureInfo.InvariantCulture, out var parsed)
+                        || parsed <= 0)
+                    {
+                        return false;
+                    }
+
+                    rulesetVersion = parsed;
+                    break;
+                default:
+                    return false;
+            }
+        }
+
+        if (positionals.Count < 2)
+        {
+            return false;
+        }
+
+        invocation = new ContentPackInvocation(
+            positionals[0],
+            positionals.Skip(1).ToArray(),
+            inventoryPath,
+            gameVersion,
+            rulesetId,
+            rulesetVersion);
+        return true;
+    }
+
+    private static bool TryReadRadioPackInvocation(
+        IReadOnlyList<string> arguments,
+        out RadioPackInvocation invocation)
+    {
+        invocation = default;
+        var positionals = new List<string>();
+        string? curationPath = null;
+        string? inventoryPath = null;
+        for (var index = 1; index < arguments.Count; index++)
+        {
+            var token = arguments[index];
+            if (!token.StartsWith("--", StringComparison.Ordinal))
+            {
+                positionals.Add(token);
+                continue;
+            }
+
+            if (index + 1 >= arguments.Count || string.IsNullOrWhiteSpace(arguments[index + 1]))
+            {
+                return false;
+            }
+
+            var value = arguments[++index];
+            switch (token)
+            {
+                case "--curation":
+                    curationPath = value;
+                    break;
+                case "--inventory":
+                    inventoryPath = value;
+                    break;
+                default:
+                    return false;
+            }
+        }
+
+        if (positionals.Count != 3)
+        {
+            return false;
+        }
+
+        invocation = new RadioPackInvocation(
+            positionals[0],
+            positionals[1],
+            positionals[2],
+            curationPath,
+            inventoryPath);
+        return true;
     }
 
 }
