@@ -418,21 +418,23 @@ public sealed class JevPlayTests
 
         try
         {
-            using var http = new HttpClient(JevPlayCommand.CreateHandler());
-            var client = new JevClient(
-                new JevEndpoint(
-                    JevProviderKind.OpenRouterDecisions,
-                    new Uri($"http://127.0.0.1:{port}/v1/systemone"),
-                    JevEndpoint.PinnedOpenRouterModel,
-                    JevEndpoint.OpenRouterKeyVariable),
-                http,
-                static _ => "redirect-secret",
-                TimeSpan.FromSeconds(5));
-            var failed = await Assert.ThrowsAsync<JevDecisionException>(() =>
-                client.AskAsync("""{"tick":1}""", ["continue"], CancellationToken.None));
-            Assert.Contains("302", failed.Message, StringComparison.Ordinal);
-            Assert.Contains("[redacted]", failed.Message, StringComparison.Ordinal);
-            Assert.DoesNotContain("redirect-secret", failed.Message, StringComparison.Ordinal);
+            using (var http = new HttpClient(JevPlayCommand.CreateHandler()))
+            {
+                var client = new JevClient(
+                    new JevEndpoint(
+                        JevProviderKind.OpenRouterDecisions,
+                        new Uri($"http://127.0.0.1:{port}/v1/systemone"),
+                        JevEndpoint.PinnedOpenRouterModel,
+                        JevEndpoint.OpenRouterKeyVariable),
+                    http,
+                    static _ => "redirect-secret",
+                    TimeSpan.FromSeconds(5));
+                var failed = await Assert.ThrowsAsync<JevDecisionException>(() =>
+                    client.AskAsync("""{"tick":1}""", ["continue"], CancellationToken.None));
+                Assert.Contains("302", failed.Message, StringComparison.Ordinal);
+                Assert.Contains("[redacted]", failed.Message, StringComparison.Ordinal);
+                Assert.DoesNotContain("redirect-secret", failed.Message, StringComparison.Ordinal);
+            }
 
             var output = new StringWriter();
             var error = new StringWriter();
@@ -462,60 +464,136 @@ public sealed class JevPlayTests
         List<string?> authorization,
         int port)
     {
-        while (hits.Count < 4)
+        var accepted = new List<TcpClient>();
+        var consecutiveAcceptFailures = 0;
+        try
         {
-            TcpClient client;
-            try
+            while (hits.Count < 4)
             {
-                client = listener.AcceptTcpClient();
-            }
-            catch (SocketException)
-            {
-                return;
-            }
-            catch (ObjectDisposedException)
-            {
-                return;
-            }
+                TcpClient client;
+                try
+                {
+                    client = listener.AcceptTcpClient();
+                    consecutiveAcceptFailures = 0;
+                }
+                catch (ObjectDisposedException)
+                {
+                    return;
+                }
+                catch (InvalidOperationException)
+                {
+                    return;
+                }
+                catch (SocketException exception) when (ListenerStopped(listener, exception))
+                {
+                    return;
+                }
+                catch (SocketException)
+                {
+                    // A reset left on the listen socket is not a stopped listener.
+                    if (++consecutiveAcceptFailures >= 8)
+                    {
+                        return;
+                    }
 
-            client.NoDelay = true;
-            client.LingerState = new LingerOption(true, 0);
-            try
-            {
-                var stream = client.GetStream();
-                stream.ReadTimeout = 5000;
-                stream.WriteTimeout = 5000;
-                var header = ReadRequestHeader(stream);
-                var path = RequestPath(header);
-                var auth = RequestAuthorization(header);
-                WriteRedirect(stream, port);
-                hits.Add(path);
-                authorization.Add(auth);
+                    continue;
+                }
+
+                accepted.Add(client);
+                HandleRedirect(client, hits, authorization, port);
             }
-            catch (IOException)
-            {
-            }
-            catch (SocketException)
-            {
-            }
-            catch (ObjectDisposedException)
-            {
-            }
-            finally
+        }
+        finally
+        {
+            foreach (var open in accepted)
             {
                 try
                 {
-                    client.Dispose();
+                    open.Client.Close(0);
                 }
-                catch (IOException)
+                catch (ObjectDisposedException)
                 {
                 }
                 catch (SocketException)
                 {
                 }
-                catch (ObjectDisposedException)
-                {
-                }
+            }
+        }
+    }
+
+    private static bool ListenerStopped(TcpListener listener, SocketException exception)
+    {
+        try
+        {
+            if (!listener.Server.IsBound)
+            {
+                return true;
+            }
+        }
+        catch (ObjectDisposedException)
+        {
+            return true;
+        }
+        catch (SocketException)
+        {
+            return true;
+        }
+
+        return exception.SocketErrorCode is SocketError.Interrupted
+            or SocketError.OperationAborted
+            or SocketError.NotSocket
+            or SocketError.Shutdown;
+    }
+
+    private static void HandleRedirect(
+        TcpClient client,
+        List<string> hits,
+        List<string?> authorization,
+        int port)
+    {
+        // TcpClient.Dispose shuts the socket down before closing it. That shutdown
+        // stalls the accept thread on Windows after the 302 has already been sent.
+        client.NoDelay = true;
+        try
+        {
+            var stream = client.GetStream();
+            stream.ReadTimeout = 5000;
+            stream.WriteTimeout = 5000;
+            var header = ReadRequestHeader(stream);
+            var path = RequestPath(header);
+            if (path.Length == 0)
+            {
+                return;
+            }
+
+            var auth = RequestAuthorization(header);
+            WriteRedirect(stream, port);
+            hits.Add(path);
+            authorization.Add(auth);
+        }
+        catch (IOException)
+        {
+        }
+        catch (SocketException)
+        {
+        }
+        catch (ObjectDisposedException)
+        {
+        }
+        finally
+        {
+            // Shutdown the send side only. Closing through TcpClient.Dispose, or
+            // aborting with Close(0), either stalls the accept thread or discards
+            // the 302 before the client can read it.
+            try
+            {
+                client.Client.Shutdown(SocketShutdown.Send);
+            }
+            catch (ObjectDisposedException)
+            {
+            }
+            catch (SocketException)
+            {
             }
         }
     }
