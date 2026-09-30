@@ -616,11 +616,11 @@ public sealed class JevPlayTests
         List<string?> authorization,
         int port)
     {
-        // Read the body before answering. Content-Length lets the client finish
-        // without a FIN. Shutting the socket down here resets Linux before the
-        // 302 is read and stalls the next Windows accept, so the watch request
-        // never observes the redirect. The listener loop closes every socket
-        // after it stops.
+        // Read the body before answering. Windows and macOS complete from
+        // Content-Length while the socket stays open; shutting it down there
+        // stalls the next accept. Linux does not finish the response until the
+        // send side is closed, so that close happens only after the 302 bytes
+        // are written. The listener loop closes every socket after it stops.
         client.NoDelay = true;
         try
         {
@@ -637,6 +637,20 @@ public sealed class JevPlayTests
 
             var auth = RequestAuthorization(header);
             WriteRedirect(stream, port);
+            if (OperatingSystem.IsLinux())
+            {
+                try
+                {
+                    client.Client.Shutdown(SocketShutdown.Send);
+                }
+                catch (SocketException)
+                {
+                }
+                catch (ObjectDisposedException)
+                {
+                }
+            }
+
             lock (hits)
             {
                 hits.Add(path);
@@ -795,8 +809,10 @@ public sealed class JevPlayTests
             + "/stolen\r\nContent-Type: text/plain\r\nContent-Length: "
             + payload.Length.ToString(CultureInfo.InvariantCulture)
             + "\r\nConnection: close\r\n\r\n");
-        stream.Write(head);
-        stream.Write(payload);
+        var message = new byte[head.Length + payload.Length];
+        head.CopyTo(message, 0);
+        payload.CopyTo(message.AsSpan(head.Length));
+        stream.Write(message);
         stream.Flush();
     }
 
