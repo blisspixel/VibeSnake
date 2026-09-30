@@ -1470,8 +1470,15 @@ public sealed class RepositoryChecksTests
         Assert.Contains(
             "RepositoryChecks interop-upstream [repository-root]",
             invalidError.ToString());
+        Assert.Contains(
+            "RepositoryChecks product-review-prepare <repository-root> <release-evidence-root> <expected-revision> <release-run-id> <owner/name> <output-root>",
+            invalidError.ToString());
         Assert.DoesNotContain(
             "interop-upstream",
+            invalidError.ToString().Split(Environment.NewLine)[0],
+            StringComparison.Ordinal);
+        Assert.DoesNotContain(
+            "product-review-prepare",
             invalidError.ToString().Split(Environment.NewLine)[0],
             StringComparison.Ordinal);
         Assert.Contains(

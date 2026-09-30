@@ -499,12 +499,29 @@ public static class RepositoryCheckCommand
         return RunCore(arguments, standardOutput, standardError, resolver: null, upstreamFetch);
     }
 
+    internal static int Run(
+        IReadOnlyList<string>? arguments,
+        TextWriter standardOutput,
+        TextWriter standardError,
+        ProductReviewPreparationCheck.MatrixQualifier reviewQualifier)
+    {
+        ArgumentNullException.ThrowIfNull(reviewQualifier);
+        return RunCore(
+            arguments,
+            standardOutput,
+            standardError,
+            resolver: null,
+            upstreamFetch: null,
+            reviewQualifier);
+    }
+
     private static int RunCore(
         IReadOnlyList<string>? arguments,
         TextWriter standardOutput,
         TextWriter standardError,
         IDependencyResolverProcess? resolver,
-        Func<string, byte[]>? upstreamFetch)
+        Func<string, byte[]>? upstreamFetch,
+        ProductReviewPreparationCheck.MatrixQualifier? reviewQualifier = null)
     {
         ArgumentNullException.ThrowIfNull(standardOutput);
         ArgumentNullException.ThrowIfNull(standardError);
@@ -723,6 +740,13 @@ public static class RepositoryCheckCommand
             && arguments[0] == "interop-upstream")
         {
             return RunInteropUpstream(arguments, standardOutput, standardError, upstreamFetch);
+        }
+
+        if (arguments is not null
+            && arguments.Count > 0
+            && arguments[0] == "product-review-prepare")
+        {
+            return RunProductReviewPrepare(arguments, standardOutput, standardError, reviewQualifier);
         }
 
         if (arguments is null
@@ -1890,6 +1914,9 @@ public static class RepositoryCheckCommand
             + "[--curation <path>] [--inventory <path>]");
         writer.WriteLine(
             "       RepositoryChecks interop-upstream [repository-root]");
+        writer.WriteLine(
+            "       RepositoryChecks product-review-prepare <repository-root> <release-evidence-root> "
+            + "<expected-revision> <release-run-id> <owner/name> <output-root>");
     }
 
     private const string DefaultGameVersion = "0.3.0";
@@ -2149,6 +2176,85 @@ public static class RepositoryCheckCommand
             curationPath,
             inventoryPath);
         return true;
+    }
+
+    private static int RunProductReviewPrepare(
+        IReadOnlyList<string> arguments,
+        TextWriter standardOutput,
+        TextWriter standardError,
+        ProductReviewPreparationCheck.MatrixQualifier? reviewQualifier)
+    {
+        if (arguments.Count != 7)
+        {
+            WriteUsage(standardError);
+            return 2;
+        }
+
+        if (string.IsNullOrWhiteSpace(arguments[1]))
+        {
+            standardError.WriteLine("Repository root is invalid.");
+            return 2;
+        }
+
+        string repositoryRoot;
+        try
+        {
+            repositoryRoot = Path.GetFullPath(arguments[1]);
+        }
+        catch (Exception exception) when (
+            exception is ArgumentException or NotSupportedException or PathTooLongException)
+        {
+            standardError.WriteLine("Repository root is invalid.");
+            return 2;
+        }
+
+        if (string.IsNullOrWhiteSpace(arguments[2]) || string.IsNullOrWhiteSpace(arguments[6]))
+        {
+            standardError.WriteLine("Manual product review evidence root or output is invalid.");
+            return 2;
+        }
+
+        string evidenceRoot;
+        string outputRoot;
+        try
+        {
+            evidenceRoot = Path.GetFullPath(arguments[2]);
+            outputRoot = Path.GetFullPath(arguments[6]);
+        }
+        catch (Exception exception) when (
+            exception is ArgumentException or NotSupportedException or PathTooLongException)
+        {
+            standardError.WriteLine("Manual product review evidence root or output is invalid.");
+            return 2;
+        }
+
+        try
+        {
+            var preparation = ProductReviewPreparationCheck.Prepare(
+                repositoryRoot,
+                evidenceRoot,
+                arguments[3],
+                arguments[4],
+                arguments[5],
+                outputRoot,
+                reviewQualifier,
+                ProductReviewPreparationCheck.DefaultMaximumMatrixBytes);
+            standardOutput.WriteLine(
+                "Manual product review workspace prepared: revision="
+                + preparation.Revision
+                + " files="
+                + preparation.FileCount.ToString(System.Globalization.CultureInfo.InvariantCulture)
+                + " output="
+                + preparation.OutputDirectory
+                + " physical_execution=pending");
+            return 0;
+        }
+        catch (ProductReviewPreparationException exception)
+        {
+            standardError.WriteLine(
+                "Manual product review preparation failed: " + StrictJsonFile.SingleLine(exception.Message));
+            return 1;
+        }
     }
 
     private static int RunInteropUpstream(

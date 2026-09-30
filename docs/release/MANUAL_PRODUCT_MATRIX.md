@@ -28,11 +28,13 @@ gh run download $reviewRunId --repo blisspixel/VibeSnake `
   --pattern "vibesnake-release-matrix" `
   --dir "TestResults/release-review/run-$reviewRunId"
 
-python scripts/manual/prepare_product_review.py `
+dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- product-review-prepare `
+  . `
   "TestResults/release-review/run-$reviewRunId" `
-  --expected-revision $reviewRevision `
-  --release-run-id $reviewRunId `
-  --output-root TestResults/manual-product-review
+  $reviewRevision `
+  $reviewRunId `
+  blisspixel/VibeSnake `
+  TestResults/manual-product-review
 ```
 
 The ignored workspace contains:

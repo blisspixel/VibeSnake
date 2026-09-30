@@ -2,6 +2,8 @@
 
 These programs require a person, a real audio or display device, or an explicitly configured external service. They are never imported by pytest and never run during normal CI.
 
+Exact-candidate workspace preparation is native `product-review-prepare`. It writes pending session templates and does not record a review. The programs below are the remaining radio listening tools.
+
 - `preview_radio_samples.py`: lists or plays one fixed candidate from each station
   through Pygame. It accepts only the ignored archive or an external directory;
   `--list` never initializes an audio device.
