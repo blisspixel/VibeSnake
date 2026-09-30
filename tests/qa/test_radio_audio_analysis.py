@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import json
 import runpy
-from hashlib import sha256
 from pathlib import Path
 
 import pytest
@@ -10,12 +9,9 @@ import pytest
 
 MODULE = runpy.run_path(str(Path(__file__).resolve().parents[2] / "scripts" / "manual" / "analyze_radio_audio.py"))
 RadioAudioAnalysisError = MODULE["RadioAudioAnalysisError"]
-RadioAsset = MODULE["RadioAsset"]
-apply_final_source_integrity_sweep = MODULE["apply_final_source_integrity_sweep"]
 parse_ffmpeg_output = MODULE["parse_ffmpeg_output"]
 parse_ffprobe_output = MODULE["parse_ffprobe_output"]
 parse_silence_output = MODULE["parse_silence_output"]
-summarize_station = MODULE["summarize_station"]
 
 
 def test_parse_ffprobe_output_requires_one_bounded_audio_stream() -> None:
@@ -119,79 +115,3 @@ def test_parse_silence_output_classifies_edges_and_internal_intervals() -> None:
 def test_parse_silence_output_rejects_an_end_without_a_start() -> None:
     with pytest.raises(RadioAudioAnalysisError, match="end without a start"):
         parse_silence_output("silence_end: 2 | silence_duration: 2", 10.0)
-
-
-def test_summarize_station_retains_failure_breakdown_and_measurement_range() -> None:
-    rows = [
-        {
-            "passed": False,
-            "integratedLufs": -12.0,
-            "truePeakDbtp": 1.0,
-            "failures": [
-                "integrated loudness is outside the admission band",
-                "true peak exceeds the admission ceiling",
-            ],
-        },
-        {
-            "passed": True,
-            "integratedLufs": -18.0,
-            "truePeakDbtp": -1.5,
-            "failures": [],
-        },
-    ]
-
-    assert summarize_station("station", rows, 1) == {
-        "stationId": "station",
-        "trackCount": 3,
-        "measuredTrackCount": 2,
-        "passedTrackCount": 1,
-        "failedTrackCount": 2,
-        "decoderErrorCount": 1,
-        "averageIntegratedLufs": -15.0,
-        "minimumIntegratedLufs": -18.0,
-        "maximumIntegratedLufs": -12.0,
-        "maximumTruePeakDbtp": 1.0,
-        "loudnessFailureCount": 1,
-        "truePeakFailureCount": 1,
-        "leadingSilenceFailureCount": 0,
-        "trailingSilenceFailureCount": 0,
-        "internalSilenceFailureCount": 0,
-    }
-
-
-def test_final_source_integrity_sweep_covers_measured_and_decoder_error_rows(tmp_path: Path) -> None:
-    measured_path = tmp_path / "measured.mp3"
-    decoder_error_path = tmp_path / "decoder-error.mp3"
-    measured_path.write_bytes(b"measured-before")
-    decoder_error_path.write_bytes(b"decoder-before")
-    assets = [
-        RadioAsset("asset:measured", "station", "audio/measured.mp3", 15, "0" * 64, measured_path),
-        RadioAsset("asset:decoder", "station", "audio/decoder.mp3", 14, "0" * 64, decoder_error_path),
-    ]
-    baseline = {
-        "audio/measured.mp3": sha256(b"measured-before").hexdigest(),
-        "audio/decoder.mp3": sha256(b"decoder-before").hexdigest(),
-    }
-    measured_path.write_bytes(b"measured-after")
-    decoder_error_path.write_bytes(b"decoder-after")
-    results = [{"path": "audio/measured.mp3", "passed": True, "failures": []}]
-    errors = [{"path": "audio/decoder.mp3", "error": "decode failed"}]
-
-    assert apply_final_source_integrity_sweep(assets, baseline, results, errors) == [
-        "audio/decoder.mp3",
-        "audio/measured.mp3",
-    ]
-    assert results == [
-        {
-            "path": "audio/measured.mp3",
-            "passed": False,
-            "failures": ["source changed during analysis"],
-        }
-    ]
-    assert errors == [
-        {
-            "path": "audio/decoder.mp3",
-            "error": "decode failed",
-            "sourceChangedDuringAnalysis": True,
-        }
-    ]

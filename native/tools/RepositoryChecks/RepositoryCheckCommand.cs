@@ -516,13 +516,31 @@ public static class RepositoryCheckCommand
             reviewQualifier);
     }
 
+    internal static int Run(
+        IReadOnlyList<string>? arguments,
+        TextWriter standardOutput,
+        TextWriter standardError,
+        RadioAudioAnalysisCheck.RadioToolRunner radioToolRunner)
+    {
+        ArgumentNullException.ThrowIfNull(radioToolRunner);
+        return RunCore(
+            arguments,
+            standardOutput,
+            standardError,
+            resolver: null,
+            upstreamFetch: null,
+            reviewQualifier: null,
+            radioToolRunner);
+    }
+
     private static int RunCore(
         IReadOnlyList<string>? arguments,
         TextWriter standardOutput,
         TextWriter standardError,
         IDependencyResolverProcess? resolver,
         Func<string, byte[]>? upstreamFetch,
-        ProductReviewPreparationCheck.MatrixQualifier? reviewQualifier = null)
+        ProductReviewPreparationCheck.MatrixQualifier? reviewQualifier = null,
+        RadioAudioAnalysisCheck.RadioToolRunner? radioToolRunner = null)
     {
         ArgumentNullException.ThrowIfNull(standardOutput);
         ArgumentNullException.ThrowIfNull(standardError);
@@ -755,6 +773,13 @@ public static class RepositoryCheckCommand
             && arguments[0] == "radio-listening")
         {
             return RunRadioListening(arguments, standardOutput, standardError);
+        }
+
+        if (arguments is not null
+            && arguments.Count > 0
+            && arguments[0] == "radio-audio")
+        {
+            return RunRadioAudio(arguments, standardOutput, standardError, radioToolRunner);
         }
 
         if (arguments is null
@@ -1932,6 +1957,9 @@ public static class RepositoryCheckCommand
         writer.WriteLine(
             "       RepositoryChecks radio-listening <repository-root> review-record <review-directory> "
             + "<record-path> <output-path> [require-approved]");
+        writer.WriteLine(
+            "       RepositoryChecks radio-audio <repository-root> qualify <inventory> <curation> <output> "
+            + "<ffmpeg> <ffprobe> <workers> <timeout-seconds> [replace]");
     }
 
     private const string DefaultGameVersion = "0.3.0";
@@ -2191,6 +2219,126 @@ public static class RepositoryCheckCommand
             curationPath,
             inventoryPath);
         return true;
+    }
+
+    private static int RunRadioAudio(
+        IReadOnlyList<string> arguments,
+        TextWriter standardOutput,
+        TextWriter standardError,
+        RadioAudioAnalysisCheck.RadioToolRunner? radioToolRunner)
+    {
+        var replace = false;
+        var validShape = arguments.Count is 10 or 11 && arguments[2] == "qualify";
+        if (validShape && arguments.Count == 11)
+        {
+            replace = arguments[10] == "replace";
+            validShape = replace;
+        }
+
+        if (!validShape)
+        {
+            WriteUsage(standardError);
+            return 2;
+        }
+
+        if (!TryResolvePath(arguments[1], out var repositoryRoot))
+        {
+            standardError.WriteLine("Repository root is invalid.");
+            return 2;
+        }
+
+        if (!TryResolvePath(arguments[3], out var inventoryPath)
+            || !TryResolvePath(arguments[4], out var curationPath)
+            || !TryResolvePath(arguments[5], out var outputPath))
+        {
+            standardError.WriteLine("Radio audio path is invalid.");
+            return 2;
+        }
+
+        if (!TryParseCanonicalInteger(arguments[8], out var workers)
+            || !TryParseCanonicalInteger(arguments[9], out var timeoutSeconds))
+        {
+            WriteUsage(standardError);
+            return 2;
+        }
+
+        try
+        {
+            if (workers is < 1 or > RadioAudioAnalysisCheck.MaximumWorkers)
+            {
+                throw new RadioAudioAnalysisException(
+                    "workers must be between 1 and "
+                    + RadioAudioAnalysisCheck.MaximumWorkers.ToString(CultureInfo.InvariantCulture));
+            }
+
+            if (timeoutSeconds is < 10 or > 600)
+            {
+                throw new RadioAudioAnalysisException("timeout-seconds must be between 10 and 600");
+            }
+
+            var ffmpeg = RadioAudioAnalysisCheck.FindTool(arguments[6]);
+            var ffprobe = RadioAudioAnalysisCheck.FindTool(arguments[7]);
+            if (ffmpeg is null || ffprobe is null)
+            {
+                throw new RadioAudioAnalysisException("ffmpeg and ffprobe must both be available");
+            }
+
+            var evidenceOutput = RadioAudioAnalysisCheck.RequireOutputPath(
+                repositoryRoot,
+                outputPath,
+                replace,
+                inventoryPath,
+                curationPath);
+            RadioAudioAnalysisCheck.RadioToolRunner runner = radioToolRunner
+                ?? ((executable, toolArguments, timeout) => RadioAudioAnalysisCheck.RunProductionTool(
+                    executable,
+                    toolArguments,
+                    timeout,
+                    repositoryRoot));
+            var evidence = RadioAudioAnalysisCheck.Qualify(
+                repositoryRoot,
+                inventoryPath,
+                curationPath,
+                ffmpeg,
+                ffprobe,
+                workers,
+                timeoutSeconds,
+                runner,
+                DateTimeOffset.UtcNow,
+                standardError.WriteLine);
+            RadioAudioAnalysisCheck.WriteQualification(evidenceOutput, evidence);
+            var summary = evidence["summary"]!.AsObject();
+            standardOutput.WriteLine(
+                "Radio audio evidence: tracks="
+                + summary["measuredTrackCount"]!.GetValue<int>().ToString(CultureInfo.InvariantCulture)
+                + "/"
+                + summary["expectedTrackCount"]!.GetValue<int>().ToString(CultureInfo.InvariantCulture)
+                + " passed="
+                + summary["passedTrackCount"]!.GetValue<int>().ToString(CultureInfo.InvariantCulture)
+                + " failed="
+                + summary["failedTrackCount"]!.GetValue<int>().ToString(CultureInfo.InvariantCulture)
+                + " output="
+                + evidenceOutput);
+            return evidence["passed"]!.GetValue<bool>() ? 0 : 1;
+        }
+        catch (RadioAudioAnalysisException exception)
+        {
+            standardError.WriteLine(
+                "Radio audio analysis failed: " + StrictJsonFile.SingleLine(exception.Message));
+            return 2;
+        }
+    }
+
+    private static bool TryParseCanonicalInteger(string text, out int value)
+    {
+        if (int.TryParse(text, NumberStyles.None, CultureInfo.InvariantCulture, out value)
+            && string.Equals(text, value.ToString(CultureInfo.InvariantCulture), StringComparison.Ordinal))
+        {
+            return true;
+        }
+
+        value = 0;
+        return false;
     }
 
     private static int RunRadioListening(

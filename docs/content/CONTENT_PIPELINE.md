@@ -94,7 +94,14 @@ This is an inventory-integrity screen, not full media qualification. Approved au
 Run the local full-decode and loudness admission pass with FFmpeg before listening review:
 
 ```powershell
-python scripts/manual/analyze_radio_audio.py
+dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- radio-audio . qualify `
+  config/content_inventory.json `
+  config/content_curation_v1.json `
+  TestResults/radio-audio/radio_audio_qualification.json `
+  ffmpeg `
+  ffprobe `
+  4 `
+  120
 ```
 
 The ignored `TestResults/radio-audio/radio_audio_qualification.json` output binds every result to the inventory, curation plan, source SHA-256, decoder versions, and operating-system class. It uses a provisional offline-radio admission band of `-18 LUFS` plus or minus `2 LU` and a `-1 dBTP` ceiling, based on EBU R 128 loudness and true-peak measurement with the EBU R 128 S2 interim streaming level. It reports normalization gain and predicted post-gain peak without rewriting any source byte. The campaign rehashes all 95 files after concurrent work, including files whose decoder failed, so a source mutation cannot hide behind a missing measurement row. A passing report is technical evidence only. It cannot change curation decisions, export eligibility, or human listening status.
