@@ -517,16 +517,23 @@ public sealed class JevPlayTests
         int port)
     {
         var accepted = new List<TcpClient>();
-        var consecutiveAcceptFailures = 0;
+        var handlers = new List<Thread>();
         try
         {
-            while (hits.Count < 4)
+            while (true)
             {
+                lock (hits)
+                {
+                    if (hits.Count >= 4)
+                    {
+                        return;
+                    }
+                }
+
                 TcpClient client;
                 try
                 {
                     client = listener.AcceptTcpClient();
-                    consecutiveAcceptFailures = 0;
                 }
                 catch (ObjectDisposedException)
                 {
@@ -543,25 +550,31 @@ public sealed class JevPlayTests
                 catch (SocketException)
                 {
                     // A reset left on the listen socket is not a stopped listener.
-                    if (++consecutiveAcceptFailures >= 8)
-                    {
-                        return;
-                    }
-
+                    Thread.Sleep(1);
                     continue;
                 }
 
                 accepted.Add(client);
-                HandleRedirect(client, hits, authorization, port);
+                var handler = new Thread(() => HandleRedirect(client, hits, authorization, port))
+                {
+                    IsBackground = true,
+                };
+                handlers.Add(handler);
+                handler.Start();
             }
         }
         finally
         {
+            foreach (var handler in handlers)
+            {
+                handler.Join(TimeSpan.FromSeconds(2));
+            }
+
             foreach (var open in accepted)
             {
                 try
                 {
-                    open.Client.Close(0);
+                    open.Close();
                 }
                 catch (ObjectDisposedException)
                 {
@@ -603,17 +616,16 @@ public sealed class JevPlayTests
         List<string?> authorization,
         int port)
     {
-        // Read the body before answering. Shutting down the send side while the
-        // POST is still in the receive buffer resets the connection on Linux, so
-        // the client never observes the 302. TcpClient.Dispose shuts the socket
-        // down in both directions and stalls the next accept on Windows. Closing
-        // immediately discards the response. After the body is consumed, shut
-        // down only the send side so the client can finish reading.
+        // Read the body before answering. Content-Length lets the client finish
+        // without a FIN. Shutting the socket down here resets Linux before the
+        // 302 is read and stalls the next Windows accept, so the watch request
+        // never observes the redirect. The listener loop closes every socket
+        // after it stops.
         client.NoDelay = true;
         try
         {
             var stream = client.GetStream();
-            stream.ReadTimeout = 5000;
+            stream.ReadTimeout = 20000;
             stream.WriteTimeout = 5000;
             var header = ReadRequest(stream, out var consumedBody);
             DrainBody(stream, header, consumedBody);
@@ -625,8 +637,11 @@ public sealed class JevPlayTests
 
             var auth = RequestAuthorization(header);
             WriteRedirect(stream, port);
-            hits.Add(path);
-            authorization.Add(auth);
+            lock (hits)
+            {
+                hits.Add(path);
+                authorization.Add(auth);
+            }
         }
         catch (IOException)
         {
@@ -636,19 +651,6 @@ public sealed class JevPlayTests
         }
         catch (ObjectDisposedException)
         {
-        }
-        finally
-        {
-            try
-            {
-                client.Client.Shutdown(SocketShutdown.Send);
-            }
-            catch (ObjectDisposedException)
-            {
-            }
-            catch (SocketException)
-            {
-            }
         }
     }
 
