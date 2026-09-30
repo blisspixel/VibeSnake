@@ -4,6 +4,8 @@ Notable player-facing and engineering changes are recorded here. The project is 
 
 ## Unreleased
 
+- Corrected the owned Jev redirect contract test again after hosted Ubuntu native rules lost the first 302. Shutting down the send side while the POST body was still unread reset the connection, so the client failed before a response. The probe now reads the full request, including body bytes already buffered past the header, and only then writes the 302 and shuts down the send side. A focused contract sends that body late and requires the probe to wait. Redirects stay disabled, tests still do not call the network, and the measured suite counts are unchanged.
+
 - Corrected the owned Jev redirect contract test again after hosted Windows native rules still timed out on the watch request. Disposing the accepted client shuts the socket down before closing it, and that shutdown stalls the accept thread after the 302 is already visible. The probe now shuts down only the send side, so the response stays readable and the next connection can be accepted. A reset queued on the listen socket does not stop the accept loop. Redirects stay disabled, tests still do not call the network, and the measured suite counts are unchanged.
 
 - Corrected native contract tests that failed on busy hosted runners. In-memory response bodies now complete each read inline, because the base stream schedules every array read onto the thread pool and the size cap then loses to the request timeout. The owned Jev redirect probe aborts each accepted socket after the 302 so the next connection is accepted. Redirects stay disabled, tests still do not call the network, and the measured suite counts are unchanged.

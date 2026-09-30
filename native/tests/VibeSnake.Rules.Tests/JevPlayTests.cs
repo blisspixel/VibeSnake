@@ -458,6 +458,58 @@ public sealed class JevPlayTests
         Assert.DoesNotContain("/stolen", hits);
     }
 
+    [Fact]
+    public void Redirect_probe_waits_for_the_body_before_answering()
+    {
+        using var listener = new TcpListener(IPAddress.Loopback, 0);
+        listener.Start();
+        var port = ((IPEndPoint)listener.LocalEndpoint).Port;
+        var hits = new List<string>();
+        var authorization = new List<string?>();
+        var server = new Thread(() => ServeRedirects(listener, hits, authorization, port))
+        {
+            IsBackground = true,
+        };
+        server.Start();
+
+        try
+        {
+            using var client = new TcpClient();
+            client.Connect(IPAddress.Loopback, port);
+            client.NoDelay = true;
+            var stream = client.GetStream();
+            stream.WriteTimeout = 2000;
+            var header = Encoding.ASCII.GetBytes(
+                "POST /v1/systemone HTTP/1.1\r\nHost: 127.0.0.1\r\nContent-Length: 5\r\nConnection: close\r\n\r\n");
+            stream.Write(header);
+            var early = new byte[1];
+            stream.ReadTimeout = 200;
+            try
+            {
+                var read = stream.Read(early, 0, early.Length);
+                Assert.Fail(
+                    "probe answered before the body: "
+                    + read.ToString(CultureInfo.InvariantCulture));
+            }
+            catch (IOException exception) when (IsReceiveTimeout(exception))
+            {
+            }
+
+            stream.ReadTimeout = 2000;
+            stream.Write("hello"u8);
+            var response = ReadAvailableAscii(stream);
+            Assert.Contains("302", response, StringComparison.Ordinal);
+            Assert.Contains("rejected redirect-secret", response, StringComparison.Ordinal);
+        }
+        finally
+        {
+            listener.Stop();
+            server.Join(TimeSpan.FromSeconds(5));
+        }
+
+        Assert.Equal(["/v1/systemone"], hits);
+    }
+
     private static void ServeRedirects(
         TcpListener listener,
         List<string> hits,
@@ -551,15 +603,20 @@ public sealed class JevPlayTests
         List<string?> authorization,
         int port)
     {
-        // TcpClient.Dispose shuts the socket down before closing it. That shutdown
-        // stalls the accept thread on Windows after the 302 has already been sent.
+        // Read the body before answering. Shutting down the send side while the
+        // POST is still in the receive buffer resets the connection on Linux, so
+        // the client never observes the 302. TcpClient.Dispose shuts the socket
+        // down in both directions and stalls the next accept on Windows. Closing
+        // immediately discards the response. After the body is consumed, shut
+        // down only the send side so the client can finish reading.
         client.NoDelay = true;
         try
         {
             var stream = client.GetStream();
             stream.ReadTimeout = 5000;
             stream.WriteTimeout = 5000;
-            var header = ReadRequestHeader(stream);
+            var header = ReadRequest(stream, out var consumedBody);
+            DrainBody(stream, header, consumedBody);
             var path = RequestPath(header);
             if (path.Length == 0)
             {
@@ -582,9 +639,6 @@ public sealed class JevPlayTests
         }
         finally
         {
-            // Shutdown the send side only. Closing through TcpClient.Dispose, or
-            // aborting with Close(0), either stalls the accept thread or discards
-            // the 302 before the client can read it.
             try
             {
                 client.Client.Shutdown(SocketShutdown.Send);
@@ -598,10 +652,11 @@ public sealed class JevPlayTests
         }
     }
 
-    private static string ReadRequestHeader(NetworkStream stream)
+    private static string ReadRequest(NetworkStream stream, out int consumedBody)
     {
-        var buffer = new byte[4096];
+        var buffer = new byte[8192];
         var size = 0;
+        consumedBody = 0;
         while (size < buffer.Length)
         {
             var read = stream.Read(buffer, size, Math.Min(1024, buffer.Length - size));
@@ -621,8 +676,82 @@ public sealed class JevPlayTests
                     continue;
                 }
 
+                consumedBody = size - (index + 4);
                 return Encoding.ASCII.GetString(buffer, 0, index);
             }
+        }
+
+        return Encoding.ASCII.GetString(buffer, 0, size);
+    }
+
+    private static void DrainBody(NetworkStream stream, string header, int consumedBody)
+    {
+        var remaining = HeaderContentLength(header) - consumedBody;
+        if (remaining <= 0)
+        {
+            return;
+        }
+
+        var buffer = new byte[1024];
+        while (remaining > 0)
+        {
+            var read = stream.Read(buffer, 0, Math.Min(buffer.Length, remaining));
+            if (read <= 0)
+            {
+                return;
+            }
+
+            remaining -= read;
+        }
+    }
+
+    private static int HeaderContentLength(string header)
+    {
+        foreach (var line in header.Split("\r\n"))
+        {
+            if (line.StartsWith("Content-Length:", StringComparison.OrdinalIgnoreCase)
+                && int.TryParse(
+                    line["Content-Length:".Length..].Trim(),
+                    NumberStyles.None,
+                    CultureInfo.InvariantCulture,
+                    out var length)
+                && length is > 0 and <= 1_048_576)
+            {
+                return length;
+            }
+        }
+
+        return 0;
+    }
+
+    private static bool IsReceiveTimeout(IOException exception)
+    {
+        return exception.InnerException is SocketException socket
+            && socket.SocketErrorCode == SocketError.TimedOut;
+    }
+
+    private static string ReadAvailableAscii(NetworkStream stream)
+    {
+        var buffer = new byte[1024];
+        var size = 0;
+        while (size < buffer.Length)
+        {
+            int read;
+            try
+            {
+                read = stream.Read(buffer, size, buffer.Length - size);
+            }
+            catch (IOException)
+            {
+                break;
+            }
+
+            if (read <= 0)
+            {
+                break;
+            }
+
+            size += read;
         }
 
         return Encoding.ASCII.GetString(buffer, 0, size);
