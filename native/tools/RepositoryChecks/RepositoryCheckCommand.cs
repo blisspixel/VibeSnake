@@ -789,6 +789,13 @@ public static class RepositoryCheckCommand
             return RunRadioReview(arguments, standardOutput, standardError, radioToolRunner);
         }
 
+        if (arguments is not null
+            && arguments.Count > 0
+            && arguments[0] == "radio-preview")
+        {
+            return RunRadioPreview(arguments, standardOutput, standardError);
+        }
+
         if (arguments is null
             || arguments.Count is < 1 or > 2
             || arguments[0] is not ("achievement-candidates" or "all" or "badges" or "core-rules" or "docs" or "external-validation" or "freeze" or "interop" or "inventory" or "inventory-release" or "knowledge" or "last-stand" or "locks" or "logo" or "manual-matrix" or "materials" or "movement" or "phase-shift" or "rehearsal" or "remaining-powers" or "screenshots" or "shield" or "source" or "stable" or "version"))
@@ -1970,6 +1977,8 @@ public static class RepositoryCheckCommand
         writer.WriteLine(
             "       RepositoryChecks radio-review <repository-root> prepare <station> <inventory> <curation> "
             + "<analysis> <output-root> <ffmpeg> <ffprobe> <workers> <timeout-seconds> [replace]");
+        writer.WriteLine(
+            "       RepositoryChecks radio-preview <repository-root> list <directory>");
     }
 
     private const string DefaultGameVersion = "0.3.0";
@@ -2229,6 +2238,53 @@ public static class RepositoryCheckCommand
             curationPath,
             inventoryPath);
         return true;
+    }
+
+    private static int RunRadioPreview(
+        IReadOnlyList<string> arguments,
+        TextWriter standardOutput,
+        TextWriter standardError)
+    {
+        if (arguments.Count != 4 || arguments[2] != "list")
+        {
+            WriteUsage(standardError);
+            return 2;
+        }
+
+        if (!TryResolvePath(arguments[1], out var repositoryRoot))
+        {
+            standardError.WriteLine("Repository root is invalid.");
+            return 2;
+        }
+
+        if (!TryResolvePath(arguments[3], out var directory))
+        {
+            standardError.WriteLine("Radio preview path is invalid.");
+            return 2;
+        }
+
+        try
+        {
+            var resolved = RadioPreviewCheck.RequireDirectory(repositoryRoot, directory);
+            var samples = RadioPreviewCheck.FindSamples(resolved);
+            if (samples.Count == 0)
+            {
+                standardOutput.WriteLine(RadioPreviewCheck.MissingMessage(resolved));
+                return 1;
+            }
+
+            foreach (var sample in samples)
+            {
+                standardOutput.WriteLine(sample.Station + ": " + sample.FileName);
+            }
+
+            return 0;
+        }
+        catch (RadioPreviewException exception)
+        {
+            standardError.WriteLine("Radio preview failed: " + exception.Message);
+            return 2;
+        }
     }
 
     private static int RunRadioReview(

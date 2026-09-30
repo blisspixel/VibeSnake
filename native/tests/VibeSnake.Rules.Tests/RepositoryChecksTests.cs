@@ -1488,6 +1488,9 @@ public sealed class RepositoryChecksTests
         Assert.Contains(
             "RepositoryChecks radio-review <repository-root> prepare <station> <inventory> <curation> <analysis> <output-root> <ffmpeg> <ffprobe> <workers> <timeout-seconds> [replace]",
             invalidError.ToString());
+        Assert.Contains(
+            "RepositoryChecks radio-preview <repository-root> list <directory>",
+            invalidError.ToString());
         Assert.DoesNotContain(
             "interop-upstream",
             invalidError.ToString().Split(Environment.NewLine)[0],
@@ -1506,6 +1509,10 @@ public sealed class RepositoryChecksTests
             StringComparison.Ordinal);
         Assert.DoesNotContain(
             "radio-review",
+            invalidError.ToString().Split(Environment.NewLine)[0],
+            StringComparison.Ordinal);
+        Assert.DoesNotContain(
+            "radio-preview",
             invalidError.ToString().Split(Environment.NewLine)[0],
             StringComparison.Ordinal);
         Assert.Contains(
