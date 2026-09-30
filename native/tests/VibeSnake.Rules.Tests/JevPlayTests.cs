@@ -517,10 +517,9 @@ public sealed class JevPlayTests
         int port)
     {
         var accepted = new List<TcpClient>();
-        var handlers = new List<Thread>();
         try
         {
-            while (true)
+            while (StillBound(listener))
             {
                 lock (hits)
                 {
@@ -528,6 +527,15 @@ public sealed class JevPlayTests
                     {
                         return;
                     }
+                }
+
+                // The Linux send-side close can surface on the listen socket.
+                // That is not a stopped listener, and a blocking accept started
+                // before the close can miss the next watch connection.
+                if (!ConnectionPending(listener))
+                {
+                    Thread.Sleep(10);
+                    continue;
                 }
 
                 TcpClient client;
@@ -543,33 +551,21 @@ public sealed class JevPlayTests
                 {
                     return;
                 }
-                catch (SocketException exception) when (ListenerStopped(listener, exception))
+                catch (SocketException) when (!StillBound(listener))
                 {
                     return;
                 }
                 catch (SocketException)
                 {
-                    // A reset left on the listen socket is not a stopped listener.
-                    Thread.Sleep(1);
                     continue;
                 }
 
                 accepted.Add(client);
-                var handler = new Thread(() => HandleRedirect(client, hits, authorization, port))
-                {
-                    IsBackground = true,
-                };
-                handlers.Add(handler);
-                handler.Start();
+                HandleRedirect(client, hits, authorization, port);
             }
         }
         finally
         {
-            foreach (var handler in handlers)
-            {
-                handler.Join(TimeSpan.FromSeconds(2));
-            }
-
             foreach (var open in accepted)
             {
                 try
@@ -586,28 +582,36 @@ public sealed class JevPlayTests
         }
     }
 
-    private static bool ListenerStopped(TcpListener listener, SocketException exception)
+    private static bool StillBound(TcpListener listener)
     {
         try
         {
-            if (!listener.Server.IsBound)
-            {
-                return true;
-            }
+            return listener.Server.IsBound;
         }
         catch (ObjectDisposedException)
         {
-            return true;
+            return false;
         }
         catch (SocketException)
         {
-            return true;
+            return false;
         }
+    }
 
-        return exception.SocketErrorCode is SocketError.Interrupted
-            or SocketError.OperationAborted
-            or SocketError.NotSocket
-            or SocketError.Shutdown;
+    private static bool ConnectionPending(TcpListener listener)
+    {
+        try
+        {
+            return listener.Pending();
+        }
+        catch (ObjectDisposedException)
+        {
+            return false;
+        }
+        catch (SocketException)
+        {
+            return false;
+        }
     }
 
     private static void HandleRedirect(

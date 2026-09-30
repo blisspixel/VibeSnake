@@ -4,6 +4,8 @@ Notable player-facing and engineering changes are recorded here. The project is 
 
 ## Unreleased
 
+- Corrected the owned Jev redirect probe again after hosted Ubuntu lost the watch request. The Linux send-side close made the following accept look like a stopped listener, so the watch never reached a handler. Accept errors while the listener remains bound stay in the loop, and the next accept starts only after that close returns. The body is still read first. Redirects stay disabled. Production Jev timeouts are unchanged. The measured suite counts are unchanged.
+
 - Corrected the owned Jev redirect probe again after hosted Ubuntu still timed out before the 302. Linux shuts down only the send side after the response bytes are written, so the client can finish. The body is still read first. Windows and macOS leave the accepted socket open until the listener stops, because shutting it down there stalled the next accept. Redirects stay disabled. Production Jev timeouts are unchanged. The measured suite counts are unchanged.
 
 - Corrected the owned Jev redirect probe after hosted Windows and Ubuntu native rules lost the 302. The probe still reads the request body before answering, and redirects stay disabled. It no longer shuts an accepted socket down before the listener stops, because that reset the Linux client and stalled the next Windows accept. The watch request completes from Content-Length. Production Jev timeouts are unchanged. The measured suite counts are unchanged.
