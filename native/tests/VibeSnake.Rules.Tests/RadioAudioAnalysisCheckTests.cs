@@ -757,11 +757,43 @@ public class RadioAudioAnalysisCheckTests
         Assert.Null(RadioAudioAnalysisCheck.FindTool("definitely-missing-radio-audio-tool"));
         var rooted = Path.Combine(Path.GetTempPath(), "missing-radio-audio-" + Guid.NewGuid().ToString("N"));
         Assert.Null(RadioAudioAnalysisCheck.FindTool(rooted));
-        var found = OperatingSystem.IsWindows()
-            ? RadioAudioAnalysisCheck.FindTool("cmd")
-            : RadioAudioAnalysisCheck.FindTool("sh");
-        Assert.False(string.IsNullOrWhiteSpace(found));
-        Assert.True(File.Exists(found));
+        if (OperatingSystem.IsWindows())
+        {
+            var command = RadioAudioAnalysisCheck.FindTool("cmd");
+            Assert.False(string.IsNullOrWhiteSpace(command));
+            Assert.True(File.Exists(command));
+        }
+
+        var toolDirectory = Path.Combine(Path.GetTempPath(), "vibesnake-radio-audio-tool-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(toolDirectory);
+        try
+        {
+            var toolName = "radio-audio-tool";
+            var toolFile = Path.Combine(toolDirectory, OperatingSystem.IsWindows() ? toolName + ".exe" : toolName);
+            File.WriteAllBytes(toolFile, [0x7F]);
+            var found = RadioAudioAnalysisCheck.FindTool(toolName, toolDirectory);
+            Assert.Equal(Path.GetFullPath(toolFile), found);
+            Assert.True(File.Exists(found));
+            if (!OperatingSystem.IsWindows())
+            {
+                var link = Path.Combine(toolDirectory, "linked-tool");
+                try
+                {
+                    File.CreateSymbolicLink(link, toolFile);
+                    Assert.Null(RadioAudioAnalysisCheck.FindTool("linked-tool", toolDirectory));
+                }
+                catch (IOException)
+                {
+                }
+                catch (UnauthorizedAccessException)
+                {
+                }
+            }
+        }
+        finally
+        {
+            Directory.Delete(toolDirectory, recursive: true);
+        }
 
         var executable = OperatingSystem.IsWindows()
             ? Path.Combine(Environment.SystemDirectory, "cmd.exe")

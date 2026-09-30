@@ -785,7 +785,7 @@ internal static class RadioAudioAnalysisCheck
         }
     }
 
-    internal static string? FindTool(string requested)
+    internal static string? FindTool(string requested, string? pathValue = null)
     {
         if (string.IsNullOrWhiteSpace(requested) || requested.IndexOfAny(Path.GetInvalidPathChars()) >= 0)
         {
@@ -799,11 +799,11 @@ internal static class RadioAudioAnalysisCheck
             return RegularFile(requested) ? Path.GetFullPath(requested) : null;
         }
 
-        var pathValue = Environment.GetEnvironmentVariable("PATH") ?? string.Empty;
+        var searchPath = pathValue ?? Environment.GetEnvironmentVariable("PATH") ?? string.Empty;
         var names = OperatingSystem.IsWindows()
             ? new[] { requested, requested + ".exe" }
             : new[] { requested };
-        foreach (var directory in pathValue.Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        foreach (var directory in searchPath.Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
         {
             foreach (var name in names)
             {
