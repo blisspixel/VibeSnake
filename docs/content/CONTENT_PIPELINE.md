@@ -112,26 +112,25 @@ The first local `the_bureau` campaign produces 12 of 12 technically passing copi
 Verify those exact copies and prepare the intentionally incomplete listening record:
 
 ```powershell
-python scripts/manual/review_radio_copies.py `
+dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- radio-listening . verify-inputs `
   TestResults/radio-review/the_bureau `
-  --verify-inputs `
-  --output TestResults/radio-review/the_bureau/listening-handoff.json
+  TestResults/radio-review/the_bureau/listening-handoff.json
 
-python scripts/manual/review_radio_copies.py `
+dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- radio-listening . prepare-template `
   TestResults/radio-review/the_bureau `
-  --prepare-template TestResults/radio-review/the_bureau/listening-review.json.template
+  TestResults/radio-review/the_bureau/listening-review.json.template
 ```
 
 The verifier rehashes every FLAC and binds the template to the exact review-copy manifest. For every track, the reviewer must record full playback, clipping or distortion, start and end quality, relative level, station identity, and sustained comfort on both headphones and speakers. Copy the template to `listening-review.json`, replace every placeholder, and validate the completed record:
 
 ```powershell
-python scripts/manual/review_radio_copies.py `
+dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- radio-listening . review-record `
   TestResults/radio-review/the_bureau `
-  --review-record TestResults/radio-review/the_bureau/listening-review.json `
-  --output TestResults/radio-review/the_bureau/listening-decision.json
+  TestResults/radio-review/the_bureau/listening-review.json `
+  TestResults/radio-review/the_bureau/listening-decision.json
 ```
 
-An honest rejection is a complete listening record but cannot approve source replacement. `--require-approved` is the fail-closed gate for the later source-replacement workflow. The command never changes source, curation, release approval, or export eligibility.
+An honest rejection is a complete listening record but cannot approve source replacement. The final `require-approved` token is the fail-closed gate for a later source-replacement workflow. The command never changes source, curation, release approval, or export eligibility.
 
 ## Commands
 

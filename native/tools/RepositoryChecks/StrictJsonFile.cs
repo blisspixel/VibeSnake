@@ -93,7 +93,7 @@ internal static class StrictJsonFile
     internal static string SingleLine(string value) =>
         value.Replace('\r', ' ').Replace('\n', ' ').Trim();
 
-    private static void RejectDuplicateProperties(ReadOnlySpan<byte> json)
+    internal static void RejectDuplicateProperties(ReadOnlySpan<byte> json)
     {
         var reader = new Utf8JsonReader(
             json,

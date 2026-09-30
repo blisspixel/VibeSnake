@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 using VibeSnake.Rules;
 
@@ -747,6 +748,13 @@ public static class RepositoryCheckCommand
             && arguments[0] == "product-review-prepare")
         {
             return RunProductReviewPrepare(arguments, standardOutput, standardError, reviewQualifier);
+        }
+
+        if (arguments is not null
+            && arguments.Count > 0
+            && arguments[0] == "radio-listening")
+        {
+            return RunRadioListening(arguments, standardOutput, standardError);
         }
 
         if (arguments is null
@@ -1917,6 +1925,13 @@ public static class RepositoryCheckCommand
         writer.WriteLine(
             "       RepositoryChecks product-review-prepare <repository-root> <release-evidence-root> "
             + "<expected-revision> <release-run-id> <owner/name> <output-root>");
+        writer.WriteLine(
+            "       RepositoryChecks radio-listening <repository-root> prepare-template <review-directory> <template-path>");
+        writer.WriteLine(
+            "       RepositoryChecks radio-listening <repository-root> verify-inputs <review-directory> <output-path>");
+        writer.WriteLine(
+            "       RepositoryChecks radio-listening <repository-root> review-record <review-directory> "
+            + "<record-path> <output-path> [require-approved]");
     }
 
     private const string DefaultGameVersion = "0.3.0";
@@ -2176,6 +2191,144 @@ public static class RepositoryCheckCommand
             curationPath,
             inventoryPath);
         return true;
+    }
+
+    private static int RunRadioListening(
+        IReadOnlyList<string> arguments,
+        TextWriter standardOutput,
+        TextWriter standardError)
+    {
+        var mode = arguments.Count > 2 ? arguments[2] : string.Empty;
+        var requireApproved = false;
+        var validShape = mode switch
+        {
+            "prepare-template" or "verify-inputs" => arguments.Count == 5,
+            "review-record" when arguments.Count == 6 => true,
+            "review-record" when arguments.Count == 7 && arguments[6] == "require-approved" => true,
+            _ => false,
+        };
+        if (!validShape)
+        {
+            WriteUsage(standardError);
+            return 2;
+        }
+
+        requireApproved = arguments.Count == 7;
+        if (!TryResolvePath(arguments[1], out var repositoryRoot))
+        {
+            standardError.WriteLine("Repository root is invalid.");
+            return 2;
+        }
+
+        if (!TryResolvePath(arguments[3], out var reviewDirectory)
+            || !TryResolvePath(arguments[4], out var fourth)
+            || (mode == "review-record" && !TryResolvePath(arguments[5], out _)))
+        {
+            standardError.WriteLine("Radio listening path is invalid.");
+            return 2;
+        }
+
+        try
+        {
+            switch (mode)
+            {
+                case "prepare-template":
+                    var template = RadioListeningReviewCheck.PrepareTemplate(repositoryRoot, reviewDirectory, fourth);
+                    standardOutput.WriteLine(
+                        "Radio listening template prepared: station="
+                        + template.StationId
+                        + " tracks="
+                        + template.TrackCount.ToString(CultureInfo.InvariantCulture)
+                        + " listening=pending output="
+                        + template.OutputPath);
+                    return 0;
+                case "verify-inputs":
+                    var handoff = RadioListeningReviewCheck.VerifyInputs(repositoryRoot, reviewDirectory, fourth);
+                    standardOutput.WriteLine(
+                        "Radio listening handoff verified: station="
+                        + handoff.StationId
+                        + " tracks="
+                        + handoff.TrackCount.ToString(CultureInfo.InvariantCulture)
+                        + " listening=pending");
+                    return 0;
+                default:
+                    var recordPath = fourth;
+                    var decisionPath = Path.GetFullPath(arguments[5]);
+                    var validation = RadioListeningReviewCheck.ValidateListeningRecord(
+                        repositoryRoot,
+                        reviewDirectory,
+                        recordPath);
+                    RadioListeningReviewCheck.WriteEvidence(
+                        repositoryRoot,
+                        decisionPath,
+                        validation.Evidence,
+                        Path.Combine(reviewDirectory, "review-copy-manifest.json"),
+                        recordPath);
+                    if (validation.Errors.Count > 0)
+                    {
+                        standardError.WriteLine("Radio listening record validation failed:");
+                        foreach (var error in validation.Errors)
+                        {
+                            standardError.WriteLine("  " + error);
+                        }
+
+                        return 1;
+                    }
+
+                    var approved = validation.Evidence["sourceReplacementApproved"]!.GetValue<bool>();
+                    if (requireApproved && !approved)
+                    {
+                        standardError.WriteLine(
+                            "Radio listening record is valid but does not approve every source replacement.");
+                        return 1;
+                    }
+
+                    var station = validation.Evidence["stationId"]!.GetValue<string>();
+                    var tracks = validation.Evidence["trackCount"]!.GetValue<int>();
+                    var complete = validation.Evidence["listeningComplete"]!.GetValue<bool>();
+                    standardOutput.WriteLine(
+                        "Radio listening record valid: station="
+                        + station
+                        + " tracks="
+                        + tracks.ToString(CultureInfo.InvariantCulture)
+                        + " complete="
+                        + (complete ? "true" : "false")
+                        + " source_replacement_approved="
+                        + (approved ? "true" : "false"));
+                    return 0;
+            }
+        }
+        catch (RadioListeningReviewException exception)
+        {
+            var heading = mode switch
+            {
+                "prepare-template" => "Radio listening template preparation failed: ",
+                "verify-inputs" => "Radio listening handoff verification failed: ",
+                _ => "Radio listening decision output failed: ",
+            };
+            standardError.WriteLine(heading + StrictJsonFile.SingleLine(exception.Message));
+            return 1;
+        }
+    }
+
+    private static bool TryResolvePath(string path, out string resolved)
+    {
+        resolved = string.Empty;
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            return false;
+        }
+
+        try
+        {
+            resolved = Path.GetFullPath(path);
+            return true;
+        }
+        catch (Exception exception) when (
+            exception is ArgumentException or NotSupportedException or PathTooLongException)
+        {
+            return false;
+        }
     }
 
     private static int RunProductReviewPrepare(

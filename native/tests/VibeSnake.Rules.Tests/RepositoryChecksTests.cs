@@ -1473,12 +1473,25 @@ public sealed class RepositoryChecksTests
         Assert.Contains(
             "RepositoryChecks product-review-prepare <repository-root> <release-evidence-root> <expected-revision> <release-run-id> <owner/name> <output-root>",
             invalidError.ToString());
+        Assert.Contains(
+            "RepositoryChecks radio-listening <repository-root> prepare-template <review-directory> <template-path>",
+            invalidError.ToString());
+        Assert.Contains(
+            "RepositoryChecks radio-listening <repository-root> verify-inputs <review-directory> <output-path>",
+            invalidError.ToString());
+        Assert.Contains(
+            "RepositoryChecks radio-listening <repository-root> review-record <review-directory> <record-path> <output-path> [require-approved]",
+            invalidError.ToString());
         Assert.DoesNotContain(
             "interop-upstream",
             invalidError.ToString().Split(Environment.NewLine)[0],
             StringComparison.Ordinal);
         Assert.DoesNotContain(
             "product-review-prepare",
+            invalidError.ToString().Split(Environment.NewLine)[0],
+            StringComparison.Ordinal);
+        Assert.DoesNotContain(
+            "radio-listening",
             invalidError.ToString().Split(Environment.NewLine)[0],
             StringComparison.Ordinal);
         Assert.Contains(

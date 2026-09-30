@@ -2,7 +2,7 @@
 
 These programs require a person, a real audio or display device, or an explicitly configured external service. They are never imported by pytest and never run during normal CI.
 
-Exact-candidate workspace preparation is native `product-review-prepare`. It writes pending session templates and does not record a review. The programs below are the remaining radio listening tools.
+Exact-candidate workspace preparation is native `product-review-prepare`. It writes pending session templates and does not record a review. Hash-bound listening records are native `radio-listening`. That command rehashes exact review copies, writes a pending template, and validates an explicit human record. It cannot change release approval, export eligibility, curation, or source bytes. The programs below are the remaining FFmpeg analysis, review-copy preparation, and sample preview tools.
 
 - `preview_radio_samples.py`: lists or plays one fixed candidate from each station
   through Pygame. It accepts only the ignored archive or an external directory;
