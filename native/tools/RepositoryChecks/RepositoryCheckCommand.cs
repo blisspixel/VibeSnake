@@ -782,6 +782,13 @@ public static class RepositoryCheckCommand
             return RunRadioAudio(arguments, standardOutput, standardError, radioToolRunner);
         }
 
+        if (arguments is not null
+            && arguments.Count > 0
+            && arguments[0] == "radio-review")
+        {
+            return RunRadioReview(arguments, standardOutput, standardError, radioToolRunner);
+        }
+
         if (arguments is null
             || arguments.Count is < 1 or > 2
             || arguments[0] is not ("achievement-candidates" or "all" or "badges" or "core-rules" or "docs" or "external-validation" or "freeze" or "interop" or "inventory" or "inventory-release" or "knowledge" or "last-stand" or "locks" or "logo" or "manual-matrix" or "materials" or "movement" or "phase-shift" or "rehearsal" or "remaining-powers" or "screenshots" or "shield" or "source" or "stable" or "version"))
@@ -1960,6 +1967,9 @@ public static class RepositoryCheckCommand
         writer.WriteLine(
             "       RepositoryChecks radio-audio <repository-root> qualify <inventory> <curation> <output> "
             + "<ffmpeg> <ffprobe> <workers> <timeout-seconds> [replace]");
+        writer.WriteLine(
+            "       RepositoryChecks radio-review <repository-root> prepare <station> <inventory> <curation> "
+            + "<analysis> <output-root> <ffmpeg> <ffprobe> <workers> <timeout-seconds> [replace]");
     }
 
     private const string DefaultGameVersion = "0.3.0";
@@ -2219,6 +2229,103 @@ public static class RepositoryCheckCommand
             curationPath,
             inventoryPath);
         return true;
+    }
+
+    private static int RunRadioReview(
+        IReadOnlyList<string> arguments,
+        TextWriter standardOutput,
+        TextWriter standardError,
+        RadioAudioAnalysisCheck.RadioToolRunner? radioToolRunner)
+    {
+        var replace = false;
+        var validShape = arguments.Count is 12 or 13 && arguments[2] == "prepare";
+        if (validShape && arguments.Count == 13)
+        {
+            replace = arguments[12] == "replace";
+            validShape = replace;
+        }
+
+        if (!validShape)
+        {
+            WriteUsage(standardError);
+            return 2;
+        }
+
+        if (!TryResolvePath(arguments[1], out var repositoryRoot))
+        {
+            standardError.WriteLine("Repository root is invalid.");
+            return 2;
+        }
+
+        if (!TryResolvePath(arguments[4], out var inventoryPath)
+            || !TryResolvePath(arguments[5], out var curationPath)
+            || !TryResolvePath(arguments[6], out var analysisPath)
+            || !TryResolvePath(arguments[7], out var outputRoot))
+        {
+            standardError.WriteLine("Radio review path is invalid.");
+            return 2;
+        }
+
+        if (!TryParseCanonicalInteger(arguments[10], out var workers)
+            || !TryParseCanonicalInteger(arguments[11], out var timeoutSeconds))
+        {
+            WriteUsage(standardError);
+            return 2;
+        }
+
+        try
+        {
+            var ffmpeg = RadioAudioAnalysisCheck.FindTool(arguments[8]);
+            var ffprobe = RadioAudioAnalysisCheck.FindTool(arguments[9]);
+            if (ffmpeg is null || ffprobe is null)
+            {
+                throw new RadioReviewCopyException("ffmpeg and ffprobe must both be available");
+            }
+
+            RadioAudioAnalysisCheck.RadioToolRunner runner = radioToolRunner
+                ?? ((executable, toolArguments, timeout) => RadioAudioAnalysisCheck.RunProductionTool(
+                    executable,
+                    toolArguments,
+                    timeout,
+                    repositoryRoot));
+            var prepared = RadioReviewCopyCheck.PrepareStation(
+                repositoryRoot,
+                inventoryPath,
+                curationPath,
+                analysisPath,
+                outputRoot,
+                arguments[3],
+                ffmpeg,
+                ffprobe,
+                workers,
+                timeoutSeconds,
+                replace,
+                runner,
+                DateTimeOffset.UtcNow,
+                standardError.WriteLine);
+            var summary = prepared.Manifest["summary"]!.AsObject();
+            standardOutput.WriteLine(
+                "Radio review copies: station="
+                + arguments[3]
+                + " tracks="
+                + summary["trackCount"]!.GetValue<int>().ToString(CultureInfo.InvariantCulture)
+                + " technical_pass="
+                + summary["technicalPassCount"]!.GetValue<int>().ToString(CultureInfo.InvariantCulture)
+                + " failures="
+                + summary["technicalFailureCount"]!.GetValue<int>().ToString(CultureInfo.InvariantCulture)
+                + " output="
+                + prepared.Directory);
+            return prepared.Manifest["technicalPass"]!.GetValue<bool>() ? 0 : 1;
+        }
+        catch (Exception exception) when (exception is RadioReviewCopyException
+            or RadioAudioAnalysisException
+            or IOException
+            or UnauthorizedAccessException)
+        {
+            standardError.WriteLine(
+                "Radio review-copy preparation failed: " + StrictJsonFile.SingleLine(exception.Message));
+            return 2;
+        }
     }
 
     private static int RunRadioAudio(

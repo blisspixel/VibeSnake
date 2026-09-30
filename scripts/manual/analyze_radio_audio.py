@@ -1,9 +1,10 @@
-"""Shared radio measurement library for review-copy preparation.
+"""Shared radio measurement and parser library.
 
 The full-library qualification campaign is the native `radio-audio` command.
-It stays outside combined `all` and ordinary CI. This module parses probe,
-loudness, and silence output and binds inventoried radio assets to curation
-stations. It does not decode the library, write qualification evidence, or
+Station review-copy preparation is the native `radio-review` command. Both stay
+outside combined `all` and ordinary CI. This module parses probe, loudness, and
+silence output and binds inventoried radio assets to curation stations. It does
+not decode the library, write qualification evidence, prepare review copies, or
 approve a track.
 """
 

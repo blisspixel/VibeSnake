@@ -109,7 +109,16 @@ The ignored `TestResults/radio-audio/radio_audio_qualification.json` output bind
 Prepare one complete station for listening only after the current full-library analysis exists:
 
 ```powershell
-python scripts/manual/prepare_radio_review_copies.py --station the_bureau
+dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- radio-review . prepare `
+  the_bureau `
+  config/content_inventory.json `
+  config/content_curation_v1.json `
+  TestResults/radio-audio/radio_audio_qualification.json `
+  TestResults/radio-review `
+  ffmpeg `
+  ffprobe `
+  4 `
+  120
 ```
 
 The ignored `TestResults/radio-review/the_bureau/` set contains lossless FLAC copies and `review-copy-manifest.json`. The tool trims only measured edge silence, runs FFmpeg's file-oriented two-pass `loudnorm` filter at the provisional target, preserves source channels and sample rate, removes inherited metadata, fully decodes and remeasures the output, and rehashes the complete source set before atomically publishing the station. A post-normalization edge miss permits at most two additional measured corrections; each removes only the policy excess plus a 0.1-second margin and reruns both passes. See the official [FFmpeg loudnorm and silenceremove filter documentation](https://ffmpeg.org/ffmpeg-filters.html).
