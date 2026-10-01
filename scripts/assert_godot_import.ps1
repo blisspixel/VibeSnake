@@ -23,6 +23,7 @@ param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
+. (Join-Path $PSScriptRoot "native_process_policy.ps1")
 
 $repositoryRoot = Split-Path -Parent $PSScriptRoot
 if (-not $ProjectPath) {
@@ -190,8 +191,11 @@ if ($cacheProblems.Count -gt 0) {
 # immediate C# layout shutdown crash. Cap headless FPS so 180 frames provide
 # three seconds for initialization. Exact payload/digest checks below still fail
 # an incomplete import, and every nonzero editor exit remains an error.
-$importOutput = @(& $resolvedGodotExecutable --headless --editor --path $resolvedProjectPath --import --max-fps 60 --quit-after 180 2>&1)
-$importExitCode = $LASTEXITCODE
+$importResult = Invoke-BoundedNativeProcess -Executable $resolvedGodotExecutable -WorkingDirectory $resolvedProjectPath `
+    -Arguments @("--headless", "--editor", "--path", $resolvedProjectPath, "--import", "--max-fps", "60", "--quit-after", "180") `
+    -TimeoutMilliseconds 300000 -Operation "Godot headless asset import"
+$importOutput = @(($importResult.StandardOutput + "`n" + $importResult.StandardError) -split "\r?\n")
+$importExitCode = $importResult.ExitCode
 $importOutput | Write-Output
 if ($importExitCode -ne 0) {
     throw "The Godot headless asset import failed with exit code $importExitCode."

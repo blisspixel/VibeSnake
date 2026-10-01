@@ -29,6 +29,7 @@ param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
+. (Join-Path $PSScriptRoot "native_process_policy.ps1")
 
 $repositoryRoot = Split-Path -Parent $PSScriptRoot
 $projectDirectory = Join-Path $repositoryRoot "game"
@@ -318,8 +319,11 @@ foreach ($lockPath in $canonicalLockPaths) {
 }
 
 try {
-    $exportOutput = & $resolvedGodotExecutable --headless --path $projectDirectory $exportArgument $preset $artifactPath 2>&1
-    $exportExitCode = $LASTEXITCODE
+    $exportResult = Invoke-BoundedNativeProcess -Executable $resolvedGodotExecutable -WorkingDirectory $repositoryRoot `
+        -Arguments @("--headless", "--path", $projectDirectory, $exportArgument, $preset, $artifactPath) `
+        -TimeoutMilliseconds 1800000 -Operation "Godot $BuildMode export for $preset"
+    $exportOutput = @(($exportResult.StandardOutput + "`n" + $exportResult.StandardError) -split "\r?\n")
+    $exportExitCode = $exportResult.ExitCode
 } finally {
     foreach ($lockPath in $canonicalLockPaths) {
         $currentHash = (Get-FileHash -LiteralPath $lockPath -Algorithm SHA256).Hash

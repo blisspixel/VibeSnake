@@ -9,6 +9,7 @@ param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
+. (Join-Path $PSScriptRoot "native_process_policy.ps1")
 
 $repositoryRoot = Split-Path -Parent $PSScriptRoot
 $localDotnetCandidates = @(
@@ -62,6 +63,7 @@ try {
         $verificationArguments.GodotArchivePath = $GodotArchivePath
     }
     & (Join-Path $PSScriptRoot "assert_godot_toolchain.ps1") @verificationArguments
+    & (Join-Path $PSScriptRoot "test_native_process.ps1")
     & (Join-Path $PSScriptRoot "test_powershell_gates.ps1") @verificationArguments
 
     Invoke-Dotnet -CommandArguments @("--version")
@@ -526,8 +528,11 @@ try {
         throw "Dependency inventory toolchain does not match the pinned native toolchain."
     }
 
-    $importOutput = & $resolvedGodotExecutable --headless --editor --path game --import --max-fps 60 --quit-after 180 2>&1
-    $importExitCode = $LASTEXITCODE
+    $importResult = Invoke-BoundedNativeProcess -Executable $resolvedGodotExecutable -WorkingDirectory $repositoryRoot `
+        -Arguments @("--headless", "--editor", "--path", "game", "--import", "--max-fps", "60", "--quit-after", "180") `
+        -TimeoutMilliseconds 300000 -Operation "Godot qualification import"
+    $importOutput = @(($importResult.StandardOutput + "`n" + $importResult.StandardError) -split "\r?\n")
+    $importExitCode = $importResult.ExitCode
     $importOutput | Write-Output
     if ($importExitCode -ne 0) {
         throw "Godot headless import failed with exit code $importExitCode."
@@ -580,8 +585,11 @@ try {
 
     $smokeUserDataRoot = Join-Path ([System.IO.Path]::GetTempPath()) ("vibesnake-godot-user-data-{0}" -f [Guid]::NewGuid())
     New-Item -ItemType Directory -Path $smokeUserDataRoot | Out-Null
-    $smokeOutput = & $resolvedGodotExecutable --headless --path game -- --smoke-test "--smoke-user-data-root=$smokeUserDataRoot" 2>&1
-    $smokeExitCode = $LASTEXITCODE
+    $smokeResult = Invoke-BoundedNativeProcess -Executable $resolvedGodotExecutable -WorkingDirectory $repositoryRoot `
+        -Arguments @("--headless", "--path", "game", "--", "--smoke-test", "--smoke-user-data-root=$smokeUserDataRoot") `
+        -TimeoutMilliseconds 600000 -Operation "Godot deterministic smoke"
+    $smokeOutput = @(($smokeResult.StandardOutput + "`n" + $smokeResult.StandardError) -split "\r?\n")
+    $smokeExitCode = $smokeResult.ExitCode
     $smokeOutput | Write-Output
     if ($smokeExitCode -ne 0) {
         throw "Godot deterministic smoke failed."
@@ -591,6 +599,9 @@ try {
     }
     if (($smokeOutput -join "`n") -notmatch "VIBESNAKE_GODOT_SMOKE_OK hash=[0-9a-f]{16}") {
         throw "Godot deterministic smoke did not emit its success marker."
+    }
+    if ($smokeOutput -notcontains "VIBESNAKE_NAVIGATION_SAFETY_OK settings_modals=4 replay_navigation=cancel-current-refresh-durable") {
+        throw "Godot smoke did not qualify settings modal and replay navigation ownership."
     }
 
     $viewportEvidencePath = Join-Path $repositoryRoot "TestResults/native/viewport_matrix.json"

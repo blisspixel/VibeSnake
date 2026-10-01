@@ -2568,7 +2568,14 @@ public partial class Main : Node2D
             }
             else if (_screenState == ScreenState.Settings)
             {
-                RestoreCurrentSettingsSection();
+                if (SettingsModalOwnsInput)
+                {
+                    HandleSettingsScreenInput(inputEvent);
+                }
+                else
+                {
+                    RestoreCurrentSettingsSection();
+                }
             }
             else
             {
@@ -4541,6 +4548,8 @@ public partial class Main : Node2D
         var from = CurrentShellScreen();
         var to = ToShellScreen(target, paused: false);
         ShellTransitions.EnsureTransition(from, to);
+        _replayNavigationGeneration = checked(_replayNavigationGeneration + 1);
+        _queuedReplayNavigationOperation = null;
         _screenState = target;
         _paused = false;
     }
@@ -5246,13 +5255,10 @@ public partial class Main : Node2D
         else
         {
             var store = _replayStore;
-            if (!TryStartReplayResultOperation(
+            StartOrQueueReplayNavigationOperation(
                 () => LoadReplayBrowser(store),
                 "REPLAY LIBRARY VERIFICATION IN PROGRESS",
-                ReplayOperationKind.BrowserLoad))
-            {
-                ShowReplayStatus("REPLAY OPERATION ALREADY IN PROGRESS");
-            }
+                ReplayOperationKind.BrowserLoad);
         }
 
         _structuredLog?.Information(
@@ -5613,7 +5619,7 @@ public partial class Main : Node2D
         }
 
         var store = _offlineChallengeStore;
-        if (!TryStartReplayResultOperation(
+        StartOrQueueReplayNavigationOperation(
             () =>
             {
                 var listed = store.ListSlots();
@@ -5622,10 +5628,7 @@ public partial class Main : Node2D
                     GhostSlots: listed.IsSuccess ? listed.Slots : null);
             },
             "INSPECTING HOUSEHOLD RIVAL SLOTS",
-            ReplayOperationKind.GhostList))
-        {
-            ShowReplayStatus("REPLAY OPERATION ALREADY IN PROGRESS");
-        }
+            ReplayOperationKind.GhostList);
 
         PlayCue(AudioCue.Confirm);
         QueueRedraw();
@@ -9522,6 +9525,8 @@ public partial class Main : Node2D
 
         _replayOperation = Task.Run(operation);
         _replayOperationKind = kind;
+        _replayOperationPriorDurableMessage = null;
+        _replayOperationNavigationGeneration = _replayNavigationGeneration;
         ShowReplayStatus(progressMessage);
         return true;
     }
@@ -9553,13 +9558,21 @@ public partial class Main : Node2D
 
         var completedKind = _replayOperationKind
             ?? throw new InvalidOperationException("A replay operation kind was not recorded.");
+        var canPresentResult = _replayOperationNavigationGeneration == _replayNavigationGeneration;
+        var priorDurableCaption = _replayOperationPriorDurableMessage;
+        string? completedDurableCaption = null;
+        _replayOperationPriorDurableMessage = null;
         _replayOperation = null;
         _replayOperationKind = null;
         var operationSucceeded = false;
         try
         {
             var result = operation.GetAwaiter().GetResult();
-            if (result.Playback is not null
+            if (IsDurableReplayOperation(completedKind))
+            {
+                completedDurableCaption = result.Caption;
+            }
+            if (canPresentResult && result.Playback is not null
                 && (_screenState == ScreenState.Replays
 #if AGENT_ARENA_PREVIEW
                     || _screenState == ScreenState.AgentExhibitions
@@ -9581,7 +9594,7 @@ public partial class Main : Node2D
 #endif
             }
 
-            if (result.BrowserEntries is not null && _screenState == ScreenState.Replays)
+            if (canPresentResult && result.BrowserEntries is not null && _screenState == ScreenState.Replays)
             {
                 _replayBrowserEntries = result.BrowserEntries;
                 _replayBrowseCursor = Math.Clamp(
@@ -9594,12 +9607,12 @@ public partial class Main : Node2D
                 }
             }
 
-            if (result.DeletionPlan is not null && _screenState == ScreenState.Replays)
+            if (canPresentResult && result.DeletionPlan is not null && _screenState == ScreenState.Replays)
             {
                 _pendingReplayDeletion = result.DeletionPlan;
             }
 
-            if (result.GhostSlots is not null && _screenState == ScreenState.Comparisons)
+            if (canPresentResult && result.GhostSlots is not null && _screenState == ScreenState.Comparisons)
             {
                 _ghostSlots = result.GhostSlots;
                 _ghostSlotCursor = Math.Clamp(
@@ -9612,13 +9625,13 @@ public partial class Main : Node2D
                 }
             }
 
-            if (result.GhostDeletionPlan is not null
+            if (canPresentResult && result.GhostDeletionPlan is not null
                 && _screenState == ScreenState.Comparisons)
             {
                 _pendingGhostDeletion = result.GhostDeletionPlan;
             }
 
-            if (result.GhostRace is not null && _screenState == ScreenState.Comparisons)
+            if (canPresentResult && result.GhostRace is not null && _screenState == ScreenState.Comparisons)
             {
                 _activeGhostRace = result.GhostRace;
                 _activeGhostSlot = _ghostSlotCursor + 1;
@@ -9638,24 +9651,32 @@ public partial class Main : Node2D
                     isRestart: false);
             }
 
+            if (canPresentResult || IsDurableReplayOperation(completedKind))
+            {
 #if AGENT_ARENA_PREVIEW
-            if (result.StoryRefuse is { } storyRefuse
-                && storyRefuse != AgentExhibitionStoryRefuse.None)
-            {
-                ShowReplayStatus(Localize(AgentExhibitionStoryRefuseId(storyRefuse)));
-            }
-            else
-            {
-                ShowReplayStatus(result.Caption);
-            }
+                if (result.StoryRefuse is { } storyRefuse
+                    && storyRefuse != AgentExhibitionStoryRefuse.None)
+                {
+                    ShowReplayStatus(Localize(AgentExhibitionStoryRefuseId(storyRefuse)));
+                }
+                else
+                {
+                    ShowReplayStatus(ReplayCaptionWithCompletion(result.Caption, priorDurableCaption));
+                }
 #else
-            ShowReplayStatus(result.Caption);
+                ShowReplayStatus(ReplayCaptionWithCompletion(result.Caption, priorDurableCaption));
 #endif
+            }
             operationSucceeded = true;
         }
         catch (Exception exception)
         {
-            ShowReplayStatus("REPLAY OPERATION FAILED: AN UNEXPECTED LOCAL ERROR OCCURRED");
+            const string failureCaption = "REPLAY OPERATION FAILED: AN UNEXPECTED LOCAL ERROR OCCURRED";
+            ShowReplayStatus(ReplayCaptionWithCompletion(failureCaption, priorDurableCaption));
+            if (IsDurableReplayOperation(completedKind))
+            {
+                completedDurableCaption = failureCaption;
+            }
             try
             {
                 WriteLocalCrashReport(
@@ -9700,6 +9721,21 @@ public partial class Main : Node2D
             }
 
             ShowReplayStatus("QUIT CANCELED: REPLAY SAVE FAILED; RETRY OR QUIT AGAIN");
+        }
+
+        if (_queuedReplayNavigationOperation is { } queuedNavigation)
+        {
+            _queuedReplayNavigationOperation = null;
+            if (queuedNavigation.Generation == _replayNavigationGeneration)
+            {
+                if (TryStartReplayResultOperation(
+                    queuedNavigation.Operation, queuedNavigation.Caption, queuedNavigation.Kind))
+                {
+                    _replayOperationPriorDurableMessage = completedDurableCaption ?? priorDurableCaption;
+                    ShowReplayStatus(ReplayCaptionWithCompletion(
+                        queuedNavigation.Caption, _replayOperationPriorDurableMessage));
+                }
+            }
         }
 
         return false;
@@ -14333,6 +14369,7 @@ public partial class Main : Node2D
             ExecuteOptionalLoreSmokeTest();
             ExecuteCaptureSharingSmokeTest();
             await ExecuteReplayOperationLifecycleSmokeTest();
+            ExecuteNavigationSafetySmokeTest();
 
             coreOnlyEvidence = coreOnlyEvidence with { FullOfflineFlowExercised = true };
             if (!coreOnlyEvidence.Passed)

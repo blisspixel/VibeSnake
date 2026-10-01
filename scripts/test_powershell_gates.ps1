@@ -215,7 +215,9 @@ try {
     }
     foreach ($requiredImportFragment in @(
         "dest_files=",
-        "--headless --editor",
+        '"--headless", "--editor", "--path"',
+        "Invoke-BoundedNativeProcess",
+        "-TimeoutMilliseconds 300000",
         "GodotImportCache=Ready",
         "GodotImportCache=Rebuilt",
         "did not produce"

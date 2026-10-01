@@ -45,6 +45,95 @@ public sealed class PlayerDataRecoveryServiceTests
         }
     }
 
+    [Fact]
+    public void Produced_reset_plans_do_not_expose_mutable_arrays()
+    {
+        using var fixture = new RecoveryFixture();
+        var plan = fixture.Service.CreateResetPlan([PlayerDataCategory.Preferences], "readonly");
+        Assert.False(plan.Categories is PlayerDataCategory[]);
+        Assert.False(plan.RelativeTargets is string[]);
+        Assert.Throws<NotSupportedException>(() =>
+            ((IList<PlayerDataCategory>)plan.Categories)[0] = PlayerDataCategory.OptionalContent);
+        Assert.Throws<NotSupportedException>(() =>
+            ((IList<string>)plan.RelativeTargets)[0] = "packs");
+    }
+
+    [Fact]
+    public void Reset_executes_detached_scope_when_caller_changes_collections_after_enumeration()
+    {
+        using var fixture = new RecoveryFixture();
+        fixture.Write("preferences.json", "preferences");
+        fixture.Write("input/keyboard.input_bindings.json", "keyboard");
+        fixture.Write("packs/example/pack.json", "preserve");
+        var categories = new[] { PlayerDataCategory.Preferences };
+        var targets = new[] { "input", "preferences.json" };
+        var changingTargets = new MutatingReadOnlyList<string>(targets, () =>
+        {
+            categories[0] = PlayerDataCategory.OptionalContent;
+            targets[0] = "packs";
+        });
+        var result = fixture.Service.Reset(new PlayerDataResetPlan("detached", categories, changingTargets));
+        Assert.True(result.IsSuccess, result.Message);
+        Assert.False(File.Exists(fixture.Resolve("preferences.json")));
+        Assert.False(Directory.Exists(fixture.Resolve("input")));
+        Assert.Equal("preserve", File.ReadAllText(fixture.Resolve("packs/example/pack.json")));
+        Assert.Equal([PlayerDataCategory.Preferences], Assert.Single(fixture.Service.InspectBackups()).Categories);
+        Assert.True(fixture.Service.Restore("detached").IsSuccess);
+        Assert.Equal("preferences", File.ReadAllText(fixture.Resolve("preferences.json")));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Interrupted_reset_retains_unreturned_staging_and_verified_backup(bool directoryTarget)
+    {
+        using var fixture = new RecoveryFixture();
+        var first = directoryTarget ? "input" : "personal_bests.json";
+        var second = directoryTarget ? "preferences.json" : "score_history.json";
+        var firstFile = directoryTarget ? "input/keyboard.input_bindings.json" : first;
+        fixture.Write(firstFile, "original");
+        fixture.Write(second, "second");
+        var service = new PlayerDataRecoveryService(fixture.Root, target =>
+        {
+            if (target == second)
+            {
+                fixture.Write(firstFile, "concurrent");
+                throw new IOException("Injected interruption after the first target moved.");
+            }
+        });
+        var category = directoryTarget ? PlayerDataCategory.Preferences : PlayerDataCategory.PersonalBests;
+        var result = service.Reset(service.CreateResetPlan([category], "rollback-retained"));
+        Assert.Equal(PlayerDataResetCode.IoError, result.Code);
+        Assert.Equal("backups/rollback-retained", result.BackupLocation);
+        Assert.Contains(".resetting-rollback-retained", result.Message, StringComparison.Ordinal);
+        Assert.Equal("concurrent", File.ReadAllText(fixture.Resolve(firstFile)));
+        Assert.Equal("second", File.ReadAllText(fixture.Resolve(second)));
+        Assert.Equal("original", File.ReadAllText(fixture.Resolve(".resetting-rollback-retained/" + firstFile)));
+        Assert.True(Assert.Single(service.InspectBackups()).CanRestore);
+        Assert.Equal(PlayerDataRestoreCode.Conflict, service.Restore("rollback-retained").Code);
+    }
+
+    [Fact]
+    public void Interrupted_reset_with_complete_rollback_removes_owned_staging()
+    {
+        using var fixture = new RecoveryFixture();
+        fixture.Write("input/keyboard.input_bindings.json", "keyboard");
+        fixture.Write("preferences.json", "preferences");
+        var service = new PlayerDataRecoveryService(fixture.Root, target =>
+        {
+            if (target == "preferences.json")
+            {
+                throw new IOException("Injected interruption.");
+            }
+        });
+        var result = service.Reset(service.CreateResetPlan([PlayerDataCategory.Preferences], "rollback-complete"));
+        Assert.Equal(PlayerDataResetCode.IoError, result.Code);
+        Assert.Equal("keyboard", File.ReadAllText(fixture.Resolve("input/keyboard.input_bindings.json")));
+        Assert.Equal("preferences", File.ReadAllText(fixture.Resolve("preferences.json")));
+        Assert.False(Directory.Exists(fixture.Resolve(".resetting-rollback-complete")));
+        Assert.True(Assert.Single(service.InspectBackups()).CanRestore);
+    }
+
     [Theory]
     [InlineData(PlayerDataCategory.Preferences, "preferences.json", "input/keyboard.input_bindings.json", null, null)]
     [InlineData(PlayerDataCategory.Progression, "achievements.json", "onboarding.json", "progression.json", "spectator-league.json")]
@@ -346,6 +435,23 @@ public sealed class PlayerDataRecoveryServiceTests
     }
 
     [Fact]
+    public void Unsafe_rollback_target_does_not_prevent_remaining_valid_targets_from_recovering()
+    {
+        using var fixture = new RecoveryFixture();
+        fixture.Write(".resetting-unsafe/preferences.json", "preferences");
+        var staging = fixture.Resolve(".resetting-unsafe");
+
+        var complete = fixture.Service.RollbackRemovedTargets(
+            staging,
+            [("preferences.json", false), ("../unsafe", false)]);
+
+        Assert.False(complete);
+        Assert.Equal("preferences", File.ReadAllText(fixture.Resolve("preferences.json")));
+        Assert.False(File.Exists(Path.Combine(staging, "preferences.json")));
+        Assert.True(Directory.Exists(staging));
+    }
+
+    [Fact]
     public void Restore_staging_conflict_and_invalid_roots_fail_closed()
     {
         using var fixture = new RecoveryFixture();
@@ -480,6 +586,21 @@ public sealed class PlayerDataRecoveryServiceTests
         {
             Directory.Delete(root, recursive: true);
         }
+    }
+
+    private sealed class MutatingReadOnlyList<T>(T[] items, Action afterEnumeration) : IReadOnlyList<T>
+    {
+        public int Count => items.Length;
+        public T this[int index] => items[index];
+        public IEnumerator<T> GetEnumerator()
+        {
+            foreach (var item in items)
+            {
+                yield return item;
+            }
+            afterEnumeration();
+        }
+        System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator() => GetEnumerator();
     }
 
     private sealed class RecoveryFixture : IDisposable

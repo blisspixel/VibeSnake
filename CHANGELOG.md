@@ -4,6 +4,12 @@ Notable player-facing and engineering changes are recorded here. The project is 
 
 ## Unreleased
 
+- Fixed settings reset shortcuts that bypassed active review dialogs or recovery operations. Canceled replay and ghost loads cannot activate after leaving and reopening their library; fresh browser reads queue behind existing work, terminal saves retain priority, and completed writes keep their result messages through successful or failed deferred refreshes. Controlled engine qualification covers four settings modal states, canceled and current loads, deferred refresh, and durable completion.
+
+- Reset plans now use read-only collections, and reset execution validates a detached scope before touching files. An incomplete rollback retains remaining staged data plus the verified backup and identifies the recovery location. Six deterministic regressions cover mutation during validation, fixed scope, rollback failure, unsafe-path rejection, and successful rollback.
+
+- Bounded Godot import, deterministic smoke, and export operations to five, ten, and thirty minutes, with bounded termination and pipe cleanup. Commands drain both output streams concurrently, preserve literal arguments, and fail on truncated or incomplete diagnostics. Eight isolated cases pass on Windows and Linux. Floating source-release checksums now stream archive bytes instead of loading the entire archive into memory.
+
 - Made the Windows radio-preview nonzero-exit probe independent of managed shell startup by using the native command interpreter for its immediate exit fixture. The real process failure assertions and ten-second deadline remain unchanged.
 
 - Fixed floating release publication by checking out the exact qualified revision in the publish job before reading its changelog. Release notes and source downloads now use the same CI-approved revision across separate runners.

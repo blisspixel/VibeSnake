@@ -20,7 +20,7 @@ The native Data settings screen separates these categories:
 - replays, replay exports, and offline comparisons;
 - installed optional content.
 
-A reset is a two-step confirmed action. Before removal, the game copies only the selected allowlisted files into `user://backups/<backup-id>/`, records byte lengths and SHA-256 values, verifies the copy, and rechecks that the source did not change. Cancel is read-only. A failure leaves current data intact.
+A reset is a two-step confirmed action. Before removal, the game copies only the selected allowlisted files into `user://backups/<backup-id>/`, records byte lengths and SHA-256 values, verifies the copy, and rechecks that the source did not change. Cancel is read-only. The confirmed reset uses a fixed, validated snapshot of its selected categories. If removal fails, the game attempts to return every moved target. If another writer or filesystem failure prevents complete rollback, it retains the remaining files in `user://.resetting-<backup-id>/` and names that location in the error. Quit all game instances and preserve the complete user-data directory, including this staging directory and the verified backup, before recovery. Do not delete the staging directory to clear the error.
 
 Local playtest summaries are deliberately separate. Their confirmed deletion permanently removes the source, application-owned exports, and interrupted-write temporary files without creating a recovery backup.
 

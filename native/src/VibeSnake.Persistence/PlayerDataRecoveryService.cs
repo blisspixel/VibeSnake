@@ -126,8 +126,16 @@ public sealed class PlayerDataRecoveryService
             ],
         };
 
+    private readonly Action<string>? _beforeResetTargetMove;
+
     public PlayerDataRecoveryService(string userDataRoot)
+        : this(userDataRoot, null)
     {
+    }
+
+    internal PlayerDataRecoveryService(string userDataRoot, Action<string>? beforeResetTargetMove)
+    {
+        _beforeResetTargetMove = beforeResetTargetMove;
         ArgumentException.ThrowIfNullOrWhiteSpace(userDataRoot);
         if (!Path.IsPathFullyQualified(userDataRoot))
         {
@@ -189,19 +197,20 @@ public sealed class PlayerDataRecoveryService
             .Distinct(StringComparer.Ordinal)
             .OrderBy(path => path, StringComparer.Ordinal)
             .ToArray();
-        return new PlayerDataResetPlan(backupId, selected, targets);
+        return new PlayerDataResetPlan(backupId, Array.AsReadOnly(selected), Array.AsReadOnly(targets));
     }
 
     public PlayerDataResetResult Reset(PlayerDataResetPlan plan)
     {
         ArgumentNullException.ThrowIfNull(plan);
-        if (!PlanMatchesAllowlist(plan))
+        if (!TrySnapshotResetPlan(plan, out var executionPlan))
         {
             return new PlayerDataResetResult(
                 PlayerDataResetCode.InvalidPlan,
                 "Reset plan does not match the fixed player-data allowlist.");
         }
 
+        plan = executionPlan;
         var stagingPath = Path.Combine(BackupsDirectory, ".building-" + plan.BackupId);
         var backupPath = Path.Combine(BackupsDirectory, plan.BackupId);
         try
@@ -428,13 +437,22 @@ public sealed class PlayerDataRecoveryService
             FileShare.None);
     }
 
-    private bool PlanMatchesAllowlist(PlayerDataResetPlan plan)
+    private bool TrySnapshotResetPlan(PlayerDataResetPlan plan, out PlayerDataResetPlan executionPlan)
     {
+        executionPlan = null!;
         try
         {
-            var expected = CreateResetPlan(plan.Categories, plan.BackupId);
-            return expected.Categories.SequenceEqual(plan.Categories)
-                && expected.RelativeTargets.SequenceEqual(plan.RelativeTargets, StringComparer.Ordinal);
+            var categories = plan.Categories.ToArray();
+            var targets = plan.RelativeTargets.ToArray();
+            var expected = CreateResetPlan(categories, plan.BackupId);
+            if (!expected.Categories.SequenceEqual(categories)
+                || !expected.RelativeTargets.SequenceEqual(targets, StringComparer.Ordinal))
+            {
+                return false;
+            }
+
+            executionPlan = expected;
+            return true;
         }
         catch (ArgumentException)
         {
@@ -597,6 +615,7 @@ public sealed class PlayerDataRecoveryService
         {
             foreach (var relativeTarget in relativeTargets)
             {
+                _beforeResetTargetMove?.Invoke(relativeTarget);
                 var target = ResolveUserPath(relativeTarget);
                 var staged = ResolveRelativePath(stagingPath, relativeTarget);
                 if (File.Exists(target))
@@ -614,20 +633,28 @@ public sealed class PlayerDataRecoveryService
                 }
             }
         }
-        catch
+        catch (Exception exception)
         {
-            RollbackRemovedTargets(stagingPath, moved);
-            TryDeleteDirectory(stagingPath);
-            throw;
+            if (RollbackRemovedTargets(stagingPath, moved))
+            {
+                TryDeleteDirectory(stagingPath);
+                throw;
+            }
+
+            throw new IOException(
+                "Reset rollback could not restore every target. Remaining player data was retained in "
+                + ".resetting-" + backupId + "; keep that directory and the verified backup for recovery.",
+                exception);
         }
 
         TryDeleteDirectory(stagingPath);
     }
 
-    internal void RollbackRemovedTargets(
+    internal bool RollbackRemovedTargets(
         string stagingPath,
         List<(string Relative, bool IsDirectory)> moved)
     {
+        var complete = true;
         for (var index = moved.Count - 1; index >= 0; index--)
         {
             var (relative, isDirectory) = moved[index];
@@ -644,14 +671,21 @@ public sealed class PlayerDataRecoveryService
                 {
                     File.Move(staged, destination);
                 }
+                else
+                {
+                    complete = false;
+                }
             }
             catch (Exception exception) when (
-                exception is IOException or UnauthorizedAccessException)
+                exception is IOException or UnauthorizedAccessException or UnsafePlayerDataException)
             {
-                // Continue rolling back remaining targets so live data stays as
-                // complete as possible and a later restore is not blocked.
+                complete = false;
+                // Keep attempting other targets, retaining staging if any target
+                // could not be returned to its original location.
             }
         }
+
+        return complete;
     }
 
     private bool TargetExists(string relativeTarget)
