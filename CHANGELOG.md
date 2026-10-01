@@ -4,6 +4,8 @@ Notable player-facing and engineering changes are recorded here. The project is 
 
 ## Unreleased
 
+- Made the Windows radio-preview nonzero-exit probe independent of managed shell startup by using the native command interpreter for its immediate exit fixture. The real process failure assertions and ten-second deadline remain unchanged.
+
 - Fixed floating release publication by checking out the exact qualified revision in the publish job before reading its changelog. Release notes and source downloads now use the same CI-approved revision across separate runners.
 
 - Made import rejection qualification independent of terminal wrapping on Unix hosts. The guard emits a stable diagnostic marker while retaining strict error, warning, and leaked-object rejection; fixtures require the marker, engine error, and failed process exit. Linux and Windows qualification cover all thirteen isolated cases.

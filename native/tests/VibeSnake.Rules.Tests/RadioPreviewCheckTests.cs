@@ -328,8 +328,25 @@ public sealed class RadioPreviewCheckTests
     [Fact]
     public void Nonzero_process_exit_is_reported_without_audio()
     {
-        var start = SleepingProcess();
-        start.ArgumentList[start.ArgumentList.Count - 1] = "exit 7";
+        var start = new ProcessStartInfo
+        {
+            FileName = OperatingSystem.IsWindows()
+                ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System), "cmd.exe")
+                : "/bin/sh",
+            UseShellExecute = false,
+            CreateNoWindow = true,
+        };
+        if (OperatingSystem.IsWindows())
+        {
+            start.ArgumentList.Add("/d");
+            start.ArgumentList.Add("/c");
+        }
+        else
+        {
+            start.ArgumentList.Add("-c");
+        }
+
+        start.ArgumentList.Add("exit 7");
         using var session = new RadioPreviewPlayback.PlayerSession(start, TimeSpan.FromSeconds(10));
         Assert.True(SpinWait.SpinUntil(() =>
         {
