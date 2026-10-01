@@ -4,6 +4,8 @@ Notable player-facing and engineering changes are recorded here. The project is 
 
 ## Unreleased
 
+- Made import rejection qualification independent of terminal wrapping on Unix hosts. The guard emits a stable diagnostic marker while retaining strict error, warning, and leaked-object rejection; fixtures require the marker, engine error, and failed process exit. Linux and Windows qualification cover all thirteen isolated cases.
+
 - Menu utility hints now omit radio and fullscreen shortcuts occupied by active remapped controls, including keyboard-only fullscreen hints while controller prompts are active. Engine smoke covers both input families and the mixed-device footer.
 
 - Cleared newly reported development dependency advisories with urllib3 2.8.0, virtualenv 21.7.13, and its required python-discovery 1.6.1 dependency. Added safe development minimums, regenerated the hash-locked CI requirements, and retained all 49 unrelated dependency blocks and the runtime lock unchanged. Both strict dependency audits pass without exclusions.

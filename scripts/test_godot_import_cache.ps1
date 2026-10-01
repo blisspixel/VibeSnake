@@ -85,7 +85,12 @@ exit 0
     $failure = Invoke-ImportFixture -Failure "exit"
     if ($failure.code -eq 0 -or $failure.output -notmatch "exit code 9") { throw "Import accepted an editor failure." }
     $reportedError = Invoke-ImportFixture -Failure "reported-error"
-    if ($reportedError.code -eq 0 -or $reportedError.output -notmatch "reported an error, warning, or leaked object") { throw "Import accepted zero-exit reported engine errors." }
+    # Match the guard's stable diagnostic marker, not terminal-width-dependent
+    # exception rendering. Unix hosts wrap the full rejection message.
+    if ($reportedError.code -eq 0 -or $reportedError.output -notmatch "(?m)^GodotImportFailure=EngineDiagnostics\r?$" -or
+        $reportedError.output -notmatch "(?m)^ERROR: fixture reported an import error\r?$") {
+        throw "Import accepted zero-exit reported engine errors. Exit code: $($reportedError.code). Output: $($reportedError.output)"
+    }
     Write-Output "VIBESNAKE_GODOT_IMPORT_CACHE_OK cases=13"
     if ($GodotExecutable) {
         $localDotnetRoot = Join-Path (Split-Path -Parent $PSScriptRoot) ".dotnet"

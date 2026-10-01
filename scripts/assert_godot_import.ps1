@@ -197,6 +197,7 @@ if ($importExitCode -ne 0) {
     throw "The Godot headless asset import failed with exit code $importExitCode."
 }
 if ($importOutput | Where-Object { $_ -match "^(?:ERROR|WARNING):" -or $_ -match "ObjectDB instances? (?:was|were) leaked" }) {
+    Write-Output "GodotImportFailure=EngineDiagnostics"
     throw "The Godot headless asset import reported an error, warning, or leaked object."
 }
 
