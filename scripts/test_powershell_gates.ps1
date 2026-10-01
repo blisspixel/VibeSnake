@@ -266,8 +266,12 @@ try {
         $env:PATH = $originalPath
     }
 
+    # A successful guard must publish its own status, independent of previously
+    # failed native commands. Its bounded Process API does not set LASTEXITCODE.
+    $global:LASTEXITCODE = 17
     $importGuardOutput = & (Join-Path $repositoryRoot "scripts/assert_godot_import.ps1") `
         -GodotExecutable $GodotExecutable
+    $importGuardOutput | Write-Output
     if ($LASTEXITCODE -ne 0) {
         throw "The Godot import guard failed against the repository game project."
     }

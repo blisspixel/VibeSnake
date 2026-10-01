@@ -4,6 +4,8 @@ Notable player-facing and engineering changes are recorded here. The project is 
 
 ## Unreleased
 
+- Successful cold asset imports now return an explicit zero status instead of inheriting an earlier failed command. Qualification seeds a nonzero prior status and exercises a cold rebuild fixture; captured import diagnostics are printed before status checks. Engine errors, warnings, leaked objects, exit failures, and payload validation remain strict.
+
 - Fixed settings reset shortcuts that bypassed active review dialogs or recovery operations. Canceled replay and ghost loads cannot activate after leaving and reopening their library; fresh browser reads queue behind existing work, terminal saves retain priority, and completed writes keep their result messages through successful or failed deferred refreshes. Controlled engine qualification covers four settings modal states, canceled and current loads, deferred refresh, and durable completion.
 
 - Reset plans now use read-only collections, and reset execution validates a detached scope before touching files. An incomplete rollback retains remaining staged data plus the verified backup and identifies the recovery location. Six deterministic regressions cover mutation during validation, fixed scope, rollback failure, unsafe-path rejection, and successful rollback.

@@ -56,7 +56,19 @@ exit 0
         param($Result)
         if ($Result.code -ne 0 -or $Result.output -notmatch "GodotImportCache=Rebuilt") { throw "Import fixture failed: $($Result.output)" }
     }
-    Assert-ImportRebuilt (Invoke-ImportFixture)
+    # Exercise a cold rebuild in the same process as a prior failed native
+    # command. The guard must explicitly clear that status when it succeeds.
+    $statusProbe = Join-Path $fixtureRoot "import-status.ps1"
+    [IO.File]::WriteAllText($statusProbe, @'
+param([string]$Guard, [string]$Editor, [string]$Project)
+$ErrorActionPreference = "Stop"
+$global:LASTEXITCODE = 17
+& $Guard -GodotExecutable $Editor -ProjectPath $Project
+if ($LASTEXITCODE -ne 0) { throw "Successful cold import retained the previous command exit code: $LASTEXITCODE" }
+exit 0
+'@)
+    $statusOutput = & $shell -NoProfile -File $statusProbe -Guard $guard -Editor $editor -Project $project 2>&1 | Out-String
+    Assert-ImportRebuilt @{ code = $LASTEXITCODE; output = $statusOutput }
     $marker = Join-Path $project "editor-invocations.txt"
     $before = [IO.File]::ReadAllText($marker)
     $ready = Invoke-ImportFixture

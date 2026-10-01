@@ -218,3 +218,4 @@ if ($stillStale.Count -gt 0) {
 }
 
 Write-Output "GodotImportCache=Rebuilt"
+exit 0
