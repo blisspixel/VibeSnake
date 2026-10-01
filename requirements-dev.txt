@@ -11,3 +11,5 @@ build>=1.2,<2
 pip-audit>=2.10,<3
 setuptools>=83,<84
 wheel>=0.45,<1
+urllib3>=2.8,<3
+virtualenv>=21.7.13,<22
