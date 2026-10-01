@@ -4,6 +4,8 @@ Notable player-facing and engineering changes are recorded here. The project is 
 
 ## Unreleased
 
+- Fixed floating release publication by checking out the exact qualified revision in the publish job before reading its changelog. Release notes and source downloads now use the same CI-approved revision across separate runners.
+
 - Made import rejection qualification independent of terminal wrapping on Unix hosts. The guard emits a stable diagnostic marker while retaining strict error, warning, and leaked-object rejection; fixtures require the marker, engine error, and failed process exit. Linux and Windows qualification cover all thirteen isolated cases.
 
 - Menu utility hints now omit radio and fullscreen shortcuts occupied by active remapped controls, including keyboard-only fullscreen hints while controller prompts are active. Engine smoke covers both input families and the mixed-device footer.

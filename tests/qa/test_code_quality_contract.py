@@ -166,8 +166,19 @@ def test_workflows_default_to_read_only_and_elevate_permissions_per_job() -> Non
             if "write" in permissions.values():
                 steps = job.get("steps")
                 assert isinstance(steps, list), f"{path}:{job_name}"
-                action_names = [step.get("uses", "") for step in steps if isinstance(step, dict)]
-                assert not any(action.startswith("actions/checkout@") for action in action_names), f"{path}:{job_name}"
+                checkouts = [
+                    step
+                    for step in steps
+                    if isinstance(step, dict) and step.get("uses", "").startswith("actions/checkout@")
+                ]
+                if path.name == "player-build.yml" and job_name == "publish":
+                    # Release notes read qualified source without persisting the
+                    # job's write-capable credential in the checkout.
+                    assert len(checkouts) == 1
+                    assert checkouts[0]["with"]["ref"] == "${{ github.event.workflow_run.head_sha }}"
+                    assert checkouts[0]["with"]["persist-credentials"] == "false"
+                else:
+                    assert not checkouts, f"{path}:{job_name}"
 
 
 def test_dependency_automation_is_bounded_and_covers_every_package_ecosystem() -> None:
@@ -469,4 +480,24 @@ def test_floating_source_release_uses_only_a_successful_ci_revision() -> None:
         "actions": "read",
         "contents": "write",
     }
+    publish = workflow["jobs"]["publish"]
+    assert publish["needs"] == "package"
+    assert publish["if"] == "needs.package.result == 'success'"
+    publish_steps = publish["steps"]
+    qualified_checkouts = [
+        index
+        for index, step in enumerate(publish_steps)
+        if step.get("uses", "").startswith("actions/checkout@")
+    ]
+    assert len(qualified_checkouts) == 1
+    checkout_index = qualified_checkouts[0]
+    qualified_revision = "${{ github.event.workflow_run.head_sha }}"
+    assert publish_steps[checkout_index]["with"]["ref"] == qualified_revision
+    changelog_steps = [
+        index for index, step in enumerate(publish_steps) if "CHANGELOG.md" in step.get("run", "")
+    ]
+    assert changelog_steps, "Release notes must include the qualified source changelog."
+    for index in changelog_steps:
+        assert checkout_index < index, "Qualified source must exist before release notes read it."
+        assert publish_steps[index]["env"]["QUALIFIED_SHA"] == qualified_revision
     assert "pip install --upgrade" not in raw
