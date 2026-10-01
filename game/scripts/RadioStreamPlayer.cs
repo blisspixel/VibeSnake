@@ -21,7 +21,7 @@ internal sealed partial class RadioStreamPlayer : Node
     private RadioPlaybackPolicy? _policy;
     private OptionalPackStore? _store;
     private ContentInventory? _inventory;
-    private IReadOnlyDictionary<string, string>? _checkoutSourcePaths;
+    private System.Collections.ObjectModel.ReadOnlyDictionary<string, string>? _checkoutSourcePaths;
     private string? _loadedTrackId;
     private string? _lastFailure;
     private bool _suppressFinished;
@@ -57,6 +57,8 @@ internal sealed partial class RadioStreamPlayer : Node
         _store = store;
         _inventory = inventory;
         _checkoutSourcePaths = null;
+        StopCurrent();
+        _lastFailure = null;
         Synchronize();
     }
 
@@ -69,7 +71,10 @@ internal sealed partial class RadioStreamPlayer : Node
         _policy = policy;
         _store = null;
         _inventory = null;
-        _checkoutSourcePaths = sourcePaths;
+        _checkoutSourcePaths = new System.Collections.ObjectModel.ReadOnlyDictionary<string, string>(
+            new Dictionary<string, string>(sourcePaths, StringComparer.Ordinal));
+        StopCurrent();
+        _lastFailure = null;
         Synchronize();
     }
 
@@ -88,6 +93,10 @@ internal sealed partial class RadioStreamPlayer : Node
             if (_loadedTrackId == snapshot.TrackId && _player.Playing)
             {
                 _player.StreamPaused = true;
+            }
+            else
+            {
+                StopCurrent();
             }
 
             return;
@@ -120,17 +129,7 @@ internal sealed partial class RadioStreamPlayer : Node
             {
                 if (_checkoutSourcePaths.TryGetValue(snapshot.TrackId, out var sourcePath))
                 {
-                    try
-                    {
-                        bytes = File.ReadAllBytes(sourcePath);
-                    }
-                    catch (Exception exception) when (
-                        exception is IOException
-                            or UnauthorizedAccessException
-                            or ArgumentException)
-                    {
-                        bytes = null;
-                    }
+                    bytes = RadioSourceReader.TryRead(sourcePath);
                 }
             }
             else if (_store is not null && _inventory is not null)

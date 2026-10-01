@@ -1979,6 +1979,8 @@ public static class RepositoryCheckCommand
             + "<analysis> <output-root> <ffmpeg> <ffprobe> <workers> <timeout-seconds> [replace]");
         writer.WriteLine(
             "       RepositoryChecks radio-preview <repository-root> list <directory>");
+        writer.WriteLine(
+            "       RepositoryChecks radio-preview <repository-root> play <directory> <ffplay>");
     }
 
     private const string DefaultGameVersion = "0.3.0";
@@ -2245,7 +2247,9 @@ public static class RepositoryCheckCommand
         TextWriter standardOutput,
         TextWriter standardError)
     {
-        if (arguments.Count != 4 || arguments[2] != "list")
+        var list = arguments.Count == 4 && arguments[2] == "list";
+        var play = arguments.Count == 5 && arguments[2] == "play";
+        if (!list && !play)
         {
             WriteUsage(standardError);
             return 2;
@@ -2260,6 +2264,12 @@ public static class RepositoryCheckCommand
         if (!TryResolvePath(arguments[3], out var directory))
         {
             standardError.WriteLine("Radio preview path is invalid.");
+            return 2;
+        }
+
+        if (play && (!TryResolvePath(arguments[4], out var player) || !File.Exists(player)))
+        {
+            standardError.WriteLine("Radio preview player must be an existing ffplay executable path.");
             return 2;
         }
 
@@ -2278,9 +2288,15 @@ public static class RepositoryCheckCommand
                 standardOutput.WriteLine(sample.Station + ": " + sample.FileName);
             }
 
+            if (play)
+            {
+                RadioPreviewPlayback.Play(samples, Path.GetFullPath(arguments[4]), Console.In, standardOutput);
+            }
+
             return 0;
         }
-        catch (RadioPreviewException exception)
+        catch (Exception exception) when (exception is RadioPreviewException
+            or IOException or UnauthorizedAccessException or System.ComponentModel.Win32Exception)
         {
             standardError.WriteLine("Radio preview failed: " + exception.Message);
             return 2;

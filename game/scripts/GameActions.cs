@@ -132,6 +132,10 @@ internal static class GameActions
         };
 
     private static readonly HashSet<string> RuntimeActions = [];
+    private static IReadOnlyDictionary<string, string> _primaryKeyboardBindings =
+        new Dictionary<string, string>(StringComparer.Ordinal);
+    private static IReadOnlyDictionary<string, string> _primaryControllerBindings =
+        new Dictionary<string, string>(StringComparer.Ordinal);
 
     public static void EnsureDefaults()
     {
@@ -298,6 +302,7 @@ internal static class GameActions
 
         EnsureActionSlotsExist();
         var usedKeys = new HashSet<string>(StringComparer.Ordinal);
+        var primaryBindings = new Dictionary<string, string>(StringComparer.Ordinal);
         foreach (var pair in document.ActionToBinding)
         {
             if (!LogicalToRuntime.TryGetValue(pair.Key, out var action))
@@ -314,9 +319,11 @@ internal static class GameActions
 
             usedKeys.Add(parsed.Identifier);
             ReplaceKeyboardEvents(action, pair.Value);
+            primaryBindings[action] = pair.Value;
         }
 
         ApplySecondaryKeyboardFallbacks(usedKeys);
+        _primaryKeyboardBindings = primaryBindings;
     }
 
     /// <summary>
@@ -338,6 +345,7 @@ internal static class GameActions
 
         EnsureActionSlotsExist();
         var usedControllerBindings = new HashSet<string>(StringComparer.Ordinal);
+        var primaryBindings = new Dictionary<string, string>(StringComparer.Ordinal);
         foreach (var pair in document.ActionToBinding)
         {
             if (!LogicalToRuntime.TryGetValue(pair.Key, out var action))
@@ -354,9 +362,97 @@ internal static class GameActions
 
             usedControllerBindings.Add(InputBindingToken.GetConflictKey(parsed));
             ReplaceJoypadEvents(action, pair.Value);
+            primaryBindings[action] = pair.Value;
         }
 
         ApplySecondaryControllerAxes(usedControllerBindings);
+        _primaryControllerBindings = primaryBindings;
+    }
+
+    /// <summary>
+    /// Gives an explicitly configured, currently active primary action ownership
+    /// of its pressed event before the shell checks fixed shortcuts. Inactive
+    /// actions do not consume context shortcuts, such as Start opening Settings
+    /// in the menu while its Pause binding remains available during a run.
+    /// The caller owns the returned event and must retain raw events for capture.
+    /// </summary>
+    public static InputEventAction? NormalizePrimaryInput(
+        InputEvent inputEvent,
+        IReadOnlySet<string> activeActions)
+    {
+        ArgumentNullException.ThrowIfNull(inputEvent);
+        ArgumentNullException.ThrowIfNull(activeActions);
+        var primaryBindings = inputEvent switch
+        {
+            InputEventKey { Pressed: true, Echo: false } => _primaryKeyboardBindings,
+            InputEventJoypadButton { Pressed: true } => _primaryControllerBindings,
+            InputEventJoypadMotion => _primaryControllerBindings,
+            _ => null,
+        };
+        if (primaryBindings is null)
+        {
+            return null;
+        }
+
+        foreach (var pair in primaryBindings)
+        {
+            if (!activeActions.Contains(pair.Key)
+                || !inputEvent.IsActionPressed(pair.Key, exactMatch: true))
+            {
+                continue;
+            }
+
+            using var bindingEvent = CreateEventFromToken(pair.Value);
+            if (bindingEvent.IsMatch(inputEvent, exactMatch: true))
+            {
+                return new InputEventAction
+                {
+                    Action = pair.Key,
+                    Pressed = true,
+                    Strength = inputEvent.GetActionStrength(pair.Key, exactMatch: true),
+                };
+            }
+        }
+
+        return null;
+    }
+
+    public static bool IsFixedPromptAvailable(
+        string logicalAction,
+        bool controller,
+        IReadOnlySet<string> activeActions)
+    {
+        ArgumentNullException.ThrowIfNull(activeActions);
+        if (!FixedPromptBindings.TryGetValue(logicalAction, out var fixedBinding))
+        {
+            return false;
+        }
+
+        var token = controller ? fixedBinding.ControllerToken : fixedBinding.KeyboardToken;
+        if (token is null)
+        {
+            return false;
+        }
+
+        using var shortcutEvent = CreateEventFromToken(token);
+        var primaryBindings = controller ? _primaryControllerBindings : _primaryKeyboardBindings;
+        foreach (var pair in primaryBindings)
+        {
+            if (!activeActions.Contains(pair.Key))
+            {
+                continue;
+            }
+
+            using var primaryEvent = CreateEventFromToken(pair.Value);
+            if (primaryEvent.IsMatch(shortcutEvent, exactMatch: true)
+                && (!TryMapLogicalAction(logicalAction, out var fixedAction)
+                    || !string.Equals(pair.Key, fixedAction, StringComparison.Ordinal)))
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     public static bool TryMapLogicalAction(string logicalAction, out string runtimeAction) =>
@@ -530,6 +626,8 @@ internal static class GameActions
         }
 
         RuntimeActions.Clear();
+        _primaryKeyboardBindings = new Dictionary<string, string>(StringComparer.Ordinal);
+        _primaryControllerBindings = new Dictionary<string, string>(StringComparer.Ordinal);
     }
 
     private static void EnsureActionSlotsExist()

@@ -4,14 +4,12 @@
 
 Vibe Snake must remain fully playable offline while allowing its large radio library to ship separately. The implemented schema 1 contract defines one required core pack and zero or more optional station packs. It validates identity, compatibility, dependencies, exact file metadata, cleared rights, credits, station track order, and the approved source-inventory allowlist before any content is loaded.
 
-The contract and optional-pack resolver are implemented and tested in both the Python qualification oracle and the pure C# product path. The Godot content service uses the native parser and resolver. Native `RepositoryChecks` owns the build-time `content-packs` and `radio-pack` commands. No real source asset or release pack is approved yet. The current source inventory deliberately reports zero export-eligible files, so a production manifest cannot pass until file-level rights and quality review are complete.
+The contract and optional-pack resolver are implemented and tested in the pure C# product path. The Godot content service uses the native parser and resolver. Native `RepositoryChecks` owns the build-time `content-packs` and `radio-pack` commands. The test-only Python content library and its duplicate suites are retired after native parity qualification. No real source asset or release pack is approved yet. The current source inventory deliberately reports zero export-eligible files, so a production manifest cannot pass until file-level rights and quality review are complete.
 
 ## Authorities
 
 | File | Authority |
 | --- | --- |
-| [packs.py](../../src/vibesnake/content/packs.py) | Frozen schema 1 oracle for structure, inventory matching, compatibility, dependency, core, radio, and resolution rules |
-| [test_content_packs.py](../../tests/qa/test_content_packs.py) | Frozen oracle contracts for normal, malformed, unsafe, incomplete, tampered, incompatible, missing, and duplicate packs |
 | [ContentPackQualificationCheck.cs](../../native/tools/RepositoryChecks/ContentPackQualificationCheck.cs) | Build-time qualification command for canonical manifests |
 | [RadioPackAssemblyCheck.cs](../../native/tools/RepositoryChecks/RadioPackAssemblyCheck.cs) | Deterministic approved-station archive, evidence, and checksum assembly |
 | [ContentPackToolTests.cs](../../native/tests/VibeSnake.Rules.Tests/ContentPackToolTests.cs) | Native qualification, stale-inventory, budget, curation, and fail-closed assembly contracts |
@@ -25,7 +23,9 @@ The contract and optional-pack resolver are implemented and tested in both the P
 | [CONTENT_PIPELINE.md](CONTENT_PIPELINE.md) | Source classification, rights review, media integrity, and approval workflow |
 | [CREATOR_CONTENT.md](CREATOR_CONTENT.md) | Creator-facing commands, schemas, examples, error codes, compatibility, and collision rules |
 
-The Python pack library remains the frozen schema oracle. Native `RepositoryChecks` owns the build-time qualification and radio-assembly commands, and the native implementation owns product runtime decisions. Both enforce the same 1 MiB manifest, 4,096 file, 1,024 credit, 64 dependency, 512-character text/path, 128-character identifier, and signed integer version bounds before player assets enter Godot exports.
+Native `RepositoryChecks` owns the build-time qualification and radio-assembly commands, and the native implementation owns product runtime decisions. The manifest boundary enforces a 1 MiB byte limit, 4,096 files, 1,024 credits, 64 dependencies, 512-character text/path limits, 128-character identifier limits, and signed integer version bounds before player assets enter Godot exports.
+
+Manifest files are read once as bounded, strict UTF-8 bytes. Byte-order marks, UTF-16/32, malformed UTF-8, and noncanonical bytes cannot pass canonical qualification. Parsed file, dependency, credit, and station-track collections are read-only, so validation cannot be invalidated by mutating an exposed collection later.
 
 ## Boundary
 

@@ -8,7 +8,7 @@ Release rows also require `candidate-install-lifecycle-preflight-v1`. The exact 
 
 ## Floating source and reference channel
 
-`player-latest` is deliberately separate from native artifact qualification. A same-repository push to `main` must complete the full CI workflow successfully before the source workflow checks out that exact qualified SHA. The workflow exposes no manual-dispatch or pull-request checkout path; diagnostic packaging is performed locally with the documented build commands.
+`player-latest` is deliberately separate from native artifact qualification. A same-repository push to `main` must complete the full CI workflow successfully before the source workflow checks out that exact qualified SHA. The workflow exposes no manual-dispatch or pull-request checkout path; diagnostic packaging is performed locally with the documented build commands. The floating release notes include the exact qualified revision's ten latest Unreleased entries and full-changelog link, so published development changes track the same bytes as its downloads.
 
 The release contains exactly:
 
@@ -16,6 +16,8 @@ The release contains exactly:
 - One normalized Python reference wheel.
 - One normalized Python reference sdist.
 - `SHA256SUMS.txt` covering those three payloads.
+
+The source ZIP excludes generated native `bin/` and `obj/` directories, Godot's `.godot/` import cache, and Python `*.egg-info/` metadata at every depth. Source builds recreate their local runtime caches through the root launcher.
 
 The source ZIP includes development-only Agent Arena inputs: the Agent Plugins 1.0.0 manifest and skill, MCP host source, deterministic plugin assembly script, and generated Open Knowledge Format 0.2 bundle. The assembled `mcp.json` and framework-dependent host output are generated and validated in CI but are not published as a supported plugin in this channel. `player-latest` is therefore neither a native player artifact nor the AA-10 supported symbolic desktop package. AA-10's current-RID self-contained host package is a separate unsigned preview assembled by `scripts/package_agent_host.ps1` and validated in CI. It carries a lock-derived NuGet inventory and unsigned source-revision provenance; native rules CI launches the packaged executable and requires a live viewer stream, and Godot's headless watch smoke consumes that pipe. `publication_eligible` stays false until signing exists.
 

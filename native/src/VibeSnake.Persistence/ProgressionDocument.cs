@@ -396,8 +396,17 @@ public sealed record ProgressionDocument(
 
 public sealed class ProgressionStore
 {
+    private readonly IPreferencesWriteOperations _writeOperations;
+
     public ProgressionStore(string userDataRoot)
+        : this(userDataRoot, PhysicalPreferencesWriteOperations.Instance)
     {
+    }
+
+    internal ProgressionStore(string userDataRoot, IPreferencesWriteOperations writeOperations)
+    {
+        ArgumentNullException.ThrowIfNull(writeOperations);
+        _writeOperations = writeOperations;
         ArgumentException.ThrowIfNullOrWhiteSpace(userDataRoot);
         if (!Path.IsPathFullyQualified(userDataRoot))
         {
@@ -437,12 +446,10 @@ public sealed class ProgressionStore
     public void Save(ProgressionDocument document)
     {
         ArgumentNullException.ThrowIfNull(document);
-        Directory.CreateDirectory(UserDataRoot);
-        var temporaryPath = ProgressionPath + ".tmp";
-        File.WriteAllText(
-            temporaryPath,
+        ProfileDocumentWriter.Write(
+            ProgressionPath,
             document.SerializeCanonical(),
-            new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
-        File.Move(temporaryPath, ProgressionPath, overwrite: true);
+            ProgressionDocument.CurrentSchemaVersion,
+            _writeOperations);
     }
 }

@@ -53,17 +53,17 @@ public partial class Main : Node2D
         "action.learn-tutorial",
         "menu.quit",
     ];
-    private static readonly string[] MainMenuKeyboardHints =
+    private static readonly string[] MainMenuShortcutActions =
     [
-        "ENTER",
-        "C",
-        "U",
-        "V",
-        "L",
-        "R",
-        "F1",
-        "H",
-        "Q",
+        "confirm",
+        "browse_content_packs",
+        "browse_achievements",
+        "browse_scores",
+        "browse_spectator",
+        "replay",
+        "browse_settings",
+        "help",
+        "back",
     ];
 
     private ScreenState _screenState = ScreenState.Menu;
@@ -134,6 +134,9 @@ public partial class Main : Node2D
     private OnboardingSession? _onboardingSession;
     private int _onboardingOfferCursor;
     private string? _onboardingStatusCaption;
+    private string? _onboardingPersistenceWarning;
+    private bool _bindingsReturnToSettings;
+    private bool _settingsReturnToOnboarding;
     private AchievementsStore? _achievementsStore;
     private AchievementsDocument _achievements = AchievementsDocument.CreateDefaults();
     private bool _achievementsWritable = true;
@@ -713,12 +716,16 @@ public partial class Main : Node2D
             case PreferencesDocument.WindowedMode:
                 _window.Mode = Window.ModeEnum.Windowed;
                 var screen = _window.CurrentScreen;
-                var screenSize = DisplayServer.ScreenGetSize(screen);
+                var screenBounds = new Rect2I(
+                    DisplayServer.ScreenGetPosition(screen),
+                    DisplayServer.ScreenGetSize(screen));
+                var usableBounds = DisplayOptions.ResolveUsableScreenBounds(
+                    screenBounds,
+                    DisplayServer.ScreenGetUsableRect(screen));
                 var requested = DisplayOptions.WindowSize(_shellSettings.WindowSizePreset).Size;
-                var fitted = DisplayOptions.FitWindowToScreen(requested, screenSize);
+                var fitted = DisplayOptions.FitWindowToScreen(requested, usableBounds.Size);
                 _window.Size = fitted;
-                var screenPosition = DisplayServer.ScreenGetPosition(screen);
-                _window.Position = screenPosition + ((screenSize - fitted) / 2);
+                _window.Position = DisplayOptions.CenterWindow(fitted, usableBounds);
                 break;
             case PreferencesDocument.BorderlessMode:
                 _window.Mode = Window.ModeEnum.Fullscreen;
@@ -920,12 +927,14 @@ public partial class Main : Node2D
         if (_onboardingStore is null)
         {
             _onboardingStatusCaption = Localize("status.onboarding.progress-session-only");
+            _onboardingPersistenceWarning = _onboardingStatusCaption;
             return false;
         }
 
         try
         {
             _onboardingStore.Save(next);
+            _onboardingPersistenceWarning = null;
             return true;
         }
         catch (Exception exception) when (
@@ -935,6 +944,7 @@ public partial class Main : Node2D
             or InvalidOperationException)
         {
             _onboardingStatusCaption = Localize("status.onboarding.progress-save-failed");
+            _onboardingPersistenceWarning = _onboardingStatusCaption;
             _structuredLog?.Warning(
                 "onboarding",
                 exception.Message,
@@ -2442,7 +2452,7 @@ public partial class Main : Node2D
 #if AGENT_ARENA_PREVIEW
         redrawAnimatedScreen |= _screenState == ScreenState.AgentWatch;
 #endif
-        if (_snakeMotionPresentation.IsAnimating(nowMilliseconds)
+        if (_snakeMotionPresentation.ConsumeRedrawRequest(nowMilliseconds)
             && redrawAnimatedScreen)
         {
             QueueRedraw();
@@ -2529,6 +2539,16 @@ public partial class Main : Node2D
 
         _inputSequence = checked(_inputSequence + 1);
         ObservePromptInput(inputEvent);
+
+        if (_screenState == ScreenState.Bindings
+            && (_bindingsCapturePending || _pendingBindingConflict is not null))
+        {
+            HandleBindingsScreenInput(inputEvent);
+            return;
+        }
+
+        using var primaryInput = GameActions.NormalizePrimaryInput(inputEvent, ActivePrimaryActions);
+        inputEvent = primaryInput ?? inputEvent;
 
         if (inputEvent.IsActionPressed(GameActions.Quit))
         {
@@ -3226,7 +3246,9 @@ public partial class Main : Node2D
             var fixedToken = family == InputPromptFamily.Keyboard
                 ? fixedBinding.KeyboardToken
                 : fixedBinding.ControllerToken;
-            if (fixedToken is not null)
+            if (fixedToken is not null
+                && GameActions.IsFixedPromptAvailable(
+                    logicalAction, family != InputPromptFamily.Keyboard, ActivePrimaryActions))
             {
                 return (fixedToken, family);
             }
@@ -4410,6 +4432,24 @@ public partial class Main : Node2D
 
     private void LeaveOverlayScreen()
     {
+        if (_screenState == ScreenState.Bindings && _bindingsReturnToSettings)
+        {
+            _bindingsReturnToSettings = false;
+            TransitionToScreen(ScreenState.Settings);
+            PlayCue(AudioCue.Back);
+            QueueRedraw();
+            return;
+        }
+
+        if (_screenState == ScreenState.Settings && _settingsReturnToOnboarding)
+        {
+            _settingsReturnToOnboarding = false;
+            TransitionToScreen(ScreenState.Onboarding);
+            PlayCue(AudioCue.Back);
+            QueueRedraw();
+            return;
+        }
+
         if (_run is { Status: RunStatus.Dead or RunStatus.Won } && _runEndSummary is not null)
         {
             TransitionToScreen(ScreenState.Ended);
@@ -4423,6 +4463,8 @@ public partial class Main : Node2D
 
     private void ReturnToMenu()
     {
+        _bindingsReturnToSettings = false;
+        _settingsReturnToOnboarding = false;
         TransitionToScreen(ScreenState.Menu);
         _run = null;
         _replayRecorder = null;
@@ -4616,16 +4658,24 @@ public partial class Main : Node2D
                 }
                 else
                 {
-                    SaveOnboardingStatus(OnboardingStatus.Skipped);
-                    _onboardingStatusCaption = Localize("status.onboarding.skipped");
+                    if (SaveOnboardingStatus(OnboardingStatus.Skipped))
+                    {
+                        _onboardingStatusCaption = Localize("status.onboarding.skipped");
+                    }
                     StartRun();
+                    if (_onboardingPersistenceWarning is { } warning)
+                    {
+                        ShowReplayStatus(warning);
+                    }
                 }
             }
             else if (inputEvent.IsActionPressed(GameActions.Back))
             {
-                SaveSkippedOnboardingUnlessCompleted();
+                var saved = SaveSkippedOnboardingUnlessCompleted();
                 ReturnToMenu();
-                _replayStatusCaption = Localize("status.onboarding.available");
+                _replayStatusCaption = saved
+                    ? Localize("status.onboarding.available")
+                    : _onboardingPersistenceWarning;
             }
 
             QueueRedraw();
@@ -4634,9 +4684,11 @@ public partial class Main : Node2D
 
         if (inputEvent.IsActionPressed(GameActions.Back))
         {
-            SaveSkippedOnboardingUnlessCompleted();
+            var saved = SaveSkippedOnboardingUnlessCompleted();
             ReturnToMenu();
-            _replayStatusCaption = Localize("status.onboarding.exited");
+            _replayStatusCaption = saved
+                ? Localize("status.onboarding.exited")
+                : _onboardingPersistenceWarning;
             return;
         }
 
@@ -4671,29 +4723,28 @@ public partial class Main : Node2D
 
         if (_onboardingSession.IsComplete)
         {
-            SaveOnboardingStatus(OnboardingStatus.Completed);
+            var completionSaved = SaveOnboardingStatus(OnboardingStatus.Completed);
             _structuredLog?.Information(
                 "onboarding",
                 "Completed all deterministic onboarding lessons.",
                 eventCode: "onboarding_complete");
             ReturnToMenu();
-            _replayStatusCaption = Localize("status.onboarding.complete");
+            _replayStatusCaption = completionSaved
+                ? Localize("status.onboarding.complete")
+                : _onboardingPersistenceWarning;
             return;
         }
 
         QueueRedraw();
     }
 
-    private void SaveSkippedOnboardingUnlessCompleted()
-    {
-        if (_onboardingProgress.Status != OnboardingStatus.Completed)
-        {
-            SaveOnboardingStatus(OnboardingStatus.Skipped);
-        }
-    }
+    private bool SaveSkippedOnboardingUnlessCompleted() =>
+        _onboardingProgress.Status == OnboardingStatus.Completed
+        || SaveOnboardingStatus(OnboardingStatus.Skipped);
 
     private void OpenSettingsBrowse()
     {
+        _settingsReturnToOnboarding = _screenState == ScreenState.Onboarding;
         TransitionToScreen(ScreenState.Settings);
         _settingsSectionCursor = 0;
         _settingsItemCursor = 0;
@@ -5147,6 +5198,7 @@ public partial class Main : Node2D
 
     private void OpenBindingsBrowse()
     {
+        _bindingsReturnToSettings = _screenState == ScreenState.Settings;
         TransitionToScreen(ScreenState.Bindings);
         _bindingsCursor = 0;
         _bindingsCapturePending = false;
@@ -7412,15 +7464,14 @@ public partial class Main : Node2D
             var keyBounds = new Rect2(
                 bounds.Position + new Vector2(22.0f, 4.0f),
                 new Vector2(78.0f, 27.0f));
-            var hint = _activePromptFamily == InputPromptFamily.Keyboard
-                ? MainMenuKeyboardHints[index]
-                : InputPromptGlyphs.DescribeToken(
-                    ResolveActionPrompt("confirm").Token,
-                    _activePromptFamily).Label;
+            var hintPrompt = ResolveMainMenuHintPrompt(index);
+            var hint = InputPromptGlyphs.DescribeToken(hintPrompt.Token, hintPrompt.Family).Label;
+            var (hintFontSize, fittedHint) = ResolveFittedLabel(
+                hint, ScaledFontSize(12), 8, keyBounds.Size.X);
             DrawCenteredInRect(
-                hint,
+                fittedHint,
                 keyBounds,
-                ScaledFontSize(12),
+                hintFontSize,
                 selected ? palette.SelectedText : accent);
 
             var label = Localize(MainMenuCopyIds[index]).ToUpperInvariant();
@@ -7443,16 +7494,38 @@ public partial class Main : Node2D
             palette.GoldText);
         var browse = AchievementsBrowseReport.FromUnlocks(_achievements.UnlockedIds);
         DrawCenteredLabel(
-            browse.FormatSummaryLine(),
+            _onboardingPersistenceWarning ?? browse.FormatSummaryLine(),
             650.0f,
             ScaledFontSize(12),
-            palette.MutedGoldText);
+            _onboardingPersistenceWarning is null ? palette.MutedGoldText : palette.WarningText);
         DrawCenteredLabel(
-            "ARROWS / D-PAD MOVE  //  ENTER / A SELECT  //  J / R3 RADIO  //  F11 FULLSCREEN",
-            680.0f,
+            MainMenuNavigationHint(),
+            670.0f,
+            ScaledFontSize(11),
+            SecondaryTextColor());
+        DrawCenteredLabel(
+            MainMenuUtilityHint(),
+            692.0f,
             ScaledFontSize(11),
             SecondaryTextColor());
     }
+
+    private string ActionPromptLabel(string action)
+    {
+        var prompt = ResolveActionPrompt(action);
+        return InputPromptGlyphs.DescribeToken(prompt.Token, prompt.Family).Label;
+    }
+
+    private string MainMenuNavigationHint() =>
+        $"[{ActionPromptLabel("move_up")}] / [{ActionPromptLabel("move_down")}] "
+        + Localize("action.navigate")
+        + $"   //   [{ActionPromptLabel("confirm")}] " + Localize("action.select");
+
+    private string MainMenuUtilityHint() =>
+        $"[{ActionPromptLabel("cycle_radio")}] " + Localize("action.cycle-radio")
+        + "   //   [" + InputPromptGlyphs.DescribeToken(
+            GameActions.FixedPromptBindings["toggle_fullscreen"].KeyboardToken!,
+            InputPromptFamily.Keyboard).Label + "] " + Localize("action.fullscreen");
 
     private Color MainMenuAccent(int index, ShellPalette palette)
     {
@@ -7590,7 +7663,7 @@ public partial class Main : Node2D
             ScaledFontSize(17),
             ActiveShellPalette.BodyText);
 
-        var snapshot = _onboardingSession.Snapshot;
+        var snapshot = _onboardingSession.PresentationSnapshot;
         DrawLabel(
             $"PRACTICE SCORE {snapshot.Score}  HUNGER {snapshot.HungerTicksRemaining}",
             new Vector2(46.0f, 270.0f),
@@ -12845,7 +12918,8 @@ public partial class Main : Node2D
                 ?? (int)(VirtualViewport.LogicalWidth / CellSize),
             _run?.Configuration.Height
                 ?? _replayPlayback?.Configuration.Height
-                ?? (int)((VirtualViewport.LogicalHeight - HudHeight) / CellSize));
+                ?? (int)((VirtualViewport.LogicalHeight - HudHeight) / CellSize),
+            reducedMotion: _shellSettings.ReducedMotion);
         var usesVibePresentation = mode.Id == RunModeCatalog.VibeId;
         var accessibility = AccessibilityPresentationPolicy.FromSettings(_shellSettings);
         var hunger = HungerFeedback.Describe(
@@ -14166,6 +14240,8 @@ public partial class Main : Node2D
             ExecuteLocalPlaytestSummarySmokeTest();
             ExecutePlayerDataRecoverySmokeTest();
             ExecuteOnboardingSmokeTest();
+            ExecuteOnboardingRecoverySmokeTest();
+            ExecutePrimaryInputSmokeTest();
             ExecuteAccessibilityPresentationSmokeTest();
             ExecuteVirtualViewportSmokeTest();
             ExecuteInputCadenceSmokeTest();
@@ -15340,8 +15416,79 @@ public partial class Main : Node2D
         WriteShellPresentationEvidence(evidence);
     }
 
+    private void AssertMainMenuPromptContract()
+    {
+        var keyboard = _keyboardBindings;
+        var controller = _controllerBindings;
+        var family = _activePromptFamily;
+        var locale = _shellLocale;
+        try
+        {
+            var keys = InputBindingsDocument.CreateKeyboardDefaults().ActionToBinding
+                .ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal);
+            keys["move_up"] = "key:i";
+            keys["move_down"] = "key:k";
+            keys["confirm"] = "key:tab";
+            keys["back"] = "key:backspace";
+            _keyboardBindings = new InputBindingsDocument(1, "keyboard", keys);
+            _activePromptFamily = InputPromptFamily.Keyboard;
+            _shellLocale = ShellLocale.English;
+            var navigation = MainMenuNavigationHint();
+            if (!navigation.Contains("[I] / [K]", StringComparison.Ordinal)
+                || !navigation.Contains("[Tab]", StringComparison.OrdinalIgnoreCase)
+                || ActionPromptLabel(MainMenuShortcutActions[0]) != ActionPromptLabel("confirm")
+                || ActionPromptLabel(MainMenuShortcutActions[^1]) != ActionPromptLabel("back"))
+            {
+                throw new InvalidOperationException("Main-menu hints do not follow remapped controls.");
+            }
+
+            var buttons = InputBindingsDocument.CreateControllerDefaults().ActionToBinding
+                .ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal);
+            buttons["move_up"] = "axis:left_y:-1";
+            buttons["move_down"] = "axis:left_y:1";
+            buttons["confirm"] = "button:right_shoulder";
+            _controllerBindings = new InputBindingsDocument(1, "controller", buttons);
+            foreach (var promptFamily in Enum.GetValues<InputPromptFamily>())
+            {
+                _activePromptFamily = promptFamily;
+                var shortcut = ActionPromptLabel(
+                    promptFamily == InputPromptFamily.Keyboard ? "back" : "confirm");
+                var (_, fittedShortcut) = ResolveFittedLabel(
+                    shortcut, (int)Math.Ceiling(12 * ShellSettings.MaximumTextScale), 8, 78.0f);
+                if (fittedShortcut != shortcut)
+                {
+                    throw new InvalidOperationException("A remapped menu shortcut lost its control label.");
+                }
+                foreach (var shellLocale in Enum.GetValues<ShellLocale>())
+                {
+                    _shellLocale = shellLocale;
+                    foreach (var hint in new[] { MainMenuNavigationHint(), MainMenuUtilityHint() })
+                    {
+                        var width = MeasureLabelWidth(
+                            hint,
+                            (int)Math.Ceiling(11 * ShellSettings.MaximumTextScale));
+                        if (hint.Contains("Unbound", StringComparison.OrdinalIgnoreCase)
+                            || width > 1180.0f)
+                        {
+                            throw new InvalidOperationException(
+                                "Main-menu remapped hints are unbound or overflow at maximum text scale.");
+                        }
+                    }
+                }
+            }
+        }
+        finally
+        {
+            _keyboardBindings = keyboard;
+            _controllerBindings = controller;
+            _activePromptFamily = family;
+            _shellLocale = locale;
+        }
+    }
+
     private void ExecuteLocalizationSmokeTest()
     {
+        AssertMainMenuPromptContract();
         var font = ActiveShellTheme.InterfaceFont;
         var minimumExpansionRatio = double.MaxValue;
         var missingGlyphs = new HashSet<char>();
@@ -16074,7 +16221,7 @@ public partial class Main : Node2D
 
         const int migratedRequiredFlowCount = 13;
         const double requiredExpansionRatio = 1.30;
-        var passed = ShellLocalization.All.Count == 734
+        var passed = ShellLocalization.All.Count == 736
             && ShellLocalization.All.Count(entry => entry.Parameters.Count > 0) == 114
             && migratedRequiredFlowCount == 13
             && minimumExpansionRatio >= requiredExpansionRatio
@@ -16613,6 +16760,7 @@ public partial class Main : Node2D
 
     private void ExecuteShellSettingsSmokeTest()
     {
+        DisplayOptions.AssertWorkAreaContract();
         var settings = ShellSettings.CreateDefaults();
         settings.MasterVolume = 2.0f;
         settings.TextScale = 9.0f;
@@ -18302,6 +18450,98 @@ public partial class Main : Node2D
         }
     }
 
+    private void ExecuteOnboardingRecoverySmokeTest()
+    {
+        ReturnToMenu();
+        DispatchSmokeKey(Key.H);
+        DispatchSmokeKey(Key.Down);
+        DispatchSmokeKey(Key.F1, physical: false);
+        _settingsSectionCursor = SettingsMenuCatalog.Sections.Index()
+            .Single(pair => pair.Item == SettingsSection.Controls).Index;
+        _settingsSectionOpen = true;
+        _settingsItemCursor = 1;
+        OpenBindingsBrowse();
+        DispatchSmokeKey(Key.Escape, physical: false);
+        if (_screenState != ScreenState.Settings || !_settingsSectionOpen
+            || _settingsItemCursor != 1 || CurrentSettingsSection != SettingsSection.Controls)
+        {
+            throw new InvalidOperationException("Input bindings did not return to the active Controls section.");
+        }
+        DispatchSmokeKey(Key.Escape, physical: false);
+        DispatchSmokeKey(Key.Escape, physical: false);
+        if (_screenState != ScreenState.Onboarding || _onboardingOfferCursor != 1)
+        {
+            throw new InvalidOperationException("Settings did not preserve the tutorial offer destination.");
+        }
+        ReturnToMenu();
+
+        var store = _onboardingStore;
+        var progress = _onboardingProgress;
+        var caption = _onboardingStatusCaption;
+        var warning = _onboardingPersistenceWarning;
+        var blockedRoot = System.IO.Path.Combine(
+            System.IO.Path.GetTempPath(), "VibeSnake-onboarding-blocked-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            System.IO.File.WriteAllText(blockedRoot, "blocked directory");
+            foreach (var unavailableStore in new OnboardingStore?[] { null, new(blockedRoot) })
+            {
+                _onboardingStore = unavailableStore;
+                _onboardingProgress = OnboardingProgressDocument.CreateDefaults();
+                DispatchSmokeKey(Key.H);
+                DispatchSmokeKey(Key.Down);
+                DispatchSmokeKey(Key.Enter, physical: false);
+                if (_screenState != ScreenState.Running
+                    || _onboardingPersistenceWarning is null
+                    || _replayStatusCaption != _onboardingPersistenceWarning
+                    || _feedbackCaption != _onboardingPersistenceWarning)
+                {
+                    throw new InvalidOperationException("Tutorial skip hid the session-only save warning.");
+                }
+                ReturnToMenu();
+                DispatchSmokeKey(Key.H);
+                DispatchSmokeKey(Key.Escape, physical: false);
+                if (_screenState != ScreenState.Menu
+                    || _replayStatusCaption != _onboardingPersistenceWarning)
+                {
+                    throw new InvalidOperationException("Leaving the tutorial offer hid the save warning.");
+                }
+                DispatchSmokeKey(Key.H);
+                DispatchSmokeKey(Key.Enter, physical: false);
+                DispatchSmokeKey(Key.Escape, physical: false);
+                if (_screenState != ScreenState.Menu
+                    || _replayStatusCaption != _onboardingPersistenceWarning)
+                {
+                    throw new InvalidOperationException("Leaving tutorial practice hid the save warning.");
+                }
+                DispatchSmokeKey(Key.H);
+                DispatchSmokeKey(Key.Enter, physical: false);
+                foreach (var key in new[] { Key.Up, Key.Down, Key.Left, Key.Right, Key.Right, Key.Right, Key.Right, Key.P })
+                {
+                    DispatchSmokeKey(key);
+                }
+                DispatchSmokeKey(Key.Enter, physical: false);
+                if (_screenState != ScreenState.Menu
+                    || _onboardingProgress.Status != OnboardingStatus.Completed
+                    || _onboardingPersistenceWarning is null
+                    || _replayStatusCaption != _onboardingPersistenceWarning)
+                {
+                    throw new InvalidOperationException("Tutorial completion hid the session-only save warning.");
+                }
+            }
+        }
+        finally
+        {
+            ReturnToMenu();
+            _onboardingStore = store;
+            _onboardingProgress = progress;
+            _onboardingStatusCaption = caption;
+            _onboardingPersistenceWarning = warning;
+            _replayStatusCaption = null;
+            System.IO.File.Delete(blockedRoot);
+        }
+    }
+
     private void ExecuteOnboardingSmokeTest()
     {
         if (_onboardingStore is null || _replayStore is null)
@@ -18859,6 +19099,7 @@ public partial class Main : Node2D
             (ShellScreen.Bindings, ShellScreen.Menu),
             (ShellScreen.Bindings, ShellScreen.Ended),
             (ShellScreen.Bindings, ShellScreen.Bindings),
+            (ShellScreen.Bindings, ShellScreen.Settings),
             (ShellScreen.ContentPacks, ShellScreen.Menu),
             (ShellScreen.ContentPacks, ShellScreen.Ended),
             (ShellScreen.ContentPacks, ShellScreen.ContentPacks),
@@ -18870,6 +19111,7 @@ public partial class Main : Node2D
             (ShellScreen.Settings, ShellScreen.Ended),
             (ShellScreen.Settings, ShellScreen.Settings),
             (ShellScreen.Settings, ShellScreen.Bindings),
+            (ShellScreen.Settings, ShellScreen.Onboarding),
             (ShellScreen.Onboarding, ShellScreen.Onboarding),
             (ShellScreen.Onboarding, ShellScreen.Menu),
             (ShellScreen.Onboarding, ShellScreen.Running),

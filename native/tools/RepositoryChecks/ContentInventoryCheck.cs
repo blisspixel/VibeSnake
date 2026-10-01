@@ -157,13 +157,16 @@ public static class ContentInventoryCheck
         }
     }
 
-    public static RepositoryCheckResult Write(string repositoryRoot)
+    public static RepositoryCheckResult Write(string repositoryRoot) =>
+        Write(repositoryRoot, (source, target) => File.Move(source, target, overwrite: true));
+
+    internal static RepositoryCheckResult Write(string repositoryRoot, Action<string, string> replace)
     {
         try
         {
             var build = Build(repositoryRoot);
             var inventoryPath = ResolveWritableInventoryPath(build.RepositoryRoot);
-            WriteAtomic(inventoryPath, StrictUtf8.GetBytes(build.Json));
+            WriteAtomic(inventoryPath, StrictUtf8.GetBytes(build.Json), replace);
             var verification = Inspect(build.RepositoryRoot);
             if (!verification.Passed)
             {
@@ -1920,7 +1923,7 @@ public static class ContentInventoryCheck
         return Convert.ToHexStringLower(hash.GetHashAndReset());
     }
 
-    private static void WriteAtomic(string path, ReadOnlySpan<byte> value)
+    private static void WriteAtomic(string path, ReadOnlySpan<byte> value, Action<string, string> replace)
     {
         var temporary = path + $".tmp-{Guid.NewGuid():N}";
         try
@@ -1937,7 +1940,7 @@ public static class ContentInventoryCheck
                 output.Flush(flushToDisk: true);
             }
 
-            File.Move(temporary, path, overwrite: true);
+            replace(temporary, path);
         }
         finally
         {

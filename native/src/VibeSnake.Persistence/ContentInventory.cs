@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text;
 
 namespace VibeSnake.Persistence;
 
@@ -8,6 +9,10 @@ namespace VibeSnake.Persistence;
 /// </summary>
 public sealed class ContentInventory
 {
+    private const int MaximumDocumentBytes = 8 * 1024 * 1024;
+    private const int MaximumAssets = 4096;
+    private const long MaximumTotalBytes = 4L * 1024 * 1024 * 1024;
+    private static readonly UTF8Encoding StrictUtf8 = new(false, true);
     private readonly Dictionary<string, ContentInventoryAsset> _assetsByPath;
     private readonly Dictionary<string, ContentInventoryAsset> _assetsById;
 
@@ -58,12 +63,32 @@ public sealed class ContentInventory
     public static ContentInventory Parse(string json)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(json);
+        try
+        {
+            return ParseCore(json);
+        }
+        catch (Exception exception) when (exception is JsonException or InvalidOperationException
+            or KeyNotFoundException or FormatException or OverflowException)
+        {
+            throw new InvalidDataException("Content inventory JSON is malformed or has invalid field types.", exception);
+        }
+    }
+
+    private static ContentInventory ParseCore(string json)
+    {
+        if (json.Length > MaximumDocumentBytes || Encoding.UTF8.GetByteCount(json) > MaximumDocumentBytes)
+        {
+            throw new InvalidDataException("Content inventory exceeds the 8388608-byte document limit.");
+        }
+
         using var document = JsonDocument.Parse(json);
         var root = document.RootElement;
         if (root.ValueKind != JsonValueKind.Object)
         {
             throw new InvalidDataException("Content inventory root must be an object.");
         }
+
+        RejectDuplicateFields(root);
 
         if (!root.TryGetProperty("schemaVersion", out var schemaElement)
             || schemaElement.ValueKind != JsonValueKind.Number
@@ -85,10 +110,21 @@ public sealed class ContentInventory
             throw new InvalidDataException("Content inventory fileCount must be positive.");
         }
 
+        if (fileCount > MaximumAssets)
+        {
+            throw new InvalidDataException("Content inventory fileCount exceeds the 4096-asset limit.");
+        }
+
         if (!root.TryGetProperty("assets", out var assetsElement)
             || assetsElement.ValueKind != JsonValueKind.Array)
         {
             throw new InvalidDataException("Content inventory is missing the assets array.");
+        }
+
+        if (assetsElement.GetArrayLength() != fileCount)
+        {
+            throw new InvalidDataException(
+                $"Content inventory fileCount {fileCount} does not match assets length {assetsElement.GetArrayLength()}.");
         }
 
         var assetRoot = root.TryGetProperty("assetRoot", out var assetRootElement)
@@ -105,9 +141,15 @@ public sealed class ContentInventory
         var byId = new Dictionary<string, ContentInventoryAsset>(
             fileCount,
             StringComparer.Ordinal);
+        long totalBytes = 0;
         foreach (var element in assetsElement.EnumerateArray())
         {
             var asset = ContentInventoryAsset.FromJson(element);
+            totalBytes = checked(totalBytes + asset.Bytes);
+            if (totalBytes > MaximumTotalBytes)
+            {
+                throw new InvalidDataException("Content inventory exceeds the 4294967296-byte content limit.");
+            }
             if (!byPath.TryAdd(asset.RelativePath, asset))
             {
                 throw new InvalidDataException(
@@ -122,18 +164,12 @@ public sealed class ContentInventory
             assets.Add(asset);
         }
 
-        if (assets.Count != fileCount)
-        {
-            throw new InvalidDataException(
-                $"Content inventory fileCount {fileCount} does not match assets length {assets.Count}.");
-        }
-
         return new ContentInventory(
             1,
             assetRoot,
             policySha256,
             fileCount,
-            assets,
+            assets.AsReadOnly(),
             byPath,
             byId);
     }
@@ -142,7 +178,41 @@ public sealed class ContentInventory
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
         var fullPath = Path.GetFullPath(path);
-        return Parse(File.ReadAllText(fullPath));
+        using var source = new FileStream(fullPath, FileMode.Open, FileAccess.Read, FileShare.Read);
+        if (source.Length > MaximumDocumentBytes)
+        {
+            throw new InvalidDataException("Content inventory exceeds the 8388608-byte document limit.");
+        }
+
+        using var bytes = new MemoryStream();
+        var buffer = new byte[64 * 1024];
+        int count;
+        while ((count = source.Read(buffer)) > 0)
+        {
+            if (bytes.Length + count > MaximumDocumentBytes)
+            {
+                throw new InvalidDataException("Content inventory exceeds the 8388608-byte document limit.");
+            }
+
+            bytes.Write(buffer, 0, count);
+        }
+
+        var data = bytes.ToArray();
+        var offset = data.AsSpan().StartsWith(new byte[] { 0xef, 0xbb, 0xbf }) ? 3 : 0;
+        try
+        {
+            var json = StrictUtf8.GetString(data.AsSpan(offset));
+            if (string.IsNullOrWhiteSpace(json))
+            {
+                throw new InvalidDataException("Content inventory file must contain a JSON object.");
+            }
+
+            return Parse(json);
+        }
+        catch (DecoderFallbackException exception)
+        {
+            throw new InvalidDataException("Content inventory must contain valid UTF-8.", exception);
+        }
     }
 
     public bool TryGetAsset(string relativePath, out ContentInventoryAsset asset)
@@ -178,9 +248,7 @@ public sealed class ContentInventory
             normalized = normalized[2..];
         }
 
-        if (string.IsNullOrWhiteSpace(normalized)
-            || Path.IsPathRooted(normalized)
-            || normalized.Contains("..", StringComparison.Ordinal))
+        if (!ContentInventoryAsset.IsSafeRelativePath(normalized))
         {
             throw new ArgumentException(
                 "Inventory asset paths must be relative without traversal.",
@@ -188,6 +256,30 @@ public sealed class ContentInventory
         }
 
         return normalized;
+    }
+
+    private static void RejectDuplicateFields(JsonElement element)
+    {
+        if (element.ValueKind == JsonValueKind.Object)
+        {
+            var names = new HashSet<string>(StringComparer.Ordinal);
+            foreach (var property in element.EnumerateObject())
+            {
+                if (!names.Add(property.Name))
+                {
+                    throw new InvalidDataException("Content inventory repeats JSON field: " + property.Name);
+                }
+
+                RejectDuplicateFields(property.Value);
+            }
+        }
+        else if (element.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var value in element.EnumerateArray())
+            {
+                RejectDuplicateFields(value);
+            }
+        }
     }
 }
 
@@ -212,8 +304,7 @@ public sealed record ContentInventoryAsset(
         var relativePath = element.GetProperty("path").GetString()
             ?? throw new InvalidDataException("Inventory asset is missing path.");
         relativePath = relativePath.Replace('\\', '/');
-        if (System.IO.Path.IsPathRooted(relativePath)
-            || relativePath.Contains("..", StringComparison.Ordinal))
+        if (!IsSafeRelativePath(relativePath))
         {
             throw new InvalidDataException($"Inventory asset path is unsafe: {relativePath}");
         }
@@ -225,7 +316,7 @@ public sealed record ContentInventoryAsset(
             License: GetOptionalString(rights, "license"),
             Attribution: GetOptionalString(rights, "attribution"),
             ReviewEvidence: GetOptionalString(rights, "reviewNote"));
-        return new ContentInventoryAsset(
+        var asset = new ContentInventoryAsset(
             Id: element.GetProperty("id").GetString()
                 ?? throw new InvalidDataException("Inventory asset is missing id."),
             RelativePath: relativePath,
@@ -241,17 +332,59 @@ public sealed record ContentInventoryAsset(
             IntegrityStatus: GetOptionalString(element, "integrityStatus"),
             DuplicateOf: GetOptionalNullableString(element, "duplicateOf"),
             Rights: rightsRecord);
+        if (asset.Bytes < 0 || asset.Bytes > 256L * 1024 * 1024)
+        {
+            throw new InvalidDataException("Inventory asset bytes must be between zero and 268435456.");
+        }
+
+        if (asset.ExportEligible && (asset.ShipStatus != "approved"
+            || asset.RightsStatus != "cleared"
+            || (element.TryGetProperty("integrityStatus", out _) && asset.IntegrityStatus != "valid")))
+        {
+            throw new InvalidDataException("Inventory export eligibility contradicts shipping, rights, or integrity status.");
+        }
+
+        return asset;
     }
 
-    private static string GetOptionalString(JsonElement element, string name) =>
-        element.TryGetProperty(name, out var property) && property.ValueKind == JsonValueKind.String
-            ? property.GetString() ?? string.Empty
-            : string.Empty;
+    internal static bool IsSafeRelativePath(string value) =>
+        !string.IsNullOrWhiteSpace(value)
+        && value.Length <= 512
+        && !value.StartsWith('/')
+        && !value.Contains(':')
+        && !value.Any(char.IsControl)
+        && !value.Contains("..", StringComparison.Ordinal)
+        && value.Split('/').All(segment => segment.Length > 0 && segment != ".");
 
-    private static string? GetOptionalNullableString(JsonElement element, string name) =>
-        element.TryGetProperty(name, out var property) && property.ValueKind == JsonValueKind.String
-            ? property.GetString()
-            : null;
+    private static string GetOptionalString(JsonElement element, string name)
+    {
+        if (!element.TryGetProperty(name, out var property))
+        {
+            return string.Empty;
+        }
+
+        if (property.ValueKind != JsonValueKind.String)
+        {
+            throw new InvalidDataException("Inventory asset optional field must be a string: " + name);
+        }
+
+        return property.GetString() ?? string.Empty;
+    }
+
+    private static string? GetOptionalNullableString(JsonElement element, string name)
+    {
+        if (!element.TryGetProperty(name, out var property) || property.ValueKind == JsonValueKind.Null)
+        {
+            return null;
+        }
+
+        if (property.ValueKind != JsonValueKind.String)
+        {
+            throw new InvalidDataException("Inventory asset optional field must be a string or null: " + name);
+        }
+
+        return property.GetString();
+    }
 }
 
 public sealed record ContentInventoryRights(

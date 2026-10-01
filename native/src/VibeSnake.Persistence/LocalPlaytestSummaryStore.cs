@@ -570,8 +570,19 @@ public sealed class LocalPlaytestSummaryStore
     public const string ExportKind = "vibesnake-local-playtest-summary-export-v1";
     public const int MaximumExportFiles = 20;
 
+    private readonly IPreferencesWriteOperations _writeOperations;
+
     public LocalPlaytestSummaryStore(string userDataRoot)
+        : this(userDataRoot, PhysicalPreferencesWriteOperations.Instance)
     {
+    }
+
+    internal LocalPlaytestSummaryStore(
+        string userDataRoot,
+        IPreferencesWriteOperations writeOperations)
+    {
+        ArgumentNullException.ThrowIfNull(writeOperations);
+        _writeOperations = writeOperations;
         ArgumentException.ThrowIfNullOrWhiteSpace(userDataRoot);
         if (!Path.IsPathFullyQualified(userDataRoot))
         {
@@ -662,11 +673,9 @@ public sealed class LocalPlaytestSummaryStore
         var payloadBytes = Encoding.UTF8.GetBytes(payload);
         var payloadHash = Sha256(payloadBytes);
         var fileName = $"playtest-summaries_{timestamp}_{payloadHash[..12]}.json";
-        Directory.CreateDirectory(ExportDirectory);
         var path = Path.Combine(ExportDirectory, fileName);
-        var temporaryPath = path + ".tmp";
-        File.WriteAllBytes(temporaryPath, payloadBytes);
-        File.Move(temporaryPath, path, overwrite: true);
+        ProfileDocumentWriter.Write(
+            path, payload, LocalPlaytestSummaryDocument.CurrentSchemaVersion, _writeOperations);
         var exports = Directory.EnumerateFiles(
                 ExportDirectory,
                 "playtest-summaries_*.json",
@@ -727,13 +736,11 @@ public sealed class LocalPlaytestSummaryStore
 
     private void Save(LocalPlaytestSummaryDocument document)
     {
-        Directory.CreateDirectory(StoreDirectory);
-        var temporaryPath = StorePath + ".tmp";
-        File.WriteAllText(
-            temporaryPath,
+        ProfileDocumentWriter.Write(
+            StorePath,
             document.SerializeCanonical(),
-            new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
-        File.Move(temporaryPath, StorePath, overwrite: true);
+            LocalPlaytestSummaryDocument.CurrentSchemaVersion,
+            _writeOperations);
     }
 
     private static string Sha256(byte[] bytes) =>

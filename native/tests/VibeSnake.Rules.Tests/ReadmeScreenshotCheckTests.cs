@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Globalization;
 using System.Text;
+using System.Text.Json.Nodes;
 using RepositoryChecks;
 
 namespace VibeSnake.Rules.Tests;
@@ -201,13 +202,14 @@ public sealed class ReadmeScreenshotCheckTests
                 ReadmeScreenshotCheck.Inspect(root, FixedFingerprint).Failures.Single(),
                 StringComparison.Ordinal);
 
-            File.WriteAllText(
-                manifestPath,
-                manifest.Replace(
-                    "c81289bbd8b957ae504a756a591d36274febee81dc58b074d3c9324af46eb4a8",
-                    new string('G', 64),
-                    StringComparison.Ordinal),
-                new UTF8Encoding(false));
+            var invalidHashManifest = JsonNode.Parse(manifest)!.AsObject();
+            var invalidHashRecord = invalidHashManifest["screenshots"]!.AsArray()
+                .Select(record => record!.AsObject())
+                .Single(record => record["file"]!.GetValue<string>() == "main-menu.png");
+            var originalHash = invalidHashRecord["sha256"]!.GetValue<string>();
+            invalidHashRecord["sha256"] = new string('G', 64);
+            Assert.NotEqual(originalHash, invalidHashRecord["sha256"]!.GetValue<string>());
+            File.WriteAllText(manifestPath, invalidHashManifest.ToJsonString(), new UTF8Encoding(false));
             Assert.Contains(
                 "screenshot hash is invalid",
                 ReadmeScreenshotCheck.Inspect(root, FixedFingerprint).Failures.Single(),
@@ -515,13 +517,14 @@ public sealed class ReadmeScreenshotCheckTests
                 overwrite: true);
             var manifestPath = Path.Combine(screenshotDirectory, "manifest.json");
             var manifest = ReadmeScreenshotCheck.RenderManifest(root, FixedFingerprint);
-            File.WriteAllText(
-                manifestPath,
-                manifest.Replace(
-                    "c81289bbd8b957ae504a756a591d36274febee81dc58b074d3c9324af46eb4a8",
-                    new string('b', 64),
-                    StringComparison.Ordinal),
-                new UTF8Encoding(false));
+            var changedHashManifest = JsonNode.Parse(manifest)!.AsObject();
+            var changedHashRecord = changedHashManifest["screenshots"]!.AsArray()
+                .Select(record => record!.AsObject())
+                .Single(record => record["file"]!.GetValue<string>() == "main-menu.png");
+            var originalHash = changedHashRecord["sha256"]!.GetValue<string>();
+            changedHashRecord["sha256"] = (originalHash[0] == '0' ? "1" : "0") + originalHash[1..];
+            Assert.NotEqual(originalHash, changedHashRecord["sha256"]!.GetValue<string>());
+            File.WriteAllText(manifestPath, changedHashManifest.ToJsonString(), new UTF8Encoding(false));
             var hash = ReadmeScreenshotCheck.Inspect(root, FixedFingerprint);
             Assert.False(hash.Passed);
             Assert.Contains("hash changed", hash.Failures.Single(), StringComparison.Ordinal);

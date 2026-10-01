@@ -53,6 +53,10 @@ jobs:
             --exclude '.venv' \
             --exclude '.tools' \
             --exclude '.dotnet' \
+            --exclude '.godot' \
+            --exclude 'bin' \
+            --exclude 'obj' \
+            --exclude '*.egg-info' \
             --exclude '.pytest_cache' \
             --exclude '.ruff_cache' \
             --exclude '.mypy_cache' \
@@ -146,6 +150,12 @@ jobs:
 
           Includes the eight-station offline radio catalog under \`assets/audio/radio/\`.
           EOF
+
+          printf '\n## Development changes\n\n' >> "${NOTES}"
+          awk '/^## Unreleased/ { active = 1; next } active && /^## / { exit } active && /^- / { if (++entries > 10) exit } active { print }' \
+            CHANGELOG.md >> "${NOTES}"
+          printf '\n[Full changelog](https://github.com/%s/blob/%s/CHANGELOG.md)\n' \
+            "${GITHUB_REPOSITORY}" "${QUALIFIED_SHA}" >> "${NOTES}"
 
           retry() {
             local attempt=1

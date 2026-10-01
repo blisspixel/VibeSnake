@@ -245,8 +245,17 @@ public sealed record AchievementsDocument(
 /// </summary>
 public sealed class AchievementsStore
 {
+    private readonly IPreferencesWriteOperations _writeOperations;
+
     public AchievementsStore(string userDataRoot)
+        : this(userDataRoot, PhysicalPreferencesWriteOperations.Instance)
     {
+    }
+
+    internal AchievementsStore(string userDataRoot, IPreferencesWriteOperations writeOperations)
+    {
+        ArgumentNullException.ThrowIfNull(writeOperations);
+        _writeOperations = writeOperations;
         ArgumentException.ThrowIfNullOrWhiteSpace(userDataRoot);
         if (!Path.IsPathFullyQualified(userDataRoot))
         {
@@ -288,15 +297,20 @@ public sealed class AchievementsStore
     public void Save(AchievementsDocument document)
     {
         ArgumentNullException.ThrowIfNull(document);
-        Directory.CreateDirectory(UserDataRoot);
         var payload = document with { SchemaVersion = AchievementsDocument.CurrentSchemaVersion };
         // Normalize through WithUnlocks([]) so ids stay sorted unique.
         payload = payload.WithUnlocks(Array.Empty<string>());
-        var temporaryPath = AchievementsPath + ".tmp";
-        File.WriteAllText(
-            temporaryPath,
-            payload.SerializeCanonical(),
-            new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
-        File.Move(temporaryPath, AchievementsPath, overwrite: true);
+        var serialized = payload.SerializeCanonical();
+        var validation = AchievementsDocument.Read(serialized);
+        if (!validation.IsSuccess)
+        {
+            throw new InvalidDataException(validation.Message);
+        }
+
+        ProfileDocumentWriter.Write(
+            AchievementsPath,
+            serialized,
+            AchievementsDocument.CurrentSchemaVersion,
+            _writeOperations);
     }
 }

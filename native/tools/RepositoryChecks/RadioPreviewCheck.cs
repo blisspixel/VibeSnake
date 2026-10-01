@@ -22,8 +22,10 @@ internal static class RadioPreviewCheck
 
     internal static string RequireDirectory(string repositoryRoot, string directory)
     {
-        var root = Path.TrimEndingDirectorySeparator(Path.GetFullPath(repositoryRoot));
-        var full = Path.GetFullPath(directory);
+        var root = Path.TrimEndingDirectorySeparator(NormalizeSystemPath(Path.GetFullPath(repositoryRoot)));
+        var full = NormalizeSystemPath(Path.GetFullPath(directory));
+        RequireUnlinkedAncestors(full);
+
         if (IsReparse(full) || (Exists(full) && !IsDirectory(full)))
         {
             throw new RadioPreviewException(DirectoryMessage);
@@ -41,6 +43,52 @@ internal static class RadioPreviewCheck
         }
 
         return normalized;
+    }
+
+    internal static void RequireUnlinkedAncestors(string full)
+    {
+        full = NormalizeSystemPath(full);
+        for (var ancestor = new DirectoryInfo(full); ancestor is not null; ancestor = ancestor.Parent)
+        {
+            if (IsReparse(ancestor.FullName))
+            {
+                throw new RadioPreviewException(DirectoryMessage);
+            }
+        }
+    }
+
+    private static string NormalizeSystemPath(string full)
+    {
+        if (!OperatingSystem.IsMacOS())
+        {
+            return full;
+        }
+
+        foreach (var prefix in new[] { "/var", "/tmp" })
+        {
+            if (full == prefix || full.StartsWith(prefix + "/", StringComparison.Ordinal))
+            {
+                var target = new DirectoryInfo(prefix).ResolveLinkTarget(returnFinalTarget: true);
+                if (target is not null && target.FullName == "/private" + prefix)
+                {
+                    return NormalizeTrustedMacPrefix(full, prefix);
+                }
+            }
+        }
+
+        return full;
+    }
+
+    internal static string NormalizeTrustedMacPrefix(string full, string prefix)
+    {
+        if (prefix is not ("/var" or "/tmp"))
+        {
+            throw new ArgumentException("Only standard macOS temporary-directory prefixes are supported.", nameof(prefix));
+        }
+
+        return full == prefix || full.StartsWith(prefix + "/", StringComparison.Ordinal)
+            ? "/private" + full
+            : full;
     }
 
     internal static List<AvailableSample> FindSamples(string directory)

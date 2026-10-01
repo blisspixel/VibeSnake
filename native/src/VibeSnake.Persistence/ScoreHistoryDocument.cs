@@ -717,8 +717,16 @@ public sealed class ScoreHistoryStore
     public const string PythonTopTenFileName = "high_scores.json";
     public const long MaximumPythonSourceBytes = 64L * 1024L;
 
+    private readonly IPreferencesWriteOperations _writeOperations;
+
     public ScoreHistoryStore(string userDataRoot)
+        : this(userDataRoot, PhysicalPreferencesWriteOperations.Instance)
     {
+    }
+
+    internal ScoreHistoryStore(string userDataRoot, IPreferencesWriteOperations writeOperations)
+    {
+        _writeOperations = writeOperations ?? throw new ArgumentNullException(nameof(writeOperations));
         ArgumentException.ThrowIfNullOrWhiteSpace(userDataRoot);
         if (!Path.IsPathFullyQualified(userDataRoot))
         {
@@ -780,23 +788,11 @@ public sealed class ScoreHistoryStore
             throw new InvalidDataException("Score-history document exceeds the byte limit.");
         }
 
-        Directory.CreateDirectory(UserDataRoot);
-        var temporaryPath = ScoreHistoryPath + ".tmp";
-        try
-        {
-            File.WriteAllText(
-                temporaryPath,
-                canonical,
-                new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
-            File.Move(temporaryPath, ScoreHistoryPath, overwrite: true);
-        }
-        finally
-        {
-            if (File.Exists(temporaryPath))
-            {
-                File.Delete(temporaryPath);
-            }
-        }
+        ProfileDocumentWriter.Write(
+            ScoreHistoryPath,
+            canonical,
+            ScoreHistoryDocument.CurrentSchemaVersion,
+            _writeOperations);
     }
 
     public string EnsurePythonImportInbox()
@@ -868,6 +864,13 @@ public sealed class ScoreHistoryStore
             return new PythonScoreImportResult(
                 PythonScoreImportCode.InvalidSource,
                 exception.Message);
+        }
+        catch (InvalidOperationException exception)
+        {
+            return new PythonScoreImportResult(
+                PythonScoreImportCode.DestinationBlocked,
+                "Import blocked because native score history changed to unsupported schema metadata: "
+                    + exception.Message);
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {

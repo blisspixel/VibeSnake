@@ -423,6 +423,79 @@ public sealed class LocalPlaytestSummaryStoreTests
             store.DeleteAll().ExportFilesDeleted);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Append_preserves_newer_schema_published_during_staging(bool snakeCase)
+    {
+        using var temp = new TemporaryDirectory();
+        var future = snakeCase ? "{\"schema_version\":99}" : "{\"schemaVersion\":99}";
+        var storePath = Path.Combine(temp.Path, LocalPlaytestSummaryStore.StoreDirectoryName,
+            LocalPlaytestSummaryStore.StoreFileName);
+        var operations = new InterruptedWriteOperations(() => File.WriteAllText(storePath, future), false);
+        var store = new LocalPlaytestSummaryStore(temp.Path, operations);
+        var summary = LocalPlaytestSummary.Capture(CreateTerminalRun(49UL), "0.2.1", DateTimeOffset.UnixEpoch);
+
+        Assert.Throws<InvalidOperationException>(() => store.Append(summary));
+
+        Assert.Equal(future, File.ReadAllText(store.StorePath));
+        Assert.Empty(Directory.GetFiles(store.StoreDirectory, "*.tmp-*"));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Partial_append_or_export_cleans_only_its_own_stage(bool export)
+    {
+        using var temp = new TemporaryDirectory();
+        var physical = new LocalPlaytestSummaryStore(temp.Path);
+        physical.Append(LocalPlaytestSummary.Capture(CreateTerminalRun(50UL), "0.2.1", DateTimeOffset.UnixEpoch));
+        var before = File.ReadAllBytes(physical.StorePath);
+        var directory = export ? physical.ExportDirectory : physical.StoreDirectory;
+        Directory.CreateDirectory(directory);
+        var competingStage = Path.Combine(directory, "competing.json.tmp-other");
+        File.WriteAllText(competingStage, "other writer");
+        var store = new LocalPlaytestSummaryStore(temp.Path, new InterruptedWriteOperations(null, true));
+
+        Assert.Throws<IOException>(() =>
+        {
+            if (export)
+            {
+                store.Export(DateTimeOffset.UnixEpoch);
+            }
+            else
+            {
+                store.Append(LocalPlaytestSummary.Capture(CreateTerminalRun(51UL), "0.2.1", DateTimeOffset.UnixEpoch));
+            }
+        });
+
+        Assert.Equal(before, File.ReadAllBytes(store.StorePath));
+        Assert.Equal("other writer", File.ReadAllText(competingStage));
+        Assert.Equal(new[] { competingStage }, Directory.GetFiles(directory, "*.tmp-*"));
+    }
+
+    private sealed class InterruptedWriteOperations(Action? afterWrite, bool failWrite) : IPreferencesWriteOperations
+    {
+        public void CreateDirectory(string path) => Directory.CreateDirectory(path);
+
+        public void WriteAllText(string path, string contents, System.Text.Encoding encoding)
+        {
+            if (failWrite)
+            {
+                File.WriteAllText(path, contents[..Math.Min(contents.Length, 12)], encoding);
+                throw new IOException("Injected interrupted write.");
+            }
+
+            PhysicalPreferencesWriteOperations.Instance.WriteAllText(path, contents, encoding);
+            afterWrite?.Invoke();
+        }
+
+        public void Move(string sourcePath, string destinationPath, bool overwrite) =>
+            File.Move(sourcePath, destinationPath, overwrite);
+
+        public void Delete(string path) => File.Delete(path);
+    }
+
     private static SnakeRun CreateTerminalRun(ulong seed)
     {
         var config = RunModeCatalog.CreateConfig(RunModeCatalog.Vibe, false) with

@@ -6,6 +6,7 @@ param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
+. (Join-Path $PSScriptRoot "godot_cache_policy.ps1")
 
 $repositoryRoot = Split-Path -Parent $PSScriptRoot
 $toolchainPath = Join-Path $repositoryRoot "native/toolchain.json"
@@ -37,12 +38,13 @@ $downloadDirectory = Join-Path $resolvedOutputRoot "downloads"
 $cachedArchive = Join-Path $downloadDirectory ([string]$archive.file)
 $stagingDirectory = Join-Path $resolvedOutputRoot ("{0}.staging.{1}" -f $version, [Guid]::NewGuid())
 $temporaryArchive = $null
+$backupDirectory = Join-Path $resolvedOutputRoot ("{0}.backup.{1}" -f $version, [Guid]::NewGuid())
 
 $safeOutputPrefix = $resolvedOutputRoot.TrimEnd(
     [System.IO.Path]::DirectorySeparatorChar,
     [System.IO.Path]::AltDirectorySeparatorChar
 ) + [System.IO.Path]::DirectorySeparatorChar
-foreach ($managedPath in @($installDirectory, $downloadDirectory, $stagingDirectory)) {
+foreach ($managedPath in @($installDirectory, $downloadDirectory, $stagingDirectory, $backupDirectory)) {
     $resolvedManagedPath = [System.IO.Path]::GetFullPath($managedPath)
     if (-not $resolvedManagedPath.StartsWith($safeOutputPrefix, [StringComparison]::OrdinalIgnoreCase)) {
         throw "Refusing to manage a Godot path outside the requested output root: $resolvedManagedPath"
@@ -127,17 +129,52 @@ try {
         throw "Cached Godot archive checksum mismatch for $platformId. Remove $cachedArchive and retry."
     }
 
+    if (Test-GodotArchiveExtraction -ArchivePath $cachedArchive -ExtractionRoot $installDirectory) {
+        $cachedExecutable = Find-GodotExecutable -Root $installDirectory
+        if ($cachedExecutable) {
+            Write-Output "GodotEditorCache=Verified"
+            Publish-GodotPath -Executable $cachedExecutable -ArchivePath $cachedArchive
+            return
+        }
+    }
+
     New-Item -ItemType Directory -Path $stagingDirectory | Out-Null
     Expand-Archive -LiteralPath $cachedArchive -DestinationPath $stagingDirectory
     $stagedExecutable = Find-GodotExecutable -Root $stagingDirectory
     if (-not $stagedExecutable) {
         throw "The verified Godot archive did not contain the expected executable."
     }
+    if (-not (Test-GodotArchiveExtraction -ArchivePath $cachedArchive -ExtractionRoot $stagingDirectory)) {
+        throw "The staged Godot extraction does not match the verified archive."
+    }
+    # Verify the staged executable before replacing any existing installation.
+    if (-not $IsWindows) {
+        & chmod +x $stagedExecutable
+        if ($LASTEXITCODE -ne 0) { throw "Could not mark the staged Godot executable as runnable." }
+    }
+    & (Join-Path $PSScriptRoot "assert_godot_toolchain.ps1") `
+        -GodotExecutable $stagedExecutable -GodotArchivePath $cachedArchive | Out-Null
 
     if (Test-Path -LiteralPath $installDirectory) {
-        [System.IO.Directory]::Delete([System.IO.Path]::GetFullPath($installDirectory), $true)
+        Move-Item -LiteralPath $installDirectory -Destination $backupDirectory
     }
-    Move-Item -LiteralPath $stagingDirectory -Destination $installDirectory
+    try {
+        Move-Item -LiteralPath $stagingDirectory -Destination $installDirectory
+    } catch {
+        $replacementError = $_
+        if (Test-Path -LiteralPath $backupDirectory) {
+            try {
+                Move-Item -LiteralPath $backupDirectory -Destination $installDirectory
+            } catch {
+                throw "Godot replacement and rollback failed. The previous installation remains at '$backupDirectory'. Replacement: $($replacementError.Exception.Message). Rollback: $($_.Exception.Message)"
+            }
+        }
+        throw $replacementError
+    }
+    if (Test-Path -LiteralPath $backupDirectory) {
+        Remove-Item -LiteralPath $backupDirectory -Recurse -Force
+    }
+    Write-Output "GodotEditorCache=Rebuilt"
 } finally {
     if ($temporaryArchive -and (Test-Path -LiteralPath $temporaryArchive)) {
         Remove-Item -LiteralPath $temporaryArchive -Force

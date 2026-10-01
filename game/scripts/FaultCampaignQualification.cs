@@ -165,20 +165,22 @@ internal static class FaultCampaignQualification
         }
 
         var preserved = before.SequenceEqual(File.ReadAllBytes(physical.PreferencesPath));
-        var temporaryRetained = File.Exists(physical.PreferencesPath + ".tmp");
+        var temporaryCleaned = Directory.GetFiles(
+            root,
+            PreferencesDocument.FileName + ".tmp-*").Length == 0;
         var original = physical.Load();
         physical.Save(baseline with { MusicVolume = 0.5f });
         var recovered = physical.Load();
         return Row(
             "interrupted-write",
             "preferences-atomic-replace",
-            detected && temporaryRetained,
+            detected && temporaryCleaned,
             preserved,
             original.IsSuccess
                 && original.Document?.MusicVolume == 0.25f
                 && recovered.IsSuccess
                 && recovered.Document?.MusicVolume == 0.5f
-                && !File.Exists(physical.PreferencesPath + ".tmp"),
+                && Directory.GetFiles(root, PreferencesDocument.FileName + ".tmp-*").Length == 0,
             rulesProbe,
             rulesHash);
     }
@@ -236,7 +238,7 @@ internal static class FaultCampaignQualification
             before.SequenceEqual(File.ReadAllBytes(physical.PreferencesPath)),
             loaded.IsSuccess
                 && loaded.Document?.MusicVolume == 0.3f
-                && !File.Exists(physical.PreferencesPath + ".tmp"),
+                && Directory.GetFiles(root, PreferencesDocument.FileName + ".tmp-*").Length == 0,
             rulesProbe,
             rulesHash);
     }
@@ -271,7 +273,7 @@ internal static class FaultCampaignQualification
             before.SequenceEqual(File.ReadAllBytes(physical.PreferencesPath)),
             loaded.IsSuccess
                 && loaded.Document?.MusicVolume == 0.35f
-                && !File.Exists(physical.PreferencesPath + ".tmp"),
+                && Directory.GetFiles(root, PreferencesDocument.FileName + ".tmp-*").Length == 0,
             rulesProbe,
             rulesHash);
     }
@@ -470,6 +472,7 @@ internal static class FaultCampaignQualification
             switch (fault)
             {
                 case PreferenceWriteFault.FullDisk:
+                    File.WriteAllText(path, contents[..(contents.Length / 2)], encoding);
                     throw new DiskFullIOException();
                 case PreferenceWriteFault.ReadOnlyDirectory:
                     throw new UnauthorizedAccessException(
@@ -491,6 +494,8 @@ internal static class FaultCampaignQualification
 
             File.Move(sourcePath, destinationPath, overwrite);
         }
+
+        public void Delete(string path) => File.Delete(path);
     }
 
     private sealed class DiskFullIOException : IOException

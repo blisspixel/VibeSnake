@@ -512,14 +512,85 @@ public sealed class PreferencesStore
     public void Save(PreferencesDocument document)
     {
         ArgumentNullException.ThrowIfNull(document);
+        EnsureExistingSchemaCanBeReplaced();
         _writeOperations.CreateDirectory(UserDataRoot);
         var payload = document.Clamped() with { SchemaVersion = PreferencesDocument.CurrentSchemaVersion };
-        var temporaryPath = PreferencesPath + ".tmp";
-        _writeOperations.WriteAllText(
-            temporaryPath,
-            payload.SerializeCanonical(),
-            new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
-        _writeOperations.Move(temporaryPath, PreferencesPath, overwrite: true);
+        var temporaryPath = PreferencesPath + $".tmp-{Guid.NewGuid():N}";
+        try
+        {
+            _writeOperations.WriteAllText(
+                temporaryPath,
+                payload.SerializeCanonical(),
+                new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
+            // Another running version can publish newer preferences while this
+            // writer stages its update. Recheck immediately before replacement.
+            EnsureExistingSchemaCanBeReplaced();
+            _writeOperations.Move(temporaryPath, PreferencesPath, overwrite: true);
+        }
+        finally
+        {
+            try
+            {
+                _writeOperations.Delete(temporaryPath);
+            }
+            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+            {
+                // Preserve the original write failure if owned staging cleanup
+                // is unavailable. Never remove another writer's staging file.
+            }
+        }
+    }
+
+    private void EnsureExistingSchemaCanBeReplaced()
+    {
+        if (!File.Exists(PreferencesPath))
+        {
+            return;
+        }
+
+        JsonDocument existing;
+        try
+        {
+            existing = JsonDocument.Parse(File.ReadAllText(PreferencesPath));
+        }
+        catch (JsonException)
+        {
+            // Explicit settings recovery may replace malformed JSON, but a
+            // readable schema declaration must never be lost through precedence.
+            return;
+        }
+
+        using (existing)
+        {
+            if (existing.RootElement.ValueKind != JsonValueKind.Object)
+            {
+                return;
+            }
+
+            int? declaredVersion = null;
+            var declarations = new HashSet<string>(StringComparer.Ordinal);
+            foreach (var property in existing.RootElement.EnumerateObject())
+            {
+                if (property.Name is not ("schema_version" or "schemaVersion"))
+                {
+                    continue;
+                }
+
+                if (!declarations.Add(property.Name)
+                    || property.Value.ValueKind != JsonValueKind.Number
+                    || !property.Value.TryGetInt32(out var version)
+                    || version < 1
+                    || version > PreferencesDocument.CurrentSchemaVersion
+                    || (declaredVersion is not null && declaredVersion != version))
+                {
+                    throw new InvalidOperationException(
+                        "Existing preferences have unsupported or ambiguous schema metadata and were preserved. "
+                            + "Changes are available for this session only.");
+                }
+
+                declaredVersion = version;
+            }
+        }
     }
 }
 
@@ -530,6 +601,8 @@ internal interface IPreferencesWriteOperations
     void WriteAllText(string path, string contents, Encoding encoding);
 
     void Move(string sourcePath, string destinationPath, bool overwrite);
+
+    void Delete(string path);
 }
 
 internal sealed class PhysicalPreferencesWriteOperations : IPreferencesWriteOperations
@@ -542,9 +615,23 @@ internal sealed class PhysicalPreferencesWriteOperations : IPreferencesWriteOper
 
     public void CreateDirectory(string path) => Directory.CreateDirectory(path);
 
-    public void WriteAllText(string path, string contents, Encoding encoding) =>
-        File.WriteAllText(path, contents, encoding);
+    public void WriteAllText(string path, string contents, Encoding encoding)
+    {
+        using var stream = new FileStream(
+            path,
+            FileMode.CreateNew,
+            FileAccess.Write,
+            FileShare.None,
+            64 * 1024,
+            FileOptions.WriteThrough);
+        using var writer = new StreamWriter(stream, encoding, leaveOpen: true);
+        writer.Write(contents);
+        writer.Flush();
+        stream.Flush(flushToDisk: true);
+    }
 
     public void Move(string sourcePath, string destinationPath, bool overwrite) =>
         File.Move(sourcePath, destinationPath, overwrite);
+
+    public void Delete(string path) => File.Delete(path);
 }

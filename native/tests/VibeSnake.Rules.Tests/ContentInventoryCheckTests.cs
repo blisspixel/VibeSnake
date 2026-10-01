@@ -71,6 +71,34 @@ public sealed class ContentInventoryCheckTests
     }
 
     [Fact]
+    public void Failed_atomic_replacement_preserves_original_inventory_and_removes_temporary_file()
+    {
+        WithTemporaryDirectory(root =>
+        {
+            WriteFile(root, "assets/config.json", "{}\n");
+            WritePolicy(root, Rule("config", "config.json"));
+            var path = Path.Combine(root, "config", "content_inventory.json");
+            var original = "previous inventory bytes\n"u8.ToArray();
+            File.WriteAllBytes(path, original);
+            var calls = 0;
+            var result = ContentInventoryCheck.Write(root, (source, target) =>
+            {
+                calls++;
+                Assert.Equal(path, target);
+                Assert.Equal(Path.GetDirectoryName(path), Path.GetDirectoryName(source));
+                Assert.Equal(ContentInventoryCheck.BuildInventoryJson(root), File.ReadAllText(source));
+                throw new IOException("fixture replacement rejected");
+            });
+
+            Assert.Equal(1, calls);
+            Assert.False(result.Passed);
+            Assert.Contains("fixture replacement rejected", Assert.Single(result.Failures), StringComparison.Ordinal);
+            Assert.Equal(original, File.ReadAllBytes(path));
+            Assert.Empty(Directory.GetFiles(Path.GetDirectoryName(path)!, "content_inventory.json.tmp-*"));
+        });
+    }
+
+    [Fact]
     public void Release_readiness_reports_runtime_integrity_and_duplicate_blockers()
     {
         WithTemporaryDirectory(root =>

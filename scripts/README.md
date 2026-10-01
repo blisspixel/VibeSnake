@@ -6,9 +6,10 @@ This directory contains explicit command-line tools. Runtime code belongs under 
 
 | Tool | Ownership |
 | --- | --- |
-| `close_agent_preview.py` | One-command Agent Arena preview close-out: call the native public-contract digest and Agent Knowledge writers, check interop and docs, then run focused native tests. Invoked by root `close-agent-preview.cmd` so cmd.exe can set the repo SDK before any .NET global tool starts. |
+| `close_agent_preview.ps1` | PowerShell-native Agent Arena preview close-out: write digests and knowledge, check interop/docs, and run focused native tests. Root `close-agent-preview.cmd` forwards to it without Python. Optional commit mode uses only the existing Git index. |
 | `package_agent_host.ps1` | Assemble the current-RID unsigned self-contained Agent Host package with closed manifest, lock-derived inventory, unsigned provenance, checksums, and isolated user-data policy, then validate it with native `host-package` |
 | `assert_godot_toolchain.ps1` | SHA-512 archive, extracted editor SHA-256, and exact build identity verification |
+| `assert_godot_import.ps1` | Source, import-setting, and generated-payload freshness; safely invalidate affected generated files before editor repair |
 | `native_artifact_policy.ps1` | Shared prohibited-path rules for native bundles |
 | `platform_path_policy.ps1` | Absolute environment-path validation for tooling |
 | `test_powershell_gates.ps1` | Executable-spoofing, artifact-path, and ordinary-CI credential-boundary regression checks |
@@ -18,6 +19,10 @@ This directory contains explicit command-line tools. Runtime code belongs under 
 | `test_native_export.ps1` | Read-only exported-player smoke, external user-data/log, artifact qualification, signing readiness, candidate reliability/fault/performance/accessibility and mouse evidence, optional clean-launch campaigns, and lifecycle/migration preflight |
 | `inspect_native_artifact.ps1` | Payload rules, portability scan, and SHA-256 manifest |
 | `install_godot.ps1` | Checksum-verified Godot editor bootstrap |
+| `godot_cache_policy.ps1` | Complete editor-cache byte comparison against the verified archive |
+| `test_native_bootstrap.ps1` | Isolated cache-integrity and repository-local SDK regression checks |
+| `test_godot_import_cache.ps1` | Thirteen isolated import-cache cases and four real pinned-editor checks for initial import, corrupt payload repair, malformed metadata, and import-setting changes |
+| `test_preview_closeout.ps1` | Isolated preview-close-out argument, failure, configuration-preservation, and staged-commit checks |
 | `install_godot_templates.ps1` | Checksum-verified export-template bootstrap |
 
 These entry points are kept at `scripts/` root because README, CI, and release documentation invoke them directly.
@@ -66,6 +71,14 @@ and remain unable to write directly into public assets.
 
 ## Manual tools
 
-- `manual/`: intentionally interactive or perceptual checks with no pytest collection side effects.
+- `manual/`: documentation for intentionally interactive or perceptual native operator routes. Playback and human review remain outside ordinary CI.
 
 Retired executable source is removed instead of hidden behind lint or test exclusions. Historical decisions and reports belong in the ignored local archive; useful automatic behavior is rebuilt as deterministic tests or QA scenarios.
+
+Sample playback is native:
+
+```powershell
+dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- radio-preview . play "C:/review/radio" "C:/tools/ffplay.exe"
+```
+
+Use `list <directory>` in place of `play <directory> <ffplay>` for device-free catalog inspection. Playback uses Enter/q/EOF controls and bounded process cleanup, and never writes a listening record. Full operator guidance is in [manual native tools](manual/README.md).

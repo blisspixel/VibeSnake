@@ -5,6 +5,100 @@ namespace VibeSnake.Rules.Tests;
 public sealed class OnboardingSessionTests
 {
     [Fact]
+    public void Current_lesson_previews_food_and_shield_before_the_requested_action()
+    {
+        var session = new OnboardingSession();
+        session.SubmitDirection(Direction.Up);
+        session.SubmitDirection(Direction.Down);
+        session.SubmitDirection(Direction.Left);
+
+        var wrappedHash = session.Snapshot.StateHash;
+        var food = session.PresentationSnapshot;
+        Assert.Equal(new GridPoint(1, 2), food.Head);
+        Assert.Equal(Direction.Right, food.Direction);
+        Assert.Equal(new GridPoint(2, 2), food.Food);
+        Assert.Equal(0, food.Tick);
+        Assert.Equal(wrappedHash, session.Snapshot.StateHash);
+        Assert.False(session.SubmitDirection(Direction.Up).InputAccepted);
+        Assert.Same(food, session.PresentationSnapshot);
+
+        session.SubmitDirection(Direction.Right);
+        session.SubmitDirection(Direction.Right);
+        session.SubmitDirection(Direction.Right);
+        var deadHash = session.Snapshot.StateHash;
+        var shield = session.PresentationSnapshot;
+        Assert.Equal(RunStatus.Running, shield.Status);
+        Assert.Equal(new GridPoint(1, 2), shield.Head);
+        Assert.Equal(Direction.Right, shield.Direction);
+        Assert.NotNull(shield.PowerPickup);
+        Assert.Equal(PowerKind.Shield, shield.PowerPickup.Kind);
+        Assert.Equal(new GridPoint(2, 2), shield.PowerPickup.Position);
+        Assert.Equal(deadHash, session.Snapshot.StateHash);
+        Assert.False(session.SubmitDirection(Direction.Up).InputAccepted);
+        Assert.Same(shield, session.PresentationSnapshot);
+
+        session.SubmitDirection(Direction.Right);
+        Assert.True(session.PresentationSnapshot.HasShield);
+        Assert.False(shield.HasShield);
+        Assert.Equal(0, shield.Tick);
+        session.Reset();
+        Assert.Equal(session.Snapshot.StateHash, session.PresentationSnapshot.StateHash);
+    }
+
+    [Fact]
+    public void Presentation_reads_leave_every_first_action_and_rules_hash_unchanged()
+    {
+        var observed = new OnboardingSession();
+        var unobserved = new OnboardingSession();
+        var directions = new[]
+        {
+            Direction.Up, Direction.Down, Direction.Left, Direction.Right,
+            Direction.Right, Direction.Right, Direction.Right,
+        };
+        foreach (var direction in directions)
+        {
+            var before = observed.Snapshot.StateHash;
+            _ = observed.PresentationSnapshot;
+            _ = observed.PresentationSnapshot;
+            Assert.Equal(before, observed.Snapshot.StateHash);
+            Assert.Equal(unobserved.SubmitDirection(direction), observed.SubmitDirection(direction));
+            Assert.Equal(unobserved.Snapshot.StateHash, observed.Snapshot.StateHash);
+        }
+
+        Assert.Equal(unobserved.SubmitPause(), observed.SubmitPause());
+        Assert.Equal(unobserved.SubmitRestart(), observed.SubmitRestart());
+        Assert.Equal(unobserved.Snapshot.StateHash, observed.Snapshot.StateHash);
+    }
+
+    [Fact]
+    public void Presentation_snapshots_expose_only_read_only_detached_collections()
+    {
+        var session = new OnboardingSession();
+        var initial = session.PresentationSnapshot;
+        AssertReadOnly(initial);
+        session.SubmitDirection(Direction.Up);
+        session.SubmitDirection(Direction.Down);
+        session.SubmitDirection(Direction.Left);
+        AssertReadOnly(session.PresentationSnapshot);
+        session.SubmitDirection(Direction.Right);
+        session.SubmitDirection(Direction.Right);
+        session.SubmitDirection(Direction.Right);
+        AssertReadOnly(session.PresentationSnapshot);
+        Assert.Equal(new GridPoint(2, 2), initial.Head);
+        Assert.Equal(0, initial.Tick);
+    }
+
+    private static void AssertReadOnly(RunSnapshot snapshot)
+    {
+        Assert.Throws<NotSupportedException>(() =>
+            ((IList<GridPoint>)snapshot.Body)[0] = new GridPoint(99, 99));
+        Assert.Throws<NotSupportedException>(() =>
+            ((IList<Direction>)snapshot.PendingDirections).Add(Direction.Down));
+        Assert.Throws<NotSupportedException>(() =>
+            ((IList<GridPoint>)snapshot.DetachedObstacles).Add(new GridPoint(99, 99)));
+    }
+
+    [Fact]
     public void Complete_action_path_teaches_every_required_lesson_without_score_eligibility()
     {
         var session = new OnboardingSession();

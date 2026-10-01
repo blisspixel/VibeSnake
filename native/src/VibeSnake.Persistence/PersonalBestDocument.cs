@@ -517,8 +517,16 @@ public sealed record PersonalBestDocument(
 
 public sealed class PersonalBestStore
 {
+    private readonly IPreferencesWriteOperations _writeOperations;
+
     public PersonalBestStore(string userDataRoot)
+        : this(userDataRoot, PhysicalPreferencesWriteOperations.Instance)
     {
+    }
+
+    internal PersonalBestStore(string userDataRoot, IPreferencesWriteOperations writeOperations)
+    {
+        _writeOperations = writeOperations ?? throw new ArgumentNullException(nameof(writeOperations));
         ArgumentException.ThrowIfNullOrWhiteSpace(userDataRoot);
         if (!Path.IsPathFullyQualified(userDataRoot))
         {
@@ -560,12 +568,11 @@ public sealed class PersonalBestStore
     public void Save(PersonalBestDocument document)
     {
         ArgumentNullException.ThrowIfNull(document);
-        Directory.CreateDirectory(UserDataRoot);
-        var temporaryPath = PersonalBestPath + ".tmp";
-        File.WriteAllText(
-            temporaryPath,
-            document.SerializeCanonical(),
-            new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
-        File.Move(temporaryPath, PersonalBestPath, overwrite: true);
+        var canonical = document.SerializeCanonical();
+        ProfileDocumentWriter.Write(
+            PersonalBestPath,
+            canonical,
+            PersonalBestDocument.CurrentSchemaVersion,
+            _writeOperations);
     }
 }

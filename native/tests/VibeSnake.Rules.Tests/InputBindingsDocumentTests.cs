@@ -1,9 +1,222 @@
 using VibeSnake.Persistence;
+using System.Text;
 
 namespace VibeSnake.Rules.Tests;
 
 public sealed class InputBindingsDocumentTests
 {
+    [Theory]
+    [InlineData("keyboard")]
+    [InlineData("controller")]
+    public void Initial_future_schema_load_then_remap_preserves_original_device_file(string deviceClass)
+    {
+        var root = Directory.CreateTempSubdirectory("vibesnake-input-future-");
+        try
+        {
+            var store = new InputBindingsStore(root.FullName);
+            Directory.CreateDirectory(store.BindingsDirectory);
+            var path = store.PathForDeviceClass(deviceClass);
+            var bytes = Encoding.UTF8.GetBytes("{\"schemaVersion\":99,\"deviceClass\":\"" + deviceClass + "\",\"futureSetting\":\"keep\"}\n");
+            File.WriteAllBytes(path, bytes);
+            Assert.Equal(InputBindingsLoadCode.UnsupportedSchema, store.LoadOrDefault(deviceClass).Code);
+            var defaults = deviceClass == InputBindingsDocument.KeyboardDeviceClass
+                ? InputBindingsDocument.CreateKeyboardDefaults()
+                : InputBindingsDocument.CreateControllerDefaults();
+            var remapped = defaults.TrySwapActions("pause", "confirm");
+            Assert.True(remapped.IsSuccess);
+
+            Assert.Throws<InvalidOperationException>(() => store.Save(remapped.Document!));
+            Assert.Equal(bytes, File.ReadAllBytes(path));
+            Assert.Empty(Directory.GetFiles(store.BindingsDirectory, "*.tmp-*"));
+        }
+        finally
+        {
+            root.Delete(recursive: true);
+        }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Stale_loaded_bindings_preserve_future_file_published_before_or_during_staging(bool duringStaging)
+    {
+        var root = Directory.CreateTempSubdirectory("vibesnake-input-stale-");
+        try
+        {
+            var physical = new InputBindingsStore(root.FullName);
+            physical.Save(InputBindingsDocument.CreateKeyboardDefaults());
+            var loaded = physical.LoadOrDefault("keyboard").Document!;
+            var path = physical.PathForDeviceClass("keyboard");
+            var bytes = Encoding.UTF8.GetBytes("{\"schemaVersion\":1,\"schema_version\":99,\"futureSetting\":\"keep\"}\n");
+            var operations = new ObservingWriteOperations(afterWrite: _ => File.WriteAllBytes(path, bytes));
+            var store = duringStaging ? new InputBindingsStore(root.FullName, operations) : physical;
+            if (!duringStaging)
+            {
+                File.WriteAllBytes(path, bytes);
+            }
+
+            Assert.Throws<InvalidOperationException>(() => store.Save(loaded.TryRemapAction("pause", "key:space").Document!));
+            Assert.Equal(bytes, File.ReadAllBytes(path));
+            Assert.Equal(0, operations.MoveCount);
+            Assert.Equal(duringStaging ? 1 : 0, operations.StagedPaths.Count);
+            Assert.Empty(Directory.GetFiles(store.BindingsDirectory, "*.tmp-*"));
+        }
+        finally
+        {
+            root.Delete(recursive: true);
+        }
+    }
+
+    [Theory]
+    [InlineData("\"schemaVersion\":99,\"schemaVersion\":1")]
+    [InlineData("\"schema_version\":99,\"schema_version\":1")]
+    [InlineData("\"schema_version\":1,\"schemaVersion\":99")]
+    [InlineData("\"schemaVersion\":1,\"schemaVersion\":1")]
+    [InlineData("\"schemaVersion\":\"unknown\"")]
+    [InlineData("\"schemaVersion\":2147483648")]
+    [InlineData("\"schemaVersion\":0")]
+    public void Save_preserves_ambiguous_or_unsupported_schema_declarations(string declarations)
+    {
+        var root = Directory.CreateTempSubdirectory("vibesnake-input-schema-");
+        try
+        {
+            var store = new InputBindingsStore(root.FullName);
+            Directory.CreateDirectory(store.BindingsDirectory);
+            var path = store.PathForDeviceClass("keyboard");
+            var bytes = Encoding.UTF8.GetBytes("{" + declarations + ",\"futureSetting\":\"keep\"}\n");
+            File.WriteAllBytes(path, bytes);
+
+            Assert.Throws<InvalidOperationException>(() => store.Save(InputBindingsDocument.CreateKeyboardDefaults()));
+            Assert.Equal(bytes, File.ReadAllBytes(path));
+            Assert.Empty(Directory.GetFiles(store.BindingsDirectory, "*.tmp-*"));
+        }
+        finally
+        {
+            root.Delete(recursive: true);
+        }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Interrupted_save_preserves_committed_bindings_and_other_writer_stage(bool partialWrite)
+    {
+        var root = Directory.CreateTempSubdirectory("vibesnake-input-fault-");
+        try
+        {
+            var physical = new InputBindingsStore(root.FullName);
+            var original = InputBindingsDocument.CreateKeyboardDefaults();
+            physical.Save(original);
+            var path = physical.PathForDeviceClass("keyboard");
+            var bytes = File.ReadAllBytes(path);
+            var otherStage = path + ".tmp-other-writer";
+            File.WriteAllText(otherStage, "unrelated work");
+            var operations = new ObservingWriteOperations(failWrite: partialWrite, failMove: !partialWrite);
+            var store = new InputBindingsStore(root.FullName, operations);
+
+            Assert.Throws<IOException>(() => store.Save(original.TryRemapAction("pause", "key:space").Document!));
+            Assert.Equal(bytes, File.ReadAllBytes(path));
+            Assert.Equal("unrelated work", File.ReadAllText(otherStage));
+            Assert.Single(operations.StagedPaths);
+            Assert.False(File.Exists(operations.StagedPaths[0]));
+            Assert.Equal(new[] { otherStage }, Directory.GetFiles(store.BindingsDirectory, "*.tmp-*"));
+        }
+        finally
+        {
+            root.Delete(recursive: true);
+        }
+    }
+
+    [Fact]
+    public void Interleaved_binding_saves_publish_only_their_own_complete_payloads()
+    {
+        var root = Directory.CreateTempSubdirectory("vibesnake-input-writers-");
+        try
+        {
+            var first = InputBindingsDocument.CreateKeyboardDefaults();
+            var second = first.TryRemapAction("pause", "key:space").Document!;
+            var secondOperations = new ObservingWriteOperations();
+            var secondStore = new InputBindingsStore(root.FullName, secondOperations);
+            var firstOperations = new ObservingWriteOperations(afterWrite: stage =>
+            {
+                secondStore.Save(second);
+                Assert.Equal(second.SerializeCanonical(), File.ReadAllText(secondStore.PathForDeviceClass("keyboard")));
+                Assert.Equal(first.SerializeCanonical(), File.ReadAllText(stage));
+            });
+            var firstStore = new InputBindingsStore(root.FullName, firstOperations);
+
+            firstStore.Save(first);
+
+            Assert.Equal(first.SerializeCanonical(), File.ReadAllText(firstStore.PathForDeviceClass("keyboard")));
+            Assert.NotEqual(Assert.Single(firstOperations.StagedPaths), Assert.Single(secondOperations.StagedPaths));
+            Assert.Empty(Directory.GetFiles(firstStore.BindingsDirectory, "*.tmp-*"));
+        }
+        finally
+        {
+            root.Delete(recursive: true);
+        }
+    }
+
+    [Theory]
+    [InlineData("{")]
+    [InlineData("[]")]
+    [InlineData("{\"schemaVersion\":1,\"schema_version\":1}")]
+    public void Explicit_binding_recovery_accepts_corruption_or_matching_supported_aliases(string existing)
+    {
+        var root = Directory.CreateTempSubdirectory("vibesnake-input-recovery-");
+        try
+        {
+            var store = new InputBindingsStore(root.FullName);
+            Directory.CreateDirectory(store.BindingsDirectory);
+            var path = store.PathForDeviceClass("keyboard");
+            File.WriteAllText(path, existing);
+            var defaults = InputBindingsDocument.CreateKeyboardDefaults();
+
+            store.Save(defaults);
+
+            Assert.Equal(defaults.SerializeCanonical(), File.ReadAllText(path));
+        }
+        finally
+        {
+            root.Delete(recursive: true);
+        }
+    }
+
+    private sealed class ObservingWriteOperations(
+        Action<string>? afterWrite = null,
+        bool failWrite = false,
+        bool failMove = false) : IPreferencesWriteOperations
+    {
+        public List<string> StagedPaths { get; } = [];
+
+        public int MoveCount { get; private set; }
+
+        public void CreateDirectory(string path) => Directory.CreateDirectory(path);
+
+        public void WriteAllText(string path, string contents, Encoding encoding)
+        {
+            StagedPaths.Add(path);
+            File.WriteAllText(path, failWrite ? contents[..(contents.Length / 2)] : contents, encoding);
+            if (failWrite)
+            {
+                throw new IOException("Injected partial controls write.");
+            }
+            afterWrite?.Invoke(path);
+        }
+
+        public void Move(string sourcePath, string destinationPath, bool overwrite)
+        {
+            MoveCount++;
+            if (failMove)
+            {
+                throw new IOException("Injected interrupted controls replacement.");
+            }
+            File.Move(sourcePath, destinationPath, overwrite);
+        }
+
+        public void Delete(string path) => File.Delete(path);
+    }
+
     [Fact]
     public void Defaults_include_required_escape_hatch_actions()
     {

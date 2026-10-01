@@ -47,4 +47,69 @@ internal static class DisplayOptions
             Math.Max(1, (int)MathF.Floor(requested.X * scale)),
             Math.Max(1, (int)MathF.Floor(requested.Y * scale)));
     }
+
+    public static Rect2I ResolveUsableScreenBounds(Rect2I screenBounds, Rect2I reportedUsableBounds)
+    {
+        if (screenBounds.Size.X <= 0 || screenBounds.Size.Y <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(screenBounds));
+        }
+
+        // Backends without work-area support can report an empty rectangle.
+        // Bound valid reports to this monitor while preserving desktop offsets.
+        var usable = reportedUsableBounds.Size.X > 0 && reportedUsableBounds.Size.Y > 0
+            ? screenBounds.Intersection(reportedUsableBounds)
+            : default;
+        return usable.Size.X > 0 && usable.Size.Y > 0 ? usable : screenBounds;
+    }
+
+    public static Vector2I CenterWindow(Vector2I windowSize, Rect2I usableBounds)
+    {
+        if (windowSize.X <= 0 || windowSize.Y <= 0
+            || usableBounds.Size.X <= 0 || usableBounds.Size.Y <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(windowSize));
+        }
+
+        return usableBounds.Position + ((usableBounds.Size - windowSize) / 2);
+    }
+
+    public static void AssertWorkAreaContract()
+    {
+        Rect2I[] screens =
+        [
+            new(0, 0, 1920, 1080),
+            new(-1920, -200, 1920, 1080),
+            new(1920, 0, 1920, 1080),
+        ];
+        Rect2I[] workAreas =
+        [
+            new(0, 0, 1920, 1040),
+            new(-1880, -160, 1880, 1000),
+            new(1920, 48, 1920, 1032),
+        ];
+        for (var index = 0; index < screens.Length; index++)
+        {
+            var usable = ResolveUsableScreenBounds(screens[index], workAreas[index]);
+            var fitted = FitWindowToScreen(new Vector2I(1920, 1080), usable.Size);
+            var position = CenterWindow(fitted, usable);
+            if (usable != workAreas[index]
+                || !usable.Encloses(new Rect2I(position, fitted))
+                || Math.Abs((position.X - usable.Position.X) * 2 - (usable.Size.X - fitted.X)) > 1
+                || Math.Abs((position.Y - usable.Position.Y) * 2 - (usable.Size.Y - fitted.Y)) > 1)
+            {
+                throw new InvalidOperationException(
+                    "Window fitting did not preserve the monitor's usable desktop area.");
+            }
+        }
+
+        var primary = screens[0];
+        if (ResolveUsableScreenBounds(primary, default) != primary
+            || ResolveUsableScreenBounds(primary, new Rect2I(-5000, 0, 100, 100)) != primary
+            || ResolveUsableScreenBounds(primary, new Rect2I(-40, 0, 2000, 1040))
+                != workAreas[0])
+        {
+            throw new InvalidOperationException("Unsupported or oversized work-area reports were not bounded.");
+        }
+    }
 }

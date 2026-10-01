@@ -9,6 +9,8 @@ param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
+& (Join-Path $PSScriptRoot "test_native_bootstrap.ps1")
+& (Join-Path $PSScriptRoot "test_preview_closeout.ps1")
 
 $repositoryRoot = Split-Path -Parent $PSScriptRoot
 $toolchain = Get-Content -LiteralPath (Join-Path $repositoryRoot "native/toolchain.json") -Raw | ConvertFrom-Json
@@ -19,6 +21,7 @@ if ($GodotArchivePath) {
     $verificationArguments.GodotArchivePath = $GodotArchivePath
 }
 & (Join-Path $PSScriptRoot "assert_godot_toolchain.ps1") @verificationArguments | Out-Null
+& (Join-Path $PSScriptRoot "test_godot_import_cache.ps1") -GodotExecutable $GodotExecutable
 
 $temporaryRoot = Join-Path ([System.IO.Path]::GetTempPath()) ("vibesnake-powershell-gates-{0}" -f [Guid]::NewGuid())
 $comparison = if ($IsWindows) { [StringComparison]::OrdinalIgnoreCase } else { [StringComparison]::Ordinal }
@@ -228,7 +231,8 @@ try {
     # argument handling survived that far without ever launching a window.
     $launcherProbeRoot = Join-Path $temporaryRoot "launcher-probe"
     New-Item -ItemType Directory -Path $launcherProbeRoot | Out-Null
-    $launcherPath = Join-Path $repositoryRoot "play.ps1"
+    $launcherPath = Join-Path $launcherProbeRoot "play.ps1"
+    Copy-Item -LiteralPath (Join-Path $repositoryRoot "play.ps1") -Destination $launcherPath
     # Resolve the interpreter before hiding PATH so the probe can still start.
     $powershellPath = (Get-Process -Id $PID).Path
     $originalPath = $env:PATH
@@ -459,7 +463,7 @@ try {
         throw "Native coverage streaming failure classification failed."
     }
     foreach ($requiredLocalizationFragment in @(
-        "ShellLocalization.All.Count == 734",
+        "ShellLocalization.All.Count == 736",
         "entry.Parameters.Count > 0) == 114",
         'AgentActionRejection.WrongActionProfile =>',
         '"agent-arena.action.rejected-wrong-profile"',
@@ -485,7 +489,7 @@ try {
         }
     }
     foreach ($requiredLocalizationFragment in @(
-        '($localizationEvidence.stringCount -ne 734)',
+        '($localizationEvidence.stringCount -ne 736)',
         '($localizationEvidence.parameterizedStringCount -ne 114)',
         '(-not $localizationEvidence.runHudTitleLayoutPassed)',
         '(-not $localizationEvidence.runHudRowLayoutPassed)',
@@ -733,6 +737,12 @@ try {
 
     $playerBuildWorkflow = Get-Content -LiteralPath (
         Join-Path $repositoryRoot ".github/workflows/player-build.yml") -Raw
+    $sourceArchiveExcludedDirectories = @(".godot", "bin", "obj", "*.egg-info")
+    foreach ($directory in $sourceArchiveExcludedDirectories) {
+        if (-not $playerBuildWorkflow.Contains("--exclude '$directory'", [StringComparison]::Ordinal)) {
+            throw "Source archive must exclude generated build/import metadata: $directory"
+        }
+    }
     if ($playerBuildWorkflow.Contains('tags: ["v*"]', [StringComparison]::Ordinal)) {
         throw "Source player workflow must not own versioned tag publication."
     }
@@ -742,7 +752,7 @@ try {
         throw "Source player workflow must not publish versioned releases."
     }
 
-    $caseCount = 24 + $prohibitedPaths.Count + $invalidPaths.Count
+    $caseCount = 24 + $prohibitedPaths.Count + $invalidPaths.Count + $sourceArchiveExcludedDirectories.Count
     Write-Output "PowerShell qualification regression checks passed: cases=$caseCount."
 } finally {
     if (Test-Path -LiteralPath $temporaryRoot) {

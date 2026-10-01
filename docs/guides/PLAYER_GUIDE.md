@@ -18,6 +18,8 @@ On macOS or Linux:
 
 The launcher verifies the pinned Godot 4.7.1 .NET editor, builds the native C# game, and opens the main menu. Press Enter to begin a human run or L to browse AI channels. Help is optional and never blocks the title menu.
 
+Tutorial practice previews the board for each current lesson before its first action. Opening Settings from the tutorial returns to the same offer, and leaving input bindings opened from Controls restores that section and selection. If tutorial progress cannot be saved, the game keeps it for the current session and displays a warning; retry after restoring writable storage. Menu control hints follow the active bindings.
+
 ## Keep it updated
 
 From the same checkout:
@@ -74,7 +76,7 @@ The snake cannot reverse directly into itself. Rapid valid turns are buffered.
 
 ### Display and pointer behavior
 
-Open Settings, then Display, to choose windowed, borderless fullscreen, or exclusive fullscreen. The 4:3 classic, 16:9, and 16:10 size presets apply to windowed mode. Fullscreen always fills the active display and does not add a second aspect-ratio frame. The 1280 by 720 game canvas is fitted without stretching or cropping. In fullscreen, the mouse pointer hides after 1.5 seconds without movement, reappears immediately when moved, and is restored whenever the game loses focus.
+Open Settings, then Display, to choose windowed, borderless fullscreen, or exclusive fullscreen. The 4:3 classic, 16:9, and 16:10 size presets apply to windowed mode. Windows fit and center in the active monitor's usable desktop area so taskbars and docks remain clear. Fullscreen always fills the active display and does not add a second aspect-ratio frame. The 1280 by 720 game canvas is fitted without stretching or cropping. In fullscreen, the mouse pointer hides after 1.5 seconds without movement, reappears immediately when moved, and is restored whenever the game loses focus.
 
 ### Customize
 

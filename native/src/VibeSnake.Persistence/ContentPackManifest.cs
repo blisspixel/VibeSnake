@@ -132,6 +132,11 @@ public sealed record ContentPackManifest(
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
         ArgumentNullException.ThrowIfNull(inventory);
+        return Parse(ReadManifestUtf8(path), inventory);
+    }
+
+    private static string ReadManifestUtf8(string path)
+    {
         var fullPath = Path.GetFullPath(path);
         var info = new FileInfo(fullPath);
         if (!info.Exists)
@@ -146,8 +151,24 @@ public sealed record ContentPackManifest(
 
         try
         {
-            var json = File.ReadAllText(fullPath, new UTF8Encoding(false, true));
-            return Parse(json, inventory);
+            using var stream = new FileStream(fullPath, FileMode.Open, FileAccess.Read, FileShare.Read);
+            var length = stream.Length;
+            if (length > MaximumManifestBytes)
+            {
+                throw new InvalidDataException(
+                    $"Content pack exceeds the {MaximumManifestBytes}-byte limit.");
+            }
+
+            var bytes = new byte[(int)length];
+            stream.ReadExactly(bytes);
+            if (stream.ReadByte() != -1)
+            {
+                throw new InvalidDataException("Content pack changed while being read.");
+            }
+
+            // Decode exact UTF-8 bytes without StreamReader's automatic BOM
+            // detection, which also accepts UTF-16 and hides noncanonical BOMs.
+            return new UTF8Encoding(false, true).GetString(bytes);
         }
         catch (DecoderFallbackException exception)
         {
@@ -159,9 +180,10 @@ public sealed record ContentPackManifest(
         string path,
         ContentInventory inventory)
     {
-        var manifest = LoadFromFile(path, inventory);
-        var fullPath = Path.GetFullPath(path);
-        var source = File.ReadAllText(fullPath, new UTF8Encoding(false, true));
+        ArgumentException.ThrowIfNullOrWhiteSpace(path);
+        ArgumentNullException.ThrowIfNull(inventory);
+        var source = ReadManifestUtf8(path);
+        var manifest = Parse(source, inventory);
         if (!string.Equals(source, manifest.RenderCanonical(), StringComparison.Ordinal))
         {
             throw new InvalidDataException("Content pack is not canonically encoded.");
@@ -353,9 +375,9 @@ public sealed record ContentPackManifest(
             description,
             compatibility,
             binding,
-            dependencies,
-            files,
-            credits,
+            Array.AsReadOnly(dependencies),
+            Array.AsReadOnly(files),
+            Array.AsReadOnly(credits),
             radio);
     }
 
@@ -661,7 +683,7 @@ public sealed record ContentPackManifest(
                     $"Radio track must be audio/mpeg with role radio-track: {trackId}.");
             }
         }
-        return new ContentPackRadio(stationId, stationName, trackIds.ToArray());
+        return new ContentPackRadio(stationId, stationName, trackIds.AsReadOnly());
     }
 
     private static void ValidateInventoryAllowlist(

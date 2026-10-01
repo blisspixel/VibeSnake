@@ -2,15 +2,27 @@
 
 ## Prerequisites
 
-- Python 3.11, 3.12, 3.13, or 3.14 for oracle, fixture, documentation, and quality tooling. Python 3.14 is recommended.
+- PowerShell 7, Git, and the .NET SDK 10.0.303 for native development and source play.
+- Godot 4.7.1 .NET, installed and verified by the root launchers or the bootstrap script.
+- Python 3.11 through 3.14 only for the frozen oracle, remaining parity tests, and Python syntax checks. Python 3.14 is recommended for that work.
 - A desktop environment for visible playtesting.
-- Git if the project is placed under version control.
-- Optional external-service credentials only when running content-generation tools.
-- For native qualification work, the stable .NET SDK 10.0.303 and Godot 4.7.1 .NET editor. Exact values live in [native/toolchain.json](../../native/toolchain.json).
+- Exact toolchain values live in [native/toolchain.json](../../native/toolchain.json).
 
 Python 3.10 reaches end of life in October 2026, so the alpha no longer carries it toward 1.0. Python 3.15 remains a prerelease line and is outside the supported range until its final release and dependency matrix pass. The source reference uses Pygame Community Edition 2.5.8 within major version 2 because it publishes CPython 3.11 through 3.14 wheels for the three development platforms. See the [official Python version status](https://devguide.python.org/versions/) and [pygame-ce package record](https://pypi.org/project/pygame-ce/).
 
-## Set up on Windows
+## Start native development
+
+Clone the repository, install PowerShell 7 and the pinned .NET SDK, then run the root launcher. Python installation is optional for native work.
+
+```powershell
+git clone https://github.com/blisspixel/VibeSnake.git
+cd VibeSnake
+./play.ps1
+```
+
+On macOS or Linux, use `./play.sh`. Make product changes in `game/` and `native/`, then run `./scripts/test_native.ps1`. The full local qualification includes native contracts, coverage, formatting, the Release export compile, and the real Godot scene smoke.
+
+## Optional frozen-oracle setup on Windows
 
 ```powershell
 git clone https://github.com/blisspixel/VibeSnake.git
@@ -21,7 +33,7 @@ python -m pip install --require-hashes --only-binary=:all: -r requirements-ci.lo
 python -m pip install --no-deps --no-build-isolation -e .
 ```
 
-## Set up on macOS or Linux
+## Optional frozen-oracle setup on macOS or Linux
 
 ```bash
 git clone https://github.com/blisspixel/VibeSnake.git
@@ -44,7 +56,9 @@ On macOS or Linux:
 ./play.sh
 ```
 
-Both launchers call the same PowerShell 7 path. They install and verify the pinned Godot editor when needed, build `game/VibeSnake.Game.sln`, and launch `game/project.godot`. The first run downloads the platform editor archive. Later runs reuse the verified repository-local cache.
+Both launchers call the same PowerShell 7 path. They prefer the pinned SDK under `.dotnet/` when present, otherwise use the system SDK. They install and verify the pinned Godot editor when needed, build `game/VibeSnake.Game.sln`, and launch `game/project.godot`. The first run downloads the platform editor archive. Later runs compare the complete cached editor, including supporting libraries, against the verified archive and reuse the extraction. Missing, modified, or unexpected files trigger a staged repair; the existing installation is retained until the replacement verifies.
+
+Before launch, the import guard checks source-image hashes, import-setting timestamps, and generated payload hashes. New or edited images, changed import settings, and damaged cache files trigger an editor import that waits for resource completion before exiting. Repair removes only affected generated files under `.godot/imported/` and verifies the rebuilt output before play; authored source images and descriptors are preserved.
 
 To finish the current Agent Arena preview slice from Windows `cmd.exe` without first fixing a global-tool PowerShell, run:
 
@@ -52,7 +66,7 @@ To finish the current Agent Arena preview slice from Windows `cmd.exe` without f
 close-agent-preview.cmd
 ```
 
-That sets `DOTNET_ROOT` to the repository `.dotnet` SDK, patches public-contract digests, regenerates knowledge, checks interop and docs, and runs the focused Agent Arena native tests. Pass `--commit` to create a local commit after those gates pass. It does not push.
+That runs the native PowerShell close-out helper, preferring the repository `.dotnet` SDK and otherwise using the system SDK. It patches public-contract digests, regenerates knowledge, checks interop and docs, and runs the focused Agent Arena native tests. Python is not required. User configuration and unrelated files are preserved. Stage the intended files yourself before using `--commit`; that option creates a local commit from the existing index after the gates pass and never stages other changes or pushes. On any supported platform, run `./scripts/close_agent_preview.ps1` directly with the same options.
 
 The editable Python install still registers `vibesnake`, `vibesnake status`, `vibesnake update`, `vibesnake doctor`, and `vibesnake version` for frozen-oracle and migration work. It is not the default product launcher.
 
@@ -126,7 +140,7 @@ The release-material routes validate the closed V090-09 foundation and can write
 
 Achievement-candidate, Last Stand, Phase Shift, Shield, Remaining Powers, Core Rules, and Movement tooling render 167 frozen reviewed Python-origin vectors without executing native rules. They reproduce their exact 2,682-byte, 3,596-byte, 3,534-byte, 4,489-byte, 9,548-byte, 57,031-byte, and 999,087-byte canonical LF identities, and retain separate live native parity consumers. The six small renderers keep their shared 65,536-byte fixed-fixture boundary. Movement uses a separate 1,000,000-byte lifecycle with the same stable-read, safe-path, atomic-replacement, cleanup, and exact self-verification guarantees. Agent Knowledge applies the hardened fixed-path lifecycle to five exact Open Knowledge Format 0.2 concepts and derives the current frame v9 and survival v1 contracts from canonical source. Agent interoperability uses the same strict bounded-input and atomic replacement contracts for review dates, canonical source alignment, documentation pins, SemVer history, and exact host and plugin digests. The scheduled upstream probe is native `interop-upstream`, outside ordinary CI, and network-only.
 
-The screenshot route stages Godot output outside the committed evidence set, performs full PNG and canonical-manifest validation, and replaces the manifest last so interrupted multi-file capture fails closed. Ruff retains full Python syntax ownership while the frozen oracle exists. The remaining Python tools are explicit migration work. They are test-only scaffolding, not a second product path. Their CI and package-tool graph is audited. Agent Host package validation now runs through native `host-package`, outside `all`, because it qualifies an assembled package directory. Manual-product and external-validation handoffs now run natively inside `all`. Release-matrix qualification and unsigned-preview assembly now run natively through `release-matrix` and `unsigned-preview`, both outside `all`. Publication eligibility stays false. Content-pack qualification and approved-radio assembly now run natively through `content-packs` and `radio-pack`, both outside `all`. They call the existing persistence pack APIs, require an already-approved curation record before writing a pack, and do not approve radio content or change export eligibility. Exact-candidate workspace preparation is native `product-review-prepare`, outside `all` and ordinary CI. It writes pending session templates and cannot set release acceptance or publication eligibility. Hash-bound radio listening records are native `radio-listening` outside `all` and ordinary CI and cannot change release approval, export eligibility, curation, or source bytes. The full-decode qualification campaign is native `radio-audio`, outside `all` and ordinary CI, and does not modify sources, curation, inventory, or export eligibility. The thirtieth slice moves station review-copy preparation to `radio-review`, outside `all` and ordinary CI. It does not modify sources, curation, inventory, or export eligibility. `releaseApproved`, `sourceReplacementApproved`, and `exportEligibilityChanged` stay false, and `humanListeningStatus` stays pending. `analyze_radio_audio.py` and its parser tests are removed. Native `radio-audio` and `radio-review` own probe, loudness, and silence parsing. Native `radio-preview list` checks the archive boundary and lists the fixed eight-station catalog outside `all` and ordinary CI. It does not play audio, write a listening record, or approve a track. The remaining manual operator script is sample preview, and playback stays outside CI. Scheduled upstream integrity uses native `interop-upstream` outside `all` and ordinary CI. The frozen oracle stays until equivalent native gates exist. The ordered removal gates are in the [migration map](../engineering/MIGRATION_MAP.md#repository-wide-python-retirement).
+The screenshot route stages Godot output outside the committed evidence set, validates the complete PNG set and canonical manifest, and replaces the manifest last. Optional operator routes are separate from combined `all`: package and Release qualification, content-pack assembly, remote integrity probes, pending review-workspace preparation, radio analysis, review-copy preparation, listening records, and interactive sample playback need explicit inputs. They do not grant publication or content approval. See the [tool reference](../../scripts/README.md) for commands and [manual native tools](../../scripts/manual/README.md) for interactive use. Ruff retains Python syntax ownership while the frozen gameplay oracle remains; final removal follows the [migration map](../engineering/MIGRATION_MAP.md#repository-wide-python-retirement).
 
 ## Local quality loop
 
@@ -205,7 +219,7 @@ The gameplay QA command runs the frozen Python reference adapter. Shared fixture
 The complete engineering contract is in [CODE_QUALITY_STANDARDS.md](../engineering/CODE_QUALITY_STANDARDS.md). The rules below are the daily working subset.
 
 - Keep gameplay behavior in testable model or service boundaries.
-- Route new state transitions through `Game.transition_to` where possible.
+- Keep rules in `VibeSnake.Rules`, persistence in `VibeSnake.Persistence`, and presentation/input in the Godot shell. Use the shell transition boundary for screen changes.
 - Avoid importing external services from runtime modules.
 - Use `VIBESNAKE_DATA_DIR` in tests that touch persistence.
 - Treat assets as dependencies with size, origin, license, and owner metadata.
@@ -217,7 +231,7 @@ The complete engineering contract is in [CODE_QUALITY_STANDARDS.md](../engineeri
 
 1. Write the observable player contract in the relevant canonical document.
 2. Add a focused model test for pure logic.
-3. Add an integration test through `Game` if the feature changes a run.
+3. Add native integration or Godot qualification coverage when the feature changes a run or shell flow.
 4. Implement the smallest cross-module change that satisfies the contract.
 5. Exercise the feature visibly when rendering, audio, or controls change.
 6. Run the full local quality loop.
@@ -225,7 +239,7 @@ The complete engineering contract is in [CODE_QUALITY_STANDARDS.md](../engineeri
 
 ## Adding a power-up
 
-Follow the completion contract in [POWERUPS.md](../design/POWERUPS.md). Register the type in `POWERUP_TYPES`, define its design category, connect its effect to core rule resolution, and test both activation and restoration. A subclass that only sets an unused flag is not complete.
+Follow the completion contract in [POWERUPS.md](../design/POWERUPS.md). Product powers belong in the pure C# rules catalog and resolution path, with Godot markers, feedback, and deterministic replay coverage. Test activation, expiry, consumption, restoration, and relevant synergies. The frozen Python catalog is a parity reference, not the extension point for new powers.
 
 ## Adding an AI personality
 
@@ -247,4 +261,4 @@ inventories, or generated reports.
 
 ## Packaging caution
 
-Editable installs work because runtime code can find the checkout's `assets/` directory. A normal wheel is not yet a supported distribution. Do not publish an artifact until the [release checklist](../release/RELEASE_CHECKLIST.md) is complete.
+Native player distribution uses Godot exports with .NET runtime libraries and approved content allowlists. Source archives and the frozen Python wheel are separate migration artifacts. Do not publish a native artifact until the [release checklist](../release/RELEASE_CHECKLIST.md) is complete.

@@ -60,9 +60,9 @@ Notes:
 | `backups/.building-<backup-id>/` | `PlayerDataRecoveryService` | Detectable interrupted backup staging; never offered for restore |
 | `.player-data-recovery.lock` | `PlayerDataRecoveryService` | Exclusive reset, inspection, and restore operation lock |
 | `playtest-summaries/summaries.json` | `LocalPlaytestSummaryStore` | Schema 2 explicit-opt-in, balance-only terminal run facts with exact nine-row per-power lifecycle aggregates; newest 200 and 512 KiB maximum; identity-verified schema-1 migration |
-| `playtest-summaries/summaries.json.tmp` | `LocalPlaytestSummaryStore` | Atomic-write staging owned by the summary store and removed by confirmed summary deletion |
+| `playtest-summaries/summaries.json.tmp-<id>` | `LocalPlaytestSummaryStore` | Unique flushed staging, cleaned only by the creating writer |
 | `playtest-summaries/exports/playtest-summaries_*.json` | `LocalPlaytestSummaryStore` | Player-requested local exports; newest 20 maximum |
-| `playtest-summaries/exports/playtest-summaries_*.json.tmp` | `LocalPlaytestSummaryStore` | Interrupted export staging removed by confirmed summary deletion |
+| `playtest-summaries/exports/playtest-summaries_*.json.tmp-<id>` | `LocalPlaytestSummaryStore` | Unique flushed export staging, cleaned only by the creating writer |
 | `agent_arena/exhibition_archive.json` | `AgentExhibitionArchiveStore` | Preview-only bounded archive of verified exhibition receipts plus saved lane replay file names. Outside Persistence. |
 | `agent_arena/agent_passports.json` | `AgentPassportStore` | Preview-only bounded public agent records assembled from verified receipts. Outside Persistence. Never stores a display name or human profile. |
 | `agent_arena/*.corrupt.json` | Preview arena stores | Quarantined unreadable documents. Not repaired in place. |
@@ -88,6 +88,8 @@ Future native-owned rows (not yet writers in shipping code):
 9. **Playtest summaries are explicit and separate.** Collection defaults off, contains only the closed fields in [the summary contract](../design/PLAYTEST_SUMMARIES.md), has no upload path, and is deleted through its own confirmed Data action rather than a reset category.
 
 ## Recovery
+
+Preferences, onboarding, input bindings, achievements, progression, personal bests, score history, spectator league, and local playtest summary saves check all declared schema aliases before staging and immediately before replacement. Unsupported, conflicting, or duplicate declarations leave the stored document intact and changes remain active for the session. Concurrent writers use independent `<document>.tmp-<id>` files, flush complete payloads before replacement, and clean only their own staging file on failure. Onboarding also checks the independently versioned tutorial revision. This protects the checked staging boundary; it does not add a cross-process profile lock or merge simultaneous supported-version updates. Confirmed summary deletion also removes the legacy shared `.tmp` names, while leaving another writer's unique stages alone.
 
 | Situation | Expected behavior |
 | --- | --- |

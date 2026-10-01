@@ -282,6 +282,118 @@ public sealed class RadioPlaybackPolicyTests
             new RadioPlaybackPolicy(new RadioCatalog(null!), new Pcg32(1UL)));
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Policy_keeps_an_independent_catalog_after_caller_collections_change(bool replace)
+    {
+        var station = RadioCatalog.FromValidatedManifests([Manifest("flow", "one.mp3", "two.mp3")]).Stations[0];
+        var tracks = station.Tracks.ToList();
+        var stations = new List<RadioStationMetadata> { station with { Tracks = tracks } };
+        var supplied = new RadioCatalog(stations);
+        var policy = replace ? Policy(Manifest("old", "old.mp3")) : new RadioPlaybackPolicy(supplied, new Pcg32(7UL));
+        if (replace)
+        {
+            policy.ReplaceCatalog(supplied);
+        }
+
+        var playing = policy.PlayOrResume();
+        tracks.Clear();
+        stations.Clear();
+        Assert.Equal(playing, policy.Snapshot);
+        Assert.Equal(2, policy.Snapshot.PlayableTrackCount);
+        Assert.NotNull(policy.OnTrackEnded().TrackId);
+    }
+
+    [Fact]
+    public void Paused_transport_survives_refresh_and_missing_track_recovery()
+    {
+        var manifest = Manifest("flow", "one.mp3", "two.mp3");
+        var policy = Policy(manifest);
+        policy.PlayOrResume();
+        var paused = policy.Pause();
+        var refreshed = policy.ReplaceCatalog(RadioCatalog.FromValidatedManifests([manifest]));
+        Assert.Equal(RadioPlaybackMode.Paused, refreshed.Mode);
+        Assert.Equal(paused.TrackId, refreshed.TrackId);
+        var recovered = policy.NoteTrackUnavailable(refreshed.TrackId!);
+        Assert.Equal(RadioPlaybackMode.Paused, recovered.Mode);
+        Assert.NotEqual(refreshed.TrackId, recovered.TrackId);
+        Assert.False(recovered.IsAudible);
+        Assert.Equal(recovered.TrackId, policy.PlayOrResume().TrackId);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Late_end_callback_cannot_start_stopped_or_paused_radio(bool pause)
+    {
+        var policy = Policy(Manifest("flow", "one.mp3", "two.mp3"));
+        if (pause)
+        {
+            policy.PlayOrResume();
+            policy.Pause();
+        }
+
+        var before = policy.Snapshot;
+        var randomBefore = policy.RandomState;
+        Assert.Equal(before, policy.OnTrackEnded());
+        Assert.Equal(randomBefore, policy.RandomState);
+    }
+
+    [Fact]
+    public void Refresh_forgets_removed_station_resume_entries()
+    {
+        var policy = Policy(Manifest("first", "one.mp3"));
+        policy.PlayOrResume();
+        for (var index = 0; index < RadioCatalog.MaximumStations + 5; index++)
+        {
+            policy.ReplaceCatalog(RadioCatalog.FromValidatedManifests([Manifest("station" + index, "track.mp3")]));
+            policy.PlayOrResume();
+            Assert.Equal(1, policy.RememberedStationCount);
+        }
+
+        policy.ReplaceCatalog(RadioCatalog.Empty);
+        Assert.Equal(0, policy.RememberedStationCount);
+    }
+
+    [Fact]
+    public void Catalog_bound_rejects_too_many_tracks_before_transport_changes()
+    {
+        var policy = Policy(Manifest("flow", "one.mp3"));
+        var before = policy.PlayOrResume();
+        var station = RadioCatalog.FromValidatedManifests([Manifest("over", "track.mp3")]).Stations[0];
+        var tracks = Enumerable.Range(0, RadioPlaybackPolicy.MaximumUnavailableTracks + 1)
+            .Select(index => station.Tracks[0] with { TrackId = "track" + index }).ToArray();
+        Assert.Throws<ArgumentException>(() => policy.ReplaceCatalog(new RadioCatalog([station with { Tracks = tracks }])));
+        Assert.Equal(before, policy.Snapshot);
+    }
+
+    [Fact]
+    public void Manifest_enumeration_stops_at_the_station_bound()
+    {
+        var consumed = 0;
+        IEnumerable<ContentPackManifest> InfiniteManifests()
+        {
+            while (true)
+            {
+                consumed++;
+                yield return Manifest("flow", "track.mp3");
+            }
+        }
+
+        Assert.Throws<ArgumentOutOfRangeException>(() => RadioCatalog.FromValidatedManifests(InfiniteManifests()));
+        Assert.Equal(RadioCatalog.MaximumStations + 1, consumed);
+    }
+
+    [Fact]
+    public void Validated_manifest_projection_exposes_readonly_station_collections()
+    {
+        var catalog = RadioCatalog.FromValidatedManifests([Manifest("flow", "one.mp3")]);
+        var stations = Assert.IsAssignableFrom<IList<RadioStationMetadata>>(catalog.Stations);
+        Assert.True(stations.IsReadOnly);
+        Assert.Throws<NotSupportedException>(() => stations.Clear());
+    }
+
     private static RadioPlaybackPolicy Policy(params ContentPackManifest[] manifests) =>
         new(
             RadioCatalog.FromValidatedManifests(manifests),

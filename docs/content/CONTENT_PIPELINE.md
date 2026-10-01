@@ -14,10 +14,12 @@ The current foundation inventories every canonical source asset, records its exa
 | [content_inventory.json](../../config/content_inventory.json) | Generated file-level paths, logical IDs, media types, sizes, SHA-256 hashes, integrity results, duplicate links, and policy metadata |
 | [ContentInventoryCheck.cs](../../native/tools/RepositoryChecks/ContentInventoryCheck.cs) | Authoritative strict policy, deterministic inventory, bounded integrity, duplication, freshness, generation, and release-blocker rules |
 | [ContentInventoryCheckTests.cs](../../native/tests/VibeSnake.Rules.Tests/ContentInventoryCheckTests.cs) | Exact snapshots plus malformed, ambiguous, unsafe, corrupt, duplicate, bounded-input, atomic-write, and release-blocker contracts |
-| [inventory.py](../../src/vibesnake/content/inventory.py) | Frozen parity helper retained temporarily by Python pack assembly tooling; it is not the authoritative command |
+| [ContentInventory.cs](../../native/src/VibeSnake.Persistence/ContentInventory.cs) | Bounded read-only native inventory, safe lookups, and runtime export decisions |
 | [CONTENT_PACKS.md](CONTENT_PACKS.md) | Executable core and optional-radio manifest schema, compatibility rules, allowlists, and failure isolation |
 
 Edit the policy. Do not hand-edit the generated inventory.
+
+Native player-side inventory loading caps documents at 8 MiB and 4,096 assets before allocating declared collections. It rejects duplicate fields, unsafe paths, out-of-range byte counts, and export decisions that contradict recorded shipping, rights, or integrity status. The loaded asset list is read-only. Inventory generation writes and flushes a temporary file before replacement; a failed replacement preserves the existing inventory and removes the temporary file.
 
 ## Current measured inventory
 
@@ -207,4 +209,4 @@ Schema 1 pack validation now consumes two allowlisted classes rather than treati
 1. A minimal offline core pack containing only the assets required for launch, menu, one full run, readable critical feedback, settings, death, restart, and recovery.
 2. Optional radio packs containing station manifests, compatible app versions, track metadata, exact hashes and sizes, rights records, credits, and deterministic missing-pack behavior.
 
-The implemented reference validator requires exact approved-inventory allowlists, matching file hashes and rights-derived credits, semantic-version and ruleset ranges, a dependency-free `vibesnake.core`, and station-specific optional manifests. Its resolver proves that a missing, invalid, incompatible, duplicate, or tampered optional pack does not block a valid core. The native content service, first approved manifests, export integration, and size evidence remain. See [CONTENT_PACKS.md](CONTENT_PACKS.md) for the full executable contract and ordered completion gate.
+The native schema-1 parser requires exact approved-inventory allowlists, matching file hashes and rights-derived credits, semantic-version and ruleset ranges, a dependency-free `vibesnake.core`, and station-specific optional manifests. Its resolver proves that a missing, invalid, incompatible, duplicate, or tampered optional pack does not block a valid core. The native content service, bounded archive installation, recoverable removal, and export allowlist enforcement are implemented. First approved production manifests and their size and listening evidence remain pending. See [CONTENT_PACKS.md](CONTENT_PACKS.md) for the full executable contract and ordered completion gate.

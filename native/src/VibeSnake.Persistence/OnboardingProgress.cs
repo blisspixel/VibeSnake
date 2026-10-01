@@ -186,9 +186,17 @@ public sealed record OnboardingProgressDocument(
 /// <summary>Atomic onboarding progress store under one absolute player root.</summary>
 public sealed class OnboardingStore
 {
+    private readonly IPreferencesWriteOperations _writeOperations;
+
     public OnboardingStore(string userDataRoot)
+        : this(userDataRoot, PhysicalPreferencesWriteOperations.Instance)
+    {
+    }
+
+    internal OnboardingStore(string userDataRoot, IPreferencesWriteOperations writeOperations)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(userDataRoot);
+        ArgumentNullException.ThrowIfNull(writeOperations);
         if (!Path.IsPathFullyQualified(userDataRoot))
         {
             throw new ArgumentException(
@@ -198,6 +206,7 @@ public sealed class OnboardingStore
 
         UserDataRoot = Path.GetFullPath(userDataRoot);
         OnboardingPath = Path.Combine(UserDataRoot, OnboardingProgressDocument.FileName);
+        _writeOperations = writeOperations;
     }
 
     public string UserDataRoot { get; }
@@ -230,12 +239,95 @@ public sealed class OnboardingStore
     public void Save(OnboardingProgressDocument document)
     {
         ArgumentNullException.ThrowIfNull(document);
-        Directory.CreateDirectory(UserDataRoot);
-        var temporaryPath = OnboardingPath + ".tmp";
-        File.WriteAllText(
-            temporaryPath,
-            document.SerializeCanonical(),
-            new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
-        File.Move(temporaryPath, OnboardingPath, overwrite: true);
+        var payload = document.SerializeCanonical();
+        EnsureExistingVersionsCanBeReplaced();
+        _writeOperations.CreateDirectory(UserDataRoot);
+        var temporaryPath = OnboardingPath + $".tmp-{Guid.NewGuid():N}";
+        try
+        {
+            _writeOperations.WriteAllText(
+                temporaryPath,
+                payload,
+                new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
+            EnsureExistingVersionsCanBeReplaced();
+            _writeOperations.Move(temporaryPath, OnboardingPath, overwrite: true);
+        }
+        finally
+        {
+            try
+            {
+                _writeOperations.Delete(temporaryPath);
+            }
+            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+            {
+                // Preserve the primary save result if owned staging cleanup fails.
+            }
+        }
+    }
+
+    private void EnsureExistingVersionsCanBeReplaced()
+    {
+        if (!File.Exists(OnboardingPath))
+        {
+            return;
+        }
+
+        JsonDocument existing;
+        try
+        {
+            existing = JsonDocument.Parse(File.ReadAllText(OnboardingPath));
+        }
+        catch (JsonException)
+        {
+            // Explicit recovery may replace malformed JSON.
+            return;
+        }
+
+        using (existing)
+        {
+            if (existing.RootElement.ValueKind != JsonValueKind.Object)
+            {
+                return;
+            }
+
+            var declarations = new HashSet<string>(StringComparer.Ordinal);
+            int? declaredVersion = null;
+            foreach (var property in existing.RootElement.EnumerateObject())
+            {
+                if (property.Name == "tutorialRevision")
+                {
+                    if (!declarations.Add(property.Name)
+                        || property.Value.ValueKind != JsonValueKind.Number
+                        || !property.Value.TryGetInt32(out var revision)
+                        || revision != OnboardingProgressDocument.CurrentTutorialRevision)
+                    {
+                        throw new InvalidOperationException(
+                            "Existing onboarding progress has unsupported or ambiguous tutorial revision metadata and was preserved. "
+                            + "Changes are available for this session only.");
+                    }
+
+                    continue;
+                }
+
+                if (property.Name is not ("schemaVersion" or "schema_version"))
+                {
+                    continue;
+                }
+
+                if (!declarations.Add(property.Name)
+                    || property.Value.ValueKind != JsonValueKind.Number
+                    || !property.Value.TryGetInt32(out var version)
+                    || version < 1
+                    || version > OnboardingProgressDocument.CurrentSchemaVersion
+                    || (declaredVersion is not null && declaredVersion != version))
+                {
+                    throw new InvalidOperationException(
+                        "Existing onboarding progress has unsupported or ambiguous schema metadata and was preserved. "
+                        + "Changes are available for this session only.");
+                }
+
+                declaredVersion = version;
+            }
+        }
     }
 }

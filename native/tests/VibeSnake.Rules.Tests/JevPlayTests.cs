@@ -9,6 +9,9 @@ using VibeSnake.Rules;
 
 namespace VibeSnake.Rules.Tests;
 
+// Real loopback deadlines and temporary Console redirection must not compete
+// with the all-core simulation campaigns in other test collections.
+[Collection(AgentHostIntegrationGroup.Name)]
 public sealed class JevPlayTests
 {
     [Fact]

@@ -11,6 +11,8 @@ The radio network is a defining world-building feature: eight diegetic stations,
 host identity, and a full offline playlist you can flip through like GTA radio
 while you play.
 
+Native radio catalogs snapshot validated station and track collections. Refreshing a paused station or recovering a missing track preserves the paused state; late track-end notifications cannot restart paused or stopped transport. Resume history is limited to stations in the current catalog. Reconfiguration discards previously loaded streams even when replacement audio keeps the same track ID. Source-checkout decoding reads at most 32 MiB per track and isolates empty, changed, or oversized files.
+
 ## Public radio inventory
 
 The clean public-source tree includes 95 original MP3 tracks under
@@ -120,7 +122,7 @@ The target Godot audio system uses streamed tracks and explicit Master, Music, S
 
 ## Production-tool boundary
 
-Runtime play installs the hashed [runtime lock](../../requirements-runtime.lock).
+Native runtime play uses Godot and .NET without Python. The frozen Python reference installs the hashed [runtime lock](../../requirements-runtime.lock).
 No credentialed audio-generation or model-based grading dependency is part of
 the public source graph. Historical production scripts and their dependency
 lock are preserved only in the ignored local archive because they do not meet
@@ -135,6 +137,8 @@ headphones and speakers. None of these tools can approve rights, replace source,
 change curation, enable export, or publish a release. Paid or credentialed audio
 generation remains outside the public dependency graph and would require a
 separate declared cost ceiling and execution decision.
+
+All manual radio operators now have native ownership. `radio-preview` can list the fixed cross-station samples without audio initialization, or play them through an explicitly supplied FFplay executable with Enter/q controls and bounded cleanup. This preview is separate from the full-track hash-bound listening record. See [manual native tools](../../scripts/manual/README.md) for commands.
 
 ## Safe production workflow
 

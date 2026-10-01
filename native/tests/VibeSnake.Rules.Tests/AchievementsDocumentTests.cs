@@ -1,3 +1,4 @@
+using System.Text;
 using VibeSnake.Persistence;
 
 namespace VibeSnake.Rules.Tests;
@@ -305,4 +306,201 @@ public sealed class AchievementsDocumentTests
         Assert.Equal(256, AchievementsDocument.MaximumUnlockCount);
         Assert.True(AchievementCatalog.Definitions.Count <= AchievementsDocument.MaximumUnlockCount);
     }
+    [Theory]
+    [InlineData("{\"schemaVersion\":2}")]
+    [InlineData("{\"schema_version\":2}")]
+    [InlineData("{\"schemaVersion\":1,\"schema_version\":2}")]
+    [InlineData("{\"schemaVersion\":1,\"schemaVersion\":1}")]
+    [InlineData("{\"schema_version\":1,\"schema_version\":1}")]
+    [InlineData("{\"schemaVersion\":\"1\"}")]
+    [InlineData("{\"schemaVersion\":null}")]
+    [InlineData("{\"schemaVersion\":0}")]
+    [InlineData("{\"schemaVersion\":1.5}")]
+    [InlineData("{\"schemaVersion\":2147483648}")]
+    public void Store_preserves_unsupported_or_ambiguous_existing_schema(string existing)
+    {
+        using var temporary = new SaveTestDirectory();
+        var store = new AchievementsStore(temporary.Path);
+        File.WriteAllText(store.AchievementsPath, existing);
+
+        Assert.Throws<InvalidOperationException>(() => store.Save(AchievementsDocument.CreateDefaults()));
+
+        Assert.Equal(existing, File.ReadAllText(store.AchievementsPath));
+        Assert.Empty(Directory.GetFiles(temporary.Path, "*.tmp-*"));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Store_rechecks_schema_after_load_and_after_staging(bool duringStaging)
+    {
+        using var temporary = new SaveTestDirectory();
+        var physicalStore = new AchievementsStore(temporary.Path);
+        physicalStore.Save(AchievementsDocument.CreateDefaults());
+        var loaded = physicalStore.Load().Document!;
+        const string future = "{\"schema_version\":2,\"newerData\":\"keep\"}";
+        var operations = new SaveTestOperations(afterWrite: _ =>
+        {
+            if (duringStaging)
+            {
+                File.WriteAllText(physicalStore.AchievementsPath, future);
+            }
+        });
+        var store = new AchievementsStore(temporary.Path, operations);
+        if (!duringStaging)
+        {
+            File.WriteAllText(store.AchievementsPath, future);
+        }
+
+        Assert.Throws<InvalidOperationException>(() => store.Save(loaded));
+
+        Assert.Equal(future, File.ReadAllText(store.AchievementsPath));
+        Assert.Empty(Directory.GetFiles(temporary.Path, "*.tmp-*"));
+        Assert.Equal(duringStaging ? 1 : 0, operations.StagePaths.Count);
+    }
+
+    [Fact]
+    public void Store_interleaved_writers_keep_independent_stages_and_payloads()
+    {
+        using var temporary = new SaveTestDirectory();
+        var first = AchievementsDocument.CreateDefaults();
+        var second = AchievementsDocument.CreateDefaults().WithUnlocks(["first_bite"]);
+        var secondOperations = new SaveTestOperations();
+        var secondStore = new AchievementsStore(temporary.Path, secondOperations);
+        var firstOperations = new SaveTestOperations(afterWrite: firstStage =>
+        {
+            secondStore.Save(second);
+            Assert.True(File.Exists(firstStage));
+            Assert.Equal(second.SerializeCanonical(), File.ReadAllText(secondStore.AchievementsPath));
+        });
+        var firstStore = new AchievementsStore(temporary.Path, firstOperations);
+
+        firstStore.Save(first);
+
+        Assert.NotEqual(firstOperations.StagePaths.Single(), secondOperations.StagePaths.Single());
+        Assert.Equal(first.SerializeCanonical(), File.ReadAllText(firstStore.AchievementsPath));
+        Assert.Empty(Directory.GetFiles(temporary.Path, "*.tmp-*"));
+    }
+
+    [Theory]
+    [InlineData(true, false)]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    public void Store_failed_save_preserves_committed_data_and_other_stages(
+        bool failWrite,
+        bool failCleanup)
+    {
+        using var temporary = new SaveTestDirectory();
+        var store = new AchievementsStore(temporary.Path);
+        store.Save(AchievementsDocument.CreateDefaults());
+        var original = File.ReadAllText(store.AchievementsPath);
+        var otherStage = store.AchievementsPath + ".tmp-another-writer";
+        var legacyStage = store.AchievementsPath + ".tmp";
+        File.WriteAllText(otherStage, "other writer");
+        File.WriteAllText(legacyStage, "legacy writer");
+        var operations = new SaveTestOperations(
+            failWrite: failWrite,
+            failMove: !failWrite,
+            failCleanup: failCleanup);
+        var failingStore = new AchievementsStore(temporary.Path, operations);
+
+        var failure = Assert.Throws<IOException>(() => failingStore.Save(AchievementsDocument.CreateDefaults().WithUnlocks(["first_bite"])));
+
+        Assert.Equal(failWrite ? "stage failure" : "replacement failure", failure.Message);
+        Assert.Equal(original, File.ReadAllText(store.AchievementsPath));
+        Assert.Equal("other writer", File.ReadAllText(otherStage));
+        Assert.Equal("legacy writer", File.ReadAllText(legacyStage));
+        Assert.Equal(failCleanup, File.Exists(operations.StagePaths.Single()));
+    }
+
+    [Theory]
+    [InlineData("{ broken")]
+    [InlineData("{\"schemaVersion\":1,\"schema_version\":1}")]
+    public void Store_explicit_recovery_allows_malformed_json_and_matching_supported_aliases(string existing)
+    {
+        using var temporary = new SaveTestDirectory();
+        var store = new AchievementsStore(temporary.Path);
+        File.WriteAllText(store.AchievementsPath, existing);
+        var document = AchievementsDocument.CreateDefaults().WithUnlocks(["first_bite"]);
+
+        store.Save(document);
+
+        Assert.Equal(document.SerializeCanonical(), File.ReadAllText(store.AchievementsPath));
+        Assert.Empty(Directory.GetFiles(temporary.Path, "*.tmp-*"));
+    }
+
+    [Fact]
+    public void Store_invalid_caller_document_preserves_existing_data()
+    {
+        using var temporary = new SaveTestDirectory();
+        var store = new AchievementsStore(temporary.Path);
+        store.Save(AchievementsDocument.CreateDefaults());
+        var original = File.ReadAllText(store.AchievementsPath);
+        var invalid = AchievementsDocument.CreateDefaults() with { UnlockedIds = ["unknown"] };
+
+        Assert.Throws<InvalidDataException>(() => store.Save(invalid));
+
+        Assert.Equal(original, File.ReadAllText(store.AchievementsPath));
+        Assert.Empty(Directory.GetFiles(temporary.Path, "*.tmp-*"));
+    }
+
+    private sealed class SaveTestOperations(
+        Action<string>? afterWrite = null,
+        bool failWrite = false,
+        bool failMove = false,
+        bool failCleanup = false) : IPreferencesWriteOperations
+    {
+        public List<string> StagePaths { get; } = [];
+
+        public void CreateDirectory(string path) => Directory.CreateDirectory(path);
+
+        public void WriteAllText(string path, string contents, Encoding encoding)
+        {
+            StagePaths.Add(path);
+            if (failWrite)
+            {
+                File.WriteAllText(path, "partial");
+                throw new IOException("stage failure");
+            }
+
+            PhysicalPreferencesWriteOperations.Instance.WriteAllText(path, contents, encoding);
+            afterWrite?.Invoke(path);
+        }
+
+        public void Move(string source, string destination, bool overwrite)
+        {
+            if (failMove)
+            {
+                throw new IOException("replacement failure");
+            }
+
+            File.Move(source, destination, overwrite);
+        }
+
+        public void Delete(string path)
+        {
+            if (failCleanup)
+            {
+                throw new UnauthorizedAccessException("cleanup failure");
+            }
+
+            File.Delete(path);
+        }
+    }
+
+    private sealed class SaveTestDirectory : IDisposable
+    {
+        public SaveTestDirectory()
+        {
+            Path = System.IO.Path.Combine(
+                System.IO.Path.GetTempPath(),
+                "vibesnake-achievements-save-" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(Path);
+        }
+
+        public string Path { get; }
+
+        public void Dispose() => Directory.Delete(Path, recursive: true);
+    }
+
 }

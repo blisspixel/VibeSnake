@@ -36,7 +36,7 @@ public sealed record RadioCatalog(IReadOnlyList<RadioStationMetadata> Stations)
         IEnumerable<ContentPackManifest> manifests)
     {
         ArgumentNullException.ThrowIfNull(manifests);
-        var source = manifests.ToArray();
+        var source = manifests.Take(MaximumStations + 1).ToArray();
         if (source.Length > MaximumStations)
         {
             throw new ArgumentOutOfRangeException(
@@ -59,6 +59,11 @@ public sealed record RadioCatalog(IReadOnlyList<RadioStationMetadata> Stations)
             }
 
             var radio = manifest.Radio;
+            if (radio.TrackIds.Count > RadioPlaybackPolicy.MaximumUnavailableTracks - globalTrackIds.Count)
+            {
+                throw new ArgumentException("Radio catalog exceeds the supported track capacity.", nameof(manifests));
+            }
+
             if (manifest.Id != "vibesnake.radio." + radio.StationId.Replace('_', '-')
                 || !packIds.Add(manifest.Id)
                 || !stationIds.Add(radio.StationId))
@@ -114,7 +119,7 @@ public sealed record RadioCatalog(IReadOnlyList<RadioStationMetadata> Stations)
         return new RadioCatalog(
             stations
                 .OrderBy(station => station.StationId, StringComparer.Ordinal)
-                .ToArray());
+                .ToList().AsReadOnly());
     }
 
     private static string DisplayTitle(string path)
@@ -202,7 +207,7 @@ public sealed class RadioPlaybackPolicy
     {
         ArgumentNullException.ThrowIfNull(catalog);
         ArgumentNullException.ThrowIfNull(radioRandom);
-        ValidateCatalog(catalog);
+        catalog = CaptureCatalog(catalog);
         _catalog = catalog;
         _random = radioRandom;
         if (catalog.Stations.Count == 0)
@@ -221,6 +226,8 @@ public sealed class RadioPlaybackPolicy
     public RadioPlaybackSnapshot Snapshot => CreateSnapshot();
 
     public ulong RandomState => _random.State;
+
+    internal int RememberedStationCount => _resumeTrackByStation.Count;
 
     public RadioPlaybackSnapshot SetMuted(bool muted)
     {
@@ -322,6 +329,11 @@ public sealed class RadioPlaybackPolicy
 
     public RadioPlaybackSnapshot OnTrackEnded()
     {
+        if (_mode != RadioPlaybackMode.Playing)
+        {
+            return Snapshot;
+        }
+
         var station = CurrentStation();
         if (station is null)
         {
@@ -350,6 +362,7 @@ public sealed class RadioPlaybackPolicy
     public RadioPlaybackSnapshot NoteTrackUnavailable(string trackId)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(trackId);
+        var wasPaused = _mode == RadioPlaybackMode.Paused;
         if (!_catalog.Stations.SelectMany(station => station.Tracks)
             .Any(track => track.TrackId == trackId))
         {
@@ -392,7 +405,7 @@ public sealed class RadioPlaybackPolicy
         }
         else
         {
-            _mode = RadioPlaybackMode.Playing;
+            _mode = wasPaused ? RadioPlaybackMode.Paused : RadioPlaybackMode.Playing;
             _resumeTrackByStation[station!.StationId] = _trackId;
             _statusMessage = "Missing track skipped; radio recovered on the same station.";
         }
@@ -403,9 +416,16 @@ public sealed class RadioPlaybackPolicy
     public RadioPlaybackSnapshot ReplaceCatalog(RadioCatalog catalog)
     {
         ArgumentNullException.ThrowIfNull(catalog);
-        ValidateCatalog(catalog);
+        catalog = CaptureCatalog(catalog);
+        var wasPaused = _mode == RadioPlaybackMode.Paused;
         RememberCurrentTrack();
         _catalog = catalog;
+        var installedStations = catalog.Stations.Select(station => station.StationId)
+            .ToHashSet(StringComparer.Ordinal);
+        foreach (var removed in _resumeTrackByStation.Keys.Where(id => !installedStations.Contains(id)).ToArray())
+        {
+            _resumeTrackByStation.Remove(removed);
+        }
         _shuffleBags.Clear();
         // A catalog refresh is the repair/reinstall path. Clear isolation so a
         // replaced file with the same track id can play again this session.
@@ -428,7 +448,7 @@ public sealed class RadioPlaybackPolicy
             : SelectTrack(station, allowResume: true, excludeTrackId: null);
         _mode = _trackId is null
             ? RadioPlaybackMode.StationUnavailable
-            : RadioPlaybackMode.Playing;
+            : wasPaused ? RadioPlaybackMode.Paused : RadioPlaybackMode.Playing;
         _statusMessage = _trackId is null
             ? "Updated station has no playable tracks."
             : "Radio catalog refreshed from validated packs.";
@@ -612,6 +632,19 @@ public sealed class RadioPlaybackPolicy
             throw new ArgumentException("Radio catalog is invalid.", nameof(catalog));
         }
 
+        var trackCount = 0;
+        foreach (var station in catalog.Stations)
+        {
+            if (station.Tracks.Count > MaximumUnavailableTracks - trackCount
+                || string.IsNullOrWhiteSpace(station.StationId)
+                || station.Tracks.Any(track => track is null || string.IsNullOrWhiteSpace(track.TrackId)))
+            {
+                throw new ArgumentException("Radio catalog track metadata exceeds capacity or is invalid.", nameof(catalog));
+            }
+
+            trackCount += station.Tracks.Count;
+        }
+
         var stationIds = catalog.Stations.Select(station => station.StationId).ToArray();
         var trackIds = catalog.Stations.SelectMany(station => station.Tracks)
             .Select(track => track.TrackId)
@@ -621,5 +654,16 @@ public sealed class RadioPlaybackPolicy
         {
             throw new ArgumentException("Radio catalog identities must be unique.", nameof(catalog));
         }
+    }
+
+    private static RadioCatalog CaptureCatalog(RadioCatalog catalog)
+    {
+        ValidateCatalog(catalog);
+        var captured = new RadioCatalog(catalog.Stations.Select(station => station with
+        {
+            Tracks = Array.AsReadOnly(station.Tracks.ToArray()),
+        }).ToList().AsReadOnly());
+        ValidateCatalog(captured);
+        return captured;
     }
 }

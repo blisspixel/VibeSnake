@@ -75,6 +75,9 @@ public sealed class OnboardingSession
     public const int ScenarioHeight = 5;
     public const string Identity = "vibesnake-onboarding@1-unscored";
 
+    private static readonly RunSnapshot FoodPreview = FreezeSnapshot(CreateFoodScenario().GetSnapshot());
+    private static readonly RunSnapshot PowerPreview = FreezeSnapshot(CreatePowerScenario().GetSnapshot());
+
     private SnakeRun _scenario;
     private int _starvationMoves;
     private bool _foodScenarioReady;
@@ -88,6 +91,17 @@ public sealed class OnboardingSession
     public OnboardingLesson Lesson { get; private set; }
 
     public RunSnapshot Snapshot => _scenario.GetSnapshot();
+
+    /// <summary>
+    /// Shows the scenario the current lesson asks the player to act on without
+    /// advancing or replacing the deterministic rules scenario.
+    /// </summary>
+    public RunSnapshot PresentationSnapshot => Lesson switch
+    {
+        OnboardingLesson.FoodAndScore when !_foodScenarioReady => FoodPreview,
+        OnboardingLesson.PowerUp when !_powerScenarioReady => PowerPreview,
+        _ => FreezeSnapshot(Snapshot),
+    };
 
     public bool IsComplete => Lesson == OnboardingLesson.Complete;
 
@@ -345,6 +359,13 @@ public sealed class OnboardingSession
             throw new InvalidOperationException(message);
         }
     }
+
+    private static RunSnapshot FreezeSnapshot(RunSnapshot snapshot) => snapshot with
+    {
+        Body = Array.AsReadOnly(snapshot.Body.ToArray()),
+        PendingDirections = Array.AsReadOnly(snapshot.PendingDirections.ToArray()),
+        DetachedObstacles = Array.AsReadOnly(snapshot.DetachedObstacles.ToArray()),
+    };
 
     private static RunConfig ScenarioConfig(int starvationTicks = 50, int warningTicks = 10) =>
         new(

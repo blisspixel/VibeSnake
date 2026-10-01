@@ -100,7 +100,7 @@ public sealed class PreferencesDocumentTests
             Assert.Throws<IOException>(() => interrupted.Save(
                 baseline with { MusicVolume = 0.75f }));
             Assert.Equal(before, File.ReadAllBytes(physical.PreferencesPath));
-            Assert.True(File.Exists(physical.PreferencesPath + ".tmp"));
+            Assert.Empty(Directory.GetFiles(root, PreferencesDocument.FileName + ".tmp-*"));
 
             physical.Save(baseline with { MusicVolume = 0.5f });
             Assert.False(File.Exists(physical.PreferencesPath + ".tmp"));
@@ -113,6 +113,7 @@ public sealed class PreferencesDocumentTests
             Assert.Throws<IOException>(() => diskFull.Save(
                 baseline with { MusicVolume = 1.0f }));
             Assert.Equal(committed, File.ReadAllBytes(physical.PreferencesPath));
+            Assert.Empty(Directory.GetFiles(root, PreferencesDocument.FileName + ".tmp-*"));
             Assert.Throws<ArgumentNullException>(() => new PreferencesStore(root, null!));
         }
         finally
@@ -134,6 +135,177 @@ public sealed class PreferencesDocumentTests
 
         Assert.Equal(PreferencesLoadCode.UnsupportedSchema, result.Code);
         Assert.Null(result.Document);
+    }
+
+    [Theory]
+    [InlineData("schemaVersion")]
+    [InlineData("schema_version")]
+    public void Saving_stale_loaded_preferences_preserves_a_newer_schema(string schemaField)
+    {
+        var root = Path.Combine(Path.GetTempPath(), "vibesnake-prefs-future-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(root);
+        try
+        {
+            var store = new PreferencesStore(root);
+            store.Save(PreferencesDocument.CreateDefaults());
+            var stale = store.Load().Document!;
+            var future = Encoding.UTF8.GetBytes(
+                "{\"" + schemaField + "\":99,\"futureSetting\":\"keep exactly\"}\n");
+            File.WriteAllBytes(store.PreferencesPath, future);
+
+            Assert.Equal(PreferencesLoadCode.UnsupportedSchema, store.Load().Code);
+            Assert.Throws<InvalidOperationException>(() => store.Save(stale with { MusicVolume = 0.1f }));
+            Assert.Equal(future, File.ReadAllBytes(store.PreferencesPath));
+            Assert.Empty(Directory.GetFiles(root, PreferencesDocument.FileName + ".tmp-*"));
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void Future_schema_published_during_staging_is_preserved_and_owned_staging_is_cleaned()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "vibesnake-prefs-staged-future-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(root);
+        try
+        {
+            var path = Path.Combine(root, PreferencesDocument.FileName);
+            var future = Encoding.UTF8.GetBytes("{\"schema_version\":7,\"schemaVersion\":99,\"newData\":[1,2,3]}\n");
+            var operations = new ObservingPreferencesWriteOperations(
+                afterWrite: _ => File.WriteAllBytes(path, future));
+            var store = new PreferencesStore(root, operations);
+
+            Assert.Throws<InvalidOperationException>(() => store.Save(PreferencesDocument.CreateDefaults()));
+            Assert.Equal(future, File.ReadAllBytes(path));
+            Assert.Equal(0, operations.MoveCount);
+            Assert.Single(operations.StagedPaths);
+            Assert.False(File.Exists(operations.StagedPaths[0]));
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Theory]
+    [InlineData("\"schema_version\":7,\"schemaVersion\":99")]
+    [InlineData("\"schemaVersion\":99,\"schema_version\":7")]
+    [InlineData("\"schema_version\":99,\"schema_version\":7")]
+    [InlineData("\"schemaVersion\":99,\"schemaVersion\":7")]
+    [InlineData("\"schema_version\":6,\"schemaVersion\":7")]
+    [InlineData("\"schemaVersion\":7,\"schemaVersion\":7")]
+    [InlineData("\"schema_version\":\"unknown\",\"schemaVersion\":7")]
+    [InlineData("\"schemaVersion\":2147483648")]
+    public void Save_preserves_all_unsupported_or_ambiguous_schema_declarations(string declarations)
+    {
+        var root = Path.Combine(Path.GetTempPath(), "vibesnake-prefs-schema-aliases-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(root);
+        try
+        {
+            var store = new PreferencesStore(root);
+            var bytes = Encoding.UTF8.GetBytes("{" + declarations + ",\"futureSetting\":\"keep\"}\n");
+            File.WriteAllBytes(store.PreferencesPath, bytes);
+
+            Assert.Throws<InvalidOperationException>(() => store.Save(PreferencesDocument.CreateDefaults()));
+            Assert.Equal(bytes, File.ReadAllBytes(store.PreferencesPath));
+            Assert.Empty(Directory.GetFiles(root, PreferencesDocument.FileName + ".tmp-*"));
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void Save_accepts_matching_supported_aliases_and_replaces_them_with_canonical_schema()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "vibesnake-prefs-matching-aliases-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(root);
+        try
+        {
+            var store = new PreferencesStore(root);
+            File.WriteAllText(store.PreferencesPath, "{\"schema_version\":7,\"schemaVersion\":7}");
+            var document = PreferencesDocument.CreateDefaults() with { MusicVolume = 0.35f };
+
+            store.Save(document);
+
+            Assert.Equal(document.SerializeCanonical(), File.ReadAllText(store.PreferencesPath));
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void Interleaved_save_writers_keep_independent_staged_payloads()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "vibesnake-prefs-writers-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(root);
+        try
+        {
+            var first = PreferencesDocument.CreateDefaults() with { MusicVolume = 0.25f };
+            var second = PreferencesDocument.CreateDefaults() with { MusicVolume = 0.75f };
+            var secondOperations = new ObservingPreferencesWriteOperations();
+            var secondStore = new PreferencesStore(root, secondOperations);
+            var firstOperations = new ObservingPreferencesWriteOperations(afterWrite: firstPath =>
+            {
+                secondStore.Save(second);
+                Assert.Equal(second.SerializeCanonical(), File.ReadAllText(secondStore.PreferencesPath));
+                Assert.Equal(first.SerializeCanonical(), File.ReadAllText(firstPath));
+            });
+            var firstStore = new PreferencesStore(root, firstOperations);
+
+            firstStore.Save(first);
+
+            Assert.Equal(first.SerializeCanonical(), File.ReadAllText(firstStore.PreferencesPath));
+            Assert.Single(firstOperations.StagedPaths);
+            Assert.Single(secondOperations.StagedPaths);
+            Assert.NotEqual(firstOperations.StagedPaths[0], secondOperations.StagedPaths[0]);
+            Assert.Equal(1, firstOperations.MoveCount);
+            Assert.Equal(1, secondOperations.MoveCount);
+            Assert.Empty(Directory.GetFiles(root, PreferencesDocument.FileName + ".tmp-*"));
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void Failed_and_successful_saves_leave_unrelated_staging_files_untouched()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "vibesnake-prefs-owned-stage-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(root);
+        try
+        {
+            var physical = new PreferencesStore(root);
+            physical.Save(PreferencesDocument.CreateDefaults());
+            var unrelatedPaths = new[] { physical.PreferencesPath + ".tmp", physical.PreferencesPath + ".tmp-other-writer" };
+            var unrelatedBytes = Encoding.UTF8.GetBytes("unrelated in-progress data\n");
+            foreach (var path in unrelatedPaths)
+            {
+                File.WriteAllBytes(path, unrelatedBytes);
+            }
+            var committed = File.ReadAllBytes(physical.PreferencesPath);
+            var failing = new PreferencesStore(root, new FaultingPreferencesWriteOperations(failMove: true));
+
+            Assert.Throws<IOException>(() => failing.Save(PreferencesDocument.CreateDefaults() with { MusicVolume = 0.2f }));
+            Assert.Equal(committed, File.ReadAllBytes(physical.PreferencesPath));
+            physical.Save(PreferencesDocument.CreateDefaults() with { MusicVolume = 0.4f });
+
+            foreach (var path in unrelatedPaths)
+            {
+                Assert.Equal(unrelatedBytes, File.ReadAllBytes(path));
+            }
+            Assert.Equal(new[] { unrelatedPaths[1] }, Directory.GetFiles(root, PreferencesDocument.FileName + ".tmp-*"));
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
     }
 
     [Fact]
@@ -410,6 +582,31 @@ public sealed class PreferencesDocumentTests
             }).Clamped().ControllerDeadzone);
     }
 
+    private sealed class ObservingPreferencesWriteOperations(Action<string>? afterWrite = null)
+        : IPreferencesWriteOperations
+    {
+        public List<string> StagedPaths { get; } = [];
+
+        public int MoveCount { get; private set; }
+
+        public void CreateDirectory(string path) => Directory.CreateDirectory(path);
+
+        public void WriteAllText(string path, string contents, Encoding encoding)
+        {
+            StagedPaths.Add(path);
+            File.WriteAllText(path, contents, encoding);
+            afterWrite?.Invoke(path);
+        }
+
+        public void Move(string sourcePath, string destinationPath, bool overwrite)
+        {
+            MoveCount++;
+            File.Move(sourcePath, destinationPath, overwrite);
+        }
+
+        public void Delete(string path) => File.Delete(path);
+    }
+
     private sealed class FaultingPreferencesWriteOperations(
         bool failWrite = false,
         bool failMove = false) : IPreferencesWriteOperations
@@ -420,6 +617,7 @@ public sealed class PreferencesDocumentTests
         {
             if (failWrite)
             {
+                File.WriteAllText(path, contents[..(contents.Length / 2)], encoding);
                 throw new IOException("Injected storage exhaustion.");
             }
 
@@ -435,5 +633,7 @@ public sealed class PreferencesDocumentTests
 
             File.Move(sourcePath, destinationPath, overwrite);
         }
+
+        public void Delete(string path) => File.Delete(path);
     }
 }

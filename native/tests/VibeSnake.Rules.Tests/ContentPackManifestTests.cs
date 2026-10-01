@@ -1,3 +1,4 @@
+using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using VibeSnake.Persistence;
@@ -468,6 +469,194 @@ public sealed class ContentPackManifestTests
         }
     }
 
+    [Theory]
+    [InlineData("utf8-bom")]
+    [InlineData("utf16-le")]
+    [InlineData("utf16-be")]
+    [InlineData("utf32-le")]
+    [InlineData("invalid-utf8")]
+    public void File_loading_and_canonical_checks_reject_non_utf8_or_bom_hidden_bytes(string encoding)
+    {
+        var fixture = CreateFixture();
+        var canonical = Parse(fixture.Core, fixture.Inventory).RenderCanonical();
+        Encoding encoder = encoding switch
+        {
+            "utf8-bom" => new UTF8Encoding(true),
+            "utf16-le" => new UnicodeEncoding(false, true),
+            "utf16-be" => new UnicodeEncoding(true, true),
+            "utf32-le" => new UTF32Encoding(false, true),
+            _ => Encoding.UTF8,
+        };
+        var bytes = encoding == "invalid-utf8"
+            ? new byte[] { 0xff, 0xfe, 0x80 }
+            : encoder.GetPreamble().Concat(encoder.GetBytes(canonical)).ToArray();
+        var path = Path.Combine(Path.GetTempPath(), "vibesnake-pack-encoding-" + Guid.NewGuid() + ".json");
+        try
+        {
+            File.WriteAllBytes(path, bytes);
+            Assert.Throws<InvalidDataException>(() => ContentPackManifest.LoadFromFile(path, fixture.Inventory));
+            Assert.Throws<InvalidDataException>(() => ContentPackManifest.CheckCanonicalFile(path, fixture.Inventory));
+            File.WriteAllBytes(path, Encoding.UTF8.GetBytes(canonical));
+            Assert.Equal(canonical, ContentPackManifest.CheckCanonicalFile(path, fixture.Inventory).RenderCanonical());
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
+    public void Validated_manifest_collections_cannot_be_modified_through_mutable_interfaces()
+    {
+        var fixture = CreateFixture();
+        var radio = Parse(fixture.Radio, fixture.Inventory);
+        var before = radio.RenderCanonical();
+        var files = Assert.IsAssignableFrom<IList<ContentPackFile>>(radio.Files);
+        var dependencies = Assert.IsAssignableFrom<IList<ContentPackDependency>>(radio.Dependencies);
+        var credits = Assert.IsAssignableFrom<IList<ContentPackCredit>>(radio.Credits);
+        var tracks = Assert.IsAssignableFrom<IList<string>>(radio.Radio!.TrackIds);
+        Assert.Throws<NotSupportedException>(() => files[0] = files[0] with { Sha256 = new string('f', 64) });
+        Assert.Throws<NotSupportedException>(() => dependencies.Clear());
+        Assert.Throws<NotSupportedException>(() => credits[0] = credits[0] with { License = "changed" });
+        Assert.Throws<NotSupportedException>(() => tracks[0] = "asset:unapproved.mp3");
+        fixture.Radio["displayName"] = "changed after validation";
+        Files(fixture.Radio).Clear();
+        Assert.Equal(before, radio.RenderCanonical());
+    }
+
+    [Theory]
+    [InlineData("dependencies", ContentPackManifest.MaximumDependencies)]
+    [InlineData("credits", ContentPackManifest.MaximumCredits)]
+    [InlineData("files", ContentPackManifest.MaximumFiles)]
+    public void Rejects_collection_overflow_before_inspecting_untrusted_entries(string field, int maximum)
+    {
+        var fixture = CreateFixture();
+        var entries = new JsonArray();
+        for (var index = 0; index <= maximum; index++)
+        {
+            entries.Add(new JsonObject());
+        }
+        fixture.Core[field] = entries;
+        var error = Assert.Throws<InvalidDataException>(() => Parse(fixture.Core, fixture.Inventory));
+        Assert.Contains(maximum.ToString(System.Globalization.CultureInfo.InvariantCulture), error.Message, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("description", "surrogate-text")]
+    [InlineData("version", "semver-overflow")]
+    [InlineData("schemaVersion", "boolean")]
+    [InlineData("rules-version", "integer-overflow")]
+    public void Enforces_native_numeric_and_utf16_text_bounds(string field, string value)
+    {
+        var fixture = CreateFixture();
+        switch (value)
+        {
+            case "surrogate-text":
+                fixture.Core[field] = string.Concat(Enumerable.Repeat("\U00010000", 257));
+                break;
+            case "semver-overflow":
+                fixture.Core[field] = "2147483648.0.0";
+                break;
+            case "boolean":
+                fixture.Core[field] = true;
+                break;
+            default:
+                fixture.Core["compatibility"]!["ruleset"]!["minInclusive"] = 2147483648L;
+                break;
+        }
+        AssertRejects(fixture.Core, fixture.Inventory);
+    }
+
+    [Theory]
+    [InlineData("sha256", "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff")]
+    [InlineData("bytes", "99")]
+    [InlineData("mediaType", "text/plain")]
+    [InlineData("role", "wrong-role")]
+    [InlineData("runtimeUse", "required")]
+    public void Rejects_validly_typed_file_metadata_that_drifts_from_inventory(string field, string value)
+    {
+        var fixture = CreateFixture();
+        var file = FileAt(fixture.Core, field == "runtimeUse" ? 1 : 0);
+        file[field] = field == "bytes" ? JsonValue.Create(99) : JsonValue.Create(value);
+        var error = Assert.Throws<InvalidDataException>(() => Parse(fixture.Core, fixture.Inventory));
+        Assert.Contains("metadata does not match inventory", error.Message, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("duplicateOf", "asset:other")]
+    [InlineData("integrityStatus", "invalid")]
+    [InlineData("shipStatus", "blocked")]
+    [InlineData("exportEligible", "false")]
+    [InlineData("rights.status", "unverified")]
+    public void Rejects_inventory_approval_evidence_drift(string field, string value)
+    {
+        var fixture = CreateFixture();
+        var asset = fixture.InventoryJson["assets"]![0]!;
+        if (field == "rights.status")
+        {
+            asset["rights"]!["status"] = value;
+        }
+        else
+        {
+            asset[field] = field == "exportEligible" ? JsonValue.Create(false) : JsonValue.Create(value);
+        }
+        Assert.Throws<InvalidDataException>(() =>
+        {
+            var changedInventory = ContentInventory.Parse(ToJson(fixture.InventoryJson));
+            Parse(fixture.Core, changedInventory);
+        });
+    }
+
+    [Theory]
+    [InlineData("source")]
+    [InlineData("license")]
+    [InlineData("attribution")]
+    [InlineData("reviewEvidence")]
+    public void Every_credit_field_must_reproduce_cleared_inventory_rights(string field)
+    {
+        var fixture = CreateFixture();
+        Credits(fixture.Core)[0]![field] = "changed-rights-evidence";
+        var error = Assert.Throws<InvalidDataException>(() => Parse(fixture.Core, fixture.Inventory));
+        Assert.Contains("does not match inventory rights", error.Message, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Resolver_never_resurrects_a_duplicate_id_when_one_claim_is_invalid(bool invalidFirst)
+    {
+        var fixture = CreateFixture();
+        var valid = ToJson(fixture.Radio);
+        FileAt(fixture.Radio, 0)["sha256"] = new string('f', 64);
+        var invalid = ToJson(fixture.Radio);
+        var resolution = ContentPackResolver.Resolve(ToJson(fixture.Core),
+            invalidFirst ? [invalid, valid, valid] : [valid, invalid, valid], fixture.Inventory, "0.3.0");
+        Assert.True(resolution.CoreReady);
+        Assert.Empty(resolution.AcceptedOptional);
+        Assert.Equal("invalid-pack", resolution.RejectedOptional["vibesnake.radio.flow-signal"].Code);
+    }
+
+    [Fact]
+    public void Resolver_keeps_core_ready_without_optional_content()
+    {
+        var fixture = CreateFixture();
+        var resolution = ContentPackResolver.Resolve(ToJson(fixture.Core), [], fixture.Inventory, "0.3.0");
+        Assert.True(resolution.CoreReady);
+        Assert.Empty(resolution.AcceptedOptional);
+        Assert.Empty(resolution.RejectedOptional);
+    }
+
+    [Fact]
+    public void Resolver_treats_invalid_or_wrong_kind_core_as_fatal()
+    {
+        var fixture = CreateFixture();
+        FileAt(fixture.Core, 0)["sha256"] = new string('f', 64);
+        Assert.Throws<InvalidDataException>(() => ContentPackResolver.Resolve(
+            ToJson(fixture.Core), [ToJson(fixture.Radio)], fixture.Inventory, "0.3.0"));
+        Assert.Throws<InvalidDataException>(() => ContentPackResolver.Resolve(
+            ToJson(fixture.Radio), [], fixture.Inventory, "0.3.0"));
+    }
+
     private static Fixture CreateFixture()
     {
         var coreCredit = Credit(
@@ -547,7 +736,7 @@ public sealed class ContentPackManifestTests
             ["stationName"] = "The Flow Signal",
             ["trackIds"] = new JsonArray(radioTrack["id"]!.GetValue<string>()),
         };
-        return new Fixture(inventory, core, radio);
+        return new Fixture(inventory, core, radio, inventoryJson);
     }
 
     private static JsonObject ManifestBase(
@@ -674,5 +863,6 @@ public sealed class ContentPackManifestTests
     private sealed record Fixture(
         ContentInventory Inventory,
         JsonObject Core,
-        JsonObject Radio);
+        JsonObject Radio,
+        JsonObject InventoryJson);
 }

@@ -382,9 +382,17 @@ public sealed record InputBindingsDocument(
 
 public sealed class InputBindingsStore
 {
+    private readonly IPreferencesWriteOperations _writeOperations;
+
     public InputBindingsStore(string userDataRoot)
+        : this(userDataRoot, PhysicalPreferencesWriteOperations.Instance)
+    {
+    }
+
+    internal InputBindingsStore(string userDataRoot, IPreferencesWriteOperations writeOperations)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(userDataRoot);
+        ArgumentNullException.ThrowIfNull(writeOperations);
         if (!Path.IsPathFullyQualified(userDataRoot))
         {
             throw new ArgumentException(
@@ -394,6 +402,7 @@ public sealed class InputBindingsStore
 
         UserDataRoot = Path.GetFullPath(userDataRoot);
         BindingsDirectory = Path.Combine(UserDataRoot, "input");
+        _writeOperations = writeOperations;
     }
 
     public string UserDataRoot { get; }
@@ -450,13 +459,79 @@ public sealed class InputBindingsStore
                 "Input bindings cannot be saved: " + validation.Message);
         }
 
-        Directory.CreateDirectory(BindingsDirectory);
         var path = PathForDeviceClass(document.DeviceClass);
-        var temporaryPath = path + ".tmp";
-        File.WriteAllText(
-            temporaryPath,
-            validation.Document.SerializeCanonical(),
-            new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
-        File.Move(temporaryPath, path, overwrite: true);
+        EnsureExistingSchemaCanBeReplaced(path);
+        _writeOperations.CreateDirectory(BindingsDirectory);
+        var temporaryPath = path + $".tmp-{Guid.NewGuid():N}";
+        try
+        {
+            _writeOperations.WriteAllText(
+                temporaryPath,
+                validation.Document.SerializeCanonical(),
+                new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
+            EnsureExistingSchemaCanBeReplaced(path);
+            _writeOperations.Move(temporaryPath, path, overwrite: true);
+        }
+        finally
+        {
+            try
+            {
+                _writeOperations.Delete(temporaryPath);
+            }
+            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+            {
+                // Preserve the primary save failure and other writers' staging.
+            }
+        }
+    }
+
+    private static void EnsureExistingSchemaCanBeReplaced(string path)
+    {
+        if (!File.Exists(path))
+        {
+            return;
+        }
+
+        JsonDocument existing;
+        try
+        {
+            existing = JsonDocument.Parse(File.ReadAllText(path));
+        }
+        catch (JsonException)
+        {
+            // Malformed JSON remains recoverable through an explicit controls save.
+            return;
+        }
+
+        using (existing)
+        {
+            if (existing.RootElement.ValueKind != JsonValueKind.Object)
+            {
+                return;
+            }
+
+            int? declaredVersion = null;
+            var declarations = new HashSet<string>(StringComparer.Ordinal);
+            foreach (var property in existing.RootElement.EnumerateObject())
+            {
+                if (property.Name is not ("schemaVersion" or "schema_version"))
+                {
+                    continue;
+                }
+
+                if (!declarations.Add(property.Name)
+                    || property.Value.ValueKind != JsonValueKind.Number
+                    || !property.Value.TryGetInt32(out var version)
+                    || version != InputBindingsDocument.CurrentSchemaVersion
+                    || (declaredVersion is not null && declaredVersion != version))
+                {
+                    throw new InvalidOperationException(
+                        "Existing input bindings have unsupported or ambiguous schema metadata and were preserved. "
+                            + "Changes are available for this session only.");
+                }
+
+                declaredVersion = version;
+            }
+        }
     }
 }

@@ -69,9 +69,11 @@ The immediate goal is the first reproducible native alpha, not more feature surf
 
 The [roadmap](ROADMAP.md#what-is-next-ordered-and-why) explains why this work precedes later milestones.
 
+Native development continues while those reviews are pending: fix control and presentation defects, improve startup and recovery, and retire frozen scaffolding where native parity is proven. Content inventory and pack validation now have native ownership throughout. Release approval remains tied to the exact reviewed artifacts. Tutorial previews, menu hints, nested Settings navigation, radio recovery, and version-preserving saves have received the latest polish pass. Active remapped controls take priority over overlapping fixed shortcuts, and profile stores recheck version metadata before replacing data. Remaining concurrency limitations are tracked in [known issues](docs/release/KNOWN_ISSUES.md).
+
 ## Play from source
 
-Prerequisites are Git, PowerShell 7, and the .NET 10.0.303 SDK. The launcher installs and verifies the pinned Godot 4.7.1 .NET editor on first use, builds the native game, imports its assets once for a new checkout, and starts it.
+Prerequisites are Git, PowerShell 7, and the .NET 10.0.303 SDK. The launcher installs and verifies the pinned Godot 4.7.1 .NET editor on first use, builds the native game, refreshes missing or stale imported assets, and starts it.
 
 Windows:
 
@@ -103,7 +105,7 @@ The current floating source build and checksums are published under [player-late
 | Fullscreen | F11 |
 | Help | H |
 
-All gameplay and shell actions are available through remappable keyboard and controller routes. See [input and lifecycle](docs/design/INPUT.md) for the exact action contract.
+Movement, Confirm, Back, Pause, and Restore Defaults can be remapped for keyboard and controller. Other shell actions use the fixed shortcuts documented in [input and lifecycle](docs/design/INPUT.md). An active remapped control takes priority over an overlapping shortcut; menu rows offer the configured Confirm control when their shortcut is occupied.
 
 ## Documentation
 

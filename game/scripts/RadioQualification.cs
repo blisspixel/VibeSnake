@@ -112,6 +112,17 @@ internal static class RadioQualification
             && recovered.TrackId != failedTrack
             && recovered.PackState == RadioPackState.Degraded
             && recovered.StatusMessage.Contains("recovered", StringComparison.Ordinal);
+        var pausedRefreshPolicy = new RadioPlaybackPolicy(scenarioCatalog, new RandomStreamBank(77UL).Radio);
+        pausedRefreshPolicy.PlayOrResume();
+        var beforeRefresh = pausedRefreshPolicy.Pause();
+        var ignoredEnd = pausedRefreshPolicy.OnTrackEnded();
+        var pausedRefresh = pausedRefreshPolicy.ReplaceCatalog(scenarioCatalog);
+        var pausedRecovery = pausedRefreshPolicy.NoteTrackUnavailable(pausedRefresh.TrackId!);
+        pauseResumeComplete &= ignoredEnd == beforeRefresh
+            && pausedRefresh.Mode == RadioPlaybackMode.Paused
+            && pausedRefresh.TrackId == beforeRefresh.TrackId;
+        missingTrackRecoveryComplete &= pausedRecovery.Mode == RadioPlaybackMode.Paused
+            && pausedRecovery.TrackId != pausedRefresh.TrackId;
         var missingPack = policy.ReplaceCatalog(RadioCatalog.Empty);
         var missingPackGraceful = missingPack.Mode == RadioPlaybackMode.NoStations
             && missingPack.PackState == RadioPackState.Missing

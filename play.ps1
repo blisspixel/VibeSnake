@@ -27,7 +27,17 @@ Set-Location -LiteralPath $repositoryRoot
 if ($PSVersionTable.PSVersion.Major -lt 7) {
     throw "Vibe Snake requires PowerShell 7 or newer. Run this script with pwsh."
 }
-if (-not (Get-Command dotnet -ErrorAction SilentlyContinue)) {
+$localDotnet = @(
+    (Join-Path $repositoryRoot ".dotnet/dotnet.exe"),
+    (Join-Path $repositoryRoot ".dotnet/dotnet")
+) | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } | Select-Object -First 1
+if ($localDotnet) {
+    $dotnetExecutable = $localDotnet
+    $env:DOTNET_ROOT = Split-Path -Parent $localDotnet
+    $env:PATH = "$env:DOTNET_ROOT$([System.IO.Path]::PathSeparator)$env:PATH"
+} elseif (Get-Command dotnet -ErrorAction SilentlyContinue) {
+    $dotnetExecutable = (Get-Command dotnet).Source
+} else {
     throw "The .NET 10.0.303 SDK is required. Install it, then run ./play.ps1 again."
 }
 
@@ -41,7 +51,7 @@ if (-not $executableLine) {
 }
 
 $godotExecutable = $executableLine.Substring("GodotExecutable=".Length)
-& dotnet build (Join-Path $repositoryRoot "game/VibeSnake.Game.sln") --nologo
+& $dotnetExecutable build (Join-Path $repositoryRoot "game/VibeSnake.Game.sln") --nologo
 if ($LASTEXITCODE -ne 0) {
     throw "The native game build failed."
 }

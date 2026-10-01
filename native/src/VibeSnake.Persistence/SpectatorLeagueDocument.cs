@@ -553,8 +553,16 @@ public sealed record SpectatorLeagueDocument(
 
 public sealed class SpectatorLeagueStore
 {
+    private readonly IPreferencesWriteOperations _writeOperations;
+
     public SpectatorLeagueStore(string userDataRoot)
+        : this(userDataRoot, PhysicalPreferencesWriteOperations.Instance)
     {
+    }
+
+    internal SpectatorLeagueStore(string userDataRoot, IPreferencesWriteOperations writeOperations)
+    {
+        _writeOperations = writeOperations ?? throw new ArgumentNullException(nameof(writeOperations));
         ArgumentException.ThrowIfNullOrWhiteSpace(userDataRoot);
         if (!Path.IsPathFullyQualified(userDataRoot))
         {
@@ -594,42 +602,11 @@ public sealed class SpectatorLeagueStore
     public void Save(SpectatorLeagueDocument document)
     {
         ArgumentNullException.ThrowIfNull(document);
-        Directory.CreateDirectory(UserDataRoot);
-        var temporaryPath = LeaguePath + $".tmp-{Guid.NewGuid():N}";
-        try
-        {
-            using (var stream = new FileStream(
-                temporaryPath,
-                FileMode.CreateNew,
-                FileAccess.Write,
-                FileShare.None,
-                16 * 1024,
-                FileOptions.WriteThrough))
-            using (var writer = new StreamWriter(
-                stream,
-                new UTF8Encoding(encoderShouldEmitUTF8Identifier: false)))
-            {
-                writer.Write(document.SerializeCanonical());
-                writer.Flush();
-                stream.Flush(flushToDisk: true);
-            }
-
-            File.Move(temporaryPath, LeaguePath, overwrite: true);
-        }
-        finally
-        {
-            if (File.Exists(temporaryPath))
-            {
-                try
-                {
-                    File.Delete(temporaryPath);
-                }
-                catch (Exception exception) when (
-                    exception is IOException or UnauthorizedAccessException)
-                {
-                    // The primary save result remains authoritative.
-                }
-            }
-        }
+        var canonical = document.SerializeCanonical();
+        ProfileDocumentWriter.Write(
+            LeaguePath,
+            canonical,
+            SpectatorLeagueDocument.CurrentSchemaVersion,
+            _writeOperations);
     }
 }

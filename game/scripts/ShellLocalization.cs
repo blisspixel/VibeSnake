@@ -841,6 +841,8 @@ internal static class ShellLocalization
         Entry("action.save-loadout", "save loadout"),
         Entry("action.sections", "sections"),
         Entry("action.select", "select"),
+        Entry("action.navigate", "navigate"),
+        Entry("action.fullscreen", "fullscreen"),
         Entry("action.settings", "settings"),
         Entry("action.settings-before-play", "settings before play"),
         Entry("action.skip-menu", "skip to menu"),
