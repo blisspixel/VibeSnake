@@ -485,17 +485,13 @@ def test_floating_source_release_uses_only_a_successful_ci_revision() -> None:
     assert publish["if"] == "needs.package.result == 'success'"
     publish_steps = publish["steps"]
     qualified_checkouts = [
-        index
-        for index, step in enumerate(publish_steps)
-        if step.get("uses", "").startswith("actions/checkout@")
+        index for index, step in enumerate(publish_steps) if step.get("uses", "").startswith("actions/checkout@")
     ]
     assert len(qualified_checkouts) == 1
     checkout_index = qualified_checkouts[0]
     qualified_revision = "${{ github.event.workflow_run.head_sha }}"
     assert publish_steps[checkout_index]["with"]["ref"] == qualified_revision
-    changelog_steps = [
-        index for index, step in enumerate(publish_steps) if "CHANGELOG.md" in step.get("run", "")
-    ]
+    changelog_steps = [index for index, step in enumerate(publish_steps) if "CHANGELOG.md" in step.get("run", "")]
     assert changelog_steps, "Release notes must include the qualified source changelog."
     for index in changelog_steps:
         assert checkout_index < index, "Qualified source must exist before release notes read it."
