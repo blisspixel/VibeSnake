@@ -112,6 +112,28 @@ public partial class Main
             GameActions.ApplyKeyboardBindings(_keyboardBindings with { ActionToBinding = shadowedRowBindings });
             AssertPrimaryInput(ResolveMainMenuHintPrompt((int)MainMenuItem.Customize).Token == "key:b",
                 "A shadowed main menu row did not show configured Select input.");
+            var utilityBindings = new Dictionary<string, string>(remap, StringComparer.Ordinal)
+            {
+                ["move_up"] = "key:f11",
+                ["confirm"] = "key:j",
+            };
+            GameActions.ApplyKeyboardBindings(_keyboardBindings with { ActionToBinding = utilityBindings });
+            AssertPrimaryInput(MainMenuUtilityHint() == string.Empty,
+                "The menu footer advertised occupied keyboard utility shortcuts.");
+            _activePromptFamily = InputPromptFamily.Xbox;
+            AssertPrimaryInput(!MainMenuUtilityHint().Contains("F11", StringComparison.Ordinal)
+                && MainMenuUtilityHint().Contains(ActionPromptLabel("cycle_radio"), StringComparison.Ordinal),
+                "The controller footer lost its available radio control or advertised occupied F11.");
+            var occupiedControllerUtility = new Dictionary<string, string>(
+                _controllerBindings.ActionToBinding, StringComparer.Ordinal)
+            {
+                ["confirm"] = "button:right_stick",
+            };
+            GameActions.ApplyControllerBindings(_controllerBindings with { ActionToBinding = occupiedControllerUtility });
+            AssertPrimaryInput(MainMenuUtilityHint() == string.Empty,
+                "The menu footer advertised an occupied controller radio shortcut.");
+            GameActions.ApplyControllerBindings(_controllerBindings);
+            _activePromptFamily = InputPromptFamily.Keyboard;
             GameActions.ApplyKeyboardBindings(_keyboardBindings);
             DispatchSmokeKey(Key.R);
             AssertPrimaryInput(_screenState == ScreenState.Menu && _mainMenuCursor == 1,

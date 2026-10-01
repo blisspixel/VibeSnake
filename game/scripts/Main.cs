@@ -7521,11 +7521,25 @@ public partial class Main : Node2D
         + Localize("action.navigate")
         + $"   //   [{ActionPromptLabel("confirm")}] " + Localize("action.select");
 
-    private string MainMenuUtilityHint() =>
-        $"[{ActionPromptLabel("cycle_radio")}] " + Localize("action.cycle-radio")
-        + "   //   [" + InputPromptGlyphs.DescribeToken(
-            GameActions.FixedPromptBindings["toggle_fullscreen"].KeyboardToken!,
-            InputPromptFamily.Keyboard).Label + "] " + Localize("action.fullscreen");
+    private string MainMenuUtilityHint()
+    {
+        var hints = new List<string>();
+        var radio = ResolveActionPrompt("cycle_radio");
+        if (radio.Token != "unbound")
+        {
+            hints.Add($"[{InputPromptGlyphs.DescribeToken(radio.Token, radio.Family).Label}] "
+                + Localize("action.cycle-radio"));
+        }
+
+        if (GameActions.IsFixedPromptAvailable("toggle_fullscreen", controller: false, ActivePrimaryActions))
+        {
+            hints.Add("[" + InputPromptGlyphs.DescribeToken(
+                GameActions.FixedPromptBindings["toggle_fullscreen"].KeyboardToken!,
+                InputPromptFamily.Keyboard).Label + "] " + Localize("action.fullscreen"));
+        }
+
+        return string.Join("   //   ", hints);
+    }
 
     private Color MainMenuAccent(int index, ShellPalette palette)
     {

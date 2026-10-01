@@ -4,6 +4,8 @@ Notable player-facing and engineering changes are recorded here. The project is 
 
 ## Unreleased
 
+- Menu utility hints now omit radio and fullscreen shortcuts occupied by active remapped controls, including keyboard-only fullscreen hints while controller prompts are active. Engine smoke covers both input families and the mixed-device footer.
+
 - Cleared newly reported development dependency advisories with urllib3 2.8.0, virtualenv 21.7.13, and its required python-discovery 1.6.1 dependency. Added safe development minimums, regenerated the hash-locked CI requirements, and retained all 49 unrelated dependency blocks and the runtime lock unchanged. Both strict dependency audits pass without exclusions.
 
 - Floating development release notes now include the qualified revision's ten latest Unreleased entries and full-changelog link alongside its source and reference downloads. Publication remains tied to successful CI on that exact main revision.
@@ -361,7 +363,7 @@ Notable player-facing and engineering changes are recorded here. The project is 
 - Achievements documents accept schema_version as an alias for schemaVersion on load.
 - Headless smoke asserts structured `achievements_load` after shell startup unlock restore.
 - Ended-run overlay can show UNLOCK SAVED feedback when permanent unlocks are written.
-- Architecture boundary test locks RulesÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¾Ãƒâ€šÃ‚Â¢Persistence one-way dependency (no cycles with Game).
+- Architecture boundary test locks RulesÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¾ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢Persistence one-way dependency (no cycles with Game).
 
 - Main menu shows rules-local run unlock count (`RUN UNLOCKS n/total`) from `achievements.json`.
 - Inventory gate writes `content-eligibility-evidence-v1` JSON under `TestResults/native` for pack-approval handoffs.
