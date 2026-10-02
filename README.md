@@ -17,6 +17,8 @@ The product path is Godot 4.7.1, .NET 10, and pure C# rules. The older Python/Py
 
 This is active `0.3.0-alpha.1` development. Automated Windows, macOS, and Linux qualification is extensive, but Store-ready 1.0 is not ready. Physical-device review, named-hardware performance, approved content packs, signing, and structured human playtesting remain release gates. See [current status](docs/release/STATUS.md) and the [roadmap](ROADMAP.md) for the evidence-backed details.
 
+Download the current source snapshot and checksums from the [latest development release](https://github.com/blisspixel/VibeSnake/releases/tag/player-latest). Its notes list the latest completed changes. This source and reference prerelease updates only after CI passes on its exact `main` revision.
+
 ## Current native build
 
 <table>

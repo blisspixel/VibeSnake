@@ -4,6 +4,8 @@ Notable player-facing and engineering changes are recorded here. The project is 
 
 ## Unreleased
 
+- Made the current development download prominent in the README and recorded the completed three-platform hosted code qualification, Python matrix, analysis, and release publication in current status. The continuous source prerelease and the pending native alpha candidate now have explicit separate entry points.
+
 - Successful cold asset imports now return an explicit zero status instead of inheriting an earlier failed command. Qualification seeds a nonzero prior status and exercises a cold rebuild fixture; captured import diagnostics are printed before status checks. Engine errors, warnings, leaked objects, exit failures, and payload validation remain strict.
 
 - Fixed settings reset shortcuts that bypassed active review dialogs or recovery operations. Canceled replay and ghost loads cannot activate after leaving and reopening their library; fresh browser reads queue behind existing work, terminal saves retain priority, and completed writes keep their result messages through successful or failed deferred refreshes. Controlled engine qualification covers four settings modal states, canceled and current loads, deferred refresh, and durable completion.
