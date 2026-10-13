@@ -9,7 +9,9 @@ here rather than in the native suite.
 
 from __future__ import annotations
 
+import os
 import re
+import shutil
 import subprocess
 from pathlib import Path
 
@@ -90,3 +92,54 @@ def test_shell_launcher_forwards_its_own_arguments() -> None:
 
     assert launcher.startswith("#!"), "play.sh must keep its shebang"
     assert '"$@"' in launcher, "play.sh must forward its arguments to play.ps1"
+
+
+@pytest.mark.skipif(shutil.which("bash") is None, reason="POSIX installer contract")
+def test_shell_installer_starts_native_play_and_preserves_existing_work(tmp_path: Path) -> None:
+    upstream = tmp_path / "fixture upstream"
+    upstream.mkdir()
+
+    def git(*arguments: str, cwd: Path = upstream) -> None:
+        subprocess.run(["git", *arguments], cwd=cwd, capture_output=True, text=True, check=True)
+
+    git("init", "--initial-branch=main")
+    git("config", "user.name", "Nick Seal")
+    git("config", "user.email", "32712898+blisspixel@users.noreply.github.com")
+    play = upstream / "play.sh"
+    play.write_text("#!/usr/bin/env bash\nprintf 'NATIVE_LAUNCH_OK\\n'\n", encoding="utf-8")
+    play.chmod(0o755)
+    git("add", "play.sh")
+    git("-c", "commit.gpgsign=false", "commit", "-m", "fixture: native launch")
+    destination = tmp_path / "installed source"
+    environment = {**os.environ, "VIBESNAKE_REPO": str(upstream), "VIBESNAKE_BRANCH": "main"}
+    installer = REPOSITORY_ROOT / "scripts/install_player.sh"
+
+    def install() -> subprocess.CompletedProcess[str]:
+        return subprocess.run(
+            ["bash", str(installer), str(destination)],
+            env=environment,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+    first = install()
+    assert first.returncode == 0, first.stderr
+    assert "NATIVE_LAUNCH_OK" in first.stdout
+    assert not (destination / ".venv").exists()
+    repeated = install()
+    assert repeated.returncode == 0, repeated.stderr
+    assert "NATIVE_LAUNCH_OK" in repeated.stdout
+    local_work = destination / "local-work.txt"
+    local_work.write_text("preserve me", encoding="utf-8")
+    refused = install()
+    assert refused.returncode != 0
+    assert "NATIVE_LAUNCH_OK" not in refused.stdout
+    assert local_work.read_text(encoding="utf-8") == "preserve me"
+    local_work.unlink()
+    git("switch", "-c", "local-work", cwd=destination)
+    refused = install()
+    assert refused.returncode != 0
+    assert "NATIVE_LAUNCH_OK" not in refused.stdout
+    branch = subprocess.check_output(["git", "branch", "--show-current"], cwd=destination, text=True)
+    assert branch.strip() == "local-work"
