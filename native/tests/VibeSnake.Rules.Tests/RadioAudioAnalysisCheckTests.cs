@@ -7,6 +7,9 @@ using RepositoryChecks;
 
 namespace VibeSnake.Rules.Tests;
 
+// Real process deadlines must not compete with the simulation campaigns for
+// every host core, especially while coverage instrumentation is enabled.
+[Collection(ExternalProcessIntegrationGroup.Name)]
 public class RadioAudioAnalysisCheckTests
 {
     private const string Policy = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
