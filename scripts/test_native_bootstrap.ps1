@@ -104,8 +104,8 @@ Write-Output "GodotVerifiedVersion=fixture"
     # This placeholder is never executed: the fixture installer stops first.
     $localSdkName = if ($IsWindows) { "dotnet.exe" } else { "dotnet" }
     [IO.File]::WriteAllText((Join-Path $launcherRoot ".dotnet/$localSdkName"), "selection fixture")
-    [IO.File]::WriteAllText((Join-Path $launcherRoot "scripts/install_godot.ps1"),
-        'Write-Host "LOCAL_SDK_SELECTED=$env:DOTNET_ROOT"; throw "Fixture stops before build"')
+    [IO.File]::WriteAllText((Join-Path $launcherRoot "scripts/assert_dotnet_sdk.ps1"),
+        'param($DotnetExecutable); Write-Host "LOCAL_SDK_SELECTED=$env:DOTNET_ROOT"; throw "Fixture stops before build"')
     $shell = (Get-Process -Id $PID).Path
     $originalPath = $env:PATH
     try {
@@ -116,6 +116,23 @@ Write-Output "GodotVerifiedVersion=fixture"
             throw "Launcher did not discover the repository-local SDK: $probe"
         }
     } finally { $env:PATH = $originalPath }
+    $preflightRoot = Join-Path $fixtureRoot "sdk preflight"
+    $preflightScripts = Join-Path $preflightRoot "scripts"
+    New-Item -ItemType Directory -Path $preflightScripts | Out-Null
+    Copy-Item -LiteralPath (Join-Path $PSScriptRoot "assert_dotnet_sdk.ps1") -Destination $preflightScripts
+    [IO.File]::WriteAllText((Join-Path $preflightRoot "global.json"), '{"sdk":{"version":"99.1.2"}}')
+    $fakeSdk = Join-Path $preflightRoot "sdk.ps1"
+    [IO.File]::WriteAllText($fakeSdk, 'Write-Output "99.1.2"; exit 0')
+    & (Join-Path $preflightScripts "assert_dotnet_sdk.ps1") -DotnetExecutable $fakeSdk
+    foreach ($response in @('Write-Output "99.1.3"; exit 0', 'Write-Output "missing SDK"; exit 1')) {
+        [IO.File]::WriteAllText($fakeSdk, $response)
+        try {
+            & (Join-Path $preflightScripts "assert_dotnet_sdk.ps1") -DotnetExecutable $fakeSdk
+            throw "SDK preflight accepted an unsupported host."
+        } catch {
+            if (-not $_.Exception.Message.Contains("exact .NET 99.1.2 SDK", [StringComparison]::Ordinal)) { throw }
+        }
+    }
     Write-Output "VIBESNAKE_NATIVE_BOOTSTRAP_OK"
 } finally {
     $env:GITHUB_OUTPUT = $originalGitHubOutput

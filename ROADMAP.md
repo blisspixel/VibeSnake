@@ -1492,3 +1492,12 @@ The next implementation queue is:
 8. Complete protected signing, notarization, selected-channel install/update/rollback, external validation, release materials, and rehearsal against an accepted candidate before 0.9 or stable promotion.
 
 No 0.4 domain feature work begins until the automatable 0.3.0 acceptance gates and technical prerequisites pass. If human observation is unavailable, its evidence remains explicitly pending while reversible implementation continues; the version cannot be promoted and no final feel claim may be made from automation alone.
+
+## Source-launcher first-use followup (#28)
+
+The shell installer now starts the native source launcher and refuses to replace
+local work or switch an existing checkout's branch. Launcher diagnostics give
+pinned prerequisite commands, check the SDK before editor installation, and name
+the first-run steps. The Python entry point remains a frozen migration reference.
+The editor source runtime and supported Release exports remain distinct; approved
+content, exact packages and physical qualification still gate player releases.

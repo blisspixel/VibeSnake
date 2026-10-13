@@ -38,9 +38,11 @@ if ($localDotnet) {
 } elseif (Get-Command dotnet -ErrorAction SilentlyContinue) {
     $dotnetExecutable = (Get-Command dotnet).Source
 } else {
-    throw "The .NET 10.0.303 SDK is required. Install it, then run ./play.ps1 again."
+    throw "The .NET 10.0.303 SDK is required. Install with mise use -g dotnet@10.0.303, or see https://dotnet.microsoft.com/download/dotnet/10.0, then rerun ./play.ps1."
 }
 
+& (Join-Path $repositoryRoot "scripts/assert_dotnet_sdk.ps1") -DotnetExecutable $dotnetExecutable
+Write-Host "First launch can take a few minutes: verifying Godot, building the native game, then importing assets. Later launches reuse verified downloads and imports."
 $installerOutput = & (Join-Path $repositoryRoot "scripts/install_godot.ps1")
 $installerOutput | Write-Output
 $executableLine = $installerOutput |
