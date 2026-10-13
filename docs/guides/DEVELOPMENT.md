@@ -10,6 +10,8 @@
 
 Python 3.10 reaches end of life in October 2026, so the alpha no longer carries it toward 1.0. Python 3.15 remains a prerelease line and is outside the supported range until its final release and dependency matrix pass. The source reference uses Pygame Community Edition 2.5.8 within major version 2 because it publishes CPython 3.11 through 3.14 wheels for the three development platforms. See the [official Python version status](https://devguide.python.org/versions/) and [pygame-ce package record](https://pypi.org/project/pygame-ce/).
 
+Install commands follow the current [PowerShell macOS guidance](https://learn.microsoft.com/en-us/powershell/scripting/install/install-powershell-on-macos) and [official .NET install-script options](https://learn.microsoft.com/en-us/dotnet/core/tools/dotnet-install-script). The exact SDK remains repository-pinned.
+
 ## Start native development
 
 Clone the repository, install PowerShell 7 and the pinned .NET SDK, then run the root launcher. Python installation is optional for native work.

@@ -11,7 +11,7 @@ Vibe Snake requires PowerShell 7 and the exact .NET 10.0.303 SDK.
 Linux/macOS with mise:
   mise use -g powershell@7.6.6 dotnet@10.0.303
 macOS with Homebrew:
-  brew install --cask powershell
+  brew install powershell
 Install the pinned SDK with mise or the official dotnet-install script:
   https://dotnet.microsoft.com/download/dotnet/scripts
   bash dotnet-install.sh --version 10.0.303 --install-dir .dotnet
