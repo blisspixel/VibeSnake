@@ -1,61 +1,29 @@
-# Bootstrap the frozen Python reference from GitHub main.
+# Prepare a source checkout and launch the native Godot game.
+# The frozen Python reference is retired; this script no longer installs it.
 # Usage:
 #   irm https://raw.githubusercontent.com/blisspixel/VibeSnake/main/scripts/install_player.ps1 | iex
-#   or: ./scripts/install_player.ps1 [-InstallDir path]
-
-[CmdletBinding()]
-param(
-    [string]$InstallDir = (Join-Path $PWD "VibeSnake"),
-    [string]$Branch = "main",
-    [string]$RepoUrl = "https://github.com/blisspixel/VibeSnake.git",
-    [string]$Python = "py -3.14"
-)
+#   or: ./scripts/install_player.ps1 [install_dir]
 
 $ErrorActionPreference = "Stop"
+$InstallDir = if ($args.Count -ge 1 -and $args[0]) { $args[0] } else { Join-Path $PWD "VibeSnake" }
+$Branch = if ($env:VIBESNAKE_BRANCH) { $env:VIBESNAKE_BRANCH } else { "main" }
+$RepoUrl = if ($env:VIBESNAKE_REPO) { $env:VIBESNAKE_REPO } else { "https://github.com/blisspixel/VibeSnake.git" }
 
-function Invoke-Python {
-    param([Parameter(Mandatory)][string]$Expression)
-    if ($Python -like "py *") {
-        $parts = $Python.Split(" ", 2)
-        & $parts[0] $parts[1].Split(" ") @("-c", $Expression)
-    } else {
-        & $Python -c $Expression
-    }
-    if ($LASTEXITCODE -ne 0) {
-        throw "Python command failed: $Expression"
-    }
-}
+Write-Host "The Python/Pygame reference is retired. Preparing the native Godot game in $InstallDir (branch $Branch)."
 
-Write-Host "Installing the frozen Vibe Snake Python reference into $InstallDir (branch $Branch)"
-
-if (-not (Test-Path -LiteralPath $InstallDir)) {
+if (-not (Test-Path -LiteralPath (Join-Path $InstallDir ".git"))) {
     git clone --branch $Branch $RepoUrl $InstallDir
+    if ($LASTEXITCODE -ne 0) { throw "git clone failed" }
 } else {
     Write-Host "Directory exists; pulling latest $Branch"
     git -C $InstallDir fetch origin $Branch
+    if ($LASTEXITCODE -ne 0) { throw "git fetch failed" }
     git -C $InstallDir checkout $Branch
+    if ($LASTEXITCODE -ne 0) { throw "git checkout failed" }
     git -C $InstallDir pull --ff-only origin $Branch
+    if ($LASTEXITCODE -ne 0) { throw "git pull failed" }
 }
 
-Set-Location -LiteralPath $InstallDir
-if (-not (Test-Path ".venv")) {
-    if ($Python -like "py *") {
-        $parts = $Python.Split(" ", 2)
-        & $parts[0] $parts[1].Split(" ") -m venv .venv
-    } else {
-        & $Python -m venv .venv
-    }
-}
-
-$venvPython = Join-Path $InstallDir ".venv\Scripts\python.exe"
-& $venvPython -m pip install --upgrade pip
-& $venvPython -m pip install --require-hashes --only-binary=:all: -r requirements-runtime.lock
-& $venvPython -m pip install --no-deps --no-build-isolation -e .
-
-Write-Host ""
-Write-Host "Frozen reference installed. Run it with:"
-Write-Host "  cd `"$InstallDir`""
-Write-Host "  .\.venv\Scripts\Activate.ps1"
-Write-Host "  vibesnake"
-Write-Host "Update later with:"
-Write-Host "  vibesnake update"
+Write-Host "Launching ./play.ps1. It checks for the .NET SDK 10.0.303, then builds Release."
+& (Join-Path $InstallDir "play.ps1")
+exit $LASTEXITCODE

@@ -110,7 +110,7 @@ Progression-specific native ownership:
 
 ```text
 scripts/
-|-- install_player.ps1/.sh      Legacy frozen-Python reference bootstrap
+|-- install_player.ps1/.sh      Clone or update a checkout and launch play.ps1 / play.sh
 |-- assert_godot_toolchain.ps1  Checksum-bound pinned editor-build gate
 |-- native_artifact_policy.ps1  Shared prohibited native-bundle path rules
 |-- platform_path_policy.ps1    Absolute environment-path policy for tooling

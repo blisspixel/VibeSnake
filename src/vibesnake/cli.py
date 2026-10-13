@@ -58,24 +58,29 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def native_play_command(root) -> list[str]:
+    """Command that launches the native Godot game from a source checkout."""
+    if sys.platform == "win32":
+        return ["pwsh", "-NoProfile", "-File", str(root / "play.ps1")]
+    return [str(root / "play.sh")]
+
+
 def run_play() -> int:
-    """Start the game."""
-    # Import lazily so update/doctor stay light without pygame side effects.
-    import traceback
+    """Launch the native Godot game. The Python/Pygame reference is retired."""
+    import subprocess
 
-    import pygame
-
-    from vibesnake.core.game_state import Game
-
-    try:
-        Game().run()
-    except Exception:
-        print("[Main] Game crashed with error:")
-        traceback.print_exc()
+    root = find_checkout_root()
+    launcher = root / "play.sh" if root is not None else None
+    if root is None or launcher is None or not launcher.is_file():
+        print(
+            "The Python/Pygame game is retired. Clone https://github.com/blisspixel/VibeSnake "
+            "and run ./play.sh.",
+            file=sys.stderr,
+        )
         return 1
-    finally:
-        pygame.quit()
-    return 0
+    print("The Python/Pygame reference is retired. Launching the native Godot game.")
+    completed = subprocess.run(native_play_command(root), check=False)
+    return int(completed.returncode)
 
 
 def run_version() -> int:

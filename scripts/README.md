@@ -35,8 +35,8 @@ The native `RepositoryChecks` command owns canonical documentation discovery, re
 
 | Script | Purpose |
 | --- | --- |
-| `install_player.ps1` | Legacy Windows bootstrap for the frozen Python reference |
-| `install_player.sh` | Legacy macOS/Linux bootstrap for the frozen Python reference |
+| `install_player.ps1` | Legacy Windows bootstrap; the Python reference is retired, use `./play.ps1` |
+| `install_player.sh` | Clones or updates a checkout and launches `./play.sh` (native Godot, not Python) |
 
 After install, players use the package CLI:
 

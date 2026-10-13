@@ -149,7 +149,7 @@ Press F8 or controller Select/Back to prepare deletion of the selected copied sl
 
 ### The native toolchain does not install
 
-Use PowerShell 7 and the .NET 10.0.303 SDK. `./play.ps1` and `./play.sh` call the checksum-verified Godot installer. If setup fails, run `./scripts/install_godot.ps1` directly to see the exact archive, checksum, and executable validation result. A new checkout also needs a one-time asset import, which the launcher performs through `./scripts/assert_godot_import.ps1`. If a launch ever reports a failed resource load, run that script directly to rebuild the import cache and see which declared destination was missing.
+Use PowerShell 7 and exactly the .NET SDK 10.0.303. On Linux, `./play.sh` checks both before it builds and prints install commands for mise, Homebrew, winget, and the dotnet-install script. The player build is Release. The first run prints that Godot download, build, and asset import usually take a few minutes. `./play.ps1` and `./play.sh` call the checksum-verified Godot installer. `./play.sh --install-desktop-entry` writes a user desktop launcher. If setup fails, run `./scripts/install_godot.ps1` directly to see the exact archive, checksum, and executable validation result. A new checkout also needs a one-time asset import, which the launcher performs through `./scripts/assert_godot_import.ps1`. If a launch ever reports a failed resource load, run that script directly to rebuild the import cache and see which declared destination was missing.
 
 ### The game launches without music
 

@@ -89,15 +89,22 @@ def test_update_rejects_dirty_tree(tmp_path, monkeypatch):
     assert raised
 
 
-def test_play_dispatches_to_game(monkeypatch):
-    calls: list[str] = []
+def test_play_dispatches_to_native_launcher(monkeypatch, capsys):
+    calls: list[list[str]] = []
 
-    class StubGame:
-        def run(self):
-            calls.append("run")
+    class Completed:
+        returncode = 0
 
-    monkeypatch.setattr("vibesnake.core.game_state.Game", StubGame)
-    monkeypatch.setattr("pygame.quit", lambda: calls.append("quit"))
+    def fake_run(command, check=False):
+        calls.append(list(command))
+        return Completed()
+
+    monkeypatch.setattr("vibesnake.cli.find_checkout_root", lambda: Path("."))
+    monkeypatch.setattr(Path, "is_file", lambda self: self.name == "play.sh")
+    monkeypatch.setattr("subprocess.run", fake_run)
     status = cli.main(["play"])
+    captured = capsys.readouterr()
     assert status == 0
-    assert calls == ["run", "quit"]
+    assert calls
+    assert calls[0][0].endswith("play.sh") or calls[0][0] == "pwsh"
+    assert "native" in captured.out.lower()

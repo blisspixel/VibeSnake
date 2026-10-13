@@ -75,7 +75,22 @@ Native development continues while those reviews are pending: fix control and pr
 
 ## Play from source
 
-Prerequisites are Git, PowerShell 7, and the .NET 10.0.303 SDK. The launcher installs and verifies the pinned Godot 4.7.1 .NET editor on first use, builds the native game, refreshes missing or stale imported assets, and starts it.
+Prerequisites are Git, PowerShell 7, and exactly the .NET SDK 10.0.303 (`global.json` disables roll-forward). The launcher installs and verifies the pinned Godot 4.7.1 .NET editor on first use, builds the native game in Release, refreshes missing or stale imported assets, and starts it. The first launch downloads Godot and imports assets; that usually takes a few minutes and the launcher says so before the quiet Godot logs. `scripts/install_player.sh` and the `vibesnake` command both reach this native launcher. The Python/Pygame game is retired.
+
+If `./play.sh` stops on a missing tool, it prints copy-paste install commands. Any one of these is enough:
+
+```bash
+mise use -g powershell@7.6.6 dotnet@10.0.303
+brew install --cask powershell && brew install dotnet@10
+winget install --id Microsoft.PowerShell -e && winget install --id Microsoft.DotNet.SDK.10 -e
+curl -fsSL https://dot.net/v1/dotnet-install.sh | bash /dev/stdin --version 10.0.303
+```
+
+A desktop launcher, after the prerequisites are installed:
+
+```bash
+./play.sh --install-desktop-entry
+```
 
 Windows:
 

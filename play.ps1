@@ -38,7 +38,37 @@ if ($localDotnet) {
 } elseif (Get-Command dotnet -ErrorAction SilentlyContinue) {
     $dotnetExecutable = (Get-Command dotnet).Source
 } else {
-    throw "The .NET 10.0.303 SDK is required. Install it, then run ./play.ps1 again."
+    throw @"
+The .NET SDK 10.0.303 is required. Install it, then run ./play.ps1 again.
+  mise:      mise use -g dotnet@10.0.303
+  Homebrew:  brew install dotnet@10
+  winget:    winget install --id Microsoft.DotNet.SDK.10 -e
+  script:    curl -fsSL https://dot.net/v1/dotnet-install.sh | bash /dev/stdin --version 10.0.303
+"@
+}
+
+$installedSdks = & $dotnetExecutable --list-sdks
+if (($installedSdks -join "`n") -notmatch '(?m)^10\.0\.303\b') {
+    throw @"
+The .NET SDK 10.0.303 is required (global.json sets rollForward to disable). Found:
+$($installedSdks -join "`n")
+  mise:      mise use -g dotnet@10.0.303
+  Homebrew:  brew install dotnet@10
+  winget:    winget install --id Microsoft.DotNet.SDK.10 -e
+  script:    curl -fsSL https://dot.net/v1/dotnet-install.sh | bash /dev/stdin --version 10.0.303
+"@
+}
+
+$godotCache = Join-Path $repositoryRoot ".tools/godot"
+$cachedGodot = $null
+if (Test-Path -LiteralPath $godotCache -PathType Container) {
+    $cachedGodot = Get-ChildItem -LiteralPath $godotCache -Recurse -File -ErrorAction SilentlyContinue |
+        Where-Object { $_.Name -like "Godot*" } |
+        Select-Object -First 1
+}
+if (-not $cachedGodot) {
+    Write-Host "First run: downloading the pinned Godot editor, building the native game, and importing assets."
+    Write-Host "This usually takes a few minutes and only happens once."
 }
 
 $installerOutput = & (Join-Path $repositoryRoot "scripts/install_godot.ps1")
@@ -51,7 +81,8 @@ if (-not $executableLine) {
 }
 
 $godotExecutable = $executableLine.Substring("GodotExecutable=".Length)
-& $dotnetExecutable build (Join-Path $repositoryRoot "game/VibeSnake.Game.sln") --nologo
+# Release is the player build. Debug stays available for development via an explicit -c Debug.
+& $dotnetExecutable build (Join-Path $repositoryRoot "game/VibeSnake.Game.sln") --nologo -c Release
 if ($LASTEXITCODE -ne 0) {
     throw "The native game build failed."
 }

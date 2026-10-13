@@ -382,6 +382,9 @@ public partial class Main : Node2D
 
     public override void _Ready()
     {
+        // The editor binary appends " (DEBUG)" before the scene starts. Players
+        // launching through play.ps1 should see the product name only.
+        GetWindow().Title = "Vibe Snake";
         GameActions.EnsureDefaults();
         AudioBuses.EnsureRegistered();
         _brandLogo = GD.Load<Texture2D>(BrandLogoResourcePath)

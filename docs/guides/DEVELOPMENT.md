@@ -2,7 +2,7 @@
 
 ## Prerequisites
 
-- PowerShell 7, Git, and the .NET SDK 10.0.303 for native development and source play.
+- PowerShell 7, Git, and the .NET SDK 10.0.303 for native development and source play. Arch does not ship either in the official repositories. Without root: `mise use -g powershell@7.6.6` and `mise use -g dotnet@10.0.303`. Homebrew: `brew install --cask powershell` and `brew install dotnet@10`. winget: `winget install --id Microsoft.PowerShell -e` and `winget install --id Microsoft.DotNet.SDK.10 -e`. The dotnet-install script is `curl -fsSL https://dot.net/v1/dotnet-install.sh | bash /dev/stdin --version 10.0.303`. `./play.sh` prints these commands when either tool is missing.
 - Godot 4.7.1 .NET, installed and verified by the root launchers or the bootstrap script.
 - Python 3.11 through 3.14 only for the frozen oracle, remaining parity tests, and Python syntax checks. Python 3.14 is recommended for that work.
 - A desktop environment for visible playtesting.
@@ -56,7 +56,7 @@ On macOS or Linux:
 ./play.sh
 ```
 
-Both launchers call the same PowerShell 7 path. They prefer the pinned SDK under `.dotnet/` when present, otherwise use the system SDK. They install and verify the pinned Godot editor when needed, build `game/VibeSnake.Game.sln`, and launch `game/project.godot`. The first run downloads the platform editor archive. Later runs compare the complete cached editor, including supporting libraries, against the verified archive and reuse the extraction. Missing, modified, or unexpected files trigger a staged repair; the existing installation is retained until the replacement verifies.
+Both launchers call the same PowerShell 7 path. They prefer the pinned SDK under `.dotnet/` when present, otherwise use the system SDK. They install and verify the pinned Godot editor when needed, build `game/VibeSnake.Game.sln` in Release, and launch `game/project.godot`. Debug stays available for development with `dotnet build -c Debug`. The player window title is `Vibe Snake`. The first run prints a short banner, then downloads the platform editor archive (usually a few minutes). Later runs compare the complete cached editor, including supporting libraries, against the verified archive and reuse the extraction. `./play.sh --install-desktop-entry` writes `vibesnake.desktop` under `$XDG_DATA_HOME/applications` or `~/.local/share/applications`. `scripts/install_player.sh` and `scripts/install_player.ps1` clone or update a checkout and launch that native path. They do not install the frozen Python reference. Missing, modified, or unexpected files trigger a staged repair; the existing installation is retained until the replacement verifies.
 
 Before launch, the import guard checks source-image hashes, import-setting timestamps, and generated payload hashes. New or edited images, changed import settings, and damaged cache files trigger an editor import that waits for resource completion before exiting. Repair removes only affected generated files under `.godot/imported/` and verifies the rebuilt output before play; authored source images and descriptors are preserved. Startup imports have a five-minute wall-clock deadline. Native qualification also bounds scene smoke to ten minutes and exports to thirty minutes, with additional bounded termination and pipe-drain time. Commands preserve literal arguments, drain both output streams concurrently, and reject incomplete or excessive diagnostics. Timeout or capture failure stops qualification and reports the captured output.
 
