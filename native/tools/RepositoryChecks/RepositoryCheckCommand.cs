@@ -221,6 +221,7 @@ public static class DocumentationCheck
     [
         "README.md",
         "ROADMAP.md",
+        "AGENTS.md",
         "CHANGELOG.md",
         "CODE_OF_CONDUCT.md",
         "CONTRIBUTING.md",
