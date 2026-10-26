@@ -19,7 +19,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.11", "3.12", "3.13", "3.14"]
+        python-version: ["3.11", "3.12", "3.13", "3.14", "3.15"]
 
     env:
       PIP_DISABLE_PIP_VERSION_CHECK: "1"
@@ -40,10 +40,10 @@ jobs:
           cache-dependency-path: requirements-ci.lock
 
       - name: Set up .NET for agent package qualification
-        if: matrix.python-version == '3.14'
+        if: matrix.python-version == '3.15'
         uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
-          dotnet-version: 10.0.303
+          dotnet-version: 10.0.403
           cache: true
           cache-dependency-path: |
             native/src/VibeSnake.AgentPlay/packages.lock.json
@@ -64,15 +64,15 @@ jobs:
         run: python -m ruff format --check src tests scripts
 
       - name: Audit Python dependencies
-        if: matrix.python-version == '3.14'
+        if: matrix.python-version == '3.15'
         run: python -m pip_audit --strict --disable-pip --require-hashes --requirement requirements-ci.lock
 
       - name: Audit player runtime dependencies
-        if: matrix.python-version == '3.14'
+        if: matrix.python-version == '3.15'
         run: python -m pip_audit --strict --disable-pip --require-hashes --requirement requirements-runtime.lock
 
       - name: Qualify agent interoperability artifacts
-        if: matrix.python-version == '3.14'
+        if: matrix.python-version == '3.15'
         shell: pwsh
         run: |
           dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj --configuration Release -- plugin integrations/vibesnake-agent-plugin
@@ -82,78 +82,78 @@ jobs:
           ./scripts/package_agent_host.ps1 -OutputRoot TestResults/agent-host -Force
 
       - name: Qualify manual product matrix handoff
-        if: matrix.python-version == '3.14'
+        if: matrix.python-version == '3.15'
         run: >-
           dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj
           --configuration Release --no-restore -- manual-matrix-write
           TestResults/manual-product-matrix/manual_product_matrix_handoff.json .
 
       - name: Qualify external validation handoff
-        if: matrix.python-version == '3.14'
+        if: matrix.python-version == '3.15'
         run: >-
           dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj
           --configuration Release --no-restore -- external-validation-write
           TestResults/external-validation/external_validation_handoff.json .
 
       - name: Qualify release-material foundation
-        if: matrix.python-version == '3.14'
+        if: matrix.python-version == '3.15'
         run: >-
           dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj
           --configuration Release --no-restore -- materials-write
           TestResults/release-materials/release_materials_handoff.json .
 
       - name: Qualify release rehearsal handoff
-        if: matrix.python-version == '3.14'
+        if: matrix.python-version == '3.15'
         run: >-
           dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj
           --configuration Release --no-restore -- rehearsal-write
           TestResults/release-rehearsal/release_rehearsal_handoff.json .
 
       - name: Qualify stable promotion guard
-        if: matrix.python-version == '3.14'
+        if: matrix.python-version == '3.15'
         run: >-
           dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj
           --configuration Release --no-restore -- stable-write
           TestResults/stable-promotion/stable_promotion_handoff.json .
 
       - name: Verify reviewed achievement-candidate fixture
-        if: matrix.python-version == '3.14'
+        if: matrix.python-version == '3.15'
         run: >-
           dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj
           --configuration Release --no-restore -- achievement-candidates .
 
       - name: Verify reviewed Last Stand fixture
-        if: matrix.python-version == '3.14'
+        if: matrix.python-version == '3.15'
         run: >-
           dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj
           --configuration Release --no-restore -- last-stand .
 
       - name: Verify reviewed Phase Shift fixture
-        if: matrix.python-version == '3.14'
+        if: matrix.python-version == '3.15'
         run: >-
           dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj
           --configuration Release --no-restore -- phase-shift .
 
       - name: Verify reviewed Shield fixture
-        if: matrix.python-version == '3.14'
+        if: matrix.python-version == '3.15'
         run: >-
           dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj
           --configuration Release --no-restore -- shield .
 
       - name: Verify reviewed Remaining Powers fixture
-        if: matrix.python-version == '3.14'
+        if: matrix.python-version == '3.15'
         run: >-
           dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj
           --configuration Release --no-restore -- remaining-powers .
 
       - name: Verify reviewed Core Rules fixture
-        if: matrix.python-version == '3.14'
+        if: matrix.python-version == '3.15'
         run: >-
           dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj
           --configuration Release --no-restore -- core-rules .
 
       - name: Verify reviewed Movement fixture
-        if: matrix.python-version == '3.14'
+        if: matrix.python-version == '3.15'
         run: >-
           dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj
           --configuration Release --no-restore -- movement .
@@ -162,11 +162,11 @@ jobs:
         run: python -m pytest --cov=vibesnake --cov-report=term-missing --cov-report=xml
 
       - name: Run seeded gameplay QA campaign
-        if: matrix.python-version == '3.14'
+        if: matrix.python-version == '3.15'
         run: python -m vibesnake.qa --seeds 0 1 2 3 4 --steps 500 --compact --output qa_reports/core.json
 
       - name: Upload Python QA evidence
-        if: matrix.python-version == '3.14'
+        if: matrix.python-version == '3.15'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: python-qa-evidence
@@ -202,7 +202,7 @@ jobs:
       - name: Set up .NET
         uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
-          dotnet-version: 10.0.303
+          dotnet-version: 10.0.403
           cache: true
           cache-dependency-path: |
             game/packages.lock.json
@@ -289,7 +289,7 @@ jobs:
       - name: Set up .NET
         uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
-          dotnet-version: 10.0.303
+          dotnet-version: 10.0.403
 
       - name: Install verified Godot build
         id: godot
@@ -380,7 +380,7 @@ jobs:
       - name: Set up .NET
         uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
-          dotnet-version: 10.0.303
+          dotnet-version: 10.0.403
 
       - name: Restore native repository checks
         run: >-
@@ -470,7 +470,7 @@ jobs:
       - name: Set up .NET
         uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
-          dotnet-version: 10.0.303
+          dotnet-version: 10.0.403
 
       - name: Restore native repository checks
         run: >-
@@ -514,7 +514,7 @@ jobs:
       - name: Set up .NET
         uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
-          dotnet-version: 10.0.303
+          dotnet-version: 10.0.403
 
       - name: Restore native repository checks
         run: >-

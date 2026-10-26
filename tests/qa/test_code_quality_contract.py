@@ -3,7 +3,7 @@ import json
 import re
 import xml.etree.ElementTree as ET
 
-import yaml
+from ruamel.yaml import YAML
 
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
@@ -18,7 +18,7 @@ def workflow_paths() -> list[Path]:
 
 
 def load_workflow(path: Path) -> dict[str, object]:
-    loaded = yaml.load(path.read_text(encoding="utf-8"), Loader=yaml.BaseLoader)
+    loaded = YAML(typ="base", pure=True).load(path.read_text(encoding="utf-8"))
     assert isinstance(loaded, dict), path
     return loaded
 
@@ -40,13 +40,13 @@ def test_dotnet_quality_contract_is_explicit_and_stable() -> None:
 
     global_config = json.loads((REPOSITORY_ROOT / "global.json").read_text(encoding="utf-8"))
     toolchain = json.loads((REPOSITORY_ROOT / "native" / "toolchain.json").read_text(encoding="utf-8"))
-    assert global_config["sdk"]["version"] == "10.0.303"
+    assert global_config["sdk"]["version"] == "10.0.403"
     assert global_config["sdk"]["rollForward"] == "disable"
     assert global_config["sdk"]["allowPrerelease"] is False
     assert toolchain["dotnetSdk"]["version"] == global_config["sdk"]["version"]
 
     workflow = (REPOSITORY_ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
-    assert workflow.count("dotnet-version: 10.0.303") == 6
+    assert workflow.count("dotnet-version: 10.0.403") == 6
     validator_installs = re.findall(
         r"python -m pip install --require-hashes --only-binary=:all:\s+-r requirements-ci\.lock",
         workflow,
@@ -185,7 +185,7 @@ def test_dependency_automation_is_bounded_and_covers_every_package_ecosystem() -
     # This test covers committed ecosystem configuration. Live GitHub alert and
     # security-update settings are verified separately by the release checklist.
     config_path = REPOSITORY_ROOT / ".github" / "dependabot.yml"
-    config = yaml.safe_load(config_path.read_text(encoding="utf-8"))
+    config = YAML(typ="safe", pure=True).load(config_path.read_text(encoding="utf-8"))
 
     assert config["version"] == 2
     updates = config["updates"]

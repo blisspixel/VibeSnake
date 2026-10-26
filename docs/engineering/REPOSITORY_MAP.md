@@ -10,8 +10,8 @@
 | [pyproject.toml](../../pyproject.toml) | Python package metadata and PEP 440 version, `vibesnake` console command, build backend, pytest, coverage, and Ruff policy |
 | [requirements.txt](../../requirements.txt) | Runtime dependencies |
 | [requirements-dev.txt](../../requirements-dev.txt) | Human-edited development dependency constraints |
-| [requirements-ci.lock](../../requirements-ci.lock) | Universal Python 3.11 through 3.14 graph with exact versions and SHA-256 hashes |
-| [requirements-runtime.lock](../../requirements-runtime.lock) | Minimal hash-locked player graph for Python 3.11 through 3.14 |
+| [requirements-ci.lock](../../requirements-ci.lock) | Universal Python 3.11 through 3.15 graph with exact versions and SHA-256 hashes |
+| [requirements-runtime.lock](../../requirements-runtime.lock) | Minimal hash-locked player graph for Python 3.11 through 3.15 |
 | [requirements-runtime.txt](../../requirements-runtime.txt) | Human-edited player and local build constraints used to generate the runtime lock |
 | [.pre-commit-config.yaml](../../.pre-commit-config.yaml) | Repository-owned local quality hooks with no mutable remote hook dependencies |
 | [global.json](../../global.json) | Stable .NET 10 SDK selection and local-tool lookup policy |

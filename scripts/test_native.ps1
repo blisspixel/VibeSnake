@@ -522,7 +522,7 @@ try {
     }
     $dotnetTool = $dependencyInventory.tools | Where-Object { $_.name -eq "dotnet-sdk" }
     $godotTool = $dependencyInventory.tools | Where-Object { $_.name -eq "godot-dotnet" }
-    if ($dotnetTool.version -ne "10.0.303" -or
+    if ($dotnetTool.version -ne "10.0.403" -or
         $godotTool.version -ne "4.7.1" -or
         $godotTool.commit -ne "a13da4feb") {
         throw "Dependency inventory toolchain does not match the pinned native toolchain."

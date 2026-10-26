@@ -33,7 +33,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
-          python-version: "3.14"
+          python-version: "3.15"
 
       - name: Build wheel and sdist
         run: |
@@ -137,7 +137,7 @@ jobs:
 
           **Native source player**
 
-          Download \`VibeSnake-player-source.zip\`, verify it against \`SHA256SUMS.txt\`, and unzip it. PowerShell 7 and the .NET 10.0.303 SDK are required. The launcher downloads and verifies the pinned Godot 4.7.1 .NET editor on first use.
+          Download \`VibeSnake-player-source.zip\`, verify it against \`SHA256SUMS.txt\`, and unzip it. PowerShell 7 and the .NET 10.0.403 SDK are required. The launcher downloads and verifies the pinned Godot 4.7.1 .NET editor on first use.
 
           \`\`\`powershell
           cd VibeSnake

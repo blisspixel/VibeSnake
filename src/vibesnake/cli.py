@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import subprocess
 import sys
 
 from vibesnake import __version__
@@ -59,23 +60,26 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def run_play() -> int:
-    """Start the game."""
-    # Import lazily so update/doctor stay light without pygame side effects.
-    import traceback
-
-    import pygame
-
-    from vibesnake.core.game_state import Game
-
-    try:
-        Game().run()
-    except Exception:
-        print("[Main] Game crashed with error:")
-        traceback.print_exc()
+    """Launch the native game from a source checkout."""
+    root = find_checkout_root()
+    launcher_name = "play.ps1" if sys.platform == "win32" else "play.sh"
+    if root is None or not (root / launcher_name).is_file():
+        print(
+            "Native play requires a source checkout. Clone "
+            "https://github.com/blisspixel/VibeSnake and run ./play.ps1 or ./play.sh.",
+            file=sys.stderr,
+        )
         return 1
-    finally:
-        pygame.quit()
-    return 0
+    command = (
+        ["pwsh", "-NoProfile", "-File", str(root / launcher_name)]
+        if sys.platform == "win32"
+        else [str(root / launcher_name)]
+    )
+    try:
+        return subprocess.run(command, cwd=root, check=False).returncode
+    except OSError as error:
+        print(f"Native launcher could not start: {error}. See README.md prerequisites.", file=sys.stderr)
+        return 1
 
 
 def run_version() -> int:
@@ -90,8 +94,8 @@ def run_doctor() -> int:
     print(f"checkout {root if root else 'not found (package-only install?)'}")
 
     issues: list[str] = []
-    if sys.version_info < (3, 11) or sys.version_info >= (3, 15):
-        issues.append("Python 3.11 through 3.14 is required")
+    if sys.version_info < (3, 11):
+        issues.append("Python 3.11 or newer is required")
 
     try:
         import pygame  # noqa: F401

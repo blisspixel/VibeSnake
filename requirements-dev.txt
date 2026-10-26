@@ -5,10 +5,13 @@ pytest-asyncio>=1.4,<2
 pytest-cov>=5.0,<8
 hypothesis>=6.100,<7
 ruff>=0.12,<1
-pre-commit>=4.2,<5
+ruamel.yaml>=0.19.1,<0.20
+# PyYAML has no CPython 3.15 wheels yet. Run the optional hook runner on 3.14.
+# CI executes every hook's checks directly on the default Python version.
+pre-commit>=4.2,<5; python_version < "3.15"
 build>=1.2,<2
 pip-audit>=2.10,<3
-setuptools>=83,<84
+setuptools>=84.1,<85
 wheel>=0.45,<1
 urllib3>=2.8,<3
 virtualenv>=21.7.13,<22

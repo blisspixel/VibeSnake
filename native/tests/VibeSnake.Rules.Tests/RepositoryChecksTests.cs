@@ -2225,6 +2225,7 @@ public sealed class RepositoryChecksTests
         [
             "README.md",
             "ROADMAP.md",
+            "AGENTS.md",
             "CHANGELOG.md",
             "CODE_OF_CONDUCT.md",
             "CONTRIBUTING.md",

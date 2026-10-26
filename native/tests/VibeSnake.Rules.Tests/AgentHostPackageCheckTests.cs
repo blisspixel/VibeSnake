@@ -521,7 +521,7 @@ public sealed class AgentHostPackageCheckTests
             ["source_revision"] = new string('b', 40),
             ["source_dirty"] = false,
             ["lock_set_sha256"] = LockSetHash(sources),
-            ["dotnet_sdk"] = "10.0.303",
+            ["dotnet_sdk"] = "10.0.403",
             ["sources"] = sources,
             ["packages"] = new JsonArray(
                 PackageNode("nuget", "Microsoft.Extensions.Hosting", "10.0.11"),

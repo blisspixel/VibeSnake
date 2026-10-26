@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=83,<84", "wheel>=0.45,<1"]
+requires = ["setuptools>=84.1,<85", "wheel>=0.45,<1"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -7,7 +7,7 @@ name = "vibe-snake"
 version = "0.3.0a1"
 description = "A modern arcade Snake game with tactical powers, an eight-station radio framework, progression, and AI spectators"
 readme = "README.md"
-requires-python = ">=3.11,<3.15"
+requires-python = ">=3.11"
 license = "Apache-2.0"
 license-files = ["LICENSE", "NOTICE"]
 authors = [{ name = "Nick Seal", email = "32712898+blisspixel@users.noreply.github.com" }]
@@ -21,6 +21,7 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
     "Programming Language :: Python :: 3.14",
+    "Programming Language :: Python :: 3.15",
     "Topic :: Games/Entertainment :: Arcade",
 ]
 

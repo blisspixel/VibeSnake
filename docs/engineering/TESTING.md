@@ -120,7 +120,7 @@ As of 2026-08-30:
 - Schema 1 native content-pack tests reject unknown or duplicate fields, oversized manifests, text, arrays, and numeric versions, unsafe or colliding paths, stale bytes or hashes, incomplete approved allowlists, uncleared rights, mismatched credits, invalid semantic-version or ruleset ranges, bad station track lists, dependency errors, malformed optional packs, and optional failures that incorrectly block a valid offline core. Exact UTF-8 file loading and read-only parsed collections preserve qualification after parsing.
 - Native station-badge checks render all eight icons with closed definitions, project-owned pixel glyphs, integer-only drawing, and a canonical RGB PNG encoder, then compare exact bytes with the checked-in set.
 
-The CI workflow declares Python 3.11, 3.12, 3.13, and 3.14. Local qualification uses Python 3.14. Earlier revisions passed the hosted matrix, but local working-tree results do not establish hosted qualification for a new revision. Every new revision requires its own hosted confirmation after push.
+The CI workflow declares Python 3.11, 3.12, 3.13, 3.14, and 3.15. Default qualification uses Python 3.15. Earlier revisions passed the hosted matrix, but local working-tree results do not establish hosted qualification for a new revision. Every new revision requires its own hosted confirmation after push.
 
 ## Test layers
 

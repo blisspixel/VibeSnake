@@ -32,7 +32,7 @@ A local System One-compatible server can omit answer `type`, `model`, `usage`, a
 
 ## Run a watch
 
-From the repository root, with the .NET 10.0.303 SDK:
+From the repository root, with the .NET 10.0.403 SDK:
 
 ```powershell
 dotnet run --project native/tools/VibeSnake.JevPlay/VibeSnake.JevPlay.csproj -- watch --route local --endpoint http://127.0.0.1:8099/v1/systemone --seed 1 --steps 100

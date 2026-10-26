@@ -4,6 +4,10 @@ Notable player-facing and engineering changes are recorded here. The project is 
 
 ## Unreleased
 
+- Completed interrupted repository cleanup: removed unused Pillow, refreshed universal dependency locks, repaired the setuptools audit finding, and added shared agent handoff instructions with repository qualification. Updated the exact .NET SDK to 10.0.403 and the maintained Python test matrix to 3.11 through 3.15. The optional pre-commit runner uses Python 3.14 until PyYAML provides 3.15 wheels; workflow policy tests use an explicit pure Python YAML parser.
+
+- Redirected `vibesnake` and `vibesnake play` to native source play, preserving launch failures and exit status. Package-only installs explain the checkout requirement. Installer qualification now uses Git Bash on Windows and verifies executable fixture scripts while preserving local changes and branches.
+
 - Made the current development download prominent in the README and recorded the completed three-platform hosted code qualification, Python matrix, analysis, and release publication in current status. The continuous source prerelease and the pending native alpha candidate now have explicit separate entry points.
 
 - Successful cold asset imports now return an explicit zero status instead of inheriting an earlier failed command. Qualification seeds a nonzero prior status and exercises a cold rebuild fixture; captured import diagnostics are printed before status checks. Engine errors, warnings, leaked objects, exit failures, and payload validation remain strict.

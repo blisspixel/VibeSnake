@@ -23,6 +23,13 @@ REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 # mode has to carry the execute bit into every clone and published archive.
 EXECUTABLE_SCRIPTS = ("play.sh", "scripts/install_player.sh")
 
+# Windows' System32 bash.exe starts WSL, which cannot consume Windows paths.
+# Use Git's bundled Bash for the native Windows fixture instead.
+BASH = shutil.which("bash")
+if os.name == "nt" and (git_executable := shutil.which("git")):
+    git_bash = Path(git_executable).resolve().parents[1] / "bin" / "bash.exe"
+    BASH = str(git_bash) if git_bash.is_file() else None
+
 
 def _tracked_modes() -> dict[str, str]:
     completed = subprocess.run(
@@ -94,7 +101,7 @@ def test_shell_launcher_forwards_its_own_arguments() -> None:
     assert '"$@"' in launcher, "play.sh must forward its arguments to play.ps1"
 
 
-@pytest.mark.skipif(shutil.which("bash") is None, reason="POSIX installer contract")
+@pytest.mark.skipif(BASH is None, reason="POSIX installer contract requires Bash")
 def test_shell_installer_starts_native_play_and_preserves_existing_work(tmp_path: Path) -> None:
     upstream = tmp_path / "fixture upstream"
     upstream.mkdir()
@@ -108,15 +115,15 @@ def test_shell_installer_starts_native_play_and_preserves_existing_work(tmp_path
     play = upstream / "play.sh"
     play.write_text("#!/usr/bin/env bash\nprintf 'NATIVE_LAUNCH_OK\\n'\n", encoding="utf-8")
     play.chmod(0o755)
-    git("add", "play.sh")
+    git("add", "--chmod=+x", "play.sh")
     git("-c", "commit.gpgsign=false", "commit", "-m", "fixture: native launch")
     destination = tmp_path / "installed source"
-    environment = {**os.environ, "VIBESNAKE_REPO": str(upstream), "VIBESNAKE_BRANCH": "main"}
+    environment = {**os.environ, "VIBESNAKE_REPO": upstream.as_posix(), "VIBESNAKE_BRANCH": "main"}
     installer = REPOSITORY_ROOT / "scripts/install_player.sh"
 
     def install() -> subprocess.CompletedProcess[str]:
         return subprocess.run(
-            ["bash", str(installer), str(destination)],
+            [BASH, installer.as_posix(), destination.as_posix()],
             env=environment,
             capture_output=True,
             text=True,

@@ -13,7 +13,7 @@ The rewrite risk is equally real. Changing engine, language, timing, random beha
 ## Decision
 
 - Use Godot 4.7.1 .NET as the 1.0 presentation and platform shell.
-- Use the exact stable .NET SDK 10.0.303 and target `net10.0`.
+- Use the exact stable .NET SDK 10.0.403 and target `net10.0`.
 - Keep deterministic gameplay in `VibeSnake.Rules`, a pure C# assembly with no Godot reference.
 - Keep replay files and other platform-neutral storage boundaries in dedicated service assemblies such as `VibeSnake.Persistence`, outside both rules and Godot presentation code.
 - Keep Python and Pygame as a frozen behavior oracle and fixture producer. Make Godot the default source player after automated trace, feature, data, and native artifact foundations pass.
@@ -24,7 +24,7 @@ The rewrite risk is equally real. Changing engine, language, timing, random beha
 
 ## Current evidence
 
-- `global.json` selects exact stable .NET SDK 10.0.303 and rejects previews and other patches. `native/toolchain.json` pins Godot 4.7.1, its official commit, official editor archives for all three targets, and the exact export-template archive.
+- `global.json` selects exact stable .NET SDK 10.0.403 and rejects previews and other patches. `native/toolchain.json` pins Godot 4.7.1, its official commit, official editor archives for all three targets, and the exact export-template archive.
 - The native solution builds with warnings as errors. Current contract counts and measured coverage are recorded in [current status](../release/STATUS.md) and [testing](../engineering/TESTING.md). Coverlet 10 enforces 90 percent line and 85 percent branch floors per measured module, with a retained 90 percent branch target for 0.4 acceptance.
 - Shared Python-origin fixtures cover 100 movement traces with 25,600 steps, core rules, all nine powers, and the achievement-candidate product path. Achievement-candidate, Last Stand, Phase Shift, Shield, Remaining Powers, Core Rules, and Movement corpora retain 167 reviewed vectors under native exact-byte freshness ownership, while separate live C# consumers prove behavior. The seven closed renderers preserve exact 2,682-byte, 3,596-byte, 3,534-byte, 4,489-byte, 9,548-byte, 57,031-byte, and 999,087-byte canonical LF identities. Reviewed parity decisions own intentional differences.
 - `VibeSnake.Rules` owns Classic and Vibe, all nine powers, adaptive hunger, canonical schema 3 state, stable hashes, replay recording and verification, AI rivals, challenges, ghosts, progression catalogs, and deterministic restore.

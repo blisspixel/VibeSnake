@@ -9,30 +9,13 @@ def test_main_module_dispatches_to_cli(monkeypatch):
     assert __main__.main(["version"]) == 7
 
 
-def test_play_runs_game_and_quits(monkeypatch):
+def test_default_command_starts_native_play(monkeypatch):
     calls = []
-
-    class StubGame:
-        def run(self):
-            calls.append("run")
-
-    monkeypatch.setattr("vibesnake.core.game_state.Game", StubGame)
-    monkeypatch.setattr("pygame.quit", lambda: calls.append("quit"))
-    status = cli.main([])
-    assert calls == ["run", "quit"]
-    assert status == 0
+    monkeypatch.setattr(cli, "run_play", lambda: calls.append("native") or 0)
+    assert __main__.main([]) == 0
+    assert calls == ["native"]
 
 
-def test_play_reports_crash_and_still_quits(monkeypatch):
-    calls = []
-
-    class CrashingGame:
-        def run(self):
-            raise RuntimeError("test crash")
-
-    monkeypatch.setattr("vibesnake.core.game_state.Game", CrashingGame)
-    monkeypatch.setattr("traceback.print_exc", lambda: calls.append("reported"))
-    monkeypatch.setattr("pygame.quit", lambda: calls.append("quit"))
-    status = cli.main(["play"])
-    assert calls == ["reported", "quit"]
-    assert status == 1
+def test_play_propagates_native_failure(monkeypatch):
+    monkeypatch.setattr(cli, "run_play", lambda: 7)
+    assert __main__.main(["play"]) == 7

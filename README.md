@@ -75,7 +75,7 @@ Native development continues while those reviews are pending: fix control and pr
 
 ## Play from source
 
-Prerequisites are Git, PowerShell 7, and the .NET 10.0.303 SDK. The launcher checks the exact SDK before downloading anything, then installs and verifies the pinned Godot 4.7.1 .NET editor on first use, builds the native game, refreshes missing or stale imported assets, and starts it.
+Prerequisites are Git, PowerShell 7, and the .NET 10.0.403 SDK. The launcher checks the exact SDK before downloading anything, then installs and verifies the pinned Godot 4.7.1 .NET editor on first use, builds the native game, refreshes missing or stale imported assets, and starts it.
 
 Windows:
 
@@ -96,12 +96,12 @@ cd VibeSnake
 On Linux or macOS with [mise](https://mise.jdx.dev/), install the prerequisites:
 
 ```bash
-mise use -g powershell@7.6.6 dotnet@10.0.303
+mise use -g powershell@7.6.6 dotnet@10.0.403
 ```
 
 The older `scripts/install_player.sh` now reaches this native launcher. The
-Python package entry point remains a frozen reference for migration tests;
-use `play.sh` or `play.ps1` for the current game. First use can take a few
+`vibesnake play` command also redirects to the native launcher from a checkout;
+package-only installs explain how to obtain the source. First use can take a few
 minutes for the verified editor download, build and asset imports. Source play
 still uses the editor's debug runtime. A player Release export remains tied to
 the content and three-platform qualification gates above; changing the managed

@@ -1383,7 +1383,7 @@ public sealed class StablePromotionCheckTests
                 ["godotCommit"] = "5216e747a",
                 ["godotArchiveSha512"] = new string('a', 128),
                 ["godotExecutableSha256"] = new string('b', 64),
-                ["dotnetSdk"] = "10.0.303",
+                ["dotnetSdk"] = "10.0.403",
                 ["smokeStateHash"] = "600f29e8919a9400",
                 ["agentArenaPreviewExcluded"] = true,
                 ["fileCount"] = 1,

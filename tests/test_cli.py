@@ -1,6 +1,9 @@
 """Tests for the player CLI surface."""
 
 from pathlib import Path
+from types import SimpleNamespace
+
+import pytest
 
 from vibesnake import cli
 from vibesnake.checkout import find_checkout_root, radio_track_count
@@ -89,15 +92,38 @@ def test_update_rejects_dirty_tree(tmp_path, monkeypatch):
     assert raised
 
 
-def test_play_dispatches_to_game(monkeypatch):
-    calls: list[str] = []
+@pytest.mark.parametrize("platform,launcher", [("win32", "play.ps1"), ("linux", "play.sh")])
+def test_play_dispatches_to_native_launcher(monkeypatch, tmp_path, platform, launcher):
+    (tmp_path / launcher).touch()
+    monkeypatch.setattr(cli.sys, "platform", platform)
+    monkeypatch.setattr(cli, "find_checkout_root", lambda: tmp_path)
+    calls = []
 
-    class StubGame:
-        def run(self):
-            calls.append("run")
+    def launch(command, **kwargs):
+        calls.append((command, kwargs))
+        return SimpleNamespace(returncode=7)
 
-    monkeypatch.setattr("vibesnake.core.game_state.Game", StubGame)
-    monkeypatch.setattr("pygame.quit", lambda: calls.append("quit"))
-    status = cli.main(["play"])
-    assert status == 0
-    assert calls == ["run", "quit"]
+    monkeypatch.setattr(cli.subprocess, "run", launch)
+    assert cli.main(["play"]) == 7
+    expected = ["pwsh", "-NoProfile", "-File"] if platform == "win32" else []
+    assert calls == [(expected + [str(tmp_path / launcher)], {"cwd": tmp_path, "check": False})]
+
+
+@pytest.mark.parametrize("has_checkout", [False, True])
+def test_play_requires_native_checkout(monkeypatch, tmp_path, capsys, has_checkout):
+    monkeypatch.setattr(cli, "find_checkout_root", lambda: tmp_path if has_checkout else None)
+    assert cli.main(["play"]) == 1
+    assert "source checkout" in capsys.readouterr().err
+
+
+def test_play_reports_launcher_failure(monkeypatch, tmp_path, capsys):
+    (tmp_path / "play.ps1").touch()
+    monkeypatch.setattr(cli.sys, "platform", "win32")
+    monkeypatch.setattr(cli, "find_checkout_root", lambda: tmp_path)
+
+    def missing_shell(*args, **kwargs):
+        raise FileNotFoundError("pwsh")
+
+    monkeypatch.setattr(cli.subprocess, "run", missing_shell)
+    assert cli.main(["play"]) == 1
+    assert "prerequisites" in capsys.readouterr().err

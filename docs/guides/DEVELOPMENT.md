@@ -2,13 +2,15 @@
 
 ## Prerequisites
 
-- PowerShell 7, Git, and the .NET SDK 10.0.303 for native development and source play.
+- PowerShell 7, Git, and the .NET SDK 10.0.403 for native development and source play.
 - Godot 4.7.1 .NET, installed and verified by the root launchers or the bootstrap script.
-- Python 3.11 through 3.14 only for the frozen oracle, remaining parity tests, and Python syntax checks. Python 3.14 is recommended for that work.
+- Python 3.11 through 3.15 only for the frozen oracle, remaining parity tests, and Python syntax checks. Python 3.15 is recommended for that work.
 - A desktop environment for visible playtesting.
 - Exact toolchain values live in [native/toolchain.json](../../native/toolchain.json).
 
-Python 3.10 reaches end of life in October 2026, so the alpha no longer carries it toward 1.0. Python 3.15 remains a prerelease line and is outside the supported range until its final release and dependency matrix pass. The source reference uses Pygame Community Edition 2.5.8 within major version 2 because it publishes CPython 3.11 through 3.14 wheels for the three development platforms. See the [official Python version status](https://devguide.python.org/versions/) and [pygame-ce package record](https://pypi.org/project/pygame-ce/).
+Python 3.10 reached end of life on October 1, 2026. Python 3.15 is stable and is the default for migration development and single-version CI jobs; the reference suite covers maintained Python 3.11 through 3.15. The source reference uses Pygame Community Edition within major version 2, resolved with binary wheels through the checked-in universal locks. See the [official Python version status](https://devguide.python.org/versions/) and [pygame-ce package record](https://pypi.org/project/pygame-ce/).
+
+The optional `pre-commit` hook runner currently requires Python 3.14 or earlier because its PyYAML dependency has no CPython 3.15 wheels. It is omitted from 3.15 development installs; use a maintained 3.14 environment for the hook runner. CI runs the hook commands directly, including Ruff, dependency locks, repository checks, and tests, on the default Python version.
 
 Install commands follow the current [PowerShell macOS guidance](https://learn.microsoft.com/en-us/powershell/scripting/install/install-powershell-on-macos) and [official .NET install-script options](https://learn.microsoft.com/en-us/dotnet/core/tools/dotnet-install-script). The exact SDK remains repository-pinned.
 
@@ -29,7 +31,7 @@ On macOS or Linux, use `./play.sh`. Make product changes in `game/` and `native/
 ```powershell
 git clone https://github.com/blisspixel/VibeSnake.git
 cd VibeSnake
-py -3.14 -m venv .venv
+py -3.15 -m venv .venv
 .\.venv\Scripts\Activate.ps1
 python -m pip install --require-hashes --only-binary=:all: -r requirements-ci.lock
 python -m pip install --no-deps --no-build-isolation -e .
@@ -40,7 +42,7 @@ python -m pip install --no-deps --no-build-isolation -e .
 ```bash
 git clone https://github.com/blisspixel/VibeSnake.git
 cd VibeSnake
-python3.14 -m venv .venv
+python3.15 -m venv .venv
 source .venv/bin/activate
 python -m pip install --require-hashes --only-binary=:all: -r requirements-ci.lock
 python -m pip install --no-deps --no-build-isolation -e .
@@ -70,11 +72,11 @@ close-agent-preview.cmd
 
 That runs the native PowerShell close-out helper, preferring the repository `.dotnet` SDK and otherwise using the system SDK. It patches public-contract digests, regenerates knowledge, checks interop and docs, and runs the focused Agent Arena native tests. Python is not required. User configuration and unrelated files are preserved. Stage the intended files yourself before using `--commit`; that option creates a local commit from the existing index after the gates pass and never stages other changes or pushes. On any supported platform, run `./scripts/close_agent_preview.ps1` directly with the same options.
 
-The editable Python install still registers `vibesnake`, `vibesnake status`, `vibesnake update`, `vibesnake doctor`, and `vibesnake version` for frozen-oracle and migration work. It is not the default product launcher.
+The editable Python install still registers `vibesnake`, `vibesnake status`, `vibesnake update`, `vibesnake doctor`, and `vibesnake version` for migration work. `vibesnake` and `vibesnake play` redirect to the native launcher from a source checkout, preserve its exit status, and explain the prerequisites if it cannot start. Package-only installs direct players to clone the source. The frozen Python oracle remains available to tests.
 
 ## Set up the native toolchain
 
-The repository resolver in [global.json](../../global.json) requires the exact stable 10.0.303 SDK, rejects previews and other patches, and prefers a repository-local `.dotnet/` installation. Install .NET 10.0.303 through Microsoft's official package instructions or a reviewed, integrity-verified installer. A system installation is valid; a repository-local installation under `.dotnet/` is also discovered automatically. Confirm that `dotnet --version` prints `10.0.303` before qualification. Do not execute a mutable downloaded installer without an independent integrity check.
+The repository resolver in [global.json](../../global.json) requires the exact stable 10.0.403 SDK, rejects previews and other patches, and prefers a repository-local `.dotnet/` installation. Install .NET 10.0.403 through Microsoft's official package instructions or a reviewed, integrity-verified installer. A system installation is valid; a repository-local installation under `.dotnet/` is also discovered automatically. Confirm that `dotnet --version` prints `10.0.403` before qualification. Do not execute a mutable downloaded installer without an independent integrity check.
 
 Install the checksum-verified Godot build on Windows, macOS, or Linux with PowerShell 7:
 
@@ -194,7 +196,7 @@ The suite configures dummy SDL drivers and temporary save storage through [tests
 
 `requirements.txt`, `requirements-runtime.txt`, and `requirements-dev.txt` are
 human-edited constraint inputs. `requirements-runtime.lock` is the player and
-local build graph for Python 3.11 through 3.14, and `requirements-ci.lock` is the
+local build graph for Python 3.11 through 3.15, and `requirements-ci.lock` is the
 development and CI graph for the same range. Both locks use exact versions and
 SHA-256 hashes. After an intentional input change, regenerate and recheck the
 affected profile with:
