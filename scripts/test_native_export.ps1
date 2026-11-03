@@ -445,7 +445,10 @@ try {
         throw "The exported $platformId player process could not be started."
     }
 
-    $deadline = [DateTime]::UtcNow.AddSeconds(30)
+    # Hosted macOS editor smoke has taken about 32 seconds. The exported player
+    # repeats that work after a cold start, so the marker budget stays above
+    # that observation and still rejects a hung process.
+    $deadline = [DateTime]::UtcNow.AddSeconds(90)
     $smokeText = ""
     do {
         if (Test-Path -LiteralPath $smokeLog -PathType Leaf) {
@@ -468,7 +471,23 @@ try {
     } while ([DateTime]::UtcNow -lt $deadline)
 
     if (-not $playerProcess.HasExited -and -not $playerProcess.WaitForExit(10000)) {
-        throw "The exported $platformId player did not exit after its smoke marker."
+        if (Test-Path -LiteralPath $smokeLog -PathType Leaf) {
+            try {
+                $smokeText = Get-Content -LiteralPath $smokeLog -Raw -ErrorAction Stop
+            } catch {
+                $smokeText = ""
+            }
+        }
+
+        if ($smokeText) {
+            $smokeText.TrimEnd() | Write-Output
+        }
+
+        if ($smokeText -match "VIBESNAKE_GODOT_SMOKE_(?:OK|FAILED)") {
+            throw "The exported $platformId player did not exit after its smoke marker."
+        }
+
+        throw "The exported $platformId player did not emit a smoke marker before the deadline."
     }
 
     $smokeExitCode = $playerProcess.ExitCode

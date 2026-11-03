@@ -4,6 +4,8 @@ Notable player-facing and engineering changes are recorded here. The project is 
 
 ## Unreleased
 
+- Exported player smoke now waits 90 seconds for its completion marker. Hosted macOS editor smoke of the same revision took about 32 seconds, and the previous 30 second budget stopped the player before that marker.
+
 - Spread the nine power colours by meaning and removed magenta gameplay signals. Protection is ice cyan, steel blue, and soft blue-violet. Tempo is blue and red. Food runs from gold through lime to teal. Segment Detach stays the darker warning red. Ghost outlines and phased bodies use the Phase Shift signal, and the Gluttony body tint follows the Gluttony signal. Qualification lists every power-colour pair and requires 0.08 OKLab separation under normal vision and simulated deuteranopia and protanopia. The Last Stand ring is drawn inside the head, and qualification keeps that ring at least 3:1 against the head. The Player Guide power table and the README powers capture match these colours.
 
 - Recorded standard focus-accent contrast in the shell-presentation evidence and required it to stay at least 4.5:1 on the canvas. The accessibility guide contract pins that floor with the calmed ratios, the chroma cap, and the magenta ban.
