@@ -1565,7 +1565,8 @@ try {
         "input_cadence.json",
         "audio_fallback_stress.json",
         "multimodal_feedback.json",
-        "viewport_matrix.json"
+        "viewport_matrix.json",
+        "power_signal.json"
     )
     if (($candidateAccessibility.schemaVersion -ne 1) -or
         ($candidateAccessibility.kind -ne "candidate-accessibility-audit-v1") -or
