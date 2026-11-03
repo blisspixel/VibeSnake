@@ -79,8 +79,12 @@ public partial class Main : Node2D
     private ulong _lastPointerActivityMilliseconds;
     private double _rulesStepAccumulatorMilliseconds;
     private string? _feedbackCaption;
+    private RunHudMessagePriority _feedbackPriority = RunHudMessagePriority.Flavour;
     private VisualFeedbackTier _feedbackTier = VisualFeedbackTier.Ambient;
     private int _feedbackTicksRemaining;
+    private readonly RunHudMessageDirector _runHudMessages = new();
+    private double _runHudClockSeconds;
+    private ulong _runHudClockTicks;
     private int _comboPulseTicksRemaining;
     private PerformanceProfileDefinition? _performanceStressProfile;
     private ProceduralCuePlayer? _cuePlayer;
@@ -1684,6 +1688,7 @@ public partial class Main : Node2D
                     : Localize(
                         "status.unlock.saved-many",
                         ShellTextArgument.From("count", newlyEarned.Count));
+                _feedbackPriority = RunHudMessagePriority.Flavour;
                 _feedbackTicksRemaining = FeedbackVisibilityTicks * 2;
             }
 
@@ -4315,9 +4320,11 @@ public partial class Main : Node2D
         _pausedByFocusLoss = false;
         _rulesStepAccumulatorMilliseconds = 0.0;
         _feedbackCaption = null;
+        _feedbackPriority = RunHudMessagePriority.Flavour;
         _feedbackTier = VisualFeedbackTier.Ambient;
         _feedbackTicksRemaining = 0;
         _comboPulseTicksRemaining = 0;
+        ResetRunHudMessages();
         _vibeLevelDirector.Reset();
         _broadcastPolicy.ResetRun();
         _broadcastCaption = null;
@@ -4526,9 +4533,11 @@ public partial class Main : Node2D
         _pausedByFocusLoss = false;
         _rulesStepAccumulatorMilliseconds = 0.0;
         _feedbackCaption = null;
+        _feedbackPriority = RunHudMessagePriority.Flavour;
         _feedbackTier = VisualFeedbackTier.Ambient;
         _feedbackTicksRemaining = 0;
         _comboPulseTicksRemaining = 0;
+        ResetRunHudMessages();
         _vibeLevelDirector.Reset();
         _broadcastPolicy.ResetRun();
         _broadcastCaption = null;
@@ -7491,7 +7500,7 @@ public partial class Main : Node2D
         }
 
         DrawCenteredLabel(
-            _radioPolicy.Snapshot.CompactLine,
+            PresentedRadioCompactLine(),
             624.0f,
             ScaledFontSize(13),
             palette.GoldText);
@@ -7584,6 +7593,13 @@ public partial class Main : Node2D
                 new Vector2(46.0f, 224.0f),
                 ScaledFontSize(17),
                 SecondaryTextColor());
+            DrawFittedLabel(
+                Localize("onboarding.offer.difficulty"),
+                new Vector2(46.0f, 258.0f),
+                preferredFontSize: ScaledFontSize(15),
+                minimumFontSize: 11,
+                maximumWidth: 1188.0f,
+                color: SecondaryTextColor());
 
             DrawLabel(
                 ShellFocusPresentation.SelectionPrefix(_onboardingOfferCursor == 0)
@@ -9151,9 +9167,9 @@ public partial class Main : Node2D
         {
             RunAdaptiveState.Disabled => "ADAPTATION OFF",
             RunAdaptiveState.EnabledByDefault when config.EnableAdaptation =>
-                $"ADAPTATION ON  {config.AdaptivePolicyId.ToUpperInvariant()}  |  SETTINGS CAN DISABLE",
+                "ADAPTATION ON  |  EASIER, STANDARD, OR HARDER  |  SETTINGS CAN DISABLE",
             RunAdaptiveState.EnabledByDefault =>
-                "ADAPTATION OFF BY PREFERENCE  |  SEPARATE UNRANKED SCORE CATEGORY",
+                "ADAPTATION OFF  |  FIXED PACE  |  SEPARATE UNRANKED SCORE CATEGORY",
             _ => throw new InvalidOperationException("Unknown adaptive mode state."),
         };
         DrawLabel(
@@ -9184,7 +9200,7 @@ public partial class Main : Node2D
                 ? ActiveShellPalette.GoldText
                 : ActiveShellPalette.MutedGoldText);
         DrawLabel(
-            radio.MuteLine,
+            PresentedRadioMuteLine(radio.MuteLine),
             position + new Vector2(0.0f, 72.0f),
             ScaledFontSize(13),
             radio.Muted
@@ -9800,6 +9816,7 @@ public partial class Main : Node2D
         var sanitized = SanitizeReplayStatus(message);
         _replayStatusCaption = sanitized;
         _feedbackCaption = sanitized;
+        _feedbackPriority = RunHudMessagePriority.Flavour;
         _feedbackTicksRemaining = FeedbackVisibilityTicks;
         QueueRedraw();
     }
@@ -10037,8 +10054,10 @@ public partial class Main : Node2D
         _pausedByFocusLoss = false;
         _capturePresentation = CapturePresentationState.Visible;
         _feedbackCaption = null;
+        _feedbackPriority = RunHudMessagePriority.Flavour;
         _feedbackTier = VisualFeedbackTier.Routine;
         _feedbackTicksRemaining = 0;
+        ResetRunHudMessages();
         _comboPulseTicksRemaining = ComboFeedback.PulseTicks;
         _vibeLevelDirector.Reset();
         _vibeLevelDirector.Update(_run.ComboCount);
@@ -13008,62 +13027,43 @@ public partial class Main : Node2D
                     ActiveShellPalette.GoldText);
             }
 
+            var titleStatus = statusText;
+            if (replaySnapshot is null
+                && replayStatus is null
+                && usesVibePresentation
+                && snapshot.Status == RunStatus.Running
+                && !_paused
+                && !_pausedByFocusLoss)
+            {
+                titleStatus = Localize(RunDifficultyBadge.CopyId(snapshot.AdaptiveDifficultyState));
+            }
+
             DrawRunHudCell(
                 RunHudModeTitleCell,
-                RunModeTitleText(mode.DisplayName, statusText),
+                RunModeTitleText(mode.DisplayName, titleStatus),
                 snapshot.Status == RunStatus.Dead
                     ? ActiveShellPalette.WarningText
                     : ActiveShellPalette.BodyText);
 
-            var powerStatus = usesVibePresentation
-                ? DescribePowerStatus(snapshot)
-                : "CLASSIC RULES: ROUTE, EAT, GROW, WRAP, AVOID YOUR BODY";
-            if (usesVibePresentation)
-            {
-                var adaptiveStatus = snapshot.AdaptiveDifficultyState switch
-                {
-                    AdaptiveDifficultyState.Disabled => "DDA [=] OFF",
-                    AdaptiveDifficultyState.Support => "DDA [+] SUPPORT: SLOW HUNGER",
-                    AdaptiveDifficultyState.Standard => "DDA [=] STANDARD",
-                    AdaptiveDifficultyState.Pressure => "DDA [!] PRESSURE: FAST HUNGER",
-                    _ => throw new InvalidOperationException("Unknown adaptive difficulty state."),
-                };
-                powerStatus = adaptiveStatus + "  |  " + powerStatus;
-            }
-            var protectionStatus = PowerFeedbackCatalog.DescribeProtection(snapshot);
-            if (usesVibePresentation && protectionStatus != "PROTECTION [ ] NONE")
-            {
-                powerStatus = protectionStatus + "  |  " + powerStatus;
-            }
-
-            var transientCaption = _feedbackCaption ?? _broadcastCaption;
-            var secondaryStatus = transientCaption is null
-                ? powerStatus
-                : $"{powerStatus}    {transientCaption}";
-            if (_activeGhostRace is not null && _activeGhostSlot is { } ghostSlot)
-            {
-                var ghost = _activeGhostRace.GhostSnapshot;
-                secondaryStatus = Localize(
-                    "comparisons.ghost-hud",
-                    ShellTextArgument.From("slot", ghostSlot),
-                    ShellTextArgument.From("score", ghost.Score),
-                    ShellTextArgument.From("delta", snapshot.Score - ghost.Score),
-                    ShellTextArgument.From("length", ghost.Body.Count))
-                    + "  |  "
-                    + secondaryStatus;
-            }
+            var liveMessage = replaySnapshot is null && replayStatus is null;
+            var messageText = liveMessage
+                ? LiveRunMessage(snapshot, usesVibePresentation)
+                : EngineeringRunStatus(snapshot, usesVibePresentation);
+            var messagePriority = liveMessage && usesVibePresentation
+                ? _runHudMessages.Current?.Priority
+                : null;
             DrawFittedLabel(
-                secondaryStatus,
-                new Vector2(18.0f, 53.0f),
-                preferredFontSize: 15,
-                minimumFontSize: 11,
-                maximumWidth: 864.0f,
-                color: _feedbackCaption is not null && _feedbackTier >= VisualFeedbackTier.Pressure
+                messageText,
+                new Vector2(RunHudMessages.MessageLeft, RunHudMessages.MessageTop),
+                preferredFontSize: RunHudMessages.MessageBaseFontSize,
+                minimumFontSize: RunHudMessages.MessageMinimumFontSize,
+                maximumWidth: RunHudMessages.MessageWidth,
+                color: messagePriority is RunHudMessagePriority.Starvation or RunHudMessagePriority.Collision
                     ? ActiveShellPalette.WarningText
                     : ActiveShellPalette.AccentText);
             DrawFittedLabel(
-                _radioPolicy.Snapshot.CompactLine,
-                new Vector2(900.0f, 53.0f),
+                PresentedRadioCompactLine(),
+                new Vector2(RunHudMessages.RadioLeft, RunHudMessages.MessageTop),
                 preferredFontSize: 12,
                 minimumFontSize: 10,
                 maximumWidth: 362.0f,
@@ -13697,6 +13697,109 @@ public partial class Main : Node2D
     private static string DescribePowerStatus(RunSnapshot snapshot) =>
         PowerPresentation.DescribeStatus(snapshot);
 
+    private void ResetRunHudMessages()
+    {
+        _runHudMessages.Reset();
+        _runHudClockSeconds = 0;
+        _runHudClockTicks = 0;
+    }
+
+    private double AdvanceRunHudClock()
+    {
+        var now = Time.GetTicksMsec();
+        if (_runHudClockTicks != 0 && !_paused && !_pausedByFocusLoss && now >= _runHudClockTicks)
+        {
+            _runHudClockSeconds += (now - _runHudClockTicks) / 1000.0;
+        }
+
+        _runHudClockTicks = now;
+        return _runHudClockSeconds;
+    }
+
+    private string PresentedRadioCompactLine() =>
+        RadioStatusPresentation.Present(
+            _radioPolicy.Snapshot.CompactLine,
+            RadioStatusPresentation.IsDummyDriver(AudioServer.GetDriverName()),
+            _shellSettings.EffectiveMusicVolume() <= 0.0f);
+
+    private string PresentedRadioMuteLine(string policyMuteLine) =>
+        RadioStatusPresentation.MuteLine(
+            policyMuteLine,
+            RadioStatusPresentation.IsDummyDriver(AudioServer.GetDriverName()),
+            _shellSettings.EffectiveMusicVolume() <= 0.0f);
+
+    private string LiveRunMessage(RunSnapshot snapshot, bool usesVibePresentation)
+    {
+        if (!usesVibePresentation)
+        {
+            return RunHudMessages.ClassicRules;
+        }
+
+        string? ghost = null;
+        if (_activeGhostRace is not null && _activeGhostSlot is { } ghostSlot)
+        {
+            var ghostSnapshot = _activeGhostRace.GhostSnapshot;
+            ghost = Localize(
+                "comparisons.ghost-hud",
+                ShellTextArgument.From("slot", ghostSlot),
+                ShellTextArgument.From("score", ghostSnapshot.Score),
+                ShellTextArgument.From("delta", snapshot.Score - ghostSnapshot.Score),
+                ShellTextArgument.From("length", ghostSnapshot.Body.Count));
+        }
+
+        var desired = RunHudMessages.Desired(
+            snapshot,
+            _feedbackCaption,
+            _feedbackPriority,
+            _broadcastCaption,
+            ghost);
+        return _runHudMessages.Present(AdvanceRunHudClock(), desired)?.Text ?? string.Empty;
+    }
+
+    private string EngineeringRunStatus(RunSnapshot snapshot, bool usesVibePresentation)
+    {
+        var powerStatus = usesVibePresentation
+            ? DescribePowerStatus(snapshot)
+            : RunHudMessages.ClassicRules;
+        if (usesVibePresentation)
+        {
+            var adaptiveStatus = snapshot.AdaptiveDifficultyState switch
+            {
+                AdaptiveDifficultyState.Disabled => "DDA [=] OFF",
+                AdaptiveDifficultyState.Support => "DDA [+] SUPPORT: SLOW HUNGER",
+                AdaptiveDifficultyState.Standard => "DDA [=] STANDARD",
+                AdaptiveDifficultyState.Pressure => "DDA [!] PRESSURE: FAST HUNGER",
+                _ => throw new InvalidOperationException("Unknown adaptive difficulty state."),
+            };
+            powerStatus = adaptiveStatus + "  |  " + powerStatus;
+        }
+
+        var protectionStatus = PowerFeedbackCatalog.DescribeProtection(snapshot);
+        if (usesVibePresentation && protectionStatus != "PROTECTION [ ] NONE")
+        {
+            powerStatus = protectionStatus + "  |  " + powerStatus;
+        }
+
+        var transientCaption = _feedbackCaption ?? _broadcastCaption;
+        var secondaryStatus = transientCaption is null
+            ? powerStatus
+            : $"{powerStatus}    {transientCaption}";
+        if (_activeGhostRace is not null && _activeGhostSlot is { } ghostSlot)
+        {
+            var ghost = _activeGhostRace.GhostSnapshot;
+            secondaryStatus = Localize(
+                "comparisons.ghost-hud",
+                ShellTextArgument.From("slot", ghostSlot),
+                ShellTextArgument.From("score", ghost.Score),
+                ShellTextArgument.From("delta", snapshot.Score - ghost.Score),
+                ShellTextArgument.From("length", ghost.Body.Count))
+                + "  |  "
+                + secondaryStatus;
+        }
+
+        return secondaryStatus;
+    }
+
     private void AdvanceFeedback(
         IReadOnlyList<RunEventDetail> events,
         int comboCount)
@@ -13727,6 +13830,7 @@ public partial class Main : Node2D
             if (_feedbackTicksRemaining == 0)
             {
                 _feedbackCaption = null;
+                _feedbackPriority = RunHudMessagePriority.Flavour;
             }
         }
 
@@ -13771,6 +13875,7 @@ public partial class Main : Node2D
                 _shellSettings.FlashFree
                     ? SoftenFlashyCaption(Localize(text))
                     : Localize(text));
+            _feedbackPriority = RunHudMessages.PriorityForCopy(text.Id);
             _feedbackTier = VisualHierarchyPolicy.ResolveTier(events, vibeTransition);
             _feedbackTicksRemaining = accessibility.CaptionVisibilityTicks(
                 FeedbackVisibilityTicks);
@@ -13793,10 +13898,14 @@ public partial class Main : Node2D
         _baitRevealOrigin = origin;
         _baitRevealDestination = destination;
         _baitRevealTicksRemaining = 20;
-        _feedbackCaption = Localize(
-            "feedback.power.bait-triggered",
-            ShellTextArgument.From("x", destination.X),
-            ShellTextArgument.From("y", destination.Y));
+        if (_feedbackPriority is RunHudMessagePriority.Starvation or RunHudMessagePriority.Collision
+            && _feedbackTicksRemaining > 0)
+        {
+            return;
+        }
+
+        _feedbackCaption = Localize("feedback.power.bait-triggered");
+        _feedbackPriority = RunHudMessagePriority.Flavour;
         _feedbackTier = VisualFeedbackTier.Ambient;
         _feedbackTicksRemaining = AccessibilityPresentationPolicy
             .FromSettings(_shellSettings)
@@ -15997,6 +16106,52 @@ public partial class Main : Node2D
                 baseFontSize * ShellSettings.MaximumTextScale,
                 MidpointRounding.AwayFromZero));
 
+        // Matches ScaledFontSize at the maximum setting, including its
+        // midpoint-to-even rounding. The row gate above uses the stricter
+        // away-from-zero size; this one is the size the player is drawn.
+        static int DrawnMaximumFont(int baseFontSize) => Math.Max(
+            10,
+            (int)Math.Round(baseFontSize * ShellSettings.MaximumTextScale));
+
+        // Em boxes overlap inside this HUD on purpose: the fallback font's
+        // accent space and descender are taller than the capitals the row
+        // actually draws. The gate measures those glyphs.
+        static (float Top, float Bottom) GlyphInk(Font font, int fontSize, string text)
+        {
+            var textServer = TextServerManager.GetPrimaryInterface();
+            var fontRid = font.GetRids()[0];
+            var top = 0.0f;
+            var bottom = 0.0f;
+            var any = false;
+            var glyphSizeKey = new Vector2I(fontSize, 0);
+            foreach (var character in text)
+            {
+                var index = textServer.FontGetGlyphIndex(fontRid, fontSize, character, 0);
+                if (index <= 0)
+                {
+                    continue;
+                }
+
+                var glyphSize = textServer.FontGetGlyphSize(fontRid, glyphSizeKey, index);
+                if (glyphSize.Y <= 0.0f)
+                {
+                    continue;
+                }
+
+                var glyphOffset = textServer.FontGetGlyphOffset(fontRid, glyphSizeKey, index);
+                any = true;
+                top = MathF.Min(top, glyphOffset.Y);
+                bottom = MathF.Max(bottom, glyphOffset.Y + glyphSize.Y);
+            }
+
+            if (!any)
+            {
+                throw new InvalidOperationException("HUD ink sample had no glyphs: " + text);
+            }
+
+            return (top, bottom);
+        }
+
         void RequireRunHudCell(RunHudCell cell, string text)
         {
             var (fontSize, fitted) = ResolveFittedLabel(
@@ -16086,6 +16241,17 @@ public partial class Main : Node2D
                     RunModeTitleText(
                         mode.DisplayName,
                         ShellLocalization.Format(statusId, ShellLocale.English)));
+            }
+
+            foreach (var state in Enum.GetValues<AdaptiveDifficultyState>())
+            {
+                RequireRunHudCell(
+                    RunHudModeTitleCell,
+                    RunModeTitleText(
+                        mode.DisplayName,
+                        ShellLocalization.Format(
+                            RunDifficultyBadge.CopyId(state),
+                            ShellLocale.English)));
             }
         }
 
@@ -16274,8 +16440,145 @@ public partial class Main : Node2D
 
         const int migratedRequiredFlowCount = 13;
         const double requiredExpansionRatio = 1.30;
-        var passed = ShellLocalization.All.Count == 736
-            && ShellLocalization.All.Count(entry => entry.Parameters.Count > 0) == 114
+        RunHudMessageQualification.Verify();
+        if (RadioStatusPresentation.IsDummyDriver(AudioServer.GetDriverName()))
+        {
+            var presentedRadio = PresentedRadioCompactLine();
+            if (!presentedRadio.Contains(RadioStatusPresentation.NoAudioDevice, StringComparison.Ordinal)
+                || presentedRadio.Contains("PLAYING", StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException(
+                    "Dummy audio driver still presents a playing radio status: " + presentedRadio);
+            }
+        }
+
+        foreach (var sample in RunHudMessages.LayoutSamples())
+        {
+            var (fontSize, fitted) = ResolveFittedLabel(
+                sample,
+                RunHudMessages.MessageBaseFontSize,
+                RunHudMessages.MessageMinimumFontSize,
+                RunHudMessages.MessageWidth);
+            if (!string.Equals(fitted, sample, StringComparison.Ordinal) || fontSize < 14)
+            {
+                runHudRowLayoutPassed = false;
+                runHudRowFailures.Add($"run-hud.message:elided:{fontSize}:{sample}");
+            }
+        }
+
+        foreach (var entry in ShellLocalization.All)
+        {
+            if (!entry.Id.StartsWith("feedback.", StringComparison.Ordinal)
+                && !entry.Id.StartsWith("broadcast.", StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            var arguments = entry.Parameters
+                .Select(parameter => ShellTextArgument.From(parameter, "99"))
+                .ToArray();
+            var english = ShellLocalization.Format(entry.Id, ShellLocale.English, arguments);
+            var (fontSize, fitted) = ResolveFittedLabel(
+                english,
+                RunHudMessages.MessageBaseFontSize,
+                RunHudMessages.MessageMinimumFontSize,
+                RunHudMessages.MessageWidth);
+            if (!string.Equals(fitted, english, StringComparison.Ordinal) || fontSize < 14)
+            {
+                runHudRowLayoutPassed = false;
+                runHudRowFailures.Add($"run-hud.message:elided:{fontSize}:{entry.Id}");
+            }
+        }
+
+        var minimumWindow = new VirtualViewport(
+            VirtualViewport.MinimumWindowWidth,
+            VirtualViewport.MinimumWindowHeight);
+        var nativeWindow = new VirtualViewport(
+            VirtualViewport.LogicalWidth,
+            VirtualViewport.LogicalHeight);
+        if (Math.Abs(minimumWindow.Scale - 0.5f) > 0.001f
+            || Math.Abs(nativeWindow.Scale - 1.0f) > 0.001f
+            || minimumWindow.DestinationRect.Size.X + 0.1f < RunHudMessages.RadioLeft * minimumWindow.Scale)
+        {
+            runHudRowLayoutPassed = false;
+            runHudRowFailures.Add(
+                $"run-hud.message:window:{minimumWindow.Scale:0.000}/{nativeWindow.Scale:0.000}");
+        }
+
+        // The message row stays at its unscaled 15-point size. Scaling it
+        // would put its capitals on the score line once the top row is at
+        // 150 percent. The combo pulse only moves upward, so a still row is
+        // the tight case. Ink is the drawn glyph, not the font em box.
+        var hudFont = ActiveShellTheme.InterfaceFont;
+        var topInk = GlyphInk(
+            hudFont,
+            DrawnMaximumFont(RunHudScoreCell.BaseFontSize),
+            "SCORE 999999 COMBO 20 10.0x OVERDRIVE HUNGER [=] STANDARD [!] HARDER PAUSED: FOCUS LOST Q");
+        var topInkBottom = 30.0f + topInk.Bottom;
+        var messageInkTop = float.PositiveInfinity;
+        var messageInkBottom = float.NegativeInfinity;
+        void IncludeMessageInk(string text)
+        {
+            var ink = GlyphInk(hudFont, RunHudMessages.MessageBaseFontSize, text);
+            messageInkTop = MathF.Min(messageInkTop, RunHudMessages.MessageTop + ink.Top);
+            messageInkBottom = MathF.Max(messageInkBottom, RunHudMessages.MessageTop + ink.Bottom);
+        }
+
+        foreach (var sample in RunHudMessages.LayoutSamples())
+        {
+            IncludeMessageInk(sample);
+        }
+
+        foreach (var entry in ShellLocalization.All)
+        {
+            if (!entry.Id.StartsWith("feedback.", StringComparison.Ordinal)
+                && !entry.Id.StartsWith("broadcast.", StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            var arguments = entry.Parameters
+                .Select(parameter => ShellTextArgument.From(parameter, "99"))
+                .ToArray();
+            IncludeMessageInk(ShellLocalization.Format(entry.Id, ShellLocale.English, arguments));
+        }
+
+        if (topInkBottom >= messageInkTop)
+        {
+            runHudRowLayoutPassed = false;
+            runHudRowFailures.Add(
+                $"run-hud.message:overlap:{topInkBottom:0.0}>={messageInkTop:0.0}");
+        }
+
+        if (messageInkBottom > HudHeight)
+        {
+            runHudRowLayoutPassed = false;
+            runHudRowFailures.Add(
+                $"run-hud.message:below-hud:{messageInkBottom:0.0}>{HudHeight:0.0}");
+        }
+
+        var isolationInk = GlyphInk(
+            hudFont,
+            DrawnMaximumFont(17),
+            ShellLocalization.Format("onboarding.offer.isolation", ShellLocale.English));
+        var difficultyInk = GlyphInk(
+            hudFont,
+            DrawnMaximumFont(15),
+            ShellLocalization.Format("onboarding.offer.difficulty", ShellLocale.English));
+        var learnInk = GlyphInk(hudFont, DrawnMaximumFont(24), "LEARN FIRST");
+        var isolationBottom = 224.0f + isolationInk.Bottom;
+        var difficultyTop = 258.0f + difficultyInk.Top;
+        var difficultyBottom = 258.0f + difficultyInk.Bottom;
+        var learnTop = 296.0f + learnInk.Top;
+        if (isolationBottom >= difficultyTop || difficultyBottom >= learnTop)
+        {
+            runHudRowLayoutPassed = false;
+            runHudRowFailures.Add(
+                $"onboarding.difficulty:overlap:{isolationBottom:0.0}/{difficultyTop:0.0}/{difficultyBottom:0.0}/{learnTop:0.0}");
+        }
+
+        var passed = ShellLocalization.All.Count == 741
+            && ShellLocalization.All.Count(entry => entry.Parameters.Count > 0) == 113
             && migratedRequiredFlowCount == 13
             && minimumExpansionRatio >= requiredExpansionRatio
             && missingGlyphs.Count == 0
@@ -16403,6 +16706,7 @@ public partial class Main : Node2D
             or "action.learn-tutorial" or "action.settings" => 16,
         "onboarding.practice" or "settings.select-section"
             or "onboarding.offer.learn-description" or "onboarding.offer.skip-description"
+            or "onboarding.offer.difficulty"
             or "settings.reset.backup-help" or "run.classic-rules"
             or "action.cancel-without-deleting" or "action.cancel-without-writing"
             or "action.choose" or "action.create-backup-reset"

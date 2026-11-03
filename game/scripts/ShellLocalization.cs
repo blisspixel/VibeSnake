@@ -83,6 +83,9 @@ internal static class ShellLocalization
         Entry(
             "onboarding.offer.skip-description",
             "Remember this choice and start a normal scored run immediately."),
+        Entry(
+            "onboarding.offer.difficulty",
+            "EASIER slows hunger. STANDARD is steady. HARDER speeds it. FIXED is off."),
         Entry("onboarding.connected-edges", "CONNECTED EDGES"),
         Entry("screen.settings.title", "SETTINGS"),
         Entry("settings.select-section", "SELECT A SECTION"),
@@ -792,6 +795,10 @@ internal static class ShellLocalization
         Entry("run.status.won", "WON"),
         Entry("run.status.paused", "PAUSED"),
         Entry("run.status.paused-focus-lost", "PAUSED: FOCUS LOST"),
+        Entry("run.difficulty.easier", "[+] EASIER"),
+        Entry("run.difficulty.standard", "[=] STANDARD"),
+        Entry("run.difficulty.harder", "[!] HARDER"),
+        Entry("run.difficulty.fixed", "[=] FIXED"),
         Entry("run-end.cause", "CAUSE: {cause}"),
         Entry("run-end.recovery", "RECOVERY: {recovery}"),
         Entry("run-end.tour-primary", "TOUR PRIMARY {progress}"),
@@ -1209,7 +1216,7 @@ internal static class ShellLocalization
             "BAIT ARMED: EAT CURRENT FOOD TO PULL THE NEXT"),
         Entry(
             "feedback.power.bait-triggered",
-            "BAIT TRIGGERED: NEXT FOOD LOCKED AT {x},{y}"),
+            "BAIT TRIGGERED: EAT THE NEXT FOOD"),
         Entry(
             "feedback.power.activation.gluttony",
             "GLUTTONY ONLINE: EAT WITHOUT GROWTH"),

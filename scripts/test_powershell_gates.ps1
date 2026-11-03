@@ -469,8 +469,8 @@ try {
         throw "Native coverage streaming failure classification failed."
     }
     foreach ($requiredLocalizationFragment in @(
-        "ShellLocalization.All.Count == 736",
-        "entry.Parameters.Count > 0) == 114",
+        "ShellLocalization.All.Count == 741",
+        "entry.Parameters.Count > 0) == 113",
         'AgentActionRejection.WrongActionProfile =>',
         '"agent-arena.action.rejected-wrong-profile"',
         'AgentActionRejection.MutationCapacityExceeded =>',
@@ -481,7 +481,7 @@ try {
         'AgentViewerOverlayLayoutPassed: agentViewerOverlayLayoutPassed',
         'RunHudTitleLayoutPassed: runHudTitleLayoutPassed',
         'RunHudRowLayoutPassed: runHudRowLayoutPassed',
-        'RunModeTitleText(mode.DisplayName, statusText)',
+        'RunModeTitleText(mode.DisplayName, titleStatus)',
         'private void DrawRunHudCell(',
         'private readonly record struct RunHudCell(',
         'previous.RightEdge + RunHudCellGutter > next.Left',
@@ -495,8 +495,8 @@ try {
         }
     }
     foreach ($requiredLocalizationFragment in @(
-        '($localizationEvidence.stringCount -ne 736)',
-        '($localizationEvidence.parameterizedStringCount -ne 114)',
+        '($localizationEvidence.stringCount -ne 741)',
+        '($localizationEvidence.parameterizedStringCount -ne 113)',
         '(-not $localizationEvidence.runHudTitleLayoutPassed)',
         '(-not $localizationEvidence.runHudRowLayoutPassed)',
         '($localizationEvidence.runHudRowMinimumFontSize -lt 14)',

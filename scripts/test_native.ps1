@@ -675,8 +675,8 @@ try {
         ($localizationEvidence.catalogId -ne "shell-copy-v1") -or
         ($localizationEvidence.requiredLocale -ne "en") -or
         ($localizationEvidence.pseudoLocale -ne "qps-ploc") -or
-        ($localizationEvidence.stringCount -ne 736) -or
-        ($localizationEvidence.parameterizedStringCount -ne 114) -or
+        ($localizationEvidence.stringCount -ne 741) -or
+        ($localizationEvidence.parameterizedStringCount -ne 113) -or
         ($localizationEvidence.migratedRequiredFlowCount -ne 13) -or
         ($localizationEvidence.minimumPseudoExpansionRatio -lt 1.3) -or
         ($localizationEvidence.missingGlyphCount -ne 0) -or

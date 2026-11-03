@@ -108,7 +108,7 @@ The policy is deterministic and stateless. Its only inputs are the effective run
 - Standard: hunger drains by one on every rules step.
 - Pressure: at combo 10 or higher outside the warning band, hunger drains by one normally and by two on every fourth rules step.
 
-The exact drain bound is zero through two ticks per rules step. The HUD shows `DDA [+] SUPPORT`, `DDA [=] STANDARD`, `DDA [!] PRESSURE`, or `DDA [=] OFF`; score metadata records mode, difficulty policy, score category, enabled state, policy, and captured adaptive state. Config hashes and replay restoration bind the policy. Current native run-local achievements explicitly require Vibe; V070-08 will audit every achievement against both modes rather than silently changing eligibility.
+The exact drain bound is zero through two ticks per rules step. The live Vibe HUD shows a difficulty badge, `[+] EASIER`, `[=] STANDARD`, `[!] HARDER`, or `[=] FIXED`. The learn-first offer and the Gameplay setting explain those words. Score metadata still records mode, difficulty policy, score category, enabled state, policy, and captured adaptive state. Config hashes and replay restoration bind the policy. Current native run-local achievements explicitly require Vibe; V070-08 will audit every achievement against both modes rather than silently changing eligibility.
 
 A daily challenge should wait until seeded randomness and versioned rule sets are implemented.
 

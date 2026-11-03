@@ -73,7 +73,7 @@ internal static class SettingsMenuCatalog
                 new(
                     "vibe_adaptation",
                     "Vibe adaptation",
-                    "Use the disclosed bounded hunger policy; off uses a separate score category."),
+                    "EASIER slows hunger, STANDARD is steady, and HARDER speeds it. Off keeps a fixed pace in a separate score category."),
                 new(
                     "local_playtest_summaries",
                     "Playtest summaries",

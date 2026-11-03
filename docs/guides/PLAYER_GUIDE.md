@@ -84,7 +84,11 @@ Select Customize or press C to browse the eight authored native cosmetic sets. U
 
 ### Radio controls
 
-Press J or controller R3 to cycle the current radio station. If playback has failed or the station is unavailable, the same action retries isolated tracks instead of skipping them. Independent Master, Music, SFX, and UI volumes and mutes are under Settings, Audio. The HUD always reports the current station or an actionable missing-pack status.
+Press J or controller R3 to cycle the current radio station. If playback has failed or the station is unavailable, the same action retries isolated tracks instead of skipping them. Independent Master, Music, SFX, and UI volumes and mutes are under Settings, Audio. The HUD names the current station and track. It reads `NO AUDIO DEVICE` when the game has no audio output, and `MUTED` when the music volume is zero.
+
+### Run HUD
+
+During a Vibe run the top row shows score, combo, hunger, and a difficulty badge: `EASIER`, `STANDARD`, `HARDER`, or `FIXED`. The learn-first screen and Settings, Gameplay, Vibe adaptation, explain what each word does to hunger. The second row shows one message at a time. A starvation warning or a blocked collision replaces whatever was there and stays for at least a second and a half. Otherwise the row shows the active power and its timer, then a pickup offer, then a short note such as a combo call or a ghost comparison. Armed bait says to eat the next food. It does not print a board coordinate. Classic keeps its rules reminder on that row. Pause freezes the message as well as the rules, and the message does not slide.
 
 ## Scoring
 
@@ -153,7 +157,7 @@ All 19 surface entries are available immediately and summarize the eight station
 
 In the native Godot replay browser, press U or controller LB to open Offline Comparisons. The browser has four fixed household rival slots. Up and Down select a slot. To import, place a native verified replay at `user://imports/household-rival.vibesnake-replay.json`, then press U or controller LB. Import copies the replay into the selected empty slot and never changes or removes the source. An occupied slot is never overwritten. Modified, incompatible, oversized, or unreadable files are rejected and remain where they were.
 
-Press Enter or controller A on a verified slot to race its ghost. The player and ghost start with the same rules, mode, configuration, and gameplay seed. The outlined ghost is visual only: its body, commands, collision, score, powers, and random state cannot affect the player. The HUD shows the household slot, ghost score, score delta, and length delta. Normal movement, pause, restart, keyboard, D-pad, and stick controls remain active. Restart recreates the same comparison. The race uses an isolated seeded-challenge score identity and cannot award ordinary progression.
+Press Enter or controller A on a verified slot to race its ghost. The player and ghost start with the same rules, mode, configuration, and gameplay seed. The outlined ghost is visual only: its body, commands, collision, score, powers, and random state cannot affect the player. When no danger, power, or offer needs the message row, the HUD shows the household slot, ghost score, score delta, and length. Normal movement, pause, restart, keyboard, D-pad, and stick controls remain active. Restart recreates the same comparison. The race uses an isolated seeded-challenge score identity and cannot award ordinary progression.
 
 Press C or controller X on a verified slot to export a local privacy-safe run card. Each card contains closed versioned run facts such as score, peak combo, length, mode, seed, station, powers, selected look, and verification state. It contains no player name or private machine path and does not upload anything.
 
