@@ -12,7 +12,7 @@ def test_accessibility_guide_publishes_exact_supported_boundaries() -> None:
 
     required_support = (
         "85 to 150 percent",
-        "15.86:1 standard and 21:1 high contrast",
+        "13.16:1 on the canvas, standard body text stays above 12:1, and high-contrast primary text is 21:1",
         "Keyboard-only use",
         "Controller-only use",
         "Remapping",
