@@ -7,7 +7,7 @@ External contribution intake is currently closed until the repository has tested
 ## Before changing code
 
 1. Read the [status](docs/release/STATUS.md) and [roadmap](ROADMAP.md).
-2. Use Python 3.11 through 3.14 in a virtual environment.
+2. Use Python 3.11 through 3.15 in a virtual environment. Python 3.15 is the default.
 3. Install the hash-locked development graph from `requirements-ci.lock`, then install the project in editable mode without resolving a second graph.
 4. Check the relevant subsystem guide in the [documentation hub](docs/README.md).
 5. Apply the [code quality standards](docs/engineering/CODE_QUALITY_STANDARDS.md) to the change and its evidence.

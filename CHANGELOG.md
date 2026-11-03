@@ -4,6 +4,8 @@ Notable player-facing and engineering changes are recorded here. The project is 
 
 ## Unreleased
 
+- Hosted CI no longer cancels an in-progress run when a newer revision is pushed. Player publication stays on one concurrency group and waits for the publisher already running. Current status, the roadmap, and the development guide describe that behavior, and the current reference matrix is recorded as Python 3.11 through 3.15.
+
 - Completed interrupted repository cleanup: removed unused Pillow, refreshed universal dependency locks, repaired the setuptools audit finding, and added shared agent handoff instructions with repository qualification. Updated the exact .NET SDK to 10.0.403 and the maintained Python test matrix to 3.11 through 3.15. The optional pre-commit runner uses Python 3.14 until PyYAML provides 3.15 wheels; workflow policy tests use an explicit pure Python YAML parser.
 
 - Redirected `vibesnake` and `vibesnake play` to native source play, preserving launch failures and exit status. Package-only installs explain the checkout requirement. Installer qualification now uses Git Bash on Windows and verifies executable fixture scripts while preserving local changes and branches.
