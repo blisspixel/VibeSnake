@@ -372,6 +372,16 @@ internal static class CandidateAccessibilityAuditQualification
         RequireMinimum(root, "standardPrimaryContrast", 4.5, "shell presentation");
         RequireMinimum(root, "standardSecondaryContrast", 4.5, "shell presentation");
         RequireMinimum(root, "highContrastPrimaryContrast", 7.0, "shell presentation");
+        RequireMinimum(root, "standardBodyCanvasContrast", 12.0, "shell presentation");
+        RequireMinimum(root, "standardBodyBoardContrast", 12.0, "shell presentation");
+        RequireTrue(root, "noMagentaShellOrMenuColor", "shell presentation");
+        var primaryLightness = RequireNumber(root, "standardPrimaryLightness", "shell presentation");
+        var primaryChroma = RequireNumber(root, "standardPrimaryChroma", "shell presentation");
+        if (primaryLightness is < 0.84 or > 0.88 || primaryChroma > 0.10)
+        {
+            throw new InvalidOperationException(
+                $"Shell standard primary was L {primaryLightness:0.000} C {primaryChroma:0.000}; required lightness 0.84 to 0.88 and chroma at most 0.10.");
+        }
         var maximumTextScale = RequireNumber(root, "maximumTextScale", "shell presentation");
         if (Math.Abs(maximumTextScale - RequiredMaximumTextScale) > 0.0001)
         {

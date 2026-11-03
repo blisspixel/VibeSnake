@@ -4,6 +4,8 @@ Notable player-facing and engineering changes are recorded here. The project is 
 
 ## Unreleased
 
+- Calmed the standard shell and main menu. Primary text is `#9FE0B4` at OKLCH chroma at most 0.10 and 13.16:1 on the canvas. Body text is off-white `#E6EFE9` and stays above 12:1. The cabinet frame and unfocused menu keys use secondary text, the menu field matches the shell canvas, and the focused row uses the single cyan accent on its key, label, and rule. Quit keeps the warning colour on its key only. High contrast is unchanged. Qualification rejects a magenta shell or menu colour and a focused row that does not follow that accent rule. The four README captures were regenerated from this presentation.
+
 - Hosted CI no longer cancels an in-progress run when a newer revision is pushed. Player publication stays on one concurrency group and waits for the publisher already running. Current status, the roadmap, and the development guide describe that behavior, and the current reference matrix is recorded as Python 3.11 through 3.15.
 
 - Completed interrupted repository cleanup: removed unused Pillow, refreshed universal dependency locks, repaired the setuptools audit finding, and added shared agent handoff instructions with repository qualification. Updated the exact .NET SDK to 10.0.403 and the maintained Python test matrix to 3.11 through 3.15. The optional pre-commit runner uses Python 3.14 until PyYAML provides 3.15 wheels; workflow policy tests use an explicit pure Python YAML parser.

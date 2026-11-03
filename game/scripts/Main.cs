@@ -7406,12 +7406,8 @@ public partial class Main : Node2D
         var palette = ActiveShellPalette;
         var logicalWidth = ActiveLogicalWidth;
         var menuTargets = MouseInputPolicy.MenuTargetsForWidth(logicalWidth);
-        var backdrop = _shellSettings.HighContrast
-            ? Colors.Black
-            : new Color(0.035f, 0.025f, 0.08f);
-        var gridColor = _shellSettings.HighContrast
-            ? new Color(0.15f, 0.15f, 0.15f, 0.5f)
-            : new Color(0.16f, 0.12f, 0.27f, 0.42f);
+        var backdrop = ShellTheme.MenuBackdrop(_shellSettings.HighContrast);
+        var gridColor = ShellTheme.MenuGrid(_shellSettings.HighContrast);
         DrawRect(
             new Rect2(0.0f, 0.0f, logicalWidth, VirtualViewport.LogicalHeight),
             backdrop);
@@ -7427,7 +7423,7 @@ public partial class Main : Node2D
 
         DrawRect(
             new Rect2(24.0f, 20.0f, logicalWidth - 48.0f, 680.0f),
-            palette.PrimaryText,
+            ShellTheme.MenuFrame(palette, _shellSettings.HighContrast),
             filled: false,
             width: 3.0f);
 
@@ -7449,8 +7445,12 @@ public partial class Main : Node2D
         {
             var selected = index == _mainMenuCursor;
             var bounds = menuTargets[index].LogicalBounds;
-            var accent = MainMenuAccent(index, palette);
-            var divider = accent;
+            var row = ShellTheme.MenuRow(
+                palette,
+                _shellSettings.HighContrast,
+                selected,
+                (MainMenuItem)index == MainMenuItem.Quit);
+            var divider = row.Rule;
             divider.A = selected ? 0.72f : 0.28f;
             DrawLine(
                 new Vector2(bounds.Position.X, bounds.End.Y),
@@ -7458,7 +7458,7 @@ public partial class Main : Node2D
                 divider,
                 selected ? 2.0f : 1.0f);
 
-            var rail = accent;
+            var rail = row.Rule;
             rail.A = selected ? 1.0f : 0.52f;
             DrawRect(
                 new Rect2(bounds.Position, new Vector2(selected ? 6.0f : 3.0f, bounds.Size.Y)),
@@ -7475,7 +7475,7 @@ public partial class Main : Node2D
                 fittedHint,
                 keyBounds,
                 hintFontSize,
-                selected ? palette.SelectedText : accent);
+                row.Key);
 
             var label = Localize(MainMenuCopyIds[index]).ToUpperInvariant();
             if ((MainMenuItem)index == MainMenuItem.Start)
@@ -7487,7 +7487,7 @@ public partial class Main : Node2D
                 ShellFocusPresentation.SelectionPrefix(selected) + label,
                 bounds.Position + new Vector2(122.0f, 24.0f),
                 ScaledFontSize(17),
-                selected ? palette.SelectedText : palette.BodyText);
+                row.Label);
         }
 
         DrawCenteredLabel(
@@ -7542,28 +7542,6 @@ public partial class Main : Node2D
         }
 
         return string.Join("   //   ", hints);
-    }
-
-    private Color MainMenuAccent(int index, ShellPalette palette)
-    {
-        if (_shellSettings.HighContrast)
-        {
-            return index == _mainMenuCursor ? palette.SelectedText : palette.PromptOutline;
-        }
-
-        return index switch
-        {
-            0 => new Color(0.28f, 1.0f, 0.70f),
-            1 => new Color(1.0f, 0.78f, 0.15f),
-            2 => new Color(1.0f, 0.26f, 0.72f),
-            3 => new Color(0.20f, 0.62f, 1.0f),
-            4 => new Color(1.0f, 0.28f, 0.62f),
-            5 => new Color(0.28f, 0.88f, 1.0f),
-            6 => new Color(0.24f, 0.62f, 1.0f),
-            7 => new Color(0.78f, 0.74f, 1.0f),
-            8 => new Color(1.0f, 0.22f, 0.42f),
-            _ => palette.AccentText,
-        };
     }
 
     private void DrawCenteredInRect(string text, Rect2 bounds, int fontSize, Color color)
@@ -15441,6 +15419,7 @@ public partial class Main : Node2D
 
         var standard = ShellTheme.Palette(highContrast: false);
         var highContrast = ShellTheme.Palette(highContrast: true);
+        var primary = ShellTheme.StandardPrimaryOklch();
         var evidence = new ShellPresentationQualificationEvidence(
             SchemaVersion: 1,
             Kind: "shell-presentation-v1",
@@ -15456,6 +15435,15 @@ public partial class Main : Node2D
             HighContrastPrimaryContrast: ShellTheme.ContrastRatio(
                 highContrast.PrimaryText,
                 highContrast.CanvasBackground),
+            StandardPrimaryLightness: primary.L,
+            StandardPrimaryChroma: primary.C,
+            StandardBodyCanvasContrast: ShellTheme.ContrastRatio(
+                standard.BodyText,
+                standard.CanvasBackground),
+            StandardBodyBoardContrast: ShellTheme.ContrastRatio(
+                standard.BodyText,
+                standard.BoardBackground),
+            NoMagentaShellOrMenuColor: true,
             PromptFamilyCount: Enum.GetValues<InputPromptFamily>().Length,
             GlyphShapeCount: shapes.Count,
             TextFallbackRetained: textFallbackRetained,
