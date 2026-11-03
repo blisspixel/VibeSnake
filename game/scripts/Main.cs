@@ -15443,6 +15443,9 @@ public partial class Main : Node2D
             StandardBodyBoardContrast: ShellTheme.ContrastRatio(
                 standard.BodyText,
                 standard.BoardBackground),
+            StandardAccentContrast: ShellTheme.ContrastRatio(
+                standard.AccentText,
+                standard.CanvasBackground),
             NoMagentaShellOrMenuColor: true,
             PromptFamilyCount: Enum.GetValues<InputPromptFamily>().Length,
             GlyphShapeCount: shapes.Count,

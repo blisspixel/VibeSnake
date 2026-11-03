@@ -13,6 +13,9 @@ def test_accessibility_guide_publishes_exact_supported_boundaries() -> None:
     required_support = (
         "85 to 150 percent",
         "13.16:1 on the canvas, standard body text stays above 12:1, and high-contrast primary text is 21:1",
+        "chroma at most 0.10",
+        "focus-accent text at least 4.5:1 on the canvas",
+        "no magenta shell or menu colour",
         "Keyboard-only use",
         "Controller-only use",
         "Remapping",

@@ -374,6 +374,7 @@ internal static class CandidateAccessibilityAuditQualification
         RequireMinimum(root, "highContrastPrimaryContrast", 7.0, "shell presentation");
         RequireMinimum(root, "standardBodyCanvasContrast", 12.0, "shell presentation");
         RequireMinimum(root, "standardBodyBoardContrast", 12.0, "shell presentation");
+        RequireMinimum(root, "standardAccentContrast", 4.5, "shell presentation");
         RequireTrue(root, "noMagentaShellOrMenuColor", "shell presentation");
         var primaryLightness = RequireNumber(root, "standardPrimaryLightness", "shell presentation");
         var primaryChroma = RequireNumber(root, "standardPrimaryChroma", "shell presentation");

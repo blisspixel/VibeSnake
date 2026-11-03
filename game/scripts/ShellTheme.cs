@@ -103,6 +103,7 @@ internal sealed class ShellTheme
             var palette = Palette(highContrast);
             AssertContrast(palette.PrimaryText, palette.CanvasBackground, 4.5, "primary/canvas");
             AssertContrast(palette.SecondaryText, palette.CanvasBackground, 4.5, "secondary/canvas");
+            AssertContrast(palette.AccentText, palette.CanvasBackground, 4.5, "accent/canvas");
             AssertContrast(palette.BodyText, palette.BoardBackground, 12.0, "body/board");
             AssertContrast(palette.BodyText, palette.CanvasBackground, 12.0, "body/canvas");
             AssertContrast(palette.WarningText, palette.CanvasBackground, 4.5, "warning/canvas");

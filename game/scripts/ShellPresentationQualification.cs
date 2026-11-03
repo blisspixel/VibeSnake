@@ -16,6 +16,7 @@ internal sealed record ShellPresentationQualificationEvidence(
     double StandardPrimaryChroma,
     double StandardBodyCanvasContrast,
     double StandardBodyBoardContrast,
+    double StandardAccentContrast,
     bool NoMagentaShellOrMenuColor,
     int PromptFamilyCount,
     int GlyphShapeCount,
