@@ -90,6 +90,13 @@ public partial class Main : Node2D
     private ProceduralCuePlayer? _cuePlayer;
     private RadioStreamPlayer? _radioPlayer;
     private Texture2D? _brandLogo;
+    private ShadesTipAtlas? _shadesTipAtlas;
+    private ImageTexture? _shadesTipOriginal;
+    private ImageTexture? _shadesTipLowered;
+    private bool _shadesTipClockStarted;
+    private ulong _shadesTipStartedAtMilliseconds;
+    private bool _shadesTipSettled = true;
+    private bool _shadesTipLoweredShown;
     private readonly RadioPlaybackPolicy _radioPolicy = new(
         RadioCatalog.Empty,
         new RandomStreamBank(SmokeSeed).Radio);
@@ -390,6 +397,7 @@ public partial class Main : Node2D
         AudioBuses.EnsureRegistered();
         _brandLogo = GD.Load<Texture2D>(BrandLogoResourcePath)
             ?? throw new InvalidOperationException("The approved Vibe Snake logo is unavailable.");
+        BuildShadesTipFrames();
         _shellTheme = new ShellTheme(ThemeDB.FallbackFont);
         GetTree().AutoAcceptQuit = false;
         _cuePlayer = new ProceduralCuePlayer();
@@ -2352,6 +2360,7 @@ public partial class Main : Node2D
                 "The live run ended with an unsupported product run identity.");
         }
 
+        NoteShadesTipClock();
         TransitionToScreen(ScreenState.Ended);
         TryBroadcast(BroadcastBoundary.PostRun, criticalCueActive: false);
         _structuredLog?.Information(
@@ -2461,6 +2470,20 @@ public partial class Main : Node2D
             && redrawAnimatedScreen)
         {
             QueueRedraw();
+        }
+
+        if (_screenState == ScreenState.Ended && _shadesTipClockStarted && !_shadesTipSettled)
+        {
+            var showLowered = ShadesTip.ShowsLoweredFrame(
+                ShadesTipElapsed(nowMilliseconds),
+                _shellSettings.ReducedMotion,
+                _shellSettings.FlashFree,
+                _shadesTipLoweredShown);
+            if (showLowered || !_capturePresentation.ShowTerminalOverlay)
+            {
+                _shadesTipSettled = true;
+                QueueRedraw();
+            }
         }
         UpdateCursorVisibility(nowMilliseconds);
         _cuePlayer?.ProcessMix(nowMilliseconds);
@@ -4334,6 +4357,7 @@ public partial class Main : Node2D
         _baitRevealDestination = null;
         _baitRevealTicksRemaining = 0;
         _runEndSummary = null;
+        ClearShadesTipClock();
         _progressionNotifications.Clear();
         _restartIntentGate.Reset();
         _terminalInputSequence = -1;
@@ -4524,6 +4548,7 @@ public partial class Main : Node2D
         _playtestDeleteConfirmation = false;
         _onboardingSession = null;
         _runEndSummary = null;
+        ClearShadesTipClock();
         _activeRunContext = ScoreRunContextCatalog.NormalHuman;
         _activeTourEvent = null;
         _tourRunOutcome = null;
@@ -7318,6 +7343,7 @@ public partial class Main : Node2D
                     _scoreBrowseCategoryCursor = 0;
                     _scoreBrowseStatusCaption = null;
                     _runEndSummary = null;
+                    ClearShadesTipClock();
                     _personalBestsWritable = true;
                     break;
                 case PlayerDataCategory.Replays:
@@ -8990,13 +9016,7 @@ public partial class Main : Node2D
                 new Vector2(46.0f, 214.0f),
                 ScaledFontSize(13),
                 SecondaryTextColor());
-            DrawLabel(
-                category.PersonalBest is { } personalBest
-                    ? $"PERSONAL BEST {personalBest:D6}"
-                    : "PERSONAL BEST NOT AVAILABLE FOR THIS CATEGORY",
-                new Vector2(900.0f, 214.0f),
-                ScaledFontSize(13),
-                ActiveShellPalette.BodyText);
+            DrawScoresPersonalBest(category);
 
             var y = 250.0f;
             var rowHeight = ScaledCatalogRowHeight(baseFontSize: 17, minimum: 32.0f);
@@ -13306,6 +13326,10 @@ public partial class Main : Node2D
                 new Vector2(238.0f, 612.0f),
                 ScaledFontSize(14),
                 SecondaryTextColor());
+            if (summary.IsNewPersonalBest)
+            {
+                DrawNewBestSignature();
+            }
         }
     }
 
@@ -13696,6 +13720,153 @@ public partial class Main : Node2D
 
     private static string DescribePowerStatus(RunSnapshot snapshot) =>
         PowerPresentation.DescribeStatus(snapshot);
+
+    private void BuildShadesTipFrames()
+    {
+        var image = _brandLogo?.GetImage();
+        if (image is null)
+        {
+            image = new Image();
+            var loaded = image.Load("res://assets/branding/vibe-snake.png");
+            if (loaded != Error.Ok)
+            {
+                throw new InvalidOperationException(
+                    "The approved logo could not be read for the personal-best signature.");
+            }
+        }
+
+        var copy = (Image)image.Duplicate();
+        if (copy.GetFormat() != Image.Format.Rgba8)
+        {
+            copy.Convert(Image.Format.Rgba8);
+        }
+
+        var bytes = copy.GetData();
+        _shadesTipAtlas = ShadesTipFrames.Build(bytes, copy.GetWidth(), copy.GetHeight());
+        _shadesTipOriginal = ImageTexture.CreateFromImage(
+            ShadesTipFrames.TextureImage(
+                _shadesTipAtlas.Original,
+                _shadesTipAtlas.Width,
+                _shadesTipAtlas.Height));
+        _shadesTipLowered = ImageTexture.CreateFromImage(
+            ShadesTipFrames.TextureImage(
+                _shadesTipAtlas.Lowered,
+                _shadesTipAtlas.Width,
+                _shadesTipAtlas.Height));
+    }
+
+    private void NoteShadesTipClock()
+    {
+        if (_runEndSummary?.IsNewPersonalBest == true)
+        {
+            _shadesTipClockStarted = true;
+            _shadesTipStartedAtMilliseconds = Time.GetTicksMsec();
+            _shadesTipSettled = false;
+            _shadesTipLoweredShown = false;
+        }
+        else
+        {
+            ClearShadesTipClock();
+        }
+    }
+
+    private void ClearShadesTipClock()
+    {
+        _shadesTipClockStarted = false;
+        _shadesTipSettled = true;
+        _shadesTipLoweredShown = false;
+    }
+
+    private double ShadesTipElapsed(ulong nowMilliseconds)
+    {
+        if (!_shadesTipClockStarted || nowMilliseconds < _shadesTipStartedAtMilliseconds)
+        {
+            return 0.0;
+        }
+
+        return (nowMilliseconds - _shadesTipStartedAtMilliseconds) / 1000.0;
+    }
+
+    private void DrawNewBestSignature()
+    {
+        if (_shadesTipOriginal is null || _shadesTipLowered is null || _shadesTipAtlas is null)
+        {
+            return;
+        }
+
+        var lowered = ShadesTip.ShowsLoweredFrame(
+            ShadesTipElapsed(Time.GetTicksMsec()),
+            _shellSettings.ReducedMotion,
+            _shellSettings.FlashFree,
+            _shadesTipLoweredShown);
+        if (lowered)
+        {
+            _shadesTipLoweredShown = true;
+        }
+
+        var texture = lowered ? _shadesTipLowered : _shadesTipOriginal;
+        var sprite = ShadesTipLayout.RunEndSprite(_shadesTipAtlas.Width, _shadesTipAtlas.Height);
+        var label = Localize(ShadesTipQualification.CopyId);
+        var fontSize = ScaledFontSize(ShadesTipLayout.LabelBaseFontSize);
+        DrawNearest(texture, sprite, source: null);
+        DrawLabel(
+            label,
+            ShadesTipLayout.RunEndLabel(ActiveShellTheme.InterfaceFont, fontSize, label, sprite),
+            fontSize,
+            ActiveShellPalette.GoldText);
+    }
+
+    private void DrawScoresPersonalBest(ScoreBrowseCategory category)
+    {
+        var bestText = category.PersonalBest is { } personalBest
+            ? $"PERSONAL BEST {personalBest:D6}"
+            : "PERSONAL BEST NOT AVAILABLE FOR THIS CATEGORY";
+        var fontSize = ScaledFontSize(13);
+        var textAt = new Vector2(
+            ShadesTipLayout.ScoresBestPreferredLeft,
+            ShadesTipLayout.ScoresBaseline);
+        if (category.PersonalBest is not null
+            && _shadesTipLowered is not null
+            && _shadesTipAtlas is not null
+            && ShadesTipLayout.TryPlaceScoresMarker(
+                ActiveShellTheme.InterfaceFont,
+                category.IdentityLine,
+                fontSize,
+                bestText,
+                fontSize,
+                ScaledFontSize(14),
+                _shadesTipAtlas.HeadWidth,
+                _shadesTipAtlas.HeadHeight,
+                out var sprite,
+                out var placedText))
+        {
+            textAt = placedText;
+            DrawNearest(_shadesTipLowered, sprite, _shadesTipAtlas.HeadSource);
+        }
+
+        DrawLabel(bestText, textAt, fontSize, ActiveShellPalette.BodyText);
+    }
+
+    private void DrawNearest(Texture2D texture, Rect2 destination, Rect2? source)
+    {
+        var previous = TextureFilter;
+        TextureFilter = TextureFilterEnum.Nearest;
+        try
+        {
+            if (source is { } region)
+            {
+                DrawTextureRectRegion(texture, destination, region);
+            }
+            else
+            {
+                DrawTextureRect(texture, destination, false);
+            }
+        }
+        finally
+        {
+            TextureFilter = previous;
+        }
+    }
 
     private void ResetRunHudMessages()
     {
@@ -16441,6 +16612,10 @@ public partial class Main : Node2D
         const int migratedRequiredFlowCount = 13;
         const double requiredExpansionRatio = 1.30;
         RunHudMessageQualification.Verify();
+        ShadesTipQualification.Verify(
+            ActiveShellTheme.InterfaceFont,
+            _shadesTipAtlas ?? throw new InvalidOperationException(
+                "The personal-best signature was not built from the approved logo."));
         if (RadioStatusPresentation.IsDummyDriver(AudioServer.GetDriverName()))
         {
             var presentedRadio = PresentedRadioCompactLine();
@@ -16577,7 +16752,7 @@ public partial class Main : Node2D
                 $"onboarding.difficulty:overlap:{isolationBottom:0.0}/{difficultyTop:0.0}/{difficultyBottom:0.0}/{learnTop:0.0}");
         }
 
-        var passed = ShellLocalization.All.Count == 741
+        var passed = ShellLocalization.All.Count == 742
             && ShellLocalization.All.Count(entry => entry.Parameters.Count > 0) == 113
             && migratedRequiredFlowCount == 13
             && minimumExpansionRatio >= requiredExpansionRatio
@@ -16706,7 +16881,7 @@ public partial class Main : Node2D
             or "action.learn-tutorial" or "action.settings" => 16,
         "onboarding.practice" or "settings.select-section"
             or "onboarding.offer.learn-description" or "onboarding.offer.skip-description"
-            or "onboarding.offer.difficulty"
+            or "onboarding.offer.difficulty" or "run-end.new-best"
             or "settings.reset.backup-help" or "run.classic-rules"
             or "action.cancel-without-deleting" or "action.cancel-without-writing"
             or "action.choose" or "action.create-backup-reset"
@@ -16808,6 +16983,7 @@ public partial class Main : Node2D
             ("RECOVERY: Shield, Phase Shift, or Last Stand can prevent a body collision.", 12),
             ("SCORE 999999  PERSONAL BEST 999999", 18),
             ("NEW PERSONAL BEST", 16),
+            ("NEW BEST", 15),
             ("LENGTH 256  STEPS 999999  FOOD 999999  PEAK COMBO 999999", 14),
             ("NEW UNLOCKS: QUICK REFLEXES, GROWING STRONG  +15 MORE", 14),
         ];

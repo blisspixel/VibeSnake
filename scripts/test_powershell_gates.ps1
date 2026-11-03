@@ -469,7 +469,9 @@ try {
         throw "Native coverage streaming failure classification failed."
     }
     foreach ($requiredLocalizationFragment in @(
-        "ShellLocalization.All.Count == 741",
+        "ShellLocalization.All.Count == 742",
+        "DrawNewBestSignature(",
+        "NoteShadesTipClock();",
         "entry.Parameters.Count > 0) == 113",
         'AgentActionRejection.WrongActionProfile =>',
         '"agent-arena.action.rejected-wrong-profile"',
@@ -495,7 +497,7 @@ try {
         }
     }
     foreach ($requiredLocalizationFragment in @(
-        '($localizationEvidence.stringCount -ne 741)',
+        '($localizationEvidence.stringCount -ne 742)',
         '($localizationEvidence.parameterizedStringCount -ne 113)',
         '(-not $localizationEvidence.runHudTitleLayoutPassed)',
         '(-not $localizationEvidence.runHudRowLayoutPassed)',

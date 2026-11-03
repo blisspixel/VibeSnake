@@ -803,6 +803,7 @@ internal static class ShellLocalization
         Entry("run-end.recovery", "RECOVERY: {recovery}"),
         Entry("run-end.tour-primary", "TOUR PRIMARY {progress}"),
         Entry("run-end.personal-best", "NEW PERSONAL BEST"),
+        Entry("run-end.new-best", "NEW BEST"),
         Entry("prompt.action", "{glyph} {action}"),
         Entry("action.back-ten", "back 10"),
         Entry("action.broadcast-tour", "Broadcast Tour"),

@@ -90,6 +90,10 @@ Press J or controller R3 to cycle the current radio station. If playback has fai
 
 During a Vibe run the top row shows score, combo, hunger, and a difficulty badge: `EASIER`, `STANDARD`, `HARDER`, or `FIXED`. The learn-first screen and Settings, Gameplay, Vibe adaptation, explain what each word does to hunger. The second row shows one message at a time. A starvation warning or a blocked collision replaces whatever was there and stays for at least a second and a half. Otherwise the row shows the active power and its timer, then a pickup offer, then a short note such as a combo call or a ghost comparison. Armed bait says to eat the next food. It does not print a board coordinate. Classic keeps its rules reminder on that row. Pause freezes the message as well as the rules, and the message does not slide.
 
+### A new personal best
+
+When a run beats the stored personal best for its fair score category, the Run Ended card shows the logo snake and the words `NEW BEST`. The snake lowers its shades once, in under a second. Reduced motion and flash-free play show the lowered shades as a still picture. Confirm, scores, replays, and settings stay available immediately. An ordinary run does not show the snake. Local Scores uses the same still beside a stored personal best when the line has room.
+
 ## Scoring
 
 Food starts at 10 base points. The combo count increases with each food item and resets after more than three seconds without food.
