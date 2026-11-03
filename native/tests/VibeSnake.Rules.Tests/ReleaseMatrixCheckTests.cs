@@ -102,6 +102,7 @@ public sealed class ReleaseMatrixCheckTests
         ("audio_fallback_stress.json", "audio-mixing-policy-v2"),
         ("multimodal_feedback.json", "multimodal-feedback-v1"),
         ("viewport_matrix.json", "virtual-viewport-matrix-v1"),
+        ("power_signal.json", "power-signal-v1"),
     ];
 
     private static readonly string[] AccessibilityAreaIds =

@@ -4,8 +4,10 @@ using VibeSnake.Rules;
 namespace VibeSnake.Game;
 
 /// <summary>
-/// Presentation tokens for the nine power contracts. These are engineering
-/// fallback markers, not final authored art.
+/// Presentation tokens for the nine power contracts. Letter icons are the
+/// primary channel. Signal colours are qualified gameplay hues grouped by
+/// meaning: protection is cool, tempo is blue and red, food runs from gold
+/// to teal, and Segment Detach is the warning red. They are not illustration art.
 /// </summary>
 internal static class PowerPresentation
 {
@@ -15,19 +17,39 @@ internal static class PowerPresentation
     public static string ShortName(PowerKind kind) =>
         PowerFeedbackCatalog.Find(kind).Name;
 
-    public static Color SignalColor(PowerKind kind) => kind switch
+    public static Color SignalColor(PowerKind kind)
     {
-        PowerKind.Shield => new Color(0.45f, 0.96f, 1.0f),
-        PowerKind.PhaseShift => new Color(0.78f, 0.55f, 1.0f),
-        PowerKind.LastStand => new Color(1.0f, 0.72f, 0.28f),
-        PowerKind.SlowMo => new Color(0.42f, 0.72f, 1.0f),
-        PowerKind.Boost => new Color(1.0f, 0.42f, 0.28f),
-        PowerKind.Magnet => new Color(0.95f, 0.55f, 0.95f),
-        PowerKind.Bait => new Color(1.0f, 0.82f, 0.25f),
-        PowerKind.Gluttony => new Color(0.95f, 0.55f, 0.2f),
-        PowerKind.SegmentDetach => new Color(0.85f, 0.35f, 0.4f),
+        var (red, green, blue) = SignalBytes(kind);
+        return new Color(red / 255f, green / 255f, blue / 255f);
+    }
+
+    public static string SignalHex(PowerKind kind)
+    {
+        var (red, green, blue) = SignalBytes(kind);
+        return $"#{red:X2}{green:X2}{blue:X2}";
+    }
+
+    public static Color PhaseBody => Spectral(SignalColor(PowerKind.PhaseShift));
+
+    public static Color GhostOutline => Spectral(SignalColor(PowerKind.PhaseShift));
+
+    public static Color GluttonyBody => SignalColor(PowerKind.Gluttony);
+
+    private static (byte R, byte G, byte B) SignalBytes(PowerKind kind) => kind switch
+    {
+        PowerKind.Shield => (0x3C, 0xD0, 0xCC),
+        PowerKind.PhaseShift => (0xA0, 0x9A, 0xDF),
+        PowerKind.LastStand => (0x44, 0x8E, 0xA8),
+        PowerKind.SlowMo => (0x3F, 0x86, 0xDD),
+        PowerKind.Boost => (0xF7, 0x76, 0x71),
+        PowerKind.Magnet => (0x40, 0xB4, 0xA0),
+        PowerKind.Bait => (0xFF, 0xE0, 0x4D),
+        PowerKind.Gluttony => (0xB1, 0xCC, 0x46),
+        PowerKind.SegmentDetach => (0xD8, 0x5C, 0x68),
         _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, "Unknown power kind."),
     };
+
+    private static Color Spectral(Color color) => new(color.R, color.G, color.B, 0.72f);
 
     public static string DescribeStatus(RunSnapshot snapshot)
     {

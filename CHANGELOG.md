@@ -4,6 +4,8 @@ Notable player-facing and engineering changes are recorded here. The project is 
 
 ## Unreleased
 
+- Spread the nine power colours by meaning and removed magenta gameplay signals. Protection is ice cyan, steel blue, and soft blue-violet. Tempo is blue and red. Food runs from gold through lime to teal. Segment Detach stays the darker warning red. Ghost outlines and phased bodies use the Phase Shift signal, and the Gluttony body tint follows the Gluttony signal. Qualification lists every power-colour pair and requires 0.08 OKLab separation under normal vision and simulated deuteranopia and protanopia. The Last Stand ring is drawn inside the head, and qualification keeps that ring at least 3:1 against the head. The Player Guide power table and the README powers capture match these colours.
+
 - Recorded standard focus-accent contrast in the shell-presentation evidence and required it to stay at least 4.5:1 on the canvas. The accessibility guide contract pins that floor with the calmed ratios, the chroma cap, and the magenta ban.
 
 - Calmed the standard shell and main menu. Primary text is `#9FE0B4` at OKLCH chroma at most 0.10 and 13.16:1 on the canvas. Body text is off-white `#E6EFE9` and stays above 12:1. The cabinet frame and unfocused menu keys use secondary text, the menu field matches the shell canvas, and the focused row uses the single cyan accent on its key, label, and rule. Quit keeps the warning colour on its key only. High contrast is unchanged. Qualification rejects a magenta shell or menu colour and a focused row that does not follow that accent rule. The four README captures were regenerated from this presentation.

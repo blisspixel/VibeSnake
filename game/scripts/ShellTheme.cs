@@ -49,14 +49,11 @@ internal sealed class ShellTheme
     public static ShellPalette Palette(bool highContrast) =>
         highContrast ? HighContrastPalette : StandardPalette;
 
-    public static Oklch StandardPrimaryOklch() => ToOklch(StandardPalette.PrimaryText);
+    public static ColourMetrics.Oklch StandardPrimaryOklch() =>
+        ColourMetrics.ToOklch(StandardPalette.PrimaryText);
 
-    public static double ContrastRatio(Color foreground, Color background)
-    {
-        var lighter = Math.Max(RelativeLuminance(foreground), RelativeLuminance(background));
-        var darker = Math.Min(RelativeLuminance(foreground), RelativeLuminance(background));
-        return (lighter + 0.05) / (darker + 0.05);
-    }
+    public static double ContrastRatio(Color foreground, Color background) =>
+        ColourMetrics.ContrastRatio(foreground, background);
 
     public static Color MenuBackdrop(bool highContrast) =>
         highContrast ? Colors.Black : StandardPalette.CanvasBackground;
@@ -119,7 +116,7 @@ internal sealed class ShellTheme
             AssertNoMagentaSignal(MenuFrame(palette, highContrast), "menu frame");
         }
 
-        var primary = ToOklch(StandardPalette.PrimaryText);
+        var primary = ColourMetrics.ToOklch(StandardPalette.PrimaryText);
         if (primary.C > 0.10 || primary.L is < 0.84 or > 0.88)
         {
             throw new InvalidOperationException(
@@ -205,37 +202,14 @@ internal sealed class ShellTheme
 
     private static void AssertNoMagentaSignal(Color color, string name)
     {
-        var oklch = ToOklch(color);
-        if (oklch.C > 0.08 && oklch.H is >= 300.0 and < 360.0)
+        if (!ColourMetrics.IsMagenta(color))
         {
-            throw new InvalidOperationException(
-                $"Shell colour {name} is magenta at hue {oklch.H:0.0} chroma {oklch.C:0.000}.");
-        }
-    }
-
-    internal readonly record struct Oklch(double L, double C, double H);
-
-    private static Oklch ToOklch(Color color)
-    {
-        var red = Linearize(color.R);
-        var green = Linearize(color.G);
-        var blue = Linearize(color.B);
-        var longCone = (0.4122214708 * red) + (0.5363325363 * green) + (0.0514459929 * blue);
-        var mediumCone = (0.2119034982 * red) + (0.6806995451 * green) + (0.1073969566 * blue);
-        var shortCone = (0.0883024619 * red) + (0.2817188376 * green) + (0.6299787005 * blue);
-        var longCube = Math.Cbrt(longCone);
-        var mediumCube = Math.Cbrt(mediumCone);
-        var shortCube = Math.Cbrt(shortCone);
-        var lightness = (0.2104542553 * longCube) + (0.7936177850 * mediumCube) - (0.0040720468 * shortCube);
-        var greenRed = (1.9779984951 * longCube) - (2.4285922050 * mediumCube) + (0.4505937099 * shortCube);
-        var blueYellow = (0.0259040371 * longCube) + (0.7827717662 * mediumCube) - (0.8086757660 * shortCube);
-        var hue = Math.Atan2(blueYellow, greenRed) * (180.0 / Math.PI);
-        if (hue < 0.0)
-        {
-            hue += 360.0;
+            return;
         }
 
-        return new Oklch(lightness, Math.Sqrt((greenRed * greenRed) + (blueYellow * blueYellow)), hue);
+        var oklch = ColourMetrics.ToOklch(color);
+        throw new InvalidOperationException(
+            $"Shell colour {name} is magenta at hue {oklch.H:0.0} chroma {oklch.C:0.000}.");
     }
 
     private static Color Rgb(byte red, byte green, byte blue) =>
@@ -255,15 +229,6 @@ internal sealed class ShellTheme
         }
     }
 
-    private static double RelativeLuminance(Color color) =>
-        (0.2126 * Linearize(color.R))
-        + (0.7152 * Linearize(color.G))
-        + (0.0722 * Linearize(color.B));
-
-    private static double Linearize(float channel) =>
-        channel <= 0.04045f
-            ? channel / 12.92
-            : Math.Pow((channel + 0.055) / 1.055, 2.4);
 }
 
 internal readonly record struct ShellMenuRowPaint(Color Key, Color Label, Color Rule);

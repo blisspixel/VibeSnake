@@ -14,7 +14,7 @@
       "file": "powers-run.png",
       "height": 720,
       "label": "Vibe mode gameplay",
-      "sha256": "1c56c860c43aa6dc3fd7836bcb5fadfac0a24983f1eca2d070c71b2dbc39f9f3",
+      "sha256": "d98aaa68ba27c7dc5e803723939cfef329268343cf5ef86b2f212de6b58eb3f2",
       "state": "RUNNING",
       "width": 1280
     },
@@ -35,5 +35,5 @@
       "width": 1280
     }
   ],
-  "sourceSha256": "0ab5eed84a004c8fea2ffd5ffe576ff5f5400bb54cd1a54c60c324d6e6aecf46"
+  "sourceSha256": "3836d709f49bc96bb839797a493328ee76f91b9b347324b39144359d1fd6b031"
 }

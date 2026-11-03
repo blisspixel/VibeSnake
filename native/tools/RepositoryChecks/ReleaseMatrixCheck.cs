@@ -253,6 +253,7 @@ internal static class ReleaseMatrixCheck
         new("audio_fallback_stress.json", "audio-mixing-policy-v2"),
         new("multimodal_feedback.json", "multimodal-feedback-v1"),
         new("viewport_matrix.json", "virtual-viewport-matrix-v1"),
+        new("power_signal.json", "power-signal-v1"),
     ];
     private static readonly string[] AccessibilityPendingChecks =
     [
@@ -1142,7 +1143,8 @@ internal static class ReleaseMatrixCheck
         var sources = Field(accessibility, "sources");
         if (sources.ValueKind != JsonValueKind.Array || sources.GetArrayLength() != AccessibilitySources.Length)
         {
-            errors.Add($"{label}.sources must contain seven rows");
+            errors.Add(
+                $"{label}.sources must contain {AccessibilitySources.Length.ToString(CultureInfo.InvariantCulture)} rows");
         }
         else if (sources.EnumerateArray().Any(source => source.ValueKind != JsonValueKind.Object))
         {

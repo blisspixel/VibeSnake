@@ -131,6 +131,11 @@ internal static class CandidateAccessibilityAuditQualification
             "viewport_matrix.json",
             "virtual-viewport-matrix-v1",
             schemaVersion: 1);
+        var powerSignals = Load(
+            evidenceDirectory,
+            "power_signal.json",
+            "power-signal-v1",
+            schemaVersion: 1);
 
         ValidateSettings(settings.Root);
         ValidateInput(input.Root);
@@ -138,6 +143,7 @@ internal static class CandidateAccessibilityAuditQualification
         ValidateAccessibilityPresentation(accessibility.Root);
         ValidateMultimodal(multimodal.Root);
         ValidateShellPresentation(shell.Root);
+        ValidatePowerSignals(powerSignals.Root);
         var displayClasses = ValidateDisplayMatrix(viewport.Root, shell.Root);
 
         var sources = new[]
@@ -149,6 +155,7 @@ internal static class CandidateAccessibilityAuditQualification
             audio,
             multimodal,
             viewport,
+            powerSignals,
         };
         var sourceEvidence = sources
             .Select(source => new AccessibilityAuditSourceEvidence(
@@ -160,14 +167,14 @@ internal static class CandidateAccessibilityAuditQualification
         var areas = new[]
         {
             Area("text", shell.FileName, viewport.FileName),
-            Area("contrast", shell.FileName),
+            Area("contrast", shell.FileName, powerSignals.FileName),
             Area("focus", shell.FileName, settings.FileName),
             Area("remapping", settings.FileName),
             Area("single-action-navigation", settings.FileName),
             Area("controller-only-use", settings.FileName, input.FileName),
             Area("keyboard-only-use", settings.FileName, input.FileName),
             Area("audio-separation", settings.FileName, audio.FileName),
-            Area("visual-alternatives", multimodal.FileName, shell.FileName),
+            Area("visual-alternatives", multimodal.FileName, shell.FileName, powerSignals.FileName),
             Area("reduced-motion", accessibility.FileName, multimodal.FileName),
             Area("flash-safety", accessibility.FileName, multimodal.FileName),
             Area("documentation", "docs/guides/ACCESSIBILITY.md"),
@@ -389,6 +396,174 @@ internal static class CandidateAccessibilityAuditQualification
             throw new InvalidOperationException(
                 $"Shell maximum text scale must be {RequiredMaximumTextScale:0.0}.");
         }
+    }
+
+    private static readonly string[] PowerSignalKinds =
+    [
+        "Shield",
+        "PhaseShift",
+        "LastStand",
+        "SlowMo",
+        "Boost",
+        "Magnet",
+        "Bait",
+        "Gluttony",
+        "SegmentDetach",
+    ];
+
+    private static void ValidatePowerSignals(JsonElement root)
+    {
+        const string label = "power signals";
+        RequireInt(root, "powerCount", PowerSignalKinds.Length, label);
+        RequireInt(root, "pairCount", 36, label);
+        RequireTrue(root, "noMagentaGameplaySignal", label);
+        RequireMinimum(root, "minimumBoardContrast", 4.5, label);
+        RequireMinimum(
+            root,
+            "lastStandHeadContrast",
+            VisualHierarchyPolicy.Budget.MinimumGraphicalContrast,
+            label);
+        var signals = RequireArray(root, "signals", PowerSignalKinds.Length, label);
+        var index = 0;
+        string? phaseHex = null;
+        foreach (var signal in signals.EnumerateArray())
+        {
+            var signalLabel = $"{label}.signals[{index}]";
+            RequireString(signal, "kind", PowerSignalKinds[index], signalLabel);
+            RequireHex(signal, signalLabel);
+            RequireNoMagentaHue(signal, signalLabel);
+            RequireMinimum(signal, "standardBoardContrast", 4.5, signalLabel);
+            if (PowerSignalKinds[index] == "PhaseShift")
+            {
+                RequireSpectralHue(signal, signalLabel);
+                phaseHex = signal.GetProperty("hex").GetString();
+            }
+
+            index++;
+        }
+
+        var gameplay = RequireArray(root, "gameplayColours", 2, label);
+        string[] gameplayNames = ["Ghost", "PhaseBody"];
+        index = 0;
+        foreach (var colour in gameplay.EnumerateArray())
+        {
+            var colourLabel = $"{label}.gameplayColours[{index}]";
+            RequireString(colour, "name", gameplayNames[index], colourLabel);
+            RequireHex(colour, colourLabel);
+            RequireNoMagentaHue(colour, colourLabel);
+            RequireSpectralHue(colour, colourLabel);
+            if (colour.GetProperty("hex").GetString() != phaseHex)
+            {
+                throw new InvalidOperationException(
+                    $"{colourLabel} must use the Phase Shift signal.");
+            }
+
+            index++;
+        }
+
+        var pairs = RequireArray(root, "pairs", 36, label);
+        var expectedPairs = ExpectedPowerPairs();
+        var minimum = double.PositiveInfinity;
+        var iconCount = 0;
+        index = 0;
+        foreach (var pair in pairs.EnumerateArray())
+        {
+            var pairLabel = $"{label}.pairs[{index}]";
+            var (left, right) = expectedPairs[index];
+            RequireString(pair, "left", left, pairLabel);
+            RequireString(pair, "right", right, pairLabel);
+            var normal = RequireNumber(pair, "normal", pairLabel);
+            var deuteranopia = RequireNumber(pair, "deuteranopia", pairLabel);
+            var protanopia = RequireNumber(pair, "protanopia", pairLabel);
+            var worst = Math.Min(normal, Math.Min(deuteranopia, protanopia));
+            var iconOnly = RequireBool(pair, "iconDistinguishedOnly", pairLabel);
+            if (iconOnly && worst >= PowerSignalQualification.MinimumPairDistance)
+            {
+                throw new InvalidOperationException(
+                    $"{pairLabel} is marked icon-only but already clears {PowerSignalQualification.MinimumPairDistance:0.00} OKLab.");
+            }
+
+            if (!iconOnly && worst < PowerSignalQualification.MinimumPairDistance)
+            {
+                throw new InvalidOperationException(
+                    $"{pairLabel} OKLab distance was {worst:0.0000}; required {PowerSignalQualification.MinimumPairDistance:0.00} or an icon-only mark.");
+            }
+
+            minimum = Math.Min(minimum, worst);
+            if (iconOnly)
+            {
+                iconCount++;
+            }
+
+            index++;
+        }
+
+        RequireInt(root, "iconDistinguishedPairCount", iconCount, label);
+        var publishedMinimum = RequireNumber(root, "minimumPairDistance", label);
+        if (Math.Abs(publishedMinimum - minimum) > 0.000001)
+        {
+            throw new InvalidOperationException(
+                $"{label}.minimumPairDistance must be the smallest published pair distance.");
+        }
+    }
+
+    private static (string Left, string Right)[] ExpectedPowerPairs()
+    {
+        var pairs = new List<(string Left, string Right)>(36);
+        for (var left = 0; left < PowerSignalKinds.Length; left++)
+        {
+            for (var right = left + 1; right < PowerSignalKinds.Length; right++)
+            {
+                pairs.Add((PowerSignalKinds[left], PowerSignalKinds[right]));
+            }
+        }
+
+        return pairs.ToArray();
+    }
+
+    private static void RequireHex(JsonElement row, string label)
+    {
+        if (!row.TryGetProperty("hex", out var value)
+            || value.ValueKind != JsonValueKind.String
+            || value.GetString() is not { Length: 7 } hex
+            || hex[0] != '#'
+            || hex[1..].Any(character => !char.IsAsciiHexDigit(character) || char.IsLower(character)))
+        {
+            throw new InvalidOperationException($"{label}.hex must be an uppercase #RRGGBB colour.");
+        }
+    }
+
+    private static void RequireNoMagentaHue(JsonElement row, string label)
+    {
+        var chroma = RequireNumber(row, "chroma", label);
+        var hue = RequireNumber(row, "hue", label);
+        if (chroma > 0.08 && hue is >= 300.0 and < 360.0)
+        {
+            throw new InvalidOperationException(
+                $"{label} is magenta at hue {hue:0.0} chroma {chroma:0.000}.");
+        }
+    }
+
+    private static void RequireSpectralHue(JsonElement row, string label)
+    {
+        var chroma = RequireNumber(row, "chroma", label);
+        var hue = RequireNumber(row, "hue", label);
+        if (chroma > PowerSignalQualification.MaximumSpectralChroma || hue is < 260.0 or >= 300.0)
+        {
+            throw new InvalidOperationException(
+                $"{label} must be a blue-violet at chroma {PowerSignalQualification.MaximumSpectralChroma:0.00} or less.");
+        }
+    }
+
+    private static bool RequireBool(JsonElement root, string field, string label)
+    {
+        if (!root.TryGetProperty(field, out var value)
+            || value.ValueKind is not JsonValueKind.True and not JsonValueKind.False)
+        {
+            throw new InvalidOperationException($"{label}.{field} must be a boolean.");
+        }
+
+        return value.GetBoolean();
     }
 
     private static List<AccessibilityDisplayClassEvidence> ValidateDisplayMatrix(

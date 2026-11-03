@@ -13115,7 +13115,7 @@ public partial class Main : Node2D
 
         if (_activeGhostRace is not null)
         {
-            var ghostColor = new Color(0.62f, 0.42f, 0.92f, 0.72f);
+            var ghostColor = PowerPresentation.GhostOutline;
             foreach (var ghostCell in _activeGhostRace.GhostSnapshot.Body)
             {
                 DrawCellOutline(
@@ -13133,11 +13133,11 @@ public partial class Main : Node2D
             var bodyColor = CosmeticBodyColor(activeCosmetic, index, isHead);
             if (snapshot.HasPhaseShift && !isHead)
             {
-                bodyColor = new Color(0.55f, 0.42f, 0.88f, 0.72f);
+                bodyColor = PowerPresentation.PhaseBody;
             }
             else if (snapshot.HasGluttony && !isHead)
             {
-                bodyColor = new Color(0.88f, 0.58f, 0.22f);
+                bodyColor = PowerPresentation.GluttonyBody;
             }
 
             var inset = isHead
@@ -14248,6 +14248,7 @@ public partial class Main : Node2D
             }
 
             ExecuteShellPresentationSmokeTest();
+            ExecutePowerSignalSmokeTest();
             ExecuteLocalizationSmokeTest();
             ExecuteAudioFallbackStressSmokeTest();
             var coreOnlyEvidence = ExecuteContentServiceSmokeTest(userDataRoot);
@@ -15456,6 +15457,16 @@ public partial class Main : Node2D
             LongCatalogPagination: AchievementPageCount() > 1,
             VectorBadgeFlows: ["menu", "run-end", "achievements", "scores", "bindings", "content-packs", "replays", "settings", "onboarding", "spectator", "lore", "comparisons"]);
         WriteShellPresentationEvidence(evidence);
+    }
+
+    private static void ExecutePowerSignalSmokeTest()
+    {
+        var evidence = PowerSignalQualification.CreateEvidence();
+        var directory = ResolveEvidenceDirectory();
+        System.IO.Directory.CreateDirectory(directory);
+        System.IO.File.WriteAllText(
+            System.IO.Path.Combine(directory, "power_signal.json"),
+            evidence.Serialize());
     }
 
     private void AssertMainMenuPromptContract()

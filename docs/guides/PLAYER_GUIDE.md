@@ -110,6 +110,20 @@ The starvation indicator begins escalating after 20 seconds without food. A lega
 
 Nine collectible power-ups alter movement, routing, growth, food placement, or survival. In Vibe, a pickup appears off the shortest path to food, so collecting it is a detour rather than an accident on the default route. Shield blocks one crash, Phase Shift crosses occupied cells, and Gluttony scores without growth. Last Stand triggers when a collision or starvation would end the run, then gives you a three-second recovery window to steer. Bait affects the next food spawn, while Segment Detach creates temporary walls from your own tail. Durations, tradeoffs, and collision precedence are in [POWERUPS.md](../design/POWERUPS.md).
 
+The letter drawn on a power is the main way to tell them apart. Colour is a second channel, grouped by what the power does. The same colours are used for the pickup, the active outline, and, for Phase Shift and Gluttony, the body tint. Ghost snakes use the Phase Shift colour.
+
+| Power | Letter | Colour | Group |
+| --- | --- | --- | --- |
+| Shield | S | Ice cyan `#3CD0CC` | Protection |
+| Last Stand | L | Steel blue `#448EA8` | Protection |
+| Phase Shift | P | Soft blue-violet `#A09ADF` | Protection |
+| Slow-Mo | W | Blue `#3F86DD` | Tempo |
+| Boost | B | Red `#F77671` | Tempo |
+| Magnet | M | Teal `#40B4A0` | Food |
+| Bait | T | Gold `#FFE04D` | Food |
+| Gluttony | G | Lime `#B1CC46` | Food |
+| Segment Detach | D | Warning red `#D85C68` | Hazard |
+
 ## Progression
 
 - Achievements unlock at the end of human runs and persist in the player profile.
