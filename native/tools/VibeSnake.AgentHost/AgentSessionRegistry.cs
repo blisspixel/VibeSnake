@@ -114,8 +114,9 @@ public sealed class AgentSessionRegistry : IDisposable
         if (seedVisibility == AgentSeedVisibility.Blind && gameplaySeed is not null)
         {
             throw new ArgumentException(
-                "A blind-seed match cannot accept a caller-selected seed.",
-                nameof(gameplaySeed));
+                "A blind-seed match cannot accept a caller-selected seed. "
+                + "Omit gameplaySeed, or set seedVisibility to open. "
+                + "No match state changed.");
         }
 
         var seed = gameplaySeed is null
@@ -676,6 +677,16 @@ public sealed class AgentSessionRegistry : IDisposable
         }
     }
 
+    internal bool RetainsHandle(string matchHandle)
+    {
+        // Retention is a read. It must not refresh the idle lease or throw,
+        // because the call-tool filter uses it before any match code runs.
+        lock (_sync)
+        {
+            return !_disposed && _entries.ContainsKey(matchHandle);
+        }
+    }
+
     private AgentMatchSession GetSession(string matchHandle)
     {
         ValidateHandle(matchHandle);
@@ -684,7 +695,10 @@ public sealed class AgentSessionRegistry : IDisposable
             ObjectDisposedException.ThrowIf(_disposed, this);
             if (!_entries.TryGetValue(matchHandle, out var entry))
             {
-                throw new KeyNotFoundException("The match handle is unknown or expired.");
+                throw new KeyNotFoundException(
+                    "The match handle is unknown or expired. "
+                    + "Start a new match; handles die when the host process exits. "
+                    + "No match state changed.");
             }
 
             entry.LastActivityTimestamp = _timeProvider.GetTimestamp();

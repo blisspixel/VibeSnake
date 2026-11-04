@@ -24,7 +24,7 @@ public sealed class McpAgentTools
         Destructive = false,
         Idempotent = false,
         OpenWorld = false)]
-    [Description("Starts one isolated, clock-free Vibe Snake agent match and returns its explicit opaque handle plus initial public observation. Use only classic or vibe. Blind matches reject caller-selected seeds. Use the exact discovered camelCase arguments and JSON types; gameplaySeed is a quoted decimal string such as \"42\", never a JSON number. Missing, unexpected, or wrong-typed argument names are rejected before this tool runs with the exact mismatch and no state change.")]
+    [Description("Starts one isolated, clock-free Vibe Snake agent match and returns its explicit opaque handle plus initial public observation. Use only classic or vibe. Blind matches reject a caller-selected gameplaySeed before this tool runs, name the field, and change no match state. Use the exact discovered camelCase arguments and JSON types; gameplaySeed is a quoted decimal string such as \"42\", never a JSON number. Missing, unexpected, or wrong-typed argument names are rejected before this tool runs with the exact mismatch and no state change.")]
     public StartAgentMatchV5 StartMatch(
         [Description("Official mode ID: classic or vibe.")] string modeId,
         [Description("Seed division: open or blind.")] AgentSeedVisibility seedVisibility,

@@ -13,7 +13,7 @@ namespace VibeSnake.AgentHost;
 public static class Program
 {
     public const string HostName = "vibesnake-agent-host";
-    public const string HostVersion = "0.18.1";
+    public const string HostVersion = "0.18.2";
     public const string McpProtocolVersion = "2026-07-28";
 
     public static async Task Main(string[] args)
@@ -60,7 +60,8 @@ public static class Program
             .WithStdioServerTransport()
             .WithRequestFilters(filters =>
             {
-                filters.AddCallToolFilter(AgentToolArgumentFilter.Create());
+                filters.AddCallToolFilter(
+                    AgentToolArgumentFilter.Create(registry.RetainsHandle));
             })
             .WithTools(tools, serializerOptions)
             .WithResources<AgentResources>();

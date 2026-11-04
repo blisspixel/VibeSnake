@@ -69,7 +69,7 @@ public sealed class AgentResources
     public static string GetRules() => JsonSerializer.Serialize(
         new
         {
-            contract = "vibesnake-agent-rules-resource-v19",
+            contract = "vibesnake-agent-rules-resource-v20",
             ruleset_id = RulesetIdentity.CurrentId,
             rules_version = RulesetIdentity.CurrentVersion,
             observation_schema = AgentObservationV5.Contract,
@@ -131,7 +131,7 @@ public sealed class AgentResources
                 requirement_satisfied = "A lesson requirement's satisfied flag reports that its closed evidence exists. It is a factual observation, not a grade, score, or claim about mastery.",
                 recommended_next_tool = "recommended_next_tool is factual guidance derived from live progress. The caller keeps explicit control and may keep playing instead.",
             },
-            argument_binding = "Tool arguments use the exact discovered camelCase names, JSON types, and closed values. Missing, unexpected, wrong-typed, and out-of-contract argument values are named before the tool runs, list the required and optional fields, and change no match state. An out-of-contract value names the accepted vocabulary or range, the resource that publishes it, and the value that was received, so an unknown lesson, mode, style, rival, action profile, action, intent, handle, key, identity, seed, or step count is a recoverable argument rejection rather than an application error. A tool that accepts one of two alternative sources says so when neither or both arrive. gameplaySeed is a quoted decimal string, never a JSON number. A rejected request carries no observation because it never entered match code; observe_match separately proves the unchanged tick and state hash.",
+            argument_binding = "Tool arguments use the exact discovered camelCase names, JSON types, and closed values. Missing, unexpected, wrong-typed, and out-of-contract argument values are named before the tool runs, list the required and optional fields, and change no match state. An out-of-contract value names the accepted vocabulary or range, the resource that publishes it, and the value that was received. An unknown lesson, mode, style, rival, action profile, action, or intent, a malformed handle, key, or seed, a handle this host process does not retain, a caller-selected seed on a blind match, and a step count outside its published range are recoverable argument rejections rather than application errors. The unknown-handle rejection says to start a new match, because handles die when the host process exits. The blind-seed rejection says to omit gameplaySeed or set seedVisibility to open. A style the selected mode does not support, a passport the catalog or profile rejects, and a host at live-match capacity still need match state and remain separate errors. A tool that accepts one of two alternative sources says so when neither or both arrive. gameplaySeed is a quoted decimal string, never a JSON number. A rejected request carries no observation because it never entered match code; observe_match separately proves the unchanged tick and state hash.",
             stale_action_guard = StaleActionGuards,
             seed_divisions = SeedDivisions,
             maximum_steps = AgentMatchOptions.MaximumAllowedSteps,
@@ -452,7 +452,7 @@ public sealed class AgentResources
         # Vibe Snake Agent Playbook
 
         1. Read `vibesnake://agent/rules`, `vibesnake://agent/modes`, and `vibesnake://agent/identity`. Optionally read the style, rival, or Signal School resources.
-        2. Call `start_match` for an exhibition, or `start_lesson` with a closed Signal School lesson ID for canonical open-seed practice. Select either `four-direction-step-v1` or `four-direction-burst-v1`. If supplying Passport v4, use only the closed avatar, accent, and station IDs from the identity resource and declare `symbolic-step-v4`.
+        2. Call `start_match` for an exhibition, or `start_lesson` with a closed Signal School lesson ID for canonical open-seed practice. Select either `four-direction-step-v1` or `four-direction-burst-v1`. If supplying Passport v4, use only the closed avatar, accent, and station IDs from the identity resource and declare `symbolic-step-v4`. Omit `gameplaySeed` for a blind match. A caller-selected seed on a blind match is an argument rejection: it names the field and the value received, lists the required and optional fields, and changes no match state. Omit the seed, or set `seedVisibility` to `open`.
         3. Read the returned observation. Use only visible board state.
         4. Use `play_move` for one exact decision. In a burst-profile match, use `play_burst` for a safe straight continuation of at most 16 steps; it stops on the first fixed public decision event. Supply the exact tick and state hash plus a new idempotency key. Optionally declare one closed public intent so a viewer can follow the plan.
         5. On rejection or burst stop, inspect the reason, actual advancement, final-step public events, and refreshed observation. Preflight and logical rejections do not step the rules. A `wrong_action_profile` rejection names the match `action_profile` and `recommended_next_tool`: `play_move` for `four-direction-step-v1`, or `play_burst` for `four-direction-burst-v1`. The same pair is on `previous_action`. Every other response omits both fields. A `replay_failure` can report `rules_advanced=true` after a real step and always fails closed without a verified result.
@@ -462,7 +462,7 @@ public sealed class AgentResources
         9. After archiving, `get_exhibition_story` builds the recorded-first montage from the receipt and named lane files. A missing or disagreeing tape is refused. Display time is ignored.
         10. `get_qualification_report` classifies archived receipts against the public decks. Voluntary `finish_match` is not a standing. Completed practice is not qualification. Standings never mix divisions or policy versions.
 
-        Public intents are `seek_food`, `seek_power`, `preserve_space`, `take_risk`, and `recover`. They are self-reported presentation only. `continue` preserves the current direction. Never submit the current direction or its opposite as a turn. Response latency has no scoring effect. At capacity, a live handle idle for 30 minutes may be reclaimed without producing a result or replay; viewer activity is never match control.
+        Public intents are `seek_food`, `seek_power`, `preserve_space`, `take_risk`, and `recover`. They are self-reported presentation only. `continue` preserves the current direction. Never submit the current direction or its opposite as a turn. Response latency has no scoring effect. At capacity, a live handle idle for 30 minutes may be reclaimed without producing a result or replay; viewer activity is never match control. An unknown or expired handle is the same argument rejection, not an application error. Start a new match; handles die when the host process exits.
         """;
 
     private sealed record QualificationEvidenceObservation(

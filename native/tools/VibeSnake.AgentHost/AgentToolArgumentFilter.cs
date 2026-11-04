@@ -126,14 +126,20 @@ internal static class AgentToolArgumentFilter
             ["forget_passport"] = new([], [NullableText("agentId")]),
         };
 
-    public static McpRequestFilter<CallToolRequestParams, CallToolResult> Create() =>
-        next => async (context, cancellationToken) =>
+    public static McpRequestFilter<CallToolRequestParams, CallToolResult> Create(
+        Func<string, bool> retainedHandle)
+    {
+        ArgumentNullException.ThrowIfNull(retainedHandle);
+        return next => async (context, cancellationToken) =>
         {
-            var error = Validate(context.Params);
+            var error = Validate(context.Params, retainedHandle);
             return error ?? await next(context, cancellationToken).ConfigureAwait(false);
         };
+    }
 
-    internal static CallToolResult? Validate(CallToolRequestParams request)
+    internal static CallToolResult? Validate(
+        CallToolRequestParams request,
+        Func<string, bool>? retainedHandle = null)
     {
         ArgumentNullException.ThrowIfNull(request);
         if (!Contracts.TryGetValue(request.Name, out var contract))
@@ -169,16 +175,29 @@ internal static class AgentToolArgumentFilter
             .Select(field => (Field: field, Value: arguments![field.Name]))
             .ToArray();
         var choiceSatisfied = contract.ChoiceSatisfied(arguments);
+        // A retained-handle miss and a caller seed on a blind match are argument
+        // mistakes. They are named only after every shape check has passed, so
+        // one bad call still produces one complaint, and the host log does not
+        // record a crash.
+        string? stateProblem = null;
         if (missing.Length == 0
             && unexpected.Length == 0
             && mismatched.Length == 0
             && outOfContract.Length == 0
             && choiceSatisfied)
         {
-            return null;
+            stateProblem = DescribeRetainedState(request, contract, retainedHandle);
+            if (stateProblem is null)
+            {
+                return null;
+            }
         }
 
         var problems = new List<string>(5);
+        if (stateProblem is not null)
+        {
+            problems.Add(stateProblem);
+        }
         if (!choiceSatisfied)
         {
             problems.Add(
@@ -247,6 +266,62 @@ internal static class AgentToolArgumentFilter
     private static ArgumentField NullableObject(string name) =>
         new(name, ArgumentJsonType.Object, Nullable: true, Value: null);
 
+    private static string? DescribeRetainedState(
+        CallToolRequestParams request,
+        ArgumentContract contract,
+        Func<string, bool>? retainedHandle)
+    {
+        var arguments = request.Arguments;
+        if (arguments is null)
+        {
+            return null;
+        }
+
+        if (request.Name == "start_match"
+            && arguments.TryGetValue("seedVisibility", out var visibility)
+            && visibility.ValueKind == JsonValueKind.String
+            && string.Equals(visibility.GetString(), "blind", StringComparison.Ordinal)
+            && arguments.TryGetValue("gameplaySeed", out var seed)
+            && seed.ValueKind == JsonValueKind.String)
+        {
+            return "out-of-contract argument value(s): "
+                + $"{JsonSerializer.Serialize("gameplaySeed")} must be omitted when "
+                + "seedVisibility is \"blind\" "
+                + $"but received {DescribeContent(seed)}. "
+                + "Omit gameplaySeed, or set seedVisibility to \"open\" to choose a seed";
+        }
+
+        if (retainedHandle is null)
+        {
+            return null;
+        }
+
+        foreach (var field in contract.Fields)
+        {
+            if (field.Value is not { RequiresRetention: true }
+                || !arguments.TryGetValue(field.Name, out var value)
+                || value.ValueKind != JsonValueKind.String
+                || !field.Value.IsSatisfied(value))
+            {
+                continue;
+            }
+
+            var handle = value.GetString() ?? string.Empty;
+            if (retainedHandle(handle))
+            {
+                continue;
+            }
+
+            return "out-of-contract argument value(s): "
+                + $"{JsonSerializer.Serialize(field.Name)} must name a handle this host "
+                + "process still retains "
+                + $"but received {DescribeContent(value)}. "
+                + "Start a new match; handles die when the host process exits";
+        }
+
+        return null;
+    }
+
     private static ArgumentValueContract ClosedSet(
         IReadOnlyList<string> values,
         string resourceUri)
@@ -282,7 +357,8 @@ internal static class AgentToolArgumentFilter
                     && text.StartsWith("match_", StringComparison.Ordinal)
                     && text.All(character =>
                         char.IsAsciiLetterOrDigit(character) || character is '-' or '_');
-            });
+            },
+            RequiresRetention: true);
 
     private static ArgumentValueContract Token() =>
         new(
@@ -383,7 +459,8 @@ internal static class AgentToolArgumentFilter
 
     private sealed record ArgumentValueContract(
         string Expectation,
-        Func<JsonElement, bool> IsSatisfied);
+        Func<JsonElement, bool> IsSatisfied,
+        bool RequiresRetention = false);
 
     private sealed record ArgumentField(
         string Name,

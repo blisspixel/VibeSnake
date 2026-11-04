@@ -128,8 +128,10 @@ public sealed class AgentHostTests
             "arcade", AgentSeedVisibility.Open, null, null));
         Assert.Throws<ArgumentOutOfRangeException>(() => registry.StartMatch(
             RunModeCatalog.ClassicId, (AgentSeedVisibility)255, null, null));
-        Assert.Throws<ArgumentException>(() => registry.StartMatch(
+        var blindSeed = Assert.Throws<ArgumentException>(() => registry.StartMatch(
             RunModeCatalog.ClassicId, AgentSeedVisibility.Blind, "1", null));
+        Assert.Contains("No match state changed", blindSeed.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain("(Parameter", blindSeed.Message, StringComparison.Ordinal);
         Assert.Throws<ArgumentException>(() => registry.StartMatch(
             RunModeCatalog.ClassicId, AgentSeedVisibility.Open, "", null));
         Assert.Throws<ArgumentException>(() => registry.StartMatch(
@@ -146,7 +148,21 @@ public sealed class AgentHostTests
             "match_" + new string('a', AgentMatchOptions.MaximumMatchIdLength)));
         Assert.Throws<ArgumentException>(() => registry.Observe("match_invalid!"));
         Assert.ThrowsAny<ArgumentException>(() => registry.Observe(null!));
-        Assert.Throws<KeyNotFoundException>(() => registry.Observe("match_unknown"));
+        var missingHandle = Assert.Throws<KeyNotFoundException>(
+            () => registry.Observe("match_unknown"));
+        Assert.Contains("Start a new match", missingHandle.Message, StringComparison.Ordinal);
+        Assert.Contains(
+            "No match state changed",
+            missingHandle.Message,
+            StringComparison.Ordinal);
+        Assert.False(registry.RetainsHandle("match_unknown"));
+        var retained = registry.StartMatch(
+            RunModeCatalog.ClassicId,
+            AgentSeedVisibility.Open,
+            "42",
+            null);
+        Assert.True(registry.RetainsHandle(retained.MatchHandle));
+        Assert.False(registry.RetainsHandle("match_unknown"));
         Assert.Throws<InvalidOperationException>(() => registry.SaveVerifiedReplay(
             registry.StartMatch(
                 RunModeCatalog.ClassicId,
@@ -263,6 +279,22 @@ public sealed class AgentHostTests
         Assert.Equal("match_8", replacement.MatchHandle);
         Assert.Equal(0, registry.Observe(handles[0]).Tick);
         Assert.Throws<KeyNotFoundException>(() => registry.Observe(handles[1]));
+        Assert.False(registry.RetainsHandle(handles[1]));
+        // A retention read must not refresh the idle lease. handles[2] is the
+        // oldest expired live match; reading it still leaves it reclaimable.
+        Assert.True(registry.RetainsHandle(handles[2]));
+        var afterRead = registry.StartMatch(
+            RunModeCatalog.ClassicId,
+            AgentSeedVisibility.Open,
+            null,
+            null);
+        Assert.Equal("match_9", afterRead.MatchHandle);
+        Assert.False(registry.RetainsHandle(handles[2]));
+        Assert.Throws<KeyNotFoundException>(() => registry.Observe(handles[2]));
+        Assert.Equal(0, registry.Observe(handles[3]).Tick);
+        Assert.Equal(0, registry.Observe(handles[0]).Tick);
+        registry.Dispose();
+        Assert.False(registry.RetainsHandle(handles[0]));
         Assert.False(Directory.Exists(Path.Combine(
             temporary.Path,
             ReplayStore.ReplayDirectoryName)));
@@ -1117,6 +1149,194 @@ public sealed class AgentHostTests
     }
 
     [Fact]
+    public void Unknown_handle_and_blind_seed_use_the_argument_rejection_voice()
+    {
+        static JsonElement JsonValue(object? value) => JsonSerializer.SerializeToElement(value);
+
+        static string Reject(
+            string tool,
+            Dictionary<string, JsonElement> arguments,
+            Func<string, bool>? retainedHandle = null)
+        {
+            var result = Assert.IsType<CallToolResult>(
+                AgentToolArgumentFilter.Validate(
+                    new CallToolRequestParams
+                    {
+                        Name = tool,
+                        Arguments = arguments,
+                    },
+                    retainedHandle));
+            Assert.True(result.IsError);
+            var text = Assert.Single(result.Content.OfType<TextContentBlock>()).Text;
+            Assert.Contains($"Invalid arguments for '{tool}'", text, StringComparison.Ordinal);
+            Assert.Contains("No match state changed", text, StringComparison.Ordinal);
+            Assert.DoesNotContain("An error occurred invoking", text, StringComparison.Ordinal);
+            Assert.DoesNotContain("(Parameter", text, StringComparison.Ordinal);
+            return text;
+        }
+
+        bool NoneRetained(string handle) => false;
+
+        bool OnlyLive(string handle) => handle == "match_live";
+
+        foreach (var tool in new[]
+        {
+            "observe_match",
+            "finish_match",
+            "get_match_result",
+            "save_verified_replay",
+            "get_exhibition_receipt",
+            "archive_exhibition",
+        })
+        {
+            var text = Reject(
+                tool,
+                new Dictionary<string, JsonElement>(StringComparer.Ordinal)
+                {
+                    ["matchHandle"] = JsonValue("match_nope"),
+                },
+                NoneRetained);
+            Assert.Contains(
+                "\"matchHandle\" must name a handle this host process still retains "
+                    + "but received \"match_nope\"",
+                text,
+                StringComparison.Ordinal);
+            Assert.Contains(
+                "Start a new match; handles die when the host process exits",
+                text,
+                StringComparison.Ordinal);
+            Assert.Contains("Required: \"matchHandle\"", text, StringComparison.Ordinal);
+            Assert.Contains("Optional: none", text, StringComparison.Ordinal);
+            Assert.Null(AgentToolArgumentFilter.Validate(new CallToolRequestParams
+            {
+                Name = tool,
+                Arguments = new Dictionary<string, JsonElement>(StringComparer.Ordinal)
+                {
+                    ["matchHandle"] = JsonValue("match_live"),
+                },
+            }, OnlyLive));
+        }
+
+        var burst = Reject(
+            "play_burst",
+            new Dictionary<string, JsonElement>(StringComparer.Ordinal)
+            {
+                ["matchHandle"] = JsonValue("match_nope"),
+                ["idempotencyKey"] = JsonValue("key-1"),
+                ["expectedTick"] = JsonValue(0),
+                ["expectedStateHash"] = JsonValue("b2075ee7"),
+                ["initialAction"] = JsonValue("up"),
+                ["maximumSteps"] = JsonValue(2),
+            },
+            NoneRetained);
+        Assert.Contains("still retains", burst, StringComparison.Ordinal);
+        Assert.DoesNotContain("wrong_action_profile", burst, StringComparison.Ordinal);
+
+        var move = Reject(
+            "play_move",
+            new Dictionary<string, JsonElement>(StringComparer.Ordinal)
+            {
+                ["matchHandle"] = JsonValue("match_nope"),
+                ["idempotencyKey"] = JsonValue("key-1"),
+                ["expectedTick"] = JsonValue(0),
+                ["expectedStateHash"] = JsonValue("b2075ee7"),
+                ["action"] = JsonValue("continue"),
+            },
+            NoneRetained);
+        Assert.Contains("still retains", move, StringComparison.Ordinal);
+
+        var passport = Reject(
+            "record_passport",
+            new Dictionary<string, JsonElement>(StringComparer.Ordinal)
+            {
+                ["matchHandle"] = JsonValue("match_nope"),
+            },
+            NoneRetained);
+        Assert.Contains("still retains", passport, StringComparison.Ordinal);
+        var bothSources = Reject(
+            "record_passport",
+            new Dictionary<string, JsonElement>(StringComparer.Ordinal)
+            {
+                ["matchHandle"] = JsonValue("match_nope"),
+                ["receiptHash"] = JsonValue(new string('a', 64)),
+            },
+            NoneRetained);
+        Assert.Contains("exactly one of", bothSources, StringComparison.Ordinal);
+        Assert.DoesNotContain("still retains", bothSources, StringComparison.Ordinal);
+
+        var malformed = Reject(
+            "observe_match",
+            new Dictionary<string, JsonElement>(StringComparer.Ordinal)
+            {
+                ["matchHandle"] = JsonValue("bad"),
+            },
+            NoneRetained);
+        Assert.Contains("out-of-contract argument value(s)", malformed, StringComparison.Ordinal);
+        Assert.DoesNotContain("still retains", malformed, StringComparison.Ordinal);
+
+        var blind = Reject(
+            "start_match",
+            new Dictionary<string, JsonElement>(StringComparer.Ordinal)
+            {
+                ["modeId"] = JsonValue("classic"),
+                ["seedVisibility"] = JsonValue("blind"),
+                ["gameplaySeed"] = JsonValue("42"),
+            });
+        Assert.Contains(
+            "\"gameplaySeed\" must be omitted when seedVisibility is \"blind\" "
+                + "but received \"42\"",
+            blind,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "Omit gameplaySeed, or set seedVisibility to \"open\" to choose a seed",
+            blind,
+            StringComparison.Ordinal);
+        Assert.Contains("Required: \"modeId\", \"seedVisibility\"", blind, StringComparison.Ordinal);
+        Assert.DoesNotContain("(Parameter 'gameplaySeed')", blind, StringComparison.Ordinal);
+
+        var typedSeed = Reject(
+            "start_match",
+            new Dictionary<string, JsonElement>(StringComparer.Ordinal)
+            {
+                ["modeId"] = JsonValue("classic"),
+                ["seedVisibility"] = JsonValue("blind"),
+                ["gameplaySeed"] = JsonValue(42),
+            });
+        Assert.Contains("wrong argument type(s)", typedSeed, StringComparison.Ordinal);
+        Assert.DoesNotContain("must be omitted when seedVisibility", typedSeed, StringComparison.Ordinal);
+
+        Assert.Null(AgentToolArgumentFilter.Validate(new CallToolRequestParams
+        {
+            Name = "start_match",
+            Arguments = new Dictionary<string, JsonElement>(StringComparer.Ordinal)
+            {
+                ["modeId"] = JsonValue("classic"),
+                ["seedVisibility"] = JsonValue("blind"),
+            },
+        }));
+        Assert.Null(AgentToolArgumentFilter.Validate(new CallToolRequestParams
+        {
+            Name = "start_match",
+            Arguments = new Dictionary<string, JsonElement>(StringComparer.Ordinal)
+            {
+                ["modeId"] = JsonValue("classic"),
+                ["seedVisibility"] = JsonValue("blind"),
+                ["gameplaySeed"] = JsonValue(null),
+            },
+        }));
+        Assert.Null(AgentToolArgumentFilter.Validate(new CallToolRequestParams
+        {
+            Name = "start_match",
+            Arguments = new Dictionary<string, JsonElement>(StringComparer.Ordinal)
+            {
+                ["modeId"] = JsonValue("classic"),
+                ["seedVisibility"] = JsonValue("open"),
+                ["gameplaySeed"] = JsonValue("42"),
+            },
+        }));
+    }
+
+    [Fact]
     public void Resources_publish_closed_rules_official_modes_and_playbook()
     {
         using var rules = JsonDocument.Parse(AgentResources.GetRules());
@@ -1125,7 +1345,7 @@ public sealed class AgentHostTests
         var playbook = AgentResources.GetPlaybook();
 
         Assert.Equal(
-            "vibesnake-agent-rules-resource-v19",
+            "vibesnake-agent-rules-resource-v20",
             rules.RootElement.GetProperty("contract").GetString());
         var archive = rules.RootElement.GetProperty("archive");
         Assert.Equal(
@@ -1337,6 +1557,22 @@ public sealed class AgentHostTests
         Assert.Contains("wrong-typed", argumentBinding, StringComparison.Ordinal);
         Assert.Contains("quoted decimal string", argumentBinding, StringComparison.Ordinal);
         Assert.Contains("change no match state", argumentBinding, StringComparison.Ordinal);
+        Assert.Contains(
+            "handle this host process does not retain",
+            argumentBinding,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "caller-selected seed on a blind match",
+            argumentBinding,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "handles die when the host process exits",
+            argumentBinding,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "remain separate errors",
+            argumentBinding,
+            StringComparison.Ordinal);
         Assert.Equal(
             AgentObservationV5.Contract,
             rules.RootElement.GetProperty("observation_schema").GetString());
@@ -1553,6 +1789,11 @@ public sealed class AgentHostTests
         Assert.Contains("play_burst", playbook, StringComparison.Ordinal);
         Assert.Contains("recommended_next_tool", playbook, StringComparison.Ordinal);
         Assert.Contains("wrong_action_profile", playbook, StringComparison.Ordinal);
+        Assert.Contains(
+            "handles die when the host process exits",
+            playbook,
+            StringComparison.Ordinal);
+        Assert.Contains("Omit `gameplaySeed` for a blind match", playbook, StringComparison.Ordinal);
         Assert.Contains(
             "wrong_action_profile rejection names the match action_profile",
             rules.RootElement.GetProperty("action_semantics").GetString(),
@@ -1841,7 +2082,7 @@ public sealed class AgentHostTests
         Assert.NotNull(host.Services);
         Assert.NotNull(defaultHost.Services);
         Assert.Equal("vibesnake-agent-host", Program.HostName);
-        Assert.Equal("0.18.1", Program.HostVersion);
+        Assert.Equal("0.18.2", Program.HostVersion);
         Assert.Throws<ArgumentNullException>(() =>
             Program.CreateHostApplicationBuilder(null!, temporary.Path));
     }
@@ -2008,6 +2249,86 @@ public sealed class AgentHostTests
             wrongBurstText,
             StringComparison.Ordinal);
         Assert.Contains("No match state changed", wrongBurstText, StringComparison.Ordinal);
+        foreach (var tool in new[]
+        {
+            "observe_match",
+            "finish_match",
+            "get_match_result",
+            "save_verified_replay",
+            "get_exhibition_receipt",
+            "archive_exhibition",
+        })
+        {
+            var unknownHandle = await client.CallToolAsync(
+                tool,
+                new Dictionary<string, object?> { ["matchHandle"] = "match_nope" },
+                cancellationToken: timeout.Token);
+            var unknownHandleText = Assert.Single(
+                unknownHandle.Content.OfType<TextContentBlock>()).Text;
+            Assert.True(unknownHandle.IsError);
+            Assert.Contains(
+                $"Invalid arguments for '{tool}'",
+                unknownHandleText,
+                StringComparison.Ordinal);
+            Assert.Contains(
+                "\"matchHandle\" must name a handle this host process still retains "
+                    + "but received \"match_nope\"",
+                unknownHandleText,
+                StringComparison.Ordinal);
+            Assert.Contains(
+                "Start a new match; handles die when the host process exits",
+                unknownHandleText,
+                StringComparison.Ordinal);
+            Assert.Contains("No match state changed", unknownHandleText, StringComparison.Ordinal);
+            Assert.DoesNotContain(
+                "An error occurred invoking",
+                unknownHandleText,
+                StringComparison.Ordinal);
+            Assert.DoesNotContain("(Parameter", unknownHandleText, StringComparison.Ordinal);
+        }
+
+        var unknownBurst = await client.CallToolAsync(
+            "play_burst",
+            new Dictionary<string, object?>
+            {
+                ["matchHandle"] = "match_nope",
+                ["idempotencyKey"] = "unknown-handle",
+                ["expectedTick"] = observation.GetProperty("tick").GetInt32(),
+                ["expectedStateHash"] = observation.GetProperty("state_hash").GetString(),
+                ["initialAction"] = "up",
+                ["maximumSteps"] = 2,
+            },
+            cancellationToken: timeout.Token);
+        var unknownBurstText = Assert.Single(
+            unknownBurst.Content.OfType<TextContentBlock>()).Text;
+        Assert.True(unknownBurst.IsError);
+        Assert.Contains("still retains", unknownBurstText, StringComparison.Ordinal);
+        Assert.DoesNotContain(
+            "An error occurred invoking",
+            unknownBurstText,
+            StringComparison.Ordinal);
+        var blindSeed = await client.CallToolAsync(
+            "start_match",
+            new Dictionary<string, object?>
+            {
+                ["modeId"] = "classic",
+                ["seedVisibility"] = "blind",
+                ["gameplaySeed"] = "42",
+            },
+            cancellationToken: timeout.Token);
+        var blindSeedText = Assert.Single(blindSeed.Content.OfType<TextContentBlock>()).Text;
+        Assert.True(blindSeed.IsError);
+        Assert.Contains(
+            "\"gameplaySeed\" must be omitted when seedVisibility is \"blind\" "
+                + "but received \"42\"",
+            blindSeedText,
+            StringComparison.Ordinal);
+        Assert.Contains("No match state changed", blindSeedText, StringComparison.Ordinal);
+        Assert.DoesNotContain(
+            "An error occurred invoking",
+            blindSeedText,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain("(Parameter", blindSeedText, StringComparison.Ordinal);
         var observedAfterWrongBurst = await client.CallToolAsync(
             "observe_match",
             new Dictionary<string, object?> { ["matchHandle"] = handle },
@@ -2470,7 +2791,7 @@ public sealed class AgentHostTests
             resource => resource.Uri == "vibesnake://agent/qualification");
         var rulesText = Assert.IsType<TextResourceContents>(Assert.Single(rules.Contents));
         Assert.Contains(
-            "vibesnake-agent-rules-resource-v19",
+            "vibesnake-agent-rules-resource-v20",
             rulesText.Text,
             StringComparison.Ordinal);
         Assert.False(moved.IsError ?? false);

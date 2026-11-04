@@ -8,9 +8,9 @@ namespace VibeSnake.Rules.Tests;
 public sealed class AgentInteropCheckTests
 {
     private const string ExpectedHostDigest =
-        "dede0935e548c35d6b53fa1bd38334b6972258fe2b81a56ff456098f2209dbf6";
+        "1b650cbb95993d8e432cc35f760a4c032b690b4ee5a62d03b7850607bba3e5ed";
     private const string ExpectedPluginDigest =
-        "a3db15deb333b2f92e570a5b213624c1e4a3047aded098bd80ea2ba23e345fa5";
+        "bbeb146d79768632273cd1743cc70e52fe99e677f475b84fb6b79f1179be19b6";
 
     [Fact]
     public void Checked_in_baseline_and_public_contract_digests_are_exact_and_fresh()
@@ -306,7 +306,7 @@ public sealed class AgentInteropCheckTests
             Assert.Equal(original, repaired);
             Assert.DoesNotContain((byte)'\r', repaired);
             Assert.Equal((byte)'\n', repaired[^1]);
-            Assert.Equal(7114, repaired.Length);
+            Assert.Equal(7376, repaired.Length);
 
             var second = AgentInteropCheck.WriteDigests(root);
             Assert.True(second.Passed, string.Join(Environment.NewLine, second.Failures));
@@ -323,7 +323,7 @@ public sealed class AgentInteropCheckTests
                 baseline["public_contract_history"]!["host"]!.AsArray()[^1]!["version"] = "0.17.0");
             AssertFailure(
                 AgentInteropCheck.WriteDigests(root),
-                "latest version is '0.17.0', expected '0.18.1'");
+                "latest version is '0.17.0', expected '0.18.2'");
         });
 
         AgentInteropTestRepository.WithTemporaryRepository(root =>
