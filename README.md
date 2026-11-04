@@ -107,6 +107,8 @@ still uses the editor's debug runtime. A player Release export remains tied to
 the content and three-platform qualification gates above; changing the managed
 build configuration alone would not produce a supported release executable.
 
+`./play.sh --help` and `./play.ps1 --help` print usage, including the preview watch flags and how to pass game arguments, then exit before any download or build. Connecting an agent is `dotnet run --project native/tools/VibeSnake.AgentHost/VibeSnake.AgentHost.csproj` from this directory with the same SDK. The working directory, stdio configuration, and first read (`vibesnake://agent/playbook`) are in [agent play integration](docs/engineering/AGENT_PLAY.md).
+
 The current floating source build and checksums are published under [player-latest](https://github.com/blisspixel/VibeSnake/releases/tag/player-latest). What that archive contains, and what a versioned native alpha still requires, is in [source builds](docs/guides/DEVELOPMENT.md#source-builds). Native release outputs and agent play stay in [packaging](docs/release/PACKAGING.md) and [agent play integration](docs/engineering/AGENT_PLAY.md).
 
 ## Controls

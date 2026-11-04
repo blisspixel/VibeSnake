@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Build and launch the native Godot game from a cloned checkout.
-# Usage: ./play.sh
+# Usage: ./play.sh [--help | -h | --version]
 
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

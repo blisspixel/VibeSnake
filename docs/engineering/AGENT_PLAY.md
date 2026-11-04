@@ -95,6 +95,34 @@ dotnet run --project native/tools/VibeSnake.AgentHost/VibeSnake.AgentHost.csproj
 
 The process uses the stateless MCP 2026-07-28 era over stdio and opens no network listener. Every request carries protocol metadata, optional capability discovery uses `server/discover`, and there is no protocol session or `initialize` exchange. Legacy initialize-era clients are rejected and the preview provides no downlevel fallback. Protocol output stays on stdout and diagnostics stay on stderr. A client should normally launch it through its MCP configuration instead of an interactive terminal.
 
+### Connect an agent
+
+The host is a local stdio process. Its working directory is the repository root, and the command needs the exact .NET 10.0.403 SDK on `PATH`. It speaks stateless MCP `2026-07-28`: every request carries protocol metadata, discovery is `server/discover`, and there is no `initialize` call. Legacy clients are rejected. Stdout is protocol and stderr is diagnostics.
+
+```powershell
+dotnet run --project native/tools/VibeSnake.AgentHost/VibeSnake.AgentHost.csproj
+```
+
+A conventional stdio client entry, with the working directory set to that repository root. This repository does not ship the file.
+
+```json
+{
+  "mcpServers": {
+    "vibesnake": {
+      "command": "dotnet",
+      "args": [
+        "run",
+        "--project",
+        "native/tools/VibeSnake.AgentHost/VibeSnake.AgentHost.csproj"
+      ],
+      "cwd": "/absolute/path/to/VibeSnake"
+    }
+  }
+}
+```
+
+The first read is `resources/read` of `vibesnake://agent/playbook`. That playbook names the next tool. `./play.sh --help` lists the separate watch flags for the read-only viewer.
+
 The seventeen tools are:
 
 | Tool | Effect |
@@ -158,7 +186,7 @@ Observations are a closed public logical-state division. They include exact pend
 
 1. The agent calls `start_match` with `watchEnabled: true`.
 2. The response includes a one-time `viewer` capability with `pipe_name` and `access_token`.
-3. On the same user account and machine, launch the platform entry point. Both forward their remaining arguments to Godot, and both accept an optional `--` separator.
+3. On the same user account and machine, launch the platform entry point. `./play.sh --help` lists the flags. Pass the preview watch flags directly, and pass any other game arguments after `--`.
 
    Windows:
 

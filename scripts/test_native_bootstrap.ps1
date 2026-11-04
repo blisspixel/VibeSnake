@@ -124,13 +124,40 @@ Write-Output "GodotVerifiedVersion=fixture"
     $fakeSdk = Join-Path $preflightRoot "sdk.ps1"
     [IO.File]::WriteAllText($fakeSdk, 'Write-Output "99.1.2"; exit 0')
     & (Join-Path $preflightScripts "assert_dotnet_sdk.ps1") -DotnetExecutable $fakeSdk
-    foreach ($response in @('Write-Output "99.1.3"; exit 0', 'Write-Output "missing SDK"; exit 1')) {
-        [IO.File]::WriteAllText($fakeSdk, $response)
+    foreach ($response in @(
+            @{
+                Script = 'Write-Output "99.1.3"; exit 0'
+                Required = @("exact .NET 99.1.2 SDK", "reported 99.1.3")
+                Forbidden = @("did not print a usable SDK version")
+            },
+            @{
+                Script = 'Write-Output "missing SDK"; exit 1'
+                Required = @("exact .NET 99.1.2 SDK", "did not print a usable SDK version")
+                Forbidden = @("missing SDK", "reported ")
+            },
+            @{
+                Script = "Write-Output `"You intended to execute a .NET application:`"`r`nWrite-Output `"The application '--version' does not exist.`"`r`nexit 1"
+                Required = @("exact .NET 99.1.2 SDK", "did not print a usable SDK version")
+                Forbidden = @("You intended to execute")
+            }
+        )) {
+        [IO.File]::WriteAllText($fakeSdk, $response.Script)
         try {
             & (Join-Path $preflightScripts "assert_dotnet_sdk.ps1") -DotnetExecutable $fakeSdk
             throw "SDK preflight accepted an unsupported host."
         } catch {
-            if (-not $_.Exception.Message.Contains("exact .NET 99.1.2 SDK", [StringComparison]::Ordinal)) { throw }
+            $preflightMessage = $_.Exception.Message
+            if ($preflightMessage -eq "SDK preflight accepted an unsupported host.") { throw }
+            foreach ($requiredFragment in $response.Required) {
+                if (-not $preflightMessage.Contains($requiredFragment, [StringComparison]::Ordinal)) {
+                    throw "SDK preflight is missing [$requiredFragment]: $preflightMessage"
+                }
+            }
+            foreach ($forbiddenFragment in $response.Forbidden) {
+                if ($preflightMessage.Contains($forbiddenFragment, [StringComparison]::Ordinal)) {
+                    throw "SDK preflight pasted [$forbiddenFragment]: $preflightMessage"
+                }
+            }
         }
     }
     Write-Output "VIBESNAKE_NATIVE_BOOTSTRAP_OK"

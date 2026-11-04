@@ -213,6 +213,23 @@ try {
     if (-not $playLauncher.Contains("scripts/assert_godot_import.ps1", [StringComparison]::Ordinal)) {
         throw "play.ps1 must guarantee the Godot import cache before launching the game."
     }
+    foreach ($requiredLauncherFragment in @(
+        'DOTNET_NOLOGO = "1"',
+        'DOTNET_GENERATE_ASPNET_CERTIFICATE = "false"',
+        "Unrecognized launcher argument",
+        "Write-LauncherUsage",
+        "did not print a usable SDK version",
+        "The selected host reported"
+    )) {
+        $launcherSource = if ($requiredLauncherFragment -like "*SDK*" -or $requiredLauncherFragment -like "The selected host*") {
+            Get-Content -LiteralPath (Join-Path $repositoryRoot "scripts/assert_dotnet_sdk.ps1") -Raw
+        } else {
+            $playLauncher
+        }
+        if (-not $launcherSource.Contains($requiredLauncherFragment, [StringComparison]::Ordinal)) {
+            throw "Launcher first-contact text is missing: $requiredLauncherFragment"
+        }
+    }
     foreach ($requiredImportFragment in @(
         "dest_files=",
         '"--headless", "--editor", "--path"',
@@ -237,13 +254,22 @@ try {
     Copy-Item -LiteralPath (Join-Path $repositoryRoot "play.ps1") -Destination $launcherPath
     # Resolve the interpreter before hiding PATH so the probe can still start.
     $powershellPath = (Get-Process -Id $PID).Path
+    $bashCommand = Get-Command bash -ErrorAction SilentlyContinue
+    $bashPath = if ($bashCommand) { $bashCommand.Source } else { $null }
     $originalPath = $env:PATH
     try {
         $env:PATH = $launcherProbeRoot
         foreach ($launcherArguments in @(
             @(),
             @("--agent-watch-pipe=vs_gate", "--agent-watch-token=gate-token"),
-            @("--", "--agent-watch-pipe=vs_gate")
+            @("--", "--agent-watch-pipe=vs_gate"),
+            @("--", "--seed=42"),
+            @(
+                "--agent-watch-exhibitions",
+                "--agent-watch-qualification",
+                "--agent-watch-passports",
+                "--agent-watch-accessibility"
+            )
         )) {
             $launcherProbeText = (
                 & $powershellPath -NoProfile -File $launcherPath @launcherArguments 2>&1 |
@@ -261,9 +287,72 @@ try {
                 throw "play.ps1 did not reach its SDK probe for [$label]: $launcherProbeText"
             }
         }
+        # Help must exit before the SDK probe. Invoke the real script: the copy
+        # above has no sibling VERSION file, and usage reads that file.
+        $realLauncher = Join-Path $repositoryRoot "play.ps1"
+        foreach ($helpArguments in @(
+            @("--help"),
+            @("-h"),
+            @("--version"),
+            @("--", "--help"),
+            @("--version", "--agent-watch-pipe=vs_gate", "--agent-watch-token=gate-token")
+        )) {
+            $helpText = (
+                & $powershellPath -NoProfile -File $realLauncher @helpArguments 2>&1 |
+                    Out-String)
+            $helpLabel = $helpArguments -join " "
+            if ($LASTEXITCODE -ne 0) {
+                throw "play.ps1 help exited $LASTEXITCODE for [$helpLabel]: $helpText"
+            }
+            foreach ($requiredHelpFragment in @(
+                "0.3.0-alpha.1",
+                "--agent-watch-pipe=",
+                "--agent-watch-token=",
+                "--agent-watch-exhibitions",
+                "--agent-watch-qualification",
+                "--agent-watch-passports",
+                "--agent-watch-accessibility",
+                "docs/engineering/AGENT_PLAY.md",
+                "VibeSnake.AgentHost.csproj",
+                "first launch can take a few minutes"
+            )) {
+                if (-not $helpText.Contains($requiredHelpFragment, [StringComparison]::Ordinal)) {
+                    throw "play.ps1 help for [$helpLabel] is missing [$requiredHelpFragment]: $helpText"
+                }
+            }
+            if ($helpText.Contains("SDK is required", [StringComparison]::Ordinal) -or
+                $helpText.Contains("verifying Godot", [StringComparison]::Ordinal)) {
+                throw "play.ps1 help for [$helpLabel] started the launcher: $helpText"
+            }
+        }
+        foreach ($unknownArguments in @(
+            @("--not-a-real-flag"),
+            @("--agent-watch-pipe="),
+            @("--agent-watch-smoke")
+        )) {
+            $unknownText = (
+                & $powershellPath -NoProfile -File $launcherPath @unknownArguments 2>&1 |
+                    Out-String)
+            $unknownLabel = $unknownArguments -join " "
+            if ($LASTEXITCODE -eq 0 -or
+                -not $unknownText.Contains("Unrecognized launcher argument", [StringComparison]::Ordinal) -or
+                $unknownText.Contains("SDK is required", [StringComparison]::Ordinal)) {
+                throw "play.ps1 forwarded an unrecognised flag [$unknownLabel]: exit=$LASTEXITCODE $unknownText"
+            }
+        }
     }
     finally {
         $env:PATH = $originalPath
+    }
+    if ($bashPath) {
+        $shellHelp = (& $bashPath (Join-Path $repositoryRoot "play.sh") "--help" 2>&1 | Out-String)
+        if ($LASTEXITCODE -ne 0 -or
+            -not $shellHelp.Contains("0.3.0-alpha.1", [StringComparison]::Ordinal) -or
+            -not $shellHelp.Contains("docs/engineering/AGENT_PLAY.md", [StringComparison]::Ordinal) -or
+            $shellHelp.Contains("SDK is required", [StringComparison]::Ordinal) -or
+            $shellHelp.Contains("verifying Godot", [StringComparison]::Ordinal)) {
+            throw "play.sh --help did not print usage: exit=$LASTEXITCODE $shellHelp"
+        }
     }
 
     # A successful guard must publish its own status, independent of previously
