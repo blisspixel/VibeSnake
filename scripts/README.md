@@ -82,3 +82,11 @@ dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- ra
 ```
 
 Use `list <directory>` in place of `play <directory> <ffplay>` for device-free catalog inspection. Playback uses Enter/q/EOF controls and bounded process cleanup, and never writes a listening record. Full operator guidance is in [manual native tools](manual/README.md).
+
+## Source release publication
+
+`publish_source_release.sh` runs only in the hosted Linux publisher. It uses the
+qualified main revision and downloaded CI artifacts; it does not build or execute
+those artifacts. GitHub CLI, jq, and GNU coreutils are supplied by that runner.
+Offline tests cover fresh and resumed drafts, published retries, conflicting tags,
+missing, extra, or changed assets, and failed API/upload calls.

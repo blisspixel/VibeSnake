@@ -436,7 +436,7 @@ def test_agent_interoperability_drift_workflow_is_bounded_and_required() -> None
     assert "python scripts/check_agent_interop.py" not in raw
 
 
-def test_floating_source_release_uses_only_a_successful_ci_revision() -> None:
+def test_immutable_source_release_uses_only_a_successful_ci_revision() -> None:
     path = REPOSITORY_ROOT / ".github" / "workflows" / "player-build.yml"
     workflow = load_workflow(path)
     triggers = workflow["on"]
@@ -461,21 +461,15 @@ def test_floating_source_release_uses_only_a_successful_ci_revision() -> None:
     assert "./play.sh" in raw
     assert "**Frozen Python reference**" in raw
     assert "vibesnake update" not in raw
-    assert '"repos/${GITHUB_REPOSITORY}/git/refs/tags/player-latest"' in raw
-    assert '"repos/${GITHUB_REPOSITORY}/git/ref/tags/player-latest"' in raw
-    assert '"repos/${GITHUB_REPOSITORY}/releases?per_page=100"' in raw
-    assert '"repos/${GITHUB_REPOSITORY}/releases/tags/player-latest"' in raw
-    assert '"repos/${GITHUB_REPOSITORY}/releases/${release_id}"' in raw
-    assert "retry publish_player_release" in raw
-    assert "if (( attempt >= 5 ))" in raw
-    assert "-F force=true" in raw
-    assert "[.object.type, .object.sha] | @tsv" in raw
-    assert "$'commit\\t'\"${QUALIFIED_SHA}\"" in raw
-    assert "[.tag_name, .draft, .prerelease] | @tsv" in raw
-    assert "--verify-tag" in raw
-    assert '--repo "${GITHUB_REPOSITORY}"' in raw
-    assert "--cleanup-tag" not in raw
-    assert '--target "${QUALIFIED_SHA}"' not in raw
+    assert 'bash scripts/publish_source_release.sh dist "${NOTES}"' in raw
+    publisher = (REPOSITORY_ROOT / "scripts" / "publish_source_release.sh").read_text(encoding="utf-8")
+    assert 'tag="player-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"' in publisher
+    assert "--verify-tag" in publisher
+    assert ".immutable == true" in publisher
+    assert "sha256sum --check SHA256SUMS.txt" in publisher
+    assert "force=true" not in publisher
+    assert "--method DELETE" not in publisher
+    assert "release delete" not in publisher
     assert workflow["jobs"]["publish"]["permissions"] == {
         "actions": "read",
         "contents": "write",

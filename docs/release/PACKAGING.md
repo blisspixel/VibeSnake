@@ -1,14 +1,34 @@
 # Native Release Outputs
 
+Source snapshots use unique `player-<run-id>-<attempt>` prerelease tags. Choose the
+newest published source snapshot from the [releases list](https://github.com/blisspixel/VibeSnake/releases),
+then download every asset from that one tag. The former `player-latest` URL remains
+an historical snapshot and no longer moves to new builds.
+
+An administrator must enable repository release immutability before enabling this
+publisher. The workflow token has contents permission, not Administration:read,
+so it cannot query that setting. The publisher stages all assets
+in a draft, downloads and compares their exact bytes and inventory, checks the
+checksum manifest, and only then publishes. It verifies the published release's
+immutable flag before reporting success. If an administrator disables the setting,
+publication can produce a mutable release and the job fails; restore the repository
+setting before any subsequent publication. Published snapshots are retained;
+there is no automated release deletion. A failed draft remains available for
+inspection and can be resumed with the same run/attempt identity. A workflow rerun
+gets a new attempt tag. Repeating publication for an already published identity
+only verifies its bytes; it cannot update them. Source previews remain separate
+from signed native player qualification.
+
+
 Status: deterministic qualification and unsigned alpha assembly are implemented; first-alpha approval, signed publication, and storefront submission remain pending.
 
 The three native jobs are joined by `release-matrix-qualification-v1`. The aggregate gate requires exactly Windows x64, macOS Universal, and Linux x64 rows from one source revision and build mode, with one deterministic smoke hash and lock-set digest. Each row cross-checks the artifact manifest SHA-256 against signing readiness, verifies immutable external user data and logs under the read-only install smoke, and retains the deterministic package digest. The provenance job cannot run unless this complete unsigned matrix passes.
 
 Release rows also require `candidate-install-lifecycle-preflight-v1`. The exact exported player must pass first launch and a hash-identical repair copy; preserve source bytes while migrating preferences schemas 1 through 6, personal-best schema 1, and local-playtest-summary schema 1; reject and preserve a future preferences schema; bind optional-pack and player-data recovery evidence; and prove application removal does not remove external player data. This preflight is not a substitute for selected-channel installer update, rollback, and removal tests.
 
-## Floating source and reference channel
+## Immutable source and reference channel
 
-`player-latest` is deliberately separate from native artifact qualification. A same-repository push to `main` must complete the full CI workflow successfully before the source workflow checks out that exact qualified SHA. The workflow exposes no manual-dispatch or pull-request checkout path; diagnostic packaging is performed locally with the documented build commands. The floating release notes include the exact qualified revision's ten latest Unreleased entries and full-changelog link, so published development changes track the same bytes as its downloads.
+`player-*` is deliberately separate from native artifact qualification. A same-repository push to `main` must complete the full CI workflow successfully before the source workflow checks out that exact qualified SHA. The workflow exposes no manual-dispatch or pull-request checkout path; diagnostic packaging is performed locally with the documented build commands. Each immutable release's notes include the exact qualified revision's ten latest Unreleased entries and full-changelog link, so published development changes track the same bytes as its downloads.
 
 The release contains exactly:
 
@@ -19,9 +39,9 @@ The release contains exactly:
 
 The source ZIP excludes generated native `bin/` and `obj/` directories, Godot's `.godot/` import cache, and Python `*.egg-info/` metadata at every depth. Source builds recreate their local runtime caches through the root launcher.
 
-The source ZIP includes development-only Agent Arena inputs: the Agent Plugins 1.0.0 manifest and skill, MCP host source, deterministic plugin assembly script, and generated Open Knowledge Format 0.2 bundle. The assembled `mcp.json` and framework-dependent host output are generated and validated in CI but are not published as a supported plugin in this channel. `player-latest` is therefore neither a native player artifact nor the AA-10 supported symbolic desktop package. AA-10's current-RID self-contained host package is a separate unsigned preview assembled by `scripts/package_agent_host.ps1` and validated in CI. It carries a lock-derived NuGet inventory and unsigned source-revision provenance; native rules CI launches the packaged executable and requires a live viewer stream, and Godot's headless watch smoke consumes that pipe. `publication_eligible` stays false until signing exists.
+The source ZIP includes development-only Agent Arena inputs: the Agent Plugins 1.0.0 manifest and skill, MCP host source, deterministic plugin assembly script, and generated Open Knowledge Format 0.2 bundle. The assembled `mcp.json` and framework-dependent host output are generated and validated in CI but are not published as a supported plugin in this channel. `player-*` is therefore neither a native player artifact nor the AA-10 supported symbolic desktop package. AA-10's current-RID self-contained host package is a separate unsigned preview assembled by `scripts/package_agent_host.ps1` and validated in CI. It carries a lock-derived NuGet inventory and unsigned source-revision provenance; native rules CI launches the packaged executable and requires a live viewer stream, and Godot's headless watch smoke consumes that pipe. `publication_eligible` stays false until signing exists.
 
-Publication occurs in a checkout-free, least-privilege job. It independently reconciles the floating Git tag to the CI-qualified commit, removes any prior release or partial draft, creates with tag verification, and rechecks the exact commit plus non-draft prerelease state. The bounded convergence loop makes reruns safe after a partial GitHub API failure; uninterrupted GitHub availability is still an external dependency. Consumers must verify `SHA256SUMS.txt` after download.
+Publication checks out the CI-qualified commit with persisted Git credentials disabled. The publisher creates a unique tag at that commit and rejects an existing tag pointing elsewhere. It resumes uploads only for the matching draft, verifies the downloaded asset inventory and bytes, then publishes and checks immutable prerelease state. An already published identity is verified without mutation. GitHub availability remains an external dependency. Consumers must verify `SHA256SUMS.txt` after download.
 
 ## Output contract
 

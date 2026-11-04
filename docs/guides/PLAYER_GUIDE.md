@@ -32,7 +32,7 @@ git pull --ff-only origin main
 This fast-forwards `main`, rebuilds the native game, and keeps local saves in Godot's operating-system user-data directory. On macOS or Linux, run `./play.sh` after the pull.
 
 Every successful `main` push refreshes the floating
-[player-latest](https://github.com/blisspixel/VibeSnake/releases/tag/player-latest)
+[player-*](https://github.com/blisspixel/VibeSnake/releases)
 source download and checksums. It is not yet a signed packaged player. The frozen Python CLI and updater remain available only for oracle and migration work described in the [development guide](DEVELOPMENT.md).
 
 ## Core loop

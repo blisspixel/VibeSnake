@@ -17,7 +17,7 @@ The product path is Godot 4.7.1, .NET 10, and pure C# rules. The older Python/Py
 
 This is active `0.3.0-alpha.1` development. Automated Windows, macOS, and Linux qualification is extensive, but Store-ready 1.0 is not ready. Physical-device review, named-hardware performance, approved content packs, signing, and structured human playtesting remain release gates. See [current status](docs/release/STATUS.md) and the [roadmap](ROADMAP.md) for the evidence-backed details.
 
-Download the current source snapshot and checksums from the [latest development release](https://github.com/blisspixel/VibeSnake/releases/tag/player-latest). Its notes list the latest completed changes. This source and reference prerelease updates only after CI passes on its exact `main` revision.
+Download the current source snapshot and checksums from the [latest development release](https://github.com/blisspixel/VibeSnake/releases). Its notes list the latest completed changes. This source and reference prerelease updates only after CI passes on its exact `main` revision.
 
 ## Current native build
 
@@ -109,7 +109,7 @@ build configuration alone would not produce a supported release executable.
 
 `./play.sh --help` and `./play.ps1 --help` print usage, including the preview watch flags and how to pass game arguments, then exit before any download or build. Connecting an agent is `dotnet run --project native/tools/VibeSnake.AgentHost/VibeSnake.AgentHost.csproj` from this directory with the same SDK. The working directory, stdio configuration, and first read (`vibesnake://agent/playbook`) are in [agent play integration](docs/engineering/AGENT_PLAY.md).
 
-The current floating source build and checksums are published under [player-latest](https://github.com/blisspixel/VibeSnake/releases/tag/player-latest). What that archive contains, and what a versioned native alpha still requires, is in [source builds](docs/guides/DEVELOPMENT.md#source-builds). Native release outputs and agent play stay in [packaging](docs/release/PACKAGING.md) and [agent play integration](docs/engineering/AGENT_PLAY.md).
+The current immutable source build and checksums are published under [player-*](https://github.com/blisspixel/VibeSnake/releases). What that archive contains, and what a versioned native alpha still requires, is in [source builds](docs/guides/DEVELOPMENT.md#source-builds). Native release outputs and agent play stay in [packaging](docs/release/PACKAGING.md) and [agent play integration](docs/engineering/AGENT_PLAY.md).
 
 ## Controls
 

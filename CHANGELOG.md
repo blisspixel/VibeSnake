@@ -4,6 +4,9 @@ Notable player-facing and engineering changes are recorded here. The project is 
 
 ## Unreleased
 
+- Publish qualified source builds under immutable run-specific tags, verify draft assets before publication, and preserve historical snapshots instead of replacing a floating release.
+
+
 - An invalid `VIBESNAKE_AGENT_USER_DATA_ROOT` prints one configuration sentence on stderr and exits 2. A relative path, a missing directory, and the host package folder use that path. There is no stack trace and no abort. Agent Host and Agent Plugin are `0.18.4`.
 
 - At live-match capacity, `start_match` and `start_lesson` name how many matches are live and the whole seconds until the oldest idle lease can be reclaimed. Finishing a match this client still holds frees a slot now. Handles are recoverable only by the client that holds them; the host cannot list a lost handle. The other recovery is to wait for that lease or restart the host. No match is started. The error stays separate from the argument-rejection voice. Rules resource v21 publishes that sentence. Agent Host and Agent Plugin are `0.18.3`.

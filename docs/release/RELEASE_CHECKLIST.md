@@ -138,7 +138,7 @@ The current development revision does not meet this checklist. See [STATUS.md](S
 - [x] Dependabot alerts and security updates are enabled; the GitHub API verified alerts plus unpaused automated security fixes on 2026-08-13, and every proposed fix still follows the project's review policy.
 - [x] CodeQL default setup analyzes Actions, C#, and Python weekly; the first default-suite scan passed on 2026-08-13, and its one initial workflow alert was fixed rather than dismissed.
 - [x] Repository Actions policy permits GitHub-owned actions only and requires immutable commit-SHA references; the committed workflow test independently rejects tags and unapproved actions.
-- [x] The active default-branch ruleset requires the aggregate `CI complete` check and prevents force pushes and deletion. The repository-admin role retains an explicit always-bypass for the documented single-maintainer direct-to-main workflow; a bypassed revision cannot publish `player-latest` until the complete CI workflow succeeds.
+- [x] The active default-branch ruleset requires the aggregate `CI complete` check and prevents force pushes and deletion. The repository-admin role retains an explicit always-bypass for the documented single-maintainer direct-to-main workflow; a bypassed revision cannot publish `player-*` until the complete CI workflow succeeds.
 - [ ] Repository description, topics, issue forms, support links, and security links resolve from a clean signed-out browser session.
 - [ ] Secret scanning and push protection are enabled, and no `.env`, credential, signing key, private report, or player data is in source or artifacts.
 

@@ -107,7 +107,7 @@ The October 2026 servicing baseline requires the exact .NET 10.0.403 SDK and the
 - Pin third-party GitHub Actions to a full immutable commit SHA and retain the release tag in a comment for reviewability.
 - Grant the workflow and each job only the permissions it needs.
 - A credential-only publisher without a checkout must pass the explicit repository to every repository-scoped CLI command or API path.
-- A floating-release publisher must reconcile and verify its tag separately from its release object, tolerate a bounded number of transient API failures, and be safe to rerun after partial success.
+- Source publishers use unique run and attempt tags, verify the qualified revision and exact asset bytes before publication, and never move a tag or replace published assets. A partial draft may resume; an existing published snapshot is verification-only.
 - Never print secrets, credential fragments, authorization headers, or signed URLs.
 
 ## Testing standard
@@ -159,9 +159,9 @@ Content hashes prove reviewed-byte integrity. Platform signatures and build atte
 
 The committed Dependabot policy covers pip, both NuGet roots, and GitHub Actions. Repository vulnerability alerts and Dependabot security updates are enabled and were verified through the GitHub API on 2026-08-13. Routine version-update pull requests remain disabled while the repository keeps one public `main` branch; vulnerability audits in CI remain release-blocking, and dependency or action updates are reviewed as isolated qualification changes. The committed policy test verifies ecosystem coverage only, while the release checklist owns the live repository-setting check. Packaging workflows install build tools from the hash-locked CI graph rather than upgrading from the network.
 
-GitHub CodeQL default setup analyzes Actions, C#, and Python with the default query suite and remote threat model on a weekly schedule; its first three-language analysis passed on 2026-08-13, and its one initial workflow alert was fixed rather than dismissed. Repository Actions policy permits GitHub-owned actions only and requires immutable commit-SHA references. The active default-branch ruleset blocks deletion and non-fast-forward updates and requires the aggregate `CI complete` check, whose job fails unless Python quality, native rules, packaged player smoke, and cross-bound release-matrix jobs all succeed. The repository-admin role has an explicit always-bypass so the documented single-maintainer direct-to-main workflow remains possible; every bypassed revision still has to become green before `player-latest` can publish.
+GitHub CodeQL default setup analyzes Actions, C#, and Python with the default query suite and remote threat model on a weekly schedule; its first three-language analysis passed on 2026-08-13, and its one initial workflow alert was fixed rather than dismissed. Repository Actions policy permits GitHub-owned actions only and requires immutable commit-SHA references. The active default-branch ruleset blocks deletion and non-fast-forward updates and requires the aggregate `CI complete` check, whose job fails unless Python quality, native rules, packaged player smoke, and cross-bound release-matrix jobs all succeed. The repository-admin role has an explicit always-bypass so the documented single-maintainer direct-to-main workflow remains possible; every bypassed revision still has to become green before `player-*` can publish.
 
-The floating `player-latest` source release runs only for the exact same-repository `main` push revision that completed CI successfully. The workflow has no manual-dispatch or pull-request checkout path, so its later write-token publisher consumes artifacts only from that qualified source path.
+The immutable `player-*` source release runs only for the exact same-repository `main` push revision that completed CI successfully. The workflow has no manual-dispatch or pull-request checkout path, so its later write-token publisher consumes artifacts only from that qualified source path.
 
 ## Performance and resource quality
 
