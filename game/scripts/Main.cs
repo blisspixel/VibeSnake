@@ -11007,6 +11007,19 @@ public partial class Main : Node2D
         await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
     }
 
+    // The mode title answers the host lifecycle only. A verified replay is not
+    // completion: an aborted finish and an unmet lesson both keep a replay.
+    private static string AgentRunTitleCopyId(AgentViewerFrameV9 frame) =>
+        frame.Observation.Lifecycle switch
+        {
+            AgentMatchLifecycle.AwaitingAction => "agent-arena.run.live",
+            AgentMatchLifecycle.Completed => "agent-arena.run.complete",
+            AgentMatchLifecycle.Aborted => "agent-arena.run.aborted",
+            AgentMatchLifecycle.FailedClosed => "agent-arena.run.failed",
+            _ => throw new InvalidOperationException(
+                $"Unknown agent match lifecycle: {frame.Observation.Lifecycle}."),
+        };
+
     private void DrawAgentWatch()
     {
         if (_agentViewerSnapshot is null || _agentViewerFrame is null)
@@ -11050,11 +11063,7 @@ public partial class Main : Node2D
             _progression.SelectedCosmeticSetId;
         DrawRun(
             _agentViewerSnapshot,
-            Localize(observation.IsActionAwaited
-                ? "agent-arena.run.live"
-                : _agentViewerFrame.VerifiedResultAvailable
-                    ? "agent-arena.run.complete"
-                    : "agent-arena.run.failed"),
+            Localize(AgentRunTitleCopyId(_agentViewerFrame)),
             mode,
             agentCosmetic);
         if (!_capturePresentation.ShowSpectatorOverlays)
@@ -16442,6 +16451,7 @@ public partial class Main : Node2D
             "run.status.paused-focus-lost",
             "agent-arena.run.live",
             "agent-arena.run.complete",
+            "agent-arena.run.aborted",
             "agent-arena.run.failed",
         };
         foreach (var mode in RunModeCatalog.All)
@@ -16823,7 +16833,7 @@ public partial class Main : Node2D
                 $"onboarding.difficulty:overlap:{isolationBottom:0.0}/{difficultyTop:0.0}/{difficultyBottom:0.0}/{learnTop:0.0}");
         }
 
-        var passed = ShellLocalization.All.Count == 742
+        var passed = ShellLocalization.All.Count == 743
             && ShellLocalization.All.Count(entry => entry.Parameters.Count > 0) == 113
             && migratedRequiredFlowCount == 13
             && minimumExpansionRatio >= requiredExpansionRatio

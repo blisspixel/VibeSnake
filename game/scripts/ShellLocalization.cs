@@ -215,6 +215,7 @@ internal static class ShellLocalization
             "THE MATCH OWNS THE CLOCK. WAITING NEVER CHANGES SCORE."),
         Entry("agent-arena.run.live", "AGENT LIVE"),
         Entry("agent-arena.run.complete", "AGENT COMPLETE"),
+        Entry("agent-arena.run.aborted", "AGENT ENDED EARLY"),
         Entry("agent-arena.run.failed", "AGENT FAILED CLOSED"),
         Entry(
             "agent-arena.survival",

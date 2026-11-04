@@ -4,6 +4,8 @@ Notable player-facing and engineering changes are recorded here. The project is 
 
 ## Unreleased
 
+- The watch overlay title follows the host lifecycle. A completed session reads `AGENT COMPLETE`. An aborted early finish, including an unmet lesson, reads `AGENT ENDED EARLY`. A failed-closed session reads `AGENT FAILED CLOSED`. A verified replay no longer makes an aborted session look complete. The copy catalog is 743 English IDs and 113 parameterized templates.
+
 - Replay, exhibition, qualification, and passport pages no longer open under an empty band the height of the run HUD. That strip stays reserved for a live run, a replay, and a recorded story. Other shell pages use the same field from the top of the window.
 
 - Saved agent replays keep the gameplay seed that started the match. The verified-replay row and the loaded replay header show that seed. `SEED LEGACY` stays reserved for an envelope that has no seed. A blind match still reveals the seed in the saved replay after the result. The seed is stored without a capture clock, so two saves of the same play keep one payload hash.

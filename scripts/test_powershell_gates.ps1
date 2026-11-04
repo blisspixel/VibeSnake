@@ -558,7 +558,7 @@ try {
         throw "Native coverage streaming failure classification failed."
     }
     foreach ($requiredLocalizationFragment in @(
-        "ShellLocalization.All.Count == 742",
+        "ShellLocalization.All.Count == 743",
         "DrawNewBestSignature(",
         "NoteShadesTipClock();",
         "entry.Parameters.Count > 0) == 113",
@@ -586,7 +586,7 @@ try {
         }
     }
     foreach ($requiredLocalizationFragment in @(
-        '($localizationEvidence.stringCount -ne 742)',
+        '($localizationEvidence.stringCount -ne 743)',
         '($localizationEvidence.parameterizedStringCount -ne 113)',
         '(-not $localizationEvidence.runHudTitleLayoutPassed)',
         '(-not $localizationEvidence.runHudRowLayoutPassed)',
