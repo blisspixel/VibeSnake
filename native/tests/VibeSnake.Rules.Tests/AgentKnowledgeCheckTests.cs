@@ -11,7 +11,7 @@ public sealed class AgentKnowledgeCheckTests
         {
             ["experience.md"] = "c25ed13615eb700f3c9a426988dfb7100841c6cbe8b78a0acdd1989e6787aa74",
             ["index.md"] = "7c728d11b8c9d671659112bd5b696ddfbe6929e3ef6397e6999aaaf1d69dfded",
-            ["protocol.md"] = "8d09c9e71260cdb6b99acd20bc0c79e8c2b95bc938a22eb0241143bcdea5a15f",
+            ["protocol.md"] = "1f071885b5952fbd3dea125a1ffa4896fc3d45bdbc2166b5a4f00cafadb0507f",
             ["replays.md"] = "66f09be8e8154e16464a6ebf6b9a774cf4c5fd2f39d5fb56a3c21a35245ba7e8",
             ["rules.md"] = "4beacf6fcec623819edd86a02acdabc666e0360c79fda2832dd467e16d83c25d",
         };
@@ -151,11 +151,11 @@ public sealed class AgentKnowledgeCheckTests
 
             File.WriteAllText(
                 baselinePath,
-                baseline.Replace("\"host_version\": \"0.18.3\"", "\"host_version\": \"9.9.9\"", StringComparison.Ordinal),
+                baseline.Replace("\"host_version\": \"0.18.4\"", "\"host_version\": \"9.9.9\"", StringComparison.Ordinal),
                 new UTF8Encoding(false));
             AssertFailure(
                 AgentKnowledgeCheck.Inspect(root, new DateOnly(2026, 9, 1)),
-                "host source version 0.18.3 does not match baseline 9.9.9");
+                "host source version 0.18.4 does not match baseline 9.9.9");
 
             File.WriteAllBytes(baselinePath, [0xff]);
             Assert.False(AgentKnowledgeCheck.Inspect(root, new DateOnly(2026, 9, 1)).Passed);

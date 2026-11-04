@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Globalization;
 using System.IO.Pipes;
 using System.Text;
@@ -1996,6 +1997,42 @@ public sealed class AgentHostTests
     }
 
     [Fact]
+    public void Invalid_user_data_root_is_a_one_line_configuration_error()
+    {
+        var assembly = typeof(Program).Assembly.Location;
+        Assert.True(File.Exists(assembly));
+        foreach (var (value, message) in new (string Value, string Message)[]
+        {
+            ("relative/path",
+                "VIBESNAKE_AGENT_USER_DATA_ROOT must be a fully qualified directory."),
+            (Path.Combine(Path.GetPathRoot(assembly) ?? "/", "nonexistent", "dir", "x"),
+                "VIBESNAKE_AGENT_USER_DATA_ROOT must be an existing directory."),
+        })
+        {
+            using var process = new Process();
+            process.StartInfo = new ProcessStartInfo
+            {
+                FileName = "dotnet",
+                RedirectStandardError = true,
+                RedirectStandardOutput = true,
+                UseShellExecute = false,
+            };
+            process.StartInfo.ArgumentList.Add(assembly);
+            process.StartInfo.Environment[AgentHostDataPaths.UserDataRootEnvironmentVariable] = value;
+            process.StartInfo.Environment["DOTNET_NOLOGO"] = "1";
+            Assert.True(process.Start());
+            var stderr = process.StandardError.ReadToEnd();
+            var stdout = process.StandardOutput.ReadToEnd();
+            Assert.True(process.WaitForExit(TimeSpan.FromSeconds(20)));
+            Assert.Equal(2, process.ExitCode);
+            Assert.Equal(message + Environment.NewLine, stderr);
+            Assert.Equal(string.Empty, stdout);
+            Assert.DoesNotContain("Unhandled exception", stderr, StringComparison.Ordinal);
+            Assert.DoesNotContain("at VibeSnake", stderr, StringComparison.Ordinal);
+        }
+    }
+
+    [Fact]
     public void Signal_school_publishes_exact_canonical_route_interaction_evidence()
     {
         using var temporary = new AgentHostTemporaryDirectory();
@@ -2097,7 +2134,7 @@ public sealed class AgentHostTests
         Assert.NotNull(host.Services);
         Assert.NotNull(defaultHost.Services);
         Assert.Equal("vibesnake-agent-host", Program.HostName);
-        Assert.Equal("0.18.3", Program.HostVersion);
+        Assert.Equal("0.18.4", Program.HostVersion);
         Assert.Throws<ArgumentNullException>(() =>
             Program.CreateHostApplicationBuilder(null!, temporary.Path));
     }

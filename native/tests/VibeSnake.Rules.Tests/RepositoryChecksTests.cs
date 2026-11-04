@@ -1599,7 +1599,7 @@ public sealed class RepositoryChecksTests
             WriteFile(
                 root,
                 "docs/engineering/AGENT_PLAY.md",
-                "2026-07-28 2.2.0 0.18.3 1.0.0 "
+                "2026-07-28 2.2.0 0.18.4 1.0.0 "
                 + "0a4aad95ce337878ad38802ebf0daa3fde76abe3f65400c86bcbb1ec0b3ab883 "
                 + "6539175bfcdf43085855183e86da40ea94b166547a72b47ae9a0a390516d3acb "
                 + "0.2 2026-08-15 published working-draft "

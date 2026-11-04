@@ -112,4 +112,5 @@ Agent matches are exhibitions. Do not claim that they update human scores, progr
 - Mutation capacity exceeded: known exact retries remain valid, but no new mutation can be accepted; finish early or start a new match.
 - Replay failure: no verified result exists; report the failed-closed outcome and start a new match.
 - Host capacity: the error names the live count and the seconds until the oldest idle lease can be reclaimed. Finish a match this client still holds. Handles are recoverable only by the client that holds them; the host cannot list a lost handle. Wait for that lease, or restart the host. No match was started.
+- Invalid user-data root: stderr prints one configuration sentence and the process exits 2. There is no stack and no tool error, because the host never started. Point `VIBESNAKE_AGENT_USER_DATA_ROOT` at an existing fully qualified directory that is not the host package.
 - Replay save failure: preserve the verified lane result and report the bounded store error. Never supply or invent a filesystem path.

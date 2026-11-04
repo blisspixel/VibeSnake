@@ -13,13 +13,26 @@ namespace VibeSnake.AgentHost;
 public static class Program
 {
     public const string HostName = "vibesnake-agent-host";
-    public const string HostVersion = "0.18.3";
+    public const string HostVersion = "0.18.4";
     public const string McpProtocolVersion = "2026-07-28";
 
-    public static async Task Main(string[] args)
+    public static async Task<int> Main(string[] args)
     {
-        var host = CreateHostApplicationBuilder(args).Build();
-        await host.RunAsync().ConfigureAwait(false);
+        try
+        {
+            var host = CreateHostApplicationBuilder(args).Build();
+            await host.RunAsync().ConfigureAwait(false);
+            return 0;
+        }
+        catch (InvalidOperationException exception)
+            when (exception.Message.StartsWith(
+                AgentHostDataPaths.UserDataRootEnvironmentVariable,
+                StringComparison.Ordinal))
+        {
+            // A bad data root is configuration, not a crash. One line, no stack.
+            Console.Error.WriteLine(exception.Message);
+            return 2;
+        }
     }
 
     internal static HostApplicationBuilder CreateHostApplicationBuilder(

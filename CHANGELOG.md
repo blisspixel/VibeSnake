@@ -4,6 +4,8 @@ Notable player-facing and engineering changes are recorded here. The project is 
 
 ## Unreleased
 
+- An invalid `VIBESNAKE_AGENT_USER_DATA_ROOT` prints one configuration sentence on stderr and exits 2. A relative path, a missing directory, and the host package folder use that path. There is no stack trace and no abort. Agent Host and Agent Plugin are `0.18.4`.
+
 - At live-match capacity, `start_match` and `start_lesson` name how many matches are live and the whole seconds until the oldest idle lease can be reclaimed. Finishing a match this client still holds frees a slot now. Handles are recoverable only by the client that holds them; the host cannot list a lost handle. The other recovery is to wait for that lease or restart the host. No match is started. The error stays separate from the argument-rejection voice. Rules resource v21 publishes that sentence. Agent Host and Agent Plugin are `0.18.3`.
 
 - An unknown or expired match handle, and a caller-selected seed on a blind match, use the same argument-rejection voice as a malformed value. The message names the field and the value received, lists the required and optional fields, states the recovery, and says that no match state changed. A dead handle says to start a new match, because handles die when the host process exits. A blind seed says to omit `gameplaySeed` or set `seedVisibility` to `open`. The .NET parameter suffix is gone. A style the mode does not support, a passport the catalog rejects, and a host at live-match capacity remain separate errors. Rules resource v20 publishes that boundary. Agent Host and Agent Plugin are `0.18.2`.
