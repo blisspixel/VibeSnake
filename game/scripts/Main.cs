@@ -3385,12 +3385,15 @@ public partial class Main : Node2D
         DrawRect(
             new Rect2(0.0f, 0.0f, logicalWidth, VirtualViewport.LogicalHeight),
             CanvasBackgroundColor());
+        // The top strip is the run HUD. A shell page has no HUD, so the
+        // playfield starts at the top instead of leaving an empty band.
+        var boardTop = ScreenPresentsRunField() ? HudHeight : 0.0f;
         DrawRect(
             new Rect2(
                 0.0f,
-                HudHeight,
+                boardTop,
                 logicalWidth,
-                VirtualViewport.LogicalHeight - HudHeight),
+                VirtualViewport.LogicalHeight - boardTop),
             BoardBackgroundColor());
 
         switch (_screenState)
@@ -3471,6 +3474,18 @@ public partial class Main : Node2D
             DrawPerformanceStressScene(performanceProfile);
         }
     }
+
+    private bool ScreenPresentsRunField() => _screenState switch
+    {
+        ScreenState.Running or ScreenState.Ended => true,
+        ScreenState.Spectator => _spectatorMatch is not null,
+        ScreenState.Replays => _replayPlayback is not null,
+#if AGENT_ARENA_PREVIEW
+        ScreenState.AgentWatch => _agentViewerSnapshot is not null && _agentViewerFrame is not null,
+        ScreenState.AgentExhibitions => _replayPlayback is not null,
+#endif
+        _ => false,
+    };
 
     private void DrawPerformanceStressScene(PerformanceProfileDefinition profile)
     {

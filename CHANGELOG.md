@@ -4,6 +4,8 @@ Notable player-facing and engineering changes are recorded here. The project is 
 
 ## Unreleased
 
+- Replay, exhibition, qualification, and passport pages no longer open under an empty band the height of the run HUD. That strip stays reserved for a live run, a replay, and a recorded story. Other shell pages use the same field from the top of the window.
+
 - Saved agent replays keep the gameplay seed that started the match. The verified-replay row and the loaded replay header show that seed. `SEED LEGACY` stays reserved for an envelope that has no seed. A blind match still reveals the seed in the saved replay after the result. The seed is stored without a capture clock, so two saves of the same play keep one payload hash.
 
 - `./play.sh --help`, `-h`, and `--version` (and the same flags on `./play.ps1`) print usage and exit before any SDK check, download, or build. The page names the preview watch flags and how to pass game arguments after `--`. Any other direct flag is reported instead of being forwarded. A host that is not the pinned SDK keeps the one remediation and does not append the raw `dotnet` error; a real but different version is named. The launcher also suppresses the .NET welcome banner. From a checkout, `dotnet run --project native/tools/VibeSnake.AgentHost/VibeSnake.AgentHost.csproj` starts the local agent host; see [agent play](https://github.com/blisspixel/VibeSnake/blob/main/docs/engineering/AGENT_PLAY.md).
