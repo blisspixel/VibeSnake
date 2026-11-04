@@ -1,3 +1,5 @@
+using System.Text.Json;
+using VibeSnake.AgentHost;
 using VibeSnake.AgentPlay;
 using VibeSnake.Rules;
 
@@ -807,23 +809,74 @@ public sealed class AgentMatchSessionTests
         var stepViewer = new RecordingViewerSink();
         var step = CreateSession(viewerSink: stepViewer);
         var stepObservation = step.Observe();
-        var rejectedBurst = step.SubmitBurst(new AgentBurstRequest(
+        var rejectedBurstRequest = new AgentBurstRequest(
             "wrong-burst",
             stepObservation.Tick,
             stepObservation.StateHash,
             AgentAction.Up,
-            1));
+            1);
+        var rejectedBurst = step.SubmitBurst(rejectedBurstRequest);
         var burst = CreateBurstSession();
         var burstObservation = burst.Observe();
-        var rejectedStep = burst.SubmitAction(Request(
+        var rejectedStepRequest = Request(
             "wrong-step",
             burstObservation,
-            AgentAction.Up));
+            AgentAction.Up);
+        var rejectedStep = burst.SubmitAction(rejectedStepRequest);
 
         Assert.Equal(AgentActionRejection.WrongActionProfile, rejectedBurst.Rejection);
         Assert.Equal(AgentActionRejection.WrongActionProfile, rejectedStep.Rejection);
         Assert.False(rejectedBurst.RulesAdvanced);
         Assert.False(rejectedStep.RulesAdvanced);
+        Assert.Equal(0, rejectedBurst.StepsAdvanced);
+        Assert.Null(rejectedBurst.StopReason);
+        Assert.Equal(stepObservation.Tick, rejectedBurst.Observation.Tick);
+        Assert.Equal(stepObservation.StateHash, rejectedBurst.Observation.StateHash);
+        Assert.Equal(burstObservation.Tick, rejectedStep.Observation.Tick);
+        Assert.Equal(burstObservation.StateHash, rejectedStep.Observation.StateHash);
+        Assert.Equal(
+            AgentPassportV4.FourDirectionActionProfile,
+            rejectedBurst.ActionProfile);
+        Assert.Equal(AgentActionTools.PlayMove, rejectedBurst.RecommendedNextTool);
+        Assert.Throws<InvalidOperationException>(() => AgentActionTools.ForProfile("other"));
+        Assert.Equal(
+            rejectedBurst.ActionProfile,
+            rejectedBurst.Observation.PreviousAction!.ActionProfile);
+        Assert.Equal(
+            rejectedBurst.RecommendedNextTool,
+            rejectedBurst.Observation.PreviousAction.RecommendedNextTool);
+        Assert.Equal(
+            AgentPassportV4.FourDirectionBurstActionProfile,
+            rejectedStep.ActionProfile);
+        Assert.Equal(AgentActionTools.PlayBurst, rejectedStep.RecommendedNextTool);
+        Assert.Equal(
+            rejectedStep.ActionProfile,
+            rejectedStep.Observation.PreviousAction!.ActionProfile);
+        Assert.Equal(
+            rejectedStep.RecommendedNextTool,
+            rejectedStep.Observation.PreviousAction.RecommendedNextTool);
+        Assert.Same(rejectedBurst, step.SubmitBurst(rejectedBurstRequest));
+        Assert.Same(rejectedStep, burst.SubmitAction(rejectedStepRequest));
+        var wire = Program.CreateSerializerOptions();
+        var burstJson = JsonSerializer.SerializeToElement(rejectedBurst, wire);
+        var stepJson = JsonSerializer.SerializeToElement(rejectedStep, wire);
+        Assert.Equal(AgentActionTools.PlayMove, burstJson.GetProperty("recommended_next_tool").GetString());
+        Assert.Equal(
+            AgentPassportV4.FourDirectionActionProfile,
+            burstJson.GetProperty("action_profile").GetString());
+        Assert.Equal(
+            AgentActionTools.PlayMove,
+            burstJson.GetProperty("observation")
+                .GetProperty("previous_action")
+                .GetProperty("recommended_next_tool")
+                .GetString());
+        Assert.Equal(AgentActionTools.PlayBurst, stepJson.GetProperty("recommended_next_tool").GetString());
+        Assert.Equal(
+            AgentPassportV4.FourDirectionBurstActionProfile,
+            stepJson.GetProperty("action_profile").GetString());
+        Assert.Equal(0, burstJson.GetProperty("steps_advanced").GetInt32());
+        Assert.Equal(JsonValueKind.Null, burstJson.GetProperty("stop_reason").ValueKind);
+        Assert.False(stepJson.GetProperty("rules_advanced").GetBoolean());
         Assert.Equal(
             AgentPassportV4.FourDirectionActionProfile,
             stepObservation.Passport.ActionProfile);

@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using VibeSnake.Rules;
 
 namespace VibeSnake.AgentPlay;
@@ -340,7 +341,11 @@ public sealed record AgentPreviousActionV1(
     bool Accepted,
     AgentActionRejection Rejection,
     bool RulesAdvanced,
-    AgentPublicIntent DeclaredIntent = AgentPublicIntent.Undeclared);
+    AgentPublicIntent DeclaredIntent = AgentPublicIntent.Undeclared,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    string? ActionProfile = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    string? RecommendedNextTool = null);
 
 public sealed record AgentRivalObservationV1(
     string PersonalityId,
@@ -423,13 +428,31 @@ public sealed record AgentObservationV5(
     public const string Contract = "vibesnake-agent-observation-v5";
 }
 
+public static class AgentActionTools
+{
+    public const string PlayMove = "play_move";
+    public const string PlayBurst = "play_burst";
+
+    public static string ForProfile(string actionProfile) => actionProfile switch
+    {
+        AgentPassportV4.FourDirectionActionProfile => PlayMove,
+        AgentPassportV4.FourDirectionBurstActionProfile => PlayBurst,
+        _ => throw new InvalidOperationException(
+            $"Unknown action profile '{actionProfile}'."),
+    };
+}
+
 public sealed record AgentActionResponse(
     bool Accepted,
     bool RulesAdvanced,
     AgentActionRejection Rejection,
     AgentLessonProgressDeltaV2? LessonDelta,
     AgentObservationV5 Observation,
-    AgentMatchResultV5? MatchResult);
+    AgentMatchResultV5? MatchResult,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    string? ActionProfile = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    string? RecommendedNextTool = null);
 
 public sealed record AgentBurstResponse(
     bool Accepted,
@@ -440,7 +463,11 @@ public sealed record AgentBurstResponse(
     RunEventKind? StopEvent,
     AgentLessonProgressDeltaV2? LessonDelta,
     AgentObservationV5 Observation,
-    AgentMatchResultV5? MatchResult);
+    AgentMatchResultV5? MatchResult,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    string? ActionProfile = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    string? RecommendedNextTool = null);
 
 public sealed record AgentMatchResultV5(
     string Schema,

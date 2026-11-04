@@ -1006,6 +1006,25 @@ public sealed class AgentViewerClientTests
             AgentAction.Continue);
         var wrongProfileFrame = await TakeFrameAsync(client, minimumSequence: 4);
         Assert.Equal(AgentActionRejection.WrongActionProfile, wrongProfile.Rejection);
+        Assert.False(wrongProfile.RulesAdvanced);
+        Assert.Equal(
+            AgentPassportV4.FourDirectionBurstActionProfile,
+            wrongProfile.ActionProfile);
+        Assert.Equal(AgentActionTools.PlayBurst, wrongProfile.RecommendedNextTool);
+        Assert.Equal(
+            AgentActionTools.PlayBurst,
+            wrongProfile.Observation.PreviousAction!.RecommendedNextTool);
+        Assert.Null(stale.ActionProfile);
+        Assert.Null(stale.RecommendedNextTool);
+        var wrongProfileJson = JsonSerializer.SerializeToElement(
+            wrongProfile,
+            Program.CreateSerializerOptions());
+        Assert.Equal(
+            "play_burst",
+            wrongProfileJson.GetProperty("recommended_next_tool").GetString());
+        Assert.False(
+            JsonSerializer.SerializeToElement(stale, Program.CreateSerializerOptions())
+                .TryGetProperty("recommended_next_tool", out _));
         Assert.Equal(0, wrongProfileFrame.StepsAdvanced);
         Assert.Equal(AgentMatchEndReason.StepLimit, wrongProfileFrame.EndReason);
 

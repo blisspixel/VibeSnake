@@ -118,6 +118,9 @@ public sealed class AgentLessonEvidenceTests
             initial.StateHash,
             AgentAction.Left));
         Assert.Equal(AgentActionRejection.StaleTick, staleResponse.Rejection);
+        Assert.Null(staleResponse.ActionProfile);
+        Assert.Null(staleResponse.RecommendedNextTool);
+        Assert.Null(staleResponse.Observation.PreviousAction!.RecommendedNextTool);
         AssertNoAttemptEvidence(staleResponse.Observation.LessonProgress);
 
         var conflict = CreateSession(definition);
@@ -126,15 +129,28 @@ public sealed class AgentLessonEvidenceTests
         var conflicting = conflict.SubmitAction(Request("shared-key", initial, AgentAction.Left));
         Assert.True(accepted.Accepted);
         Assert.Equal(AgentActionRejection.IdempotencyConflict, conflicting.Rejection);
+        Assert.Null(conflicting.ActionProfile);
+        Assert.Null(conflicting.RecommendedNextTool);
         AssertNoAttemptEvidence(conflicting.Observation.LessonProgress);
 
         var burstProfile = CreateSession(
             definition,
             AgentPassportV4.FourDirectionBurstActionProfile);
         initial = burstProfile.Observe();
-        var wrongStepProfile = burstProfile.SubmitAction(
-            Request("wrong-step-profile", initial, AgentAction.Left));
+        var wrongStepRequest = Request("wrong-step-profile", initial, AgentAction.Left);
+        var wrongStepProfile = burstProfile.SubmitAction(wrongStepRequest);
         Assert.Equal(AgentActionRejection.WrongActionProfile, wrongStepProfile.Rejection);
+        Assert.False(wrongStepProfile.RulesAdvanced);
+        Assert.Equal(initial.Tick, wrongStepProfile.Observation.Tick);
+        Assert.Equal(initial.StateHash, wrongStepProfile.Observation.StateHash);
+        Assert.Equal(
+            AgentPassportV4.FourDirectionBurstActionProfile,
+            wrongStepProfile.ActionProfile);
+        Assert.Equal(AgentActionTools.PlayBurst, wrongStepProfile.RecommendedNextTool);
+        Assert.Equal(
+            AgentActionTools.PlayBurst,
+            wrongStepProfile.Observation.PreviousAction!.RecommendedNextTool);
+        Assert.Same(wrongStepProfile, burstProfile.SubmitAction(wrongStepRequest));
         AssertNoAttemptEvidence(wrongStepProfile.Observation.LessonProgress);
 
         var stepProfile = CreateSession(definition);
@@ -146,6 +162,14 @@ public sealed class AgentLessonEvidenceTests
             AgentAction.Left,
             1));
         Assert.Equal(AgentActionRejection.WrongActionProfile, wrongBurstProfile.Rejection);
+        Assert.Equal(0, wrongBurstProfile.StepsAdvanced);
+        Assert.Null(wrongBurstProfile.StopReason);
+        Assert.False(wrongBurstProfile.RulesAdvanced);
+        Assert.Equal(initial.Tick, wrongBurstProfile.Observation.Tick);
+        Assert.Equal(
+            AgentPassportV4.FourDirectionActionProfile,
+            wrongBurstProfile.ActionProfile);
+        Assert.Equal(AgentActionTools.PlayMove, wrongBurstProfile.RecommendedNextTool);
         AssertNoAttemptEvidence(wrongBurstProfile.Observation.LessonProgress);
     }
 

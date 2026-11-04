@@ -298,7 +298,9 @@ public sealed class AgentMatchSession
                                 lessonBefore,
                                 lastStep.Observation.LessonProgress),
                             lastStep.Observation,
-                            MatchResult: null);
+                            MatchResult: null,
+                            lastStep.ActionProfile,
+                            lastStep.RecommendedNextTool);
                         PublishViewerFrame(
                             rejected.Observation,
                             AgentViewerOperationKind.Burst,
@@ -843,19 +845,31 @@ public sealed class AgentMatchSession
         bool publishViewer = true)
     {
         _previousEvents = Array.Empty<RunEventDetail>();
+        // Only this rejection names the profile and the tool that accepts it.
+        // Every other response omits both fields.
+        var actionProfile = rejection == AgentActionRejection.WrongActionProfile
+            ? _options.ActionProfile
+            : null;
+        var recommendedNextTool = actionProfile is null
+            ? null
+            : AgentActionTools.ForProfile(actionProfile);
         _previousAction = new AgentPreviousActionV1(
             action,
             Accepted: false,
             rejection,
             RulesAdvanced: false,
-            declaredIntent);
+            declaredIntent,
+            actionProfile,
+            recommendedNextTool);
         var response = new AgentActionResponse(
             Accepted: false,
             RulesAdvanced: false,
             rejection,
             CreateLessonDelta(CreateLessonProgress(), CreateLessonProgress()),
             CreateObservation(),
-            _matchResult);
+            _matchResult,
+            actionProfile,
+            recommendedNextTool);
         if (publishViewer)
         {
             PublishViewerFrame(
@@ -883,7 +897,9 @@ public sealed class AgentMatchSession
             StopEvent: null,
             rejected.LessonDelta,
             rejected.Observation,
-            MatchResult: null);
+            MatchResult: null,
+            rejected.ActionProfile,
+            rejected.RecommendedNextTool);
         PublishViewerFrame(
             response.Observation,
             AgentViewerOperationKind.Burst,

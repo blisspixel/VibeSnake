@@ -1552,6 +1552,11 @@ public sealed class AgentHostTests
         Assert.Contains("start_lesson", playbook, StringComparison.Ordinal);
         Assert.Contains("play_burst", playbook, StringComparison.Ordinal);
         Assert.Contains("recommended_next_tool", playbook, StringComparison.Ordinal);
+        Assert.Contains("wrong_action_profile", playbook, StringComparison.Ordinal);
+        Assert.Contains(
+            "wrong_action_profile rejection names the match action_profile",
+            rules.RootElement.GetProperty("action_semantics").GetString(),
+            StringComparison.Ordinal);
         Assert.Contains("save_verified_replay", playbook, StringComparison.Ordinal);
         Assert.Contains("record_passport", playbook, StringComparison.Ordinal);
         Assert.Contains("get_exhibition_story", playbook, StringComparison.Ordinal);
@@ -1836,7 +1841,7 @@ public sealed class AgentHostTests
         Assert.NotNull(host.Services);
         Assert.NotNull(defaultHost.Services);
         Assert.Equal("vibesnake-agent-host", Program.HostName);
-        Assert.Equal("0.18.0", Program.HostVersion);
+        Assert.Equal("0.18.1", Program.HostVersion);
         Assert.Throws<ArgumentNullException>(() =>
             Program.CreateHostApplicationBuilder(null!, temporary.Path));
     }

@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using VibeSnake.AgentPlay;
 using VibeSnake.Persistence;
 using VibeSnake.Rules;
@@ -86,7 +87,11 @@ public sealed record AgentActionResponseV5(
     AgentActionRejection Rejection,
     AgentLessonProgressDeltaV2? LessonDelta,
     AgentObservationV5 Observation,
-    AgentMatchSummaryV5? MatchResult)
+    AgentMatchSummaryV5? MatchResult,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    string? ActionProfile = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    string? RecommendedNextTool = null)
 {
     public const string Contract = "vibesnake-agent-action-response-v5";
 
@@ -100,7 +105,9 @@ public sealed record AgentActionResponseV5(
             response.Observation,
             response.MatchResult is null
                 ? null
-                : AgentMatchSummaryV5.FromResult(response.MatchResult));
+                : AgentMatchSummaryV5.FromResult(response.MatchResult),
+            response.ActionProfile,
+            response.RecommendedNextTool);
 }
 
 public sealed record AgentBurstResponseV5(
@@ -113,7 +120,11 @@ public sealed record AgentBurstResponseV5(
     RunEventKind? StopEvent,
     AgentLessonProgressDeltaV2? LessonDelta,
     AgentObservationV5 Observation,
-    AgentMatchSummaryV5? MatchResult)
+    AgentMatchSummaryV5? MatchResult,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    string? ActionProfile = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    string? RecommendedNextTool = null)
 {
     public const string Contract = "vibesnake-agent-burst-response-v5";
 
@@ -130,7 +141,9 @@ public sealed record AgentBurstResponseV5(
             response.Observation,
             response.MatchResult is null
                 ? null
-                : AgentMatchSummaryV5.FromResult(response.MatchResult));
+                : AgentMatchSummaryV5.FromResult(response.MatchResult),
+            response.ActionProfile,
+            response.RecommendedNextTool);
 }
 
 public sealed record AgentExhibitionReceiptStatusV1(
