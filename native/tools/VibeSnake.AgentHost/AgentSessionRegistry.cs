@@ -716,8 +716,7 @@ public sealed class AgentSessionRegistry : IDisposable
         var evictableKey = FindEvictableKey();
         if (evictableKey is null)
         {
-            throw new InvalidOperationException(
-                "The host reached its live-match capacity. Finish a match or wait for an inactive live-match lease to expire before starting another.");
+            throw new InvalidOperationException(DescribeLiveCapacity());
         }
 
         var evictable = _entries[evictableKey];
@@ -729,9 +728,43 @@ public sealed class AgentSessionRegistry : IDisposable
     {
         if (_entries.Count >= MaximumRetainedMatches && FindEvictableKey() is null)
         {
-            throw new InvalidOperationException(
-                "The host reached its live-match capacity. Finish a match or wait for an inactive live-match lease to expire before starting another.");
+            throw new InvalidOperationException(DescribeLiveCapacity());
         }
+    }
+
+    /// <summary>
+    /// Caller holds <c>_sync</c>. Names the live count and the whole seconds
+    /// until the oldest idle lease can be reclaimed. A lost handle cannot be
+    /// listed; only the client that still holds it can finish it.
+    /// </summary>
+    private string DescribeLiveCapacity()
+    {
+        var live = _entries.Values.Count(entry =>
+            entry.Session.Lifecycle == AgentMatchLifecycle.AwaitingAction);
+        var now = _timeProvider.GetTimestamp();
+        var oldestActivity = _entries.Values
+            .Where(entry => entry.Session.Lifecycle == AgentMatchLifecycle.AwaitingAction)
+            .Select(entry => entry.LastActivityTimestamp)
+            .DefaultIfEmpty(now)
+            .Min();
+        var elapsed = _timeProvider.GetElapsedTime(oldestActivity, now);
+        var remainingTicks = TimeSpan.FromMinutes(LiveMatchIdleLeaseMinutes).Ticks - elapsed.Ticks;
+        if (remainingTicks < 0)
+        {
+            remainingTicks = 0;
+        }
+
+        var seconds = (remainingTicks + TimeSpan.TicksPerSecond - 1) / TimeSpan.TicksPerSecond;
+        return "The host reached its live-match capacity. "
+            + live.ToString(CultureInfo.InvariantCulture)
+            + " of "
+            + MaximumRetainedMatches.ToString(CultureInfo.InvariantCulture)
+            + " retained matches are live. The oldest idle lease can be reclaimed in "
+            + seconds.ToString(CultureInfo.InvariantCulture)
+            + " seconds. Finish a match this client still holds to free a slot now. "
+            + "Handles are recoverable only by the client that holds them; "
+            + "this host cannot list a handle the client has lost. "
+            + "Wait for that lease, or restart the host. No match was started.";
     }
 
     private string? FindEvictableKey()

@@ -188,11 +188,12 @@ public sealed class AgentHostTests
                 null).MatchHandle)
             .ToArray();
 
-        Assert.Throws<InvalidOperationException>(() => registry.StartMatch(
+        var capacity = Assert.Throws<InvalidOperationException>(() => registry.StartMatch(
             RunModeCatalog.ClassicId,
             AgentSeedVisibility.Open,
             null,
             null));
+        AssertLiveCapacityMessage(capacity.Message);
         registry.Finish(handles[0]);
         var replacement = registry.StartMatch(
             RunModeCatalog.ClassicId,
@@ -263,11 +264,9 @@ public sealed class AgentHostTests
         clock.Advance(TimeSpan.FromMinutes(
             AgentSessionRegistry.LiveMatchIdleLeaseMinutes - 1));
         _ = registry.Observe(handles[0]);
-        Assert.Throws<InvalidOperationException>(() => registry.StartMatch(
-            RunModeCatalog.ClassicId,
-            AgentSeedVisibility.Open,
-            null,
-            null));
+        var capacity = Assert.Throws<InvalidOperationException>(() => registry.StartLesson(
+            "first-turn"));
+        AssertLiveCapacityMessage(capacity.Message, seconds: 60);
 
         clock.Advance(TimeSpan.FromMinutes(1));
         var replacement = registry.StartMatch(
@@ -1345,7 +1344,7 @@ public sealed class AgentHostTests
         var playbook = AgentResources.GetPlaybook();
 
         Assert.Equal(
-            "vibesnake-agent-rules-resource-v20",
+            "vibesnake-agent-rules-resource-v21",
             rules.RootElement.GetProperty("contract").GetString());
         var archive = rules.RootElement.GetProperty("archive");
         Assert.Equal(
@@ -1573,6 +1572,18 @@ public sealed class AgentHostTests
             "remain separate errors",
             argumentBinding,
             StringComparison.Ordinal);
+        Assert.Contains(
+            "whole seconds until the oldest idle lease",
+            argumentBinding,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "cannot list a handle the client has lost",
+            argumentBinding,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "whole seconds until the oldest idle lease",
+            rules.RootElement.GetProperty("idle_reclamation").GetString(),
+            StringComparison.Ordinal);
         Assert.Equal(
             AgentObservationV5.Contract,
             rules.RootElement.GetProperty("observation_schema").GetString());
@@ -1794,6 +1805,10 @@ public sealed class AgentHostTests
             playbook,
             StringComparison.Ordinal);
         Assert.Contains("Omit `gameplaySeed` for a blind match", playbook, StringComparison.Ordinal);
+        Assert.Contains(
+            "cannot list a lost handle",
+            playbook,
+            StringComparison.Ordinal);
         Assert.Contains(
             "wrong_action_profile rejection names the match action_profile",
             rules.RootElement.GetProperty("action_semantics").GetString(),
@@ -2082,7 +2097,7 @@ public sealed class AgentHostTests
         Assert.NotNull(host.Services);
         Assert.NotNull(defaultHost.Services);
         Assert.Equal("vibesnake-agent-host", Program.HostName);
-        Assert.Equal("0.18.2", Program.HostVersion);
+        Assert.Equal("0.18.3", Program.HostVersion);
         Assert.Throws<ArgumentNullException>(() =>
             Program.CreateHostApplicationBuilder(null!, temporary.Path));
     }
@@ -2791,7 +2806,7 @@ public sealed class AgentHostTests
             resource => resource.Uri == "vibesnake://agent/qualification");
         var rulesText = Assert.IsType<TextResourceContents>(Assert.Single(rules.Contents));
         Assert.Contains(
-            "vibesnake-agent-rules-resource-v20",
+            "vibesnake-agent-rules-resource-v21",
             rulesText.Text,
             StringComparison.Ordinal);
         Assert.False(moved.IsError ?? false);
@@ -3288,6 +3303,52 @@ public sealed class AgentHostTests
         int RequestUtf8Bytes,
         int ResponseUtf8Bytes,
         int TotalUtf8Bytes);
+
+    private static void AssertLiveCapacityMessage(string message, long? seconds = null)
+    {
+        Assert.Contains("live-match capacity", message, StringComparison.Ordinal);
+        Assert.Contains(
+            AgentSessionRegistry.MaximumRetainedMatches.ToString(CultureInfo.InvariantCulture)
+                + " of "
+                + AgentSessionRegistry.MaximumRetainedMatches.ToString(CultureInfo.InvariantCulture)
+                + " retained matches are live",
+            message,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "Finish a match this client still holds",
+            message,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "recoverable only by the client that holds them",
+            message,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "cannot list a handle the client has lost",
+            message,
+            StringComparison.Ordinal);
+        Assert.Contains("No match was started", message, StringComparison.Ordinal);
+        Assert.DoesNotContain("(Parameter", message, StringComparison.Ordinal);
+        const string marker = "reclaimed in ";
+        var start = message.IndexOf(marker, StringComparison.Ordinal);
+        Assert.True(start >= 0);
+        var number = message[(start + marker.Length)..].Split(' ', 2)[0];
+        Assert.True(long.TryParse(
+            number,
+            NumberStyles.None,
+            CultureInfo.InvariantCulture,
+            out var parsed));
+        if (seconds is long expected)
+        {
+            Assert.Equal(expected, parsed);
+        }
+        else
+        {
+            Assert.InRange(
+                parsed,
+                1,
+                AgentSessionRegistry.LiveMatchIdleLeaseMinutes * 60L);
+        }
+    }
 
     private sealed class ManualTimeProvider : TimeProvider
     {

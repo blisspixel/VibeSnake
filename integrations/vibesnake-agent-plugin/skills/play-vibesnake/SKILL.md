@@ -111,5 +111,5 @@ Agent matches are exhibitions. Do not claim that they update human scores, progr
 - Wrong action profile: read `action_profile` and `recommended_next_tool` on the rejection. Call `play_move` for `four-direction-step-v1` or `play_burst` for `four-direction-burst-v1`. The same pair is on `previous_action`. No rules step was taken.
 - Mutation capacity exceeded: known exact retries remain valid, but no new mutation can be accepted; finish early or start a new match.
 - Replay failure: no verified result exists; report the failed-closed outcome and start a new match.
-- Host capacity: finish an existing live match or restart the local host.
+- Host capacity: the error names the live count and the seconds until the oldest idle lease can be reclaimed. Finish a match this client still holds. Handles are recoverable only by the client that holds them; the host cannot list a lost handle. Wait for that lease, or restart the host. No match was started.
 - Replay save failure: preserve the verified lane result and report the bounded store error. Never supply or invent a filesystem path.
