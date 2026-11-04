@@ -5,10 +5,10 @@ public sealed class RunReplayRecorderTests
     [Fact]
     public void Recorder_preserves_every_logical_attempt_and_matches_offline_capture()
     {
-        var live = SnakeRun.Create(
-            601UL,
-            new RunConfig(Width: 12, Height: 8, StarvationTicks: 100));
-        var initial = SnakeRun.RestoreCanonicalState(live.SerializeCanonicalState());
+        var config = new RunConfig(Width: 12, Height: 8, StarvationTicks: 100);
+        var live = SnakeRun.Create(601UL, config);
+        // The expected capture must keep the master seed. A restored copy clears it.
+        var seededStart = SnakeRun.Create(601UL, config);
         var recorder = new RunReplayRecorder(live, checkpointInterval: 2);
         IReadOnlyList<Direction>[] commandsByStep =
         [
@@ -40,7 +40,7 @@ public sealed class RunReplayRecorderTests
         Assert.Equal(commandsByStep[1], finalized.Replay.Steps[1].Commands);
         Assert.Equal(commandsByStep[2], finalized.Replay.Steps[2].Commands);
         Assert.Equal(
-            RunReplay.Capture(initial, commandsByStep, checkpointInterval: 2).Serialize(),
+            RunReplay.Capture(seededStart, commandsByStep, checkpointInterval: 2).Serialize(),
             finalized.Replay.Serialize());
         Assert.True(finalized.Replay.Verify().IsValid);
         Assert.Same(finalized, recorder.Finish(live));

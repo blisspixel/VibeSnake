@@ -22,6 +22,7 @@ public sealed partial class RunReplay
     private readonly ReadOnlyCollection<ReplayCheckpoint> _checkpoints;
     private readonly bool _writeConfigIdentity;
     private readonly bool _writeCaptureMetadata;
+    private readonly bool _writeExplicitSeeds;
 
     private RunReplay(
         string initialCanonicalState,
@@ -132,18 +133,32 @@ public sealed partial class RunReplay
             CapturedAtUtc = capturedAtUtc;
             GameplaySeed = gameplaySeed;
             AiSeed = aiSeed;
+            _writeExplicitSeeds = false;
         }
-        else
+        else if (gameplaySeed is not null || aiSeed is not null || capturedAtUtc is not null)
         {
-            if (capturedAtUtc is not null || gameplaySeed is not null || aiSeed is not null)
+            // Agent saves have a known master seed and no shell clock. The pair is
+            // stored without a timestamp so the payload stays deterministic.
+            if (capturedAtUtc is not null
+                || gameplaySeed is null
+                || aiSeed is null
+                || gameplaySeed.Value != aiSeed.Value)
             {
                 throw new ArgumentException(
-                    "Replay capture metadata fields cannot be supplied when metadata output is disabled.");
+                    "Replay seed inputs must be supplied together and match when no capture timestamp is written.");
             }
 
             CapturedAtUtc = null;
+            GameplaySeed = gameplaySeed;
+            AiSeed = aiSeed;
+            _writeExplicitSeeds = true;
+        }
+        else
+        {
+            CapturedAtUtc = null;
             GameplaySeed = null;
             AiSeed = null;
+            _writeExplicitSeeds = false;
         }
 
         (ConfigHash, ConfigHashAlgorithm) = ResolveConfigIdentity(
@@ -623,6 +638,11 @@ public sealed partial class RunReplay
             if (_writeCaptureMetadata)
             {
                 writer.WriteString("capturedAtUtc", CapturedAtUtc);
+                writer.WriteNumber("gameplaySeed", GameplaySeed!.Value);
+                writer.WriteNumber("aiSeed", AiSeed!.Value);
+            }
+            else if (_writeExplicitSeeds)
+            {
                 writer.WriteNumber("gameplaySeed", GameplaySeed!.Value);
                 writer.WriteNumber("aiSeed", AiSeed!.Value);
             }

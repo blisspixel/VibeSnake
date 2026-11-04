@@ -23,7 +23,7 @@ The native slice can now:
 - reload and verify the exact saved file before reporting success;
 - list bounded generated replay names newest first without reading payloads, then inspect each entry on a background boundary before presenting trusted metadata;
 - open the replay browser through the `R` or Controller North action;
-- show capture date, mode, rules version, score, seed, duration in steps, and an explicit verified, incompatible, modified, or unreadable badge without displaying internal filenames or hashes;
+- show capture date, mode, rules version, score, seed, and duration in steps on each row, show that same seed in the loaded playback header, and show an explicit verified, incompatible, modified, or unreadable badge without displaying internal filenames or hashes;
 - load and verify a selected replay on the background operation boundary;
 - play at 0.5x, 1x, 2x, or 4x, pause, step once, seek back ten steps, toggle clean capture, restart, and return through keyboard or controller actions;
 - toggle a clean gameplay or replay view through the remappable Help action on keyboard or controller, hiding six presentation-only overlay families without changing rules state;
@@ -98,7 +98,7 @@ paths for selected stored entries.
 | Config hash | `sha256-canonical-runconfig-v3` | Envelope stores effective `configHash`; mode identity, starvation/combo/speed/length switches, DDA enabled state, and adaptive policy are bound into it, and verification rejects restore or mid-run identity drift (`ConfigIdentityDiverged`) |
 | App version | Optional shell-supplied string | Present on new captures; omitted on legacy envelopes; not used for rules determinism |
 | Capture time | Optional shell-supplied canonical UTC string | New product captures use `yyyy-MM-ddTHH:mm:ss.fffZ`; omitted on legacy envelopes; never read from a rules-layer clock |
-| Explicit seeds | Optional gameplay and AI seed pair | New product captures store both; the current shared-master-stream contract requires equality; omitted together on legacy envelopes |
+| Explicit seeds | Optional gameplay and AI seed pair | A known master seed is stored on a new capture, including an agent save that has no shell timestamp. The pair must match. A timestamp requires both seeds. Omitting the pair is reserved for legacy envelopes |
 | Integrity | `sha256-canonical-replay-payload-v1` | A changed payload returns `IntegrityMismatch` |
 | Embedded state | Canonical state schema 3 | Invalid or impossible state returns `InvalidPayload`; schema 2 states remain intact and fail compatibility |
 

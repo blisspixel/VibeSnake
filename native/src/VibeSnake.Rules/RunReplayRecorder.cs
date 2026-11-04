@@ -90,6 +90,11 @@ public sealed class RunReplayRecorder
             _gameplaySeed = masterSeed;
             _aiSeed = masterSeed;
         }
+        else if (liveRun.MasterSeed is { } knownSeed)
+        {
+            _gameplaySeed = knownSeed;
+            _aiSeed = knownSeed;
+        }
 
         _checkpoints = [new ReplayCheckpoint(0, _mirror.ComputeStateHash())];
     }

@@ -59,29 +59,32 @@ public sealed partial class RunReplay
             var hasCapturedAtUtc = root.TryGetProperty("capturedAtUtc", out _);
             var hasGameplaySeed = root.TryGetProperty("gameplaySeed", out _);
             var hasAiSeed = root.TryGetProperty("aiSeed", out _);
-            var writeCaptureMetadata = hasCapturedAtUtc || hasGameplaySeed || hasAiSeed;
+            if (hasGameplaySeed != hasAiSeed || (hasCapturedAtUtc && !hasGameplaySeed))
+            {
+                return Incompatible(
+                    ReplayCompatibilityCode.InvalidPayload,
+                    "Replay capture metadata fields must be present together.");
+            }
+
             string? capturedAtUtc = null;
             ulong? gameplaySeed = null;
             ulong? aiSeed = null;
-            if (writeCaptureMetadata)
+            var writeCaptureMetadata = hasCapturedAtUtc;
+            if (hasGameplaySeed)
             {
-                if (!hasCapturedAtUtc || !hasGameplaySeed || !hasAiSeed)
+                if (hasCapturedAtUtc)
                 {
-                    return Incompatible(
-                        ReplayCompatibilityCode.InvalidPayload,
-                        "Replay capture metadata fields must be present together.");
+                    capturedAtUtc = ReadString(root, "capturedAtUtc");
+                    if (!IsCanonicalCaptureTimestamp(capturedAtUtc))
+                    {
+                        return Incompatible(
+                            ReplayCompatibilityCode.InvalidPayload,
+                            "The replay capture timestamp is not canonical UTC.");
+                    }
                 }
 
-                capturedAtUtc = ReadString(root, "capturedAtUtc");
                 gameplaySeed = root.GetProperty("gameplaySeed").GetUInt64();
                 aiSeed = root.GetProperty("aiSeed").GetUInt64();
-                if (!IsCanonicalCaptureTimestamp(capturedAtUtc))
-                {
-                    return Incompatible(
-                        ReplayCompatibilityCode.InvalidPayload,
-                        "The replay capture timestamp is not canonical UTC.");
-                }
-
                 if (gameplaySeed != aiSeed)
                 {
                     return Incompatible(

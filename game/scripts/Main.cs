@@ -12627,6 +12627,23 @@ public partial class Main : Node2D
         }
     }
 
+    private static string ReplaySeedLabel(ulong? gameplaySeed) =>
+        gameplaySeed is null ? "SEED LEGACY" : $"SEED {gameplaySeed}";
+
+    // The mode-title cell is 282px. A 20-digit seed and the transport line do
+    // not fit together, so the seed owns the title and transport leads the message.
+    private static string ReplayTransportStatus(
+        int stepIndex,
+        int stepCount,
+        string playbackState,
+        double speed,
+        bool hudVisible) =>
+        $"REPLAY {stepIndex}/{stepCount}  {playbackState}  {speed:0.0#}X  "
+        + (hudVisible ? "HUD ON" : "HUD OFF");
+
+    private static string ReplayTransportStatusLine(string transport, string engineeringStatus) =>
+        $"{transport}  |  {engineeringStatus}";
+
     private void DrawReplaysBrowse()
     {
         if (_replayPlayback is not null)
@@ -12638,9 +12655,13 @@ public partial class Main : Node2D
                     : "PLAYING";
             DrawRun(
                 _replayPlayback.CurrentSnapshot,
-                $"REPLAY {_replayPlayback.StepIndex}/{_replayPlayback.StepCount}  {playbackState}  "
-                    + $"{ReplayPlaybackSpeeds[_replayPlaybackSpeedIndex]:0.0#}X  "
-                    + (_replayHudVisible ? "HUD ON" : "HUD OFF"));
+                ReplaySeedLabel(_replayPlayback.GameplaySeed),
+                replayTransport: ReplayTransportStatus(
+                    _replayPlayback.StepIndex,
+                    _replayPlayback.StepCount,
+                    playbackState,
+                    ReplayPlaybackSpeeds[_replayPlaybackSpeedIndex],
+                    _replayHudVisible));
 
             if (!_capturePresentation.ShowReplayControls)
             {
@@ -12747,7 +12768,7 @@ public partial class Main : Node2D
                     ? "MODE UNKNOWN"
                     : $"{replay.ModeId}@{replay.ModeVersion}";
                 var score = replay.Score is null ? "SCORE N/A" : $"SCORE {replay.Score:D6}";
-                var seed = replay.GameplaySeed is null ? "SEED LEGACY" : $"SEED {replay.GameplaySeed}";
+                var seed = ReplaySeedLabel(replay.GameplaySeed);
                 var steps = replay.StepCount is null ? "STEPS N/A" : $"STEPS {replay.StepCount}";
                 DrawLabel(
                     $"{marker} {timestamp}  {mode}  {score}  {seed}  {steps}",
@@ -12968,7 +12989,8 @@ public partial class Main : Node2D
         RunSnapshot? replaySnapshot = null,
         string? replayStatus = null,
         RunModeDefinition? presentedMode = null,
-        CosmeticSetDefinition? presentedCosmetic = null)
+        CosmeticSetDefinition? presentedCosmetic = null,
+        string? replayTransport = null)
     {
         if (_run is null && replaySnapshot is null)
         {
@@ -13068,7 +13090,11 @@ public partial class Main : Node2D
             var liveMessage = replaySnapshot is null && replayStatus is null;
             var messageText = liveMessage
                 ? LiveRunMessage(snapshot, usesVibePresentation)
-                : EngineeringRunStatus(snapshot, usesVibePresentation);
+                : replayTransport is null
+                    ? EngineeringRunStatus(snapshot, usesVibePresentation)
+                    : ReplayTransportStatusLine(
+                        replayTransport,
+                        EngineeringRunStatus(snapshot, usesVibePresentation));
             var messagePriority = liveMessage && usesVibePresentation
                 ? _runHudMessages.Current?.Priority
                 : null;
@@ -16424,6 +16450,10 @@ public partial class Main : Node2D
                             RunDifficultyBadge.CopyId(state),
                             ShellLocale.English)));
             }
+
+            RequireRunHudCell(
+                RunHudModeTitleCell,
+                RunModeTitleText(mode.DisplayName, ReplaySeedLabel(ulong.MaxValue)));
         }
 
         // The score cell carries a fixed six-digit field, so its worst case is
@@ -16638,6 +16668,32 @@ public partial class Main : Node2D
             {
                 runHudRowLayoutPassed = false;
                 runHudRowFailures.Add($"run-hud.message:elided:{fontSize}:{sample}");
+            }
+        }
+
+        foreach (var speed in ReplayPlaybackSpeeds)
+        {
+            foreach (var playbackState in new[] { "PLAYING", "PAUSED", "COMPLETE" })
+            {
+                foreach (var hudVisible in new[] { true, false })
+                {
+                    var transport = ReplayTransportStatus(
+                        RunReplay.MaximumSteps,
+                        RunReplay.MaximumSteps,
+                        playbackState,
+                        speed,
+                        hudVisible);
+                    var (fontSize, fitted) = ResolveFittedLabel(
+                        transport,
+                        RunHudMessages.MessageBaseFontSize,
+                        RunHudMessages.MessageMinimumFontSize,
+                        RunHudMessages.MessageWidth);
+                    if (!string.Equals(fitted, transport, StringComparison.Ordinal) || fontSize < 14)
+                    {
+                        runHudRowLayoutPassed = false;
+                        runHudRowFailures.Add($"run-hud.replay-transport:elided:{fontSize}:{transport}");
+                    }
+                }
             }
         }
 
@@ -16975,6 +17031,14 @@ public partial class Main : Node2D
         foreach (var line in fullWidthShellLines)
         {
             AssertFits("shell line", line.Text, line.BaseSize, 1180.0f);
+        }
+
+        foreach (var mode in RunModeCatalog.All)
+        {
+            var replayRow =
+                $"> 2026-11-03 23:59:58Z  {mode.Id}@{mode.Version}  SCORE 999999  "
+                + $"{ReplaySeedLabel(ulong.MaxValue)}  STEPS {RunReplay.MaximumSteps}";
+            AssertFits("replay row", replayRow, 15, 1204.0f);
         }
 
         (string Text, int BaseSize)[] runEndLines =

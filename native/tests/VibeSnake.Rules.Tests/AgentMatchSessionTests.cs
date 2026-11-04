@@ -882,6 +882,9 @@ public sealed class AgentMatchSessionTests
         Assert.Equal(session.Observe().ConfigHash, result.ConfigHash);
         Assert.Equal(AgentSeedVisibility.Open, result.SeedVisibility);
         Assert.Equal(123UL, result.GameplaySeed);
+        Assert.Equal(123UL, result.VerifiedReplay.GameplaySeed);
+        Assert.Equal(123UL, result.VerifiedReplay.AiSeed);
+        Assert.Null(result.VerifiedReplay.CapturedAtUtc);
         Assert.Same(AgentPassportV4.Anonymous, result.Passport);
         Assert.Equal(1, result.FinalTick);
         Assert.Equal(RunStatus.Running, result.RunStatus);
@@ -1194,6 +1197,7 @@ public sealed class AgentMatchSessionTests
         Assert.Equal(AgentSeedVisibility.Blind, blindReceipt.Division.SeedVisibility);
         Assert.Contains("|blind|", blindReceipt.Division.DivisionId, StringComparison.Ordinal);
         Assert.Equal("123", blindReceipt.GameplaySeed);
+        Assert.Equal(123UL, blind.Finish().VerifiedReplay.GameplaySeed);
         Assert.Null(blindReceipt.StyleOutcome);
         Assert.Null(blindReceipt.LessonOutcome);
         Assert.Null(blindReceipt.RivalPersonalityId);

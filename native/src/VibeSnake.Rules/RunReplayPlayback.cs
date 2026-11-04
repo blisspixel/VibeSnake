@@ -56,6 +56,8 @@ public sealed class RunReplayPlayback
 
     public string ScoreCategoryId => _run.ScoreCategoryId;
 
+    public ulong? GameplaySeed => _replay.GameplaySeed;
+
     public bool TryAdvance(out ReplayPlaybackFrame? frame)
     {
         if (IsComplete)

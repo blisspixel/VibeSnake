@@ -146,11 +146,57 @@ public sealed class RunReplayTests
         Assert.False(document.RootElement.TryGetProperty("appVersion", out _));
         Assert.Null(RunReplay.Read(replay.Serialize()).Replay!.AppVersion);
         Assert.False(document.RootElement.TryGetProperty("capturedAtUtc", out _));
-        Assert.False(document.RootElement.TryGetProperty("gameplaySeed", out _));
-        Assert.False(document.RootElement.TryGetProperty("aiSeed", out _));
+        Assert.Equal(57UL, document.RootElement.GetProperty("gameplaySeed").GetUInt64());
+        Assert.Equal(57UL, document.RootElement.GetProperty("aiSeed").GetUInt64());
+        Assert.Null(replay.CapturedAtUtc);
+        Assert.Equal(57UL, replay.GameplaySeed);
+        Assert.Equal(57UL, replay.AiSeed);
+        var roundTrip = RunReplay.Read(replay.Serialize());
+        Assert.True(roundTrip.Compatibility.IsCompatible, roundTrip.Compatibility.Message);
+        Assert.Equal(57UL, roundTrip.Replay!.GameplaySeed);
+        Assert.Null(roundTrip.Replay.CapturedAtUtc);
+        var stripped = replay.Serialize().Replace(
+            "\"aiSeed\":57,",
+            string.Empty,
+            StringComparison.Ordinal);
+        var rejected = RunReplay.Read(stripped);
+        Assert.Equal(ReplayCompatibilityCode.InvalidPayload, rejected.Compatibility.Code);
+        Assert.Null(rejected.Replay);
+    }
+
+    [Fact]
+    public void Offline_Capture_omits_seeds_when_the_restored_run_has_no_master_seed()
+    {
+        var restored = SnakeRun.RestoreCanonicalState(
+            SnakeRun.Create(57UL).SerializeCanonicalState());
+        var replay = RunReplay.Capture(
+            restored,
+            [[Direction.Up]],
+            checkpointInterval: 1);
+
         Assert.Null(replay.CapturedAtUtc);
         Assert.Null(replay.GameplaySeed);
         Assert.Null(replay.AiSeed);
+        using var document = JsonDocument.Parse(replay.Serialize());
+        Assert.False(document.RootElement.TryGetProperty("capturedAtUtc", out _));
+        Assert.False(document.RootElement.TryGetProperty("gameplaySeed", out _));
+        Assert.False(document.RootElement.TryGetProperty("aiSeed", out _));
+        Assert.Null(RunReplay.Read(replay.Serialize()).Replay!.GameplaySeed);
+    }
+
+    [Fact]
+    public void Offline_Capture_round_trips_a_seed_above_the_binary64_exact_integer_limit()
+    {
+        const ulong seed = 9_007_199_254_740_993UL;
+        var replay = RunReplay.Capture(SnakeRun.Create(seed), [[Direction.Up]]);
+
+        var read = RunReplay.Read(replay.Serialize());
+
+        Assert.True(read.Compatibility.IsCompatible, read.Compatibility.Message);
+        Assert.Equal(seed, read.Replay!.GameplaySeed);
+        Assert.Equal(seed, read.Replay.AiSeed);
+        Assert.Null(read.Replay.CapturedAtUtc);
+        Assert.Equal(replay.Serialize(), read.Replay.Serialize());
     }
 
     [Fact]
