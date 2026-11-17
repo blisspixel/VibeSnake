@@ -1296,7 +1296,7 @@ Every slice follows the same loop:
 2. Implement the smallest complete vertical slice through core, transport, viewer, docs, and recovery.
 3. Add deterministic tests, privacy and architecture checks, accessibility copy, and failure handling in the same change.
 4. Run the full repository qualification, commit one coherent revision to `main`, and keep both hosted CI and Player build green.
-5. Refresh the rolling `player-latest` source release from that exact revision.
+5. Publish a uniquely tagged immutable source release from that exact revision.
 6. Record human observations whenever participants are available. Convert evidence into keep, revise, or remove decisions without suspending unrelated work.
 
 The project does not wait for a large launch to polish. Every completed slice must improve at least one of clarity, agency, anticipation, expression, rivalry, recovery, accessibility, or replay desire without weakening determinism or trust.
@@ -1355,7 +1355,7 @@ Do not hold objective Legible through Dramatic implementation work for later evi
 - `main` is the only persistent branch. Keep the open pull-request list empty while external contribution intake is closed.
 - Commit complete, reviewable vertical slices directly to `main` only after local CI-equivalent qualification passes. Never push a knowingly broken intermediate revision.
 - After every push, monitor both hosted CI and Player build. Fix a failure forward immediately on `main`; do not leave the default branch red while starting unrelated work.
-- The newest accepted main revision refreshes the floating `player-latest` source and reference prerelease with checksums. Publication is serialized, and an in-progress publisher is left to finish. Its notes must identify the exact revision and distinguish development previews from supported player features.
+- The newest accepted main revision publishes a uniquely tagged immutable source and reference prerelease with checksums. Publication is serialized, and an in-progress publisher is left to finish. Its notes must identify the exact revision and distinguish development previews from supported player features.
 - Update README, roadmap status, current status, changelog, privacy, security, and operator guidance in the same revision that changes the contract.
 - Do not create a new versioned tag merely because Agent Arena advanced. Versioned native alpha, candidate, and stable releases remain controlled by the existing fail-closed version, content, artifact, provenance, signing, and promotion gates.
 - When a milestone warrants a version change, update the single `VERSION` authority and changelog first, rebuild the exact tag through the protected release workflow, and verify downloaded assets before announcing it.

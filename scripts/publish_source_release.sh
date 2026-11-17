@@ -17,7 +17,10 @@ notes="${2:?release notes}"
 # object instead of moving an existing tag or assuming a failed request did nothing.
 gh api --method POST "repos/$repo/git/refs" \
   -f ref="refs/tags/$tag" -f sha="$QUALIFIED_SHA" >/dev/null 2>&1 || :
-[[ "$(gh api "repos/$repo/git/ref/tags/$tag" --jq '[.object.type, .object.sha] | @tsv')" == $'commit\t'"$QUALIFIED_SHA" ]]
+verify_tag() {
+  [[ "$(gh api "repos/$repo/git/ref/tags/$tag" --jq '[.object.type, .object.sha] | @tsv')" == $'commit\t'"$QUALIFIED_SHA" ]]
+}
+verify_tag
 gh release create "$tag" --draft --prerelease --latest=false --verify-tag \
   --repo "$repo" --title "Vibe Snake source snapshot $tag" --notes-file "$notes" \
   >/dev/null 2>&1 || :
@@ -33,17 +36,25 @@ if [[ "$(jq -r '.draft' <<<"$state")" == true ]]; then
 fi
 verify="$(mktemp -d)"
 trap 'rm -rf "$verify"' EXIT
-gh release download "$tag" --repo "$repo" --dir "$verify"
-diff <(find "$assets" -maxdepth 1 -type f -printf '%f\n' | sort) \
-     <(find "$verify" -maxdepth 1 -type f -printf '%f\n' | sort)
-for file in "$assets"/*; do
-  [[ -f "$file" && ! -L "$file" ]]
-  cmp -- "$file" "$verify/$(basename "$file")"
-done
-(cd "$verify" && sha256sum --check SHA256SUMS.txt)
+verify_assets() {
+  local destination="$1"
+  mkdir "$destination"
+  gh release download "$tag" --repo "$repo" --dir "$destination"
+  diff <(find "$assets" -maxdepth 1 -type f -printf '%f\n' | sort) \
+       <(find "$destination" -maxdepth 1 -type f -printf '%f\n' | sort)
+  for file in "$assets"/*; do
+    [[ -f "$file" && ! -L "$file" ]]
+    cmp -- "$file" "$destination/$(basename "$file")"
+  done
+  (cd "$destination" && sha256sum --check SHA256SUMS.txt)
+}
 if [[ "$(jq -r '.draft' <<<"$state")" == true ]]; then
+  verify_assets "$verify/draft"
+  verify_tag
   gh release edit "$tag" --draft=false --prerelease --latest=false --repo "$repo"
 fi
 gh api "repos/$repo/releases/tags/$tag" \
   --jq '.draft == false and .prerelease == true and .immutable == true' | grep -qx true
+verify_tag
+verify_assets "$verify/published"
 printf 'Published verified immutable snapshot: %s\n' "$tag"
