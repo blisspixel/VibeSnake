@@ -34,19 +34,30 @@ if args[0] == "api":
         save()
     elif "/git/ref/" in route:
         print("commit\t" + state["sha"])
-    elif "releases?" in route:
+    elif route.endswith("/releases") and "POST" in args:
         if state["release"]:
+            sys.exit(1)
+        tag = next(value.split("=", 1)[1] for value in args if value.startswith("tag_name="))
+        state["release"] = {"id":7, "tag_name":tag, "draft":True, "prerelease":True, "immutable":False}
+        save()
+        print(json.dumps(state["release"]))
+    elif "releases?" in route:
+        if state["release"] and mode != "delayed":
             print(json.dumps(state["release"]))
-    elif "/releases/tags/" in route:
+    elif route.endswith("/releases/7"):
         release = state["release"]
-        print(str(not release["draft"] and release["immutable"]).lower())
+        if "--jq" in args:
+            print(str(not release["draft"] and release["immutable"]).lower())
+        else:
+            print(json.dumps(release))
     else:
         sys.exit(3)
-elif args[:2] == ["release", "create"]:
-    if state["release"]:
+elif args[:2] == ["release", "view"]:
+    if mode == "delayed" and not state.get("observed"):
+        state["observed"] = True
+        save()
         sys.exit(1)
-    state["release"] = {"tag_name":args[2], "draft":True, "prerelease":True, "immutable":False}
-    save()
+    print(state["release"]["id"])
 elif args[:2] == ["release", "upload"]:
     assert state["release"]["draft"]
     if mode == "upload":
@@ -74,7 +85,7 @@ else:
 
 @pytest.mark.skipif(os.name == "nt", reason="Publisher runs on hosted Linux only")
 @pytest.mark.parametrize(
-    "mode", ["fresh", "draft", "published", "conflict", "missing", "extra", "corrupt", "api", "upload", "mutable"]
+    "mode", ["fresh", "delayed", "draft", "published", "conflict", "missing", "extra", "corrupt", "api", "upload", "mutable"]
 )
 def test_publisher_requires_exact_bytes_and_never_rewrites_published_assets(tmp_path: Path, mode: str) -> None:
     binaries = tmp_path / "bin"
@@ -94,6 +105,7 @@ def test_publisher_requires_exact_bytes_and_never_rewrites_published_assets(tmp_
     release = None
     if mode in {"draft", "published"}:
         release = {
+            "id": 7,
             "tag_name": "player-123-1",
             "draft": mode == "draft",
             "prerelease": True,
@@ -125,7 +137,7 @@ def test_publisher_requires_exact_bytes_and_never_rewrites_published_assets(tmp_
         timeout=20,
         check=False,
     )
-    successful = mode in {"fresh", "draft", "published"}
+    successful = mode in {"fresh", "delayed", "draft", "published"}
     assert (result.returncode == 0) == successful, result.stdout + result.stderr
     state = json.loads(state_path.read_text(encoding="utf-8"))
     if successful:

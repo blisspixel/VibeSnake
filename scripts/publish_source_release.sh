@@ -21,12 +21,29 @@ verify_tag() {
   [[ "$(gh api "repos/$repo/git/ref/tags/$tag" --jq '[.object.type, .object.sha] | @tsv')" == $'commit\t'"$QUALIFIED_SHA" ]]
 }
 verify_tag
-gh release create "$tag" --draft --prerelease --latest=false --verify-tag \
-  --repo "$repo" --title "Vibe Snake source snapshot $tag" --notes-file "$notes" \
-  >/dev/null 2>&1 || :
-state="$(gh api --paginate "repos/$repo/releases?per_page=100" \
-  --jq ".[] | select(.tag_name == \"$tag\")" | \
-  jq -se 'if length == 1 then .[0] else error("Expected one release") end')"
+# The release list can lag behind creation. Keep the POST response, which
+# identifies the draft even while tag-based lookup is catching up.
+if ! state="$(gh api --method POST "repos/$repo/releases" \
+    -f tag_name="$tag" -f target_commitish="$QUALIFIED_SHA" \
+    -f name="Vibe Snake source snapshot $tag" -F body=@"$notes" \
+    -F draft=true -F prerelease=true -f make_latest=false)"; then
+  # A previous request may already have created or published this attempt.
+  state="$(gh api --paginate "repos/$repo/releases?per_page=100" \
+    --jq ".[] | select(.tag_name == \"$tag\")" | \
+    jq -se 'if length == 1 then .[0] else error("Expected one release") end')"
+fi
+release_id="$(jq -er --arg tag "$tag" \
+  'select(.tag_name == $tag and .prerelease == true) | .id | numbers' <<<"$state")"
+
+# The CLI asset commands resolve the tag separately. Wait until they can see
+# exactly the release identified above before reading or writing assets.
+for delay in 1 2 4 8 16; do
+  visible="$(gh release view "$tag" --repo "$repo" --json databaseId --jq .databaseId 2>/dev/null || true)"
+  [[ "$visible" == "$release_id" ]] && break
+  sleep "$delay"
+done
+[[ "$(gh release view "$tag" --repo "$repo" --json databaseId --jq .databaseId)" == "$release_id" ]]
+state="$(gh api "repos/$repo/releases/$release_id")"
 jq -e --arg tag "$tag" '.tag_name == $tag and .prerelease == true' <<<"$state" >/dev/null
 
 if [[ "$(jq -r '.draft' <<<"$state")" == true ]]; then
@@ -53,7 +70,7 @@ if [[ "$(jq -r '.draft' <<<"$state")" == true ]]; then
   verify_tag
   gh release edit "$tag" --draft=false --prerelease --latest=false --repo "$repo"
 fi
-gh api "repos/$repo/releases/tags/$tag" \
+gh api "repos/$repo/releases/$release_id" \
   --jq '.draft == false and .prerelease == true and .immutable == true' | grep -qx true
 verify_tag
 verify_assets "$verify/published"
