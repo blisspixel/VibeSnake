@@ -1602,7 +1602,7 @@ public sealed class RepositoryChecksTests
                 "2026-07-28 2.2.0 0.18.4 1.0.0 "
                 + "0a4aad95ce337878ad38802ebf0daa3fde76abe3f65400c86bcbb1ec0b3ab883 "
                 + "6539175bfcdf43085855183e86da40ea94b166547a72b47ae9a0a390516d3acb "
-                + "0.2 2026-08-15 published working-draft "
+                + "0.2 2026-11-17 published working-draft "
                 + "1fc1b6270e3cc492ec2d24ad7a34277c6d53b9c1 "
                 + "97a658b7dca3ce1b4c2266b95da300fa51d9dc4ade59d73168e5f9104272da18 "
                 + "minimal-non-experimental 2026-01-26\n");
