@@ -9,11 +9,11 @@ public sealed class AgentKnowledgeCheckTests
     private static readonly IReadOnlyDictionary<string, string> ExpectedSha256 =
         new Dictionary<string, string>(StringComparer.Ordinal)
         {
-            ["experience.md"] = "c25ed13615eb700f3c9a426988dfb7100841c6cbe8b78a0acdd1989e6787aa74",
+            ["experience.md"] = "596c9b8189d8260e7d8bdd3126ea364f62ff47ae2c698f7543584954ef43cfa1",
             ["index.md"] = "7c728d11b8c9d671659112bd5b696ddfbe6929e3ef6397e6999aaaf1d69dfded",
-            ["protocol.md"] = "1f071885b5952fbd3dea125a1ffa4896fc3d45bdbc2166b5a4f00cafadb0507f",
-            ["replays.md"] = "66f09be8e8154e16464a6ebf6b9a774cf4c5fd2f39d5fb56a3c21a35245ba7e8",
-            ["rules.md"] = "4beacf6fcec623819edd86a02acdabc666e0360c79fda2832dd467e16d83c25d",
+            ["protocol.md"] = "a858f7187e1f1e6b6d30f2adb97adc3ca41a217c5bbd6dc5d7aa1c4db67b1682",
+            ["replays.md"] = "a2737d943f4b282a70b022fa52e118989f6d5cd1e6476ebef0eec391b66dd4cf",
+            ["rules.md"] = "fa714b545ddec9bceb5b00029c7d47b461798c8445d9d7035d78d091480caa3d",
         };
 
     [Fact]
@@ -61,7 +61,7 @@ public sealed class AgentKnowledgeCheckTests
             WriteBundle(root);
             var before = SnapshotOutput(root);
 
-            var result = AgentKnowledgeCheck.Inspect(root, new DateOnly(2026, 11, 13));
+            var result = AgentKnowledgeCheck.Inspect(root, new DateOnly(2027, 2, 14));
 
             Assert.True(result.Passed, string.Join(Environment.NewLine, result.Failures));
             Assert.Equal(
@@ -111,13 +111,13 @@ public sealed class AgentKnowledgeCheckTests
         AgentKnowledgeTestRepository.WithTemporaryRepository(root =>
         {
             WriteBundle(root);
-            Assert.True(AgentKnowledgeCheck.Inspect(root, new DateOnly(2026, 11, 13)).Passed);
+            Assert.True(AgentKnowledgeCheck.Inspect(root, new DateOnly(2027, 2, 14)).Passed);
 
-            var boundary = AgentKnowledgeCheck.Inspect(root, new DateOnly(2026, 11, 14));
+            var boundary = AgentKnowledgeCheck.Inspect(root, new DateOnly(2027, 2, 15));
 
             AssertFailure(
                 boundary,
-                "agent knowledge is stale: as-of 2026-11-14 reached stale_after 2026-11-14");
+                "agent knowledge is stale: as-of 2027-02-15 reached stale_after 2027-02-15");
         });
     }
 
@@ -143,7 +143,7 @@ public sealed class AgentKnowledgeCheckTests
 
             File.WriteAllText(
                 baselinePath,
-                baseline.Replace("2026-11-14", "2026-11-14T00:00:00Z", StringComparison.Ordinal),
+                baseline.Replace("2027-02-15", "2027-02-15T00:00:00Z", StringComparison.Ordinal),
                 new UTF8Encoding(false));
             AssertFailure(
                 AgentKnowledgeCheck.Inspect(root, new DateOnly(2026, 9, 1)),

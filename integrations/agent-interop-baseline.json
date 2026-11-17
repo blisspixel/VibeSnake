@@ -1,7 +1,7 @@
 {
   "schema": "vibesnake-agent-interop-baseline-v1",
-  "reviewed_on": "2026-08-15",
-  "next_review_on": "2026-11-14",
+  "reviewed_on": "2026-11-17",
+  "next_review_on": "2027-02-15",
   "mcp": {
     "protocol_version": "2026-07-28",
     "sdk_package": "ModelContextProtocol",
@@ -34,8 +34,8 @@
   "okf": {
     "spec_version": "0.2",
     "generated_at": "2026-09-01T14:25:13Z",
-    "verified_at": "2026-08-15T11:31:47Z",
-    "stale_after": "2026-11-14"
+    "verified_at": "2026-11-17T19:04:00Z",
+    "stale_after": "2027-02-15"
   },
   "mcp_apps": {
     "tracked_version": "2026-01-26",

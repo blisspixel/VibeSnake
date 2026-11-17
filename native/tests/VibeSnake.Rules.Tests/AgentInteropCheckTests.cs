@@ -40,7 +40,7 @@ public sealed class AgentInteropCheckTests
                 baseline["okf"]!["generated_at"] = "2026-08-13Z";
             });
 
-            var result = AgentInteropCheck.Inspect(root, new DateOnly(2026, 11, 14));
+            var result = AgentInteropCheck.Inspect(root, new DateOnly(2027, 2, 15));
 
             AssertFailure(result, "interoperability baseline is stale");
             AssertFailure(result, "okf.stale_after must be an absolute YYYY-MM-DD date");
