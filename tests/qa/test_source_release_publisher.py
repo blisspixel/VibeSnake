@@ -85,7 +85,8 @@ else:
 
 @pytest.mark.skipif(os.name == "nt", reason="Publisher runs on hosted Linux only")
 @pytest.mark.parametrize(
-    "mode", ["fresh", "delayed", "draft", "published", "conflict", "missing", "extra", "corrupt", "api", "upload", "mutable"]
+    "mode",
+    ["fresh", "delayed", "draft", "published", "conflict", "missing", "extra", "corrupt", "api", "upload", "mutable"],
 )
 def test_publisher_requires_exact_bytes_and_never_rewrites_published_assets(tmp_path: Path, mode: str) -> None:
     binaries = tmp_path / "bin"

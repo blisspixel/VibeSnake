@@ -464,7 +464,7 @@ def test_immutable_source_release_uses_only_a_successful_ci_revision() -> None:
     assert 'bash scripts/publish_source_release.sh dist "${NOTES}"' in raw
     publisher = (REPOSITORY_ROOT / "scripts" / "publish_source_release.sh").read_text(encoding="utf-8")
     assert 'tag="player-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"' in publisher
-    assert 'verify_tag\n' in publisher
+    assert "verify_tag\n" in publisher
     assert '-f target_commitish="$QUALIFIED_SHA"' in publisher
     assert ".immutable == true" in publisher
     assert "sha256sum --check SHA256SUMS.txt" in publisher
