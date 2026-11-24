@@ -61,3 +61,18 @@ body:
     attributes:
       label: Notes
       description: Decisions and dead ends. Add dated comments as work proceeds instead of editing history.
+  - type: input
+    id: target-date
+    attributes:
+      label: Target date
+      description: A date the author thinks has about a 50 percent chance of being hit. Aggressive but realistic. Missing it is fine. Only for small, well-defined work, not open-ended design.
+      placeholder: YYYY-MM-DD
+    validations:
+      required: false
+  - type: textarea
+    id: limiting-factor
+    attributes:
+      label: Limiting factor
+      description: What is currently blocking or slowing this item, such as a decision needed, CI capacity, or a dependency issue. Update this as it changes.
+    validations:
+      required: false

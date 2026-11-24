@@ -21,3 +21,4 @@ Work in this repository may come from several agent tools, and sessions can end 
 - **Stop after the same failure twice.** Leave a dated note on the issue saying what failed and what was tried, then move on or ask.
 - **Ask before:** a new dependency, a save, replay, ruleset, or protocol compatibility change, publishing or signing, or anything irreversible. Label the issue `needs-decision` and say what the decision is.
 - **Record progress on the issue,** not in a chat. Close the issue in the same change that meets its checks.
+- **When an item slips past its target date, note the cause in the issue,** since it usually points at the next limiting factor to fix. Depth over speed still wins for design work.
