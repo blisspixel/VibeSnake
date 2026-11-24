@@ -4,6 +4,8 @@ Notable player-facing and engineering changes are recorded here. The project is 
 
 ## Unreleased
 
+- Root instructions now point agents at the contributing, testing, code-quality, status, and roadmap documents and keep the command lists in those documents. New issues use a work-item form with a goal, scope, must-not-touch list, and checks that can fail. A playtest note form keeps freeform notes available while blank issues stay disabled. This records the intake for [#52](https://github.com/blisspixel/VibeSnake/issues/52).
+
 - Publish qualified source builds under immutable run-specific tags, verify draft assets before publication, and preserve historical snapshots instead of replacing a floating release.
 
 

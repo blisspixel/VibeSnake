@@ -1,0 +1,20 @@
+name: Playtest finding / note
+description: A de-identified observation or note that is not a scoped work item. Blank issues stay disabled.
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Leave unknown details as "unknown". Omit names, contact details, device serials, system paths, and raw recordings. Structured human sessions follow docs/design/HUMAN_PLAYTESTING.md. Turn a scoped repair into a work item before labelling it ready.
+  - type: textarea
+    id: note
+    attributes:
+      label: Note
+      description: What you observed, including the screen or flow when you know it.
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Build, seed, or ruleset
+      description: Any identity that would let someone reproduce the observation.
+      value: unknown

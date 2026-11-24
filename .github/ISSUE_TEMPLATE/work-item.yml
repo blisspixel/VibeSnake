@@ -1,0 +1,63 @@
+name: Work item
+description: One outcome with checks a machine can run. Leave a field as "unknown" rather than guessing.
+body:
+  - type: textarea
+    id: goal
+    attributes:
+      label: Goal
+      description: One player or engineering outcome, in one sentence.
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Why
+      description: Roadmap work package (for example V030-13), parent issue, or the evidence that motivates it.
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope
+      description: Files, subsystems, or surfaces this may change.
+    validations:
+      required: true
+  - type: textarea
+    id: never
+    attributes:
+      label: Must not touch
+      description: For example the frozen Python gameplay surface, a save format without the compatibility decision in CONTRIBUTING, reviewed fixture bytes, release identities, the coverage floor, or any checker setting.
+    validations:
+      required: true
+  - type: textarea
+    id: done
+    attributes:
+      label: Done when
+      description: Checks that can fail. Name a test that fails before the change and passes after, plus the RepositoryChecks route or script from CONTRIBUTING that covers this area. "CI complete" green on main is always required.
+      placeholder: |
+        - [ ] New test ... fails on current main and passes after the change
+        - [ ] dotnet run --project native/tools/RepositoryChecks/RepositoryChecks.csproj -- <route> . passes
+        - [ ] CI complete is green on main at the change revision
+    validations:
+      required: true
+  - type: textarea
+    id: limits
+    attributes:
+      label: Limits
+      description: Stop and write a note here if the same failure repeats twice or the work outgrows the scope above.
+      value: Stop after the same failure twice. Do not widen scope without a note.
+  - type: textarea
+    id: escalate
+    attributes:
+      label: Escalate if
+      description: Decisions that belong to the maintainer. Label the issue needs-decision and name the decision.
+      value: |
+        - A new dependency or toolchain change
+        - A save-data, replay, ruleset, or agent protocol compatibility change
+        - Publishing, signing, release, or anything irreversible
+        - A gate would need to be weakened to pass
+  - type: textarea
+    id: notes
+    attributes:
+      label: Notes
+      description: Decisions and dead ends. Add dated comments as work proceeds instead of editing history.
